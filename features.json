@@ -1,0 +1,175 @@
+[
+    {
+        "id": "F-001",
+        "description": "Project scaffolding — directory structure, settings, pyproject.toml, content migration from jericho01, 9 council member profiles",
+        "status": "completed",
+        "dependencies": []
+    },
+    {
+        "id": "F-002",
+        "description": "API client — unified OpenRouter + Mancer client with retry, rate limiting, structured response parsing",
+        "status": "pending",
+        "dependencies": [
+            "F-001"
+        ]
+    },
+    {
+        "id": "F-003",
+        "description": "Council member registry — load/list/validate YAML profiles, get member by name, list all members",
+        "status": "completed",
+        "dependencies": [
+            "F-001"
+        ]
+    },
+    {
+        "id": "F-004",
+        "description": "Memory system — per-agent read/write, core beliefs, session log (JSONL), shared council memory",
+        "status": "pending",
+        "dependencies": [
+            "F-001"
+        ]
+    },
+    {
+        "id": "F-005",
+        "description": "Proposal system — create, list, review proposals with structured markdown format and lifecycle tracking",
+        "status": "pending",
+        "dependencies": [
+            "F-003"
+        ]
+    },
+    {
+        "id": "F-006",
+        "description": "Voting engine — cast votes, tally, quorum check, approval threshold, human veto power",
+        "status": "pending",
+        "dependencies": [
+            "F-005"
+        ]
+    },
+    {
+        "id": "F-007",
+        "description": "Council session orchestrator — full session lifecycle: context load, briefing, activity phase, record, summary",
+        "status": "pending",
+        "dependencies": [
+            "F-002",
+            "F-003",
+            "F-004"
+        ]
+    },
+    {
+        "id": "F-008",
+        "description": "Agent-to-agent chat — orchestrator-mediated conversations between council members with memory recording",
+        "status": "pending",
+        "dependencies": [
+            "F-002",
+            "F-004"
+        ]
+    },
+    {
+        "id": "F-009",
+        "description": "Human-to-agent chat — direct conversation with individual council members, memories updated",
+        "status": "pending",
+        "dependencies": [
+            "F-002",
+            "F-004"
+        ]
+    },
+    {
+        "id": "F-010",
+        "description": "Discussion rounds — structured multi-agent discussion on a proposal before voting",
+        "status": "pending",
+        "dependencies": [
+            "F-008",
+            "F-005"
+        ]
+    },
+    {
+        "id": "F-011",
+        "description": "Character template system — structured YAML format for AI character definitions with traits, backstory, prompt",
+        "status": "pending",
+        "dependencies": [
+            "F-001"
+        ]
+    },
+    {
+        "id": "F-012",
+        "description": "Collaborative character design — council members contribute to character creation via structured prompts",
+        "status": "pending",
+        "dependencies": [
+            "F-007",
+            "F-011"
+        ]
+    },
+    {
+        "id": "F-013",
+        "description": "Character evolution — propose and vote on modifications to existing characters via governance system",
+        "status": "pending",
+        "dependencies": [
+            "F-012",
+            "F-006"
+        ]
+    },
+    {
+        "id": "F-014",
+        "description": "CLI interface — Click-based 'jericho' command with subcommands for council, chat, vote, characters, status",
+        "status": "pending",
+        "dependencies": [
+            "F-007"
+        ]
+    },
+    {
+        "id": "F-015",
+        "description": "Rich terminal dashboard — council status display, vote tallies, session activity, member overview",
+        "status": "pending",
+        "dependencies": [
+            "F-014"
+        ]
+    },
+    {
+        "id": "F-016",
+        "description": "Session analytics — track participation rates, voting patterns, proposal success rates, member activity",
+        "status": "pending",
+        "dependencies": [
+            "F-006",
+            "F-007"
+        ]
+    },
+    {
+        "id": "F-017",
+        "description": "Test suite — comprehensive tests for API client, council registry, memory, governance, and orchestrator",
+        "status": "pending",
+        "dependencies": [
+            "F-002",
+            "F-003",
+            "F-004",
+            "F-005",
+            "F-006"
+        ]
+    },
+    {
+        "id": "F-018",
+        "description": "Memory influence — memories affect agent responses via context injection with relevance scoring",
+        "status": "pending",
+        "dependencies": [
+            "F-004",
+            "F-007"
+        ]
+    },
+    {
+        "id": "F-019",
+        "description": "Council expansion — agents can propose adding new council members via governance system",
+        "status": "pending",
+        "dependencies": [
+            "F-006",
+            "F-003"
+        ]
+    },
+    {
+        "id": "F-020",
+        "description": "Prompt evolution history — visual timeline of how prompts and characters changed over council decisions",
+        "status": "pending",
+        "dependencies": [
+            "F-013",
+            "F-015"
+        ]
+    }
+]

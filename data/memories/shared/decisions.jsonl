@@ -1,0 +1,3 @@
+# Shared Council Memory — Decisions Log
+# Each line is a JSON object recording a council decision.
+# Format: {"timestamp": "...", "proposal_id": "...", "result": "approved|rejected", "votes_for": N, "votes_against": N, "summary": "..."}

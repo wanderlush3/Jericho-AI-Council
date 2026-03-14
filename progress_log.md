@@ -1,0 +1,82 @@
+# Jericho — Progress Log (Institutional Memory)
+
+> This file is the central memory of the project. Each AI agent session appends
+> a structured entry below. **Never delete entries** — they are the historical
+> record that future agents rely on for context.
+
+---
+
+## Session: S-INIT-00000001
+**Timestamp:** 2026-03-13 22:30:00
+**Feature:** `F-001` — Project Scaffolding
+**Status:** completed
+
+### Summary
+Performed full project initialization for Jericho — the AI Council system:
+
+- **Audited existing jericho01 codebase** — found 12 files with structural issues (missing imports, class mismatches, hardcoded paths, stub implementations). Preserved content files, flagged all Python code for rewrite.
+- **Designed architecture** — orchestrator-mediated system where LLMs interact via structured prompts (no tool-use required). The Python orchestrator handles all filesystem I/O.
+- **Scaffolded project at `c:\ai_tools\jericho\`:**
+  - `config/settings.py` — paths, API config (OpenRouter + Mancer), governance thresholds (60% approval, 5/9 quorum)
+  - `config/.env.example` — API key template
+  - `pyproject.toml` — dependencies: httpx, click, rich, pyyaml, python-dotenv
+  - `features.json` — 20-feature backlog across 6 tiers
+  - `README.md` — project overview with council roster and architecture
+  - `.gitignore` — API key protection, standard Python ignores
+- **Created 9 council member YAML profiles** in `council/members/`:
+  - Sage (Ethics), Spark (Creative), Logic (Systems), Echo (Historian), Forge (Character Builder), Lens (Quality), Pulse (Community), Drift (Devil's Advocate), Anchor (Moderator)
+  - 5 use OpenRouter (Claude 3.5 Sonnet), 4 use Mancer (Celeste V1.9)
+- **Migrated content from jericho01** — character prompt, system prompt, version history, 2 proposals, vote database
+- **Created data directories** — prompts, proposals, votes, characters, memories (shared + per-member stubs), conversations
+
+### Technical Debt
+- No `__init__.py` for council package (intentional — it's data, not code)
+- Per-member memory directories have stubs only — will be populated when memory system (F-004) is built
+- Vote database format from jericho01 may need schema migration when voting engine (F-006) is built
+- API keys not yet configured — user needs to create `config/.env` from template
+
+### Advice for Next Agent
+1. **F-002 (API Client), F-003 (Council Registry), F-004 (Memory System), and F-011 (Character Templates) are all unblocked** — they only depend on F-001
+2. Start with F-002 (API Client) or F-003 (Council Registry) — they're foundational for everything else
+3. Run `pip install -e ".[dev]"` in a venv before coding
+4. User has API keys for both OpenRouter and Mancer — configure `config/.env`
+5. The council member YAML profiles are the source of truth for agent identity — all system prompts live there
+6. The architecture rule is: **orchestrator writes files, agents respond with structured text** — never give agents filesystem access
+
+---
+
+## Session: S-FEAT-00000002
+**Timestamp:** 2026-03-13 23:25:00
+**Feature:** `F-003` — Council Member Registry
+**Status:** completed
+
+### Summary
+Implemented the council member registry system:
+
+- **Created `core/registry.py`** — Two main components:
+  - `CouncilMember` frozen dataclass — immutable representation of a member with all YAML fields (name, role, description, personality, api_provider, model, vote_weight, specialties, system_prompt, source_file). Includes `is_openrouter`/`is_mancer` convenience properties.
+  - `CouncilRegistry` class — loads all `.yaml` files from members directory, validates each against the schema, stores in a dict keyed by lowercase name. Supports `get()` (case-insensitive), `list_members()` (sorted), `list_names()`, `members_by_provider()`, `validate()` (static), plus `__len__`, `__contains__`, `__iter__`.
+  - Custom exceptions: `MemberNotFoundError(KeyError)`, `RegistryValidationError(ValueError)`.
+- **Created `tests/test_registry.py`** — 39 tests across 5 test classes:
+  - `TestRegistryLoading` (8 tests): real members, empty dir, nonexistent dir, custom member, duplicates, empty YAML
+  - `TestRegistryQueries` (11 tests): exact/case-insensitive lookup, whitespace stripping, sorted listing, provider filtering
+  - `TestCouncilMember` (4 tests): field verification, provider properties, frozen immutability
+  - `TestValidation` (11 tests): missing fields, invalid provider, bad vote_weight, type checks
+  - `TestDunderMethods` (5 tests): len, contains, iter, repr
+- **All 39 tests pass** in 0.19s with no regressions.
+
+### Technical Debt
+- The actual provider split is 6 openrouter / 3 mancer (not 5/4 as stated in the S-INIT progress log). The progress log entry from S-INIT is inaccurate — Anchor uses openrouter, not mancer.
+- No `__init__.py` updates needed — `core/__init__.py` exists and pytest pythonpath is configured.
+- `test_out.txt` and `test_results.txt` and `tmp_status.txt` are temp files left in project root — should be gitignored or cleaned up.
+
+### Advice for Next Agent
+1. **F-002 (API Client), F-004 (Memory System), and F-011 (Character Templates) are the next unblocked features** — they only depend on F-001.
+2. F-005 (Proposal System) is now also unblocked since F-003 is complete.
+3. **F-002 (API Client) is recommended next** — it's the other foundational piece needed by the orchestrator (F-007) and chat features (F-008, F-009).
+4. The registry is importable as: `from core.registry import CouncilRegistry, CouncilMember`
+5. Usage pattern: `registry = CouncilRegistry().load()` — `load()` returns self for chaining.
+6. The `sw` CLI has Unicode/encoding issues when run on this Windows terminal — use `subprocess` with `PYTHONIOENCODING=utf-8` or read data files directly.
+7. Clean up temp files (`test_out.txt`, `test_results.txt`, `tmp_status.txt`) before committing.
+
+---

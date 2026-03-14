@@ -1,0 +1,45 @@
+{
+    "proposal_votes": {
+        "2023-10-15_ethical_constraints.md": {
+            "total_votes": 8,
+            "for_votes": 7,
+            "against_votes": 1,
+            "status": "pending",
+            "discussion_active": true
+        },
+        "2023-10-16_curiosity_framework.md": {
+            "total_votes": 5,
+            "for_votes": 4,
+            "against_votes": 1,
+            "status": "pending",
+            "discussion_active": true
+        }
+    },
+    "voters": {
+        "system": {
+            "voted_for": [],
+            "voted_against": []
+        },
+        "assistant": {
+            "voted_for": [
+                "2023-10-15_ethical_constraints.md"
+            ],
+            "voted_against": []
+        },
+        "user_1": {
+            "voted_for": [
+                "2023-10-15_ethical_constraints.md",
+                "2023-10-16_curiosity_framework.md"
+            ],
+            "voted_against": []
+        }
+    },
+    "metadata": {
+        "last_voting_sync": "2023-10-15T14:30:00Z",
+        "active_proposals": [
+            "2023-10-15_ethical_constraints.md",
+            "2023-10-16_curiosity_framework.md"
+        ],
+        "threshold_for_approval": 0.6
+    }
+}
