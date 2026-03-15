@@ -587,6 +587,22 @@ def status() -> None:
     _renderer.render_status_dashboard(stats)
 
 
+# ═══════════════════════════════════════════════════════════════
+# Web Dashboard Command
+# ═══════════════════════════════════════════════════════════════
+
+
+@cli.command()
+@click.option("--host", default="127.0.0.1", help="Host to bind to.")
+@click.option("--port", default=8080, type=int, help="Port to listen on.")
+def web(host: str, port: int) -> None:
+    """Launch the web dashboard in your browser."""
+    import uvicorn
+
+    click.echo(f"🏛️  Jericho Web Dashboard → http://{host}:{port}")
+    uvicorn.run("core.web_api:app", host=host, port=port, log_level="info")
+
+
 # ─── Entry Point ──────────────────────────────────────────────
 
 if __name__ == "__main__":

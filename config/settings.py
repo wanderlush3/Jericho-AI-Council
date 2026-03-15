@@ -98,3 +98,8 @@ MAX_EVOLUTION_CHANGES = 10              # Max changes per evolution proposal
 EXPANSION_DIR = DATA_DIR / "council_expansions"
 EXPANSION_STATUSES = ("draft", "proposed", "voting", "decided", "applied", "rejected")
 EXPANSION_REQUIRED_FIELDS = ("name", "role", "description", "api_provider", "model", "system_prompt")
+
+# ─── Web Dashboard Settings ──────────────────────────────────
+WEB_HOST = "127.0.0.1"
+WEB_PORT = 8080
+WEB_STATIC_DIR = CORE_DIR / "web_static"

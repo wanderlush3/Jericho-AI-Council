@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Jericho AI Council — Web dashboard for collaborative AI character design through democratic governance">
+    <title>Jericho AI Council</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-logo">
+                <h1>🏛️ Jericho</h1>
+                <p>AI Council Dashboard</p>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Overview</div>
+                <a class="nav-item active" data-view="dashboard" id="nav-dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Governance</div>
+                <a class="nav-item" data-view="council" id="nav-council">
+                    <span class="nav-icon">👥</span>
+                    <span>Council</span>
+                    <span class="nav-count" id="count-council">—</span>
+                </a>
+                <a class="nav-item" data-view="proposals" id="nav-proposals">
+                    <span class="nav-icon">📜</span>
+                    <span>Proposals</span>
+                    <span class="nav-count" id="count-proposals">—</span>
+                </a>
+                <a class="nav-item" data-view="votes" id="nav-votes">
+                    <span class="nav-icon">🗳️</span>
+                    <span>Votes</span>
+                    <span class="nav-count" id="count-votes">—</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Characters</div>
+                <a class="nav-item" data-view="characters" id="nav-characters">
+                    <span class="nav-icon">🎭</span>
+                    <span>Characters</span>
+                    <span class="nav-count" id="count-characters">—</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Insights</div>
+                <a class="nav-item" data-view="analytics" id="nav-analytics">
+                    <span class="nav-icon">📈</span>
+                    <span>Analytics</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content" id="main-content">
+            <div class="loading" id="initial-loading">
+                <div class="loading-spinner"></div>
+                <span>Loading dashboard…</span>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1161,3 +1161,44 @@ Addressed the primary tech debt item: the `_atomic_write` function duplicated id
 2. The primary tech debt item (`_atomic_write` duplication) is now resolved.
 3. `pytest-asyncio` was already in `pyproject.toml` — no action needed.
 4. The shared utility is importable as: `from core.utils import atomic_write, atomic_append`
+
+---
+
+## Session: S-FEAT-00000021
+**Timestamp:** 2026-03-15 17:00:00
+**Feature:** `F-021` — Web Dashboard
+**Status:** completed
+
+### Summary
+Implemented a browser-based dashboard with FastAPI backend and single-page HTML/JS/CSS frontend:
+
+- **Created `core/web_api.py`** (~280 lines) — FastAPI application with REST endpoints:
+  - `GET /api/status` — project overview (member/proposal/vote/character counts)
+  - `GET /api/council` / `GET /api/council/{name}` — council member list/detail
+  - `GET /api/proposals` / `GET /api/proposals/{id}` — proposals with filtering (status, category, author)
+  - `GET /api/votes` / `GET /api/votes/{proposal_id}` — vote records with tallies
+  - `GET /api/characters` / `GET /api/characters/{id}` — characters with filtering (status, author, tag)
+  - `GET /api/analytics` — full analytics report
+  - Static file serving for the SPA frontend
+  - App factory pattern (`create_app()`) for testability
+- **Created `core/web_static/`** — Single-page application:
+  - `index.html` — semantic HTML shell with sidebar navigation
+  - `styles.css` — premium dark-mode CSS with glassmorphism, gradients, micro-animations
+  - `app.js` (~740 lines) — hash-based routing SPA with views for Dashboard, Council, Proposals, Votes, Characters, Analytics
+- **Updated `config/settings.py`** — added `WEB_HOST`, `WEB_PORT`, `WEB_STATIC_DIR`
+- **Updated `core/cli.py`** — added `jericho web` subcommand to launch dashboard via uvicorn
+- **Updated `pyproject.toml`** — added `fastapi` and `uvicorn` dependencies
+- **Created `tests/test_web_api.py`** — 27 tests covering all API endpoints via `TestClient`
+- **All 1248 tests pass** (1221 existing + 27 new) with zero regressions.
+
+### Technical Debt
+- No WebSocket support for real-time updates — dashboard polls on navigation
+- API endpoints re-instantiate managers on each request (stateless) — fine for low traffic but could be optimized with dependency injection
+- No authentication on API endpoints — suitable for local use only
+
+### Advice for Next Agent
+1. All 21 features are now complete with 1248 passing tests.
+2. The web API is importable as: `from core.web_api import create_app, app`
+3. Launch via `jericho web` or `uvicorn core.web_api:app --port 8080`
+4. To add new API endpoints, add routes inside `create_app()` and corresponding tests in `test_web_api.py`
+5. The SPA uses hash-based routing (`/#council`, `/#proposals/P-0001`, etc.) — add new views by extending `renderView()` in `app.js`

@@ -171,5 +171,18 @@
             "F-013",
             "F-015"
         ]
+    },
+    {
+        "id": "F-021",
+        "title": "Web Dashboard",
+        "description": "Browser-based dashboard with FastAPI backend and single-page HTML/JS/CSS frontend for viewing council, proposals, votes, characters, and analytics",
+        "status": "completed",
+        "dependencies": [
+            "F-003",
+            "F-005",
+            "F-006",
+            "F-011",
+            "F-016"
+        ]
     }
 ]
