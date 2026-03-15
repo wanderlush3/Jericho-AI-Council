@@ -8,7 +8,7 @@
     {
         "id": "F-002",
         "description": "API client — unified OpenRouter + Mancer client with retry, rate limiting, structured response parsing",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-001"
         ]

@@ -80,3 +80,52 @@ Implemented the council member registry system:
 7. Clean up temp files (`test_out.txt`, `test_results.txt`, `tmp_status.txt`) before committing.
 
 ---
+
+## Session: S-FEAT-00000003
+**Timestamp:** 2026-03-15 09:11:00
+**Feature:** `F-002` — API Client
+**Status:** completed
+
+### Summary
+Implemented the unified async API client for OpenRouter and Mancer:
+
+- **Created `core/api_client.py`** (~290 lines) — Three main components:
+  - **Exception hierarchy**: `APIError` (base), `APIConnectionError` (network/timeout), `APIRateLimitError` (429), `APIAuthenticationError` (401/403, never retried).
+  - **Data classes**: `ChatMessage` (frozen, with `to_dict()`), `ChatResponse` (frozen — content, model, provider, usage, raw response).
+  - **`APIClient` class** — async context manager wrapping `httpx.AsyncClient`:
+    - `chat(member, messages, temperature, max_tokens)` → `ChatResponse` — sends OpenAI-compatible `/chat/completions` requests
+    - Smart retry: exponential backoff with jitter on 429 and 5xx; fail-fast on 401/403; no retry on other 4xx
+    - Per-provider rate limiting via configurable minimum gap between requests
+    - Keys loaded from constructor args or env vars (`JERICHO_OPENROUTER_API_KEY`, `JERICHO_MANCER_API_KEY`)
+    - OpenRouter requests include `HTTP-Referer` and `X-Title` headers per their API requirements
+    - System prompt from council member YAML automatically prepended as first message
+- **Created `tests/test_api_client.py`** (~400 lines) — 45 tests across 9 classes:
+  - `TestChatMessage` (3): fields, to_dict, frozen
+  - `TestChatResponse` (3): fields, defaults, frozen
+  - `TestAPIClientInit` (5): explicit keys, env keys, custom settings, context manager, close idempotency
+  - `TestEndpointResolution` (5): OpenRouter URL+headers, Mancer URL+headers, unknown provider, missing keys
+  - `TestRequestBuilding` (4): body shape, system prompt prepended, multi-turn messages, empty messages
+  - `TestResponseParsing` (7): valid response, empty choices, missing keys, usage present/absent, raw preserved
+  - `TestRetryBehavior` (10): success, auth fail-fast (401/403), 429 retry+success, 500 retry+success, max retries exhausted, connection error retry, timeout retry, 4xx no retry
+  - `TestRateLimiting` (3): gap enforced, providers independent, no delay on first request
+  - `TestExceptions` (5): field access, defaults, inheritance hierarchy
+- **All 84 tests pass** (39 registry + 45 API client) in 3.23s with zero regressions.
+- Added `pytest-asyncio` as a runtime dev dependency (used by async tests).
+
+### Technical Debt
+- `pytest-asyncio` is installed but not yet listed in `pyproject.toml` `[project.optional-dependencies].dev` — should be added.
+- The `rate_limit_gap` default (0.5s) is a rough estimate — may need tuning once real API usage begins.
+- No streaming support yet — `chat()` waits for full response. Streaming can be added later if needed.
+- Temp files from S-FEAT-00000002 (`test_out.txt`, `test_results.txt`, `tmp_status.txt`) still not cleaned up.
+
+### Advice for Next Agent
+1. **F-004 (Memory System), F-005 (Proposal System), and F-011 (Character Templates) are all unblocked** — F-004 and F-011 depend only on F-001; F-005 depends on F-003.
+2. **F-007 (Council Session Orchestrator) is now unblocked once F-004 is also done** — it depends on F-002 + F-003 + F-004.
+3. **F-008 (Agent-to-Agent Chat) and F-009 (Human-to-Agent Chat) are now unblocked once F-004 is done** — they depend on F-002 + F-004.
+4. **F-004 (Memory System) is recommended next** — it's the other foundational piece needed by the orchestrator, both chat features, and memory influence.
+5. The API client is importable as: `from core.api_client import APIClient, ChatMessage, ChatResponse`
+6. Usage pattern: `async with APIClient() as client: resp = await client.chat(member, messages)`
+7. All tests are fully mocked — no real API calls. To test against real APIs, set env vars and write integration tests separately.
+8. Add `pytest-asyncio` to `pyproject.toml` dev dependencies.
+
+---
