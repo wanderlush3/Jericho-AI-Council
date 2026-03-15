@@ -429,3 +429,64 @@ Implemented orchestrator-mediated agent-to-agent conversations with automatic me
 8. The `_build_api_messages()` method converts history into multi-turn format (own messages = "assistant", others = "user") for natural LLM conversation flow.
 9. **DRY up `_atomic_write`** into `core/utils.py` — it is now in five separate files.
 
+---
+
+## Session: S-FEAT-00000009
+**Timestamp:** 2026-03-15 10:12:00
+**Feature:** `F-009` — Human-to-Agent Chat
+**Status:** completed
+
+### Summary
+Implemented direct human-to-agent conversations with automatic memory recording:
+
+- **Created `core/human_chat.py`** (~380 lines) — Five main components:
+  - **Exception hierarchy**: `HumanChatError` (base), `HumanChatNotFoundError` (no chat record), `HumanChatValidationError` (invalid data).
+  - **Data classes**: `HumanChatMessage` (frozen — role [human/agent], speaker, content, timestamp, metadata) and `HumanChatRecord` (frozen — chat_id, title, member_name, topic, messages list, summary, created_at, closed_at, metadata). Both have `to_dict()`, `from_dict()`, and `create()` factory methods.
+  - **Prompt builder**: `_build_human_chat_prompt()` — presents conversation history to the council member with human messages as context, limited to last 10 messages for context window management.
+  - **`HumanChat` class** — filesystem-backed, one JSON file per chat (`H-<id>.json`):
+    - `create_chat()` — validates member against registry, creates record file
+    - `send_human_message()` — records human message (no API call)
+    - `get_agent_response()` — sends history to API, records agent response + memory event
+    - `close_chat()` — sets closed_at, persists summary to shared memory (decisions JSONL + narrative history)
+    - `get()` / `list_chats()` / `has_chat()` / `get_messages()` — query methods with filtering (member, closed/open, role)
+  - **API message building**: `_build_api_messages()` converts history into standard user/assistant roles (human = user, agent = assistant)
+- **Created `tests/test_human_chat.py`** (~530 lines) — 65 tests across 12 classes:
+  - `TestHumanChatMessage` (6): fields, frozen, roundtrip, create factory, metadata, invalid role
+  - `TestHumanChatRecord` (7): fields, frozen, roundtrip, create factory, empty ID, empty title, whitespace strip
+  - `TestHumanChatInit` (3): dir creation, properties, repr
+  - `TestCreateChat` (6): basic, with options, persistence, duplicate, unknown member, sequential IDs
+  - `TestSendHumanMessage` (6): basic, multiple, persistence, closed raises, not found, metadata
+  - `TestGetAgentResponse` (8): basic, API called, memory recorded, closed raises, not found, history built, multi-turn
+  - `TestCloseChat` (5): basic, with summary, auto summary, shared memory, already closed
+  - `TestQueryMethods` (8): get, not found, list all, filter member, filter closed, has_chat, get_messages, corrupt skip
+  - `TestPromptBuilder` (4): with history, without topic, human messages labeled, context limit
+  - `TestExceptions` (4): hierarchy, not found, validation, base
+  - `TestEdgeCases` (5): unicode, long content, persistence roundtrip, full lifecycle, multiple chats same member
+  - `TestMemoryIntegration` (4): agent response recorded, memory content, session ID, source
+- **All 491 tests pass** (426 existing + 65 new) in 5.89s with zero regressions.
+
+### Technical Debt
+- The `_atomic_write` helper is now duplicated in **six** modules (`memory.py`, `proposals.py`, `voting.py`, `session.py`, `agent_chat.py`, `human_chat.py`). A shared `core/utils.py` should be created to DRY this up — noted since S-FEAT-00000005.
+- No streaming / real-time callback support — `get_agent_response()` waits for full API response. Could add an `on_message` callback for interactive CLIs later.
+- The human's speaker name is hardcoded to `"Human"` — could be made configurable if multiple human operators need distinct identities.
+- Temp files from S-FEAT-00000002 (`test_out.txt`, `test_results.txt`, `tmp_status.txt`) still not cleaned up.
+
+### Advice for Next Agent
+1. **F-010 (Discussion Rounds) is now unblocked** — depends on F-008 + F-005 (both completed). It should build on `AgentChat.converse()` as a higher-level workflow with proposal integration.
+2. **F-011 (Character Templates) is independently unblocked** — depends only on F-001.
+3. **F-014 (CLI Interface) is unblocked** — depends on F-007. Could integrate both `AgentChat` and `HumanChat` as subcommands.
+4. **F-016 (Session Analytics) is unblocked** — depends on F-006 + F-007 (both completed).
+5. The human chat module is importable as: `from core.human_chat import HumanChat, HumanChatRecord, HumanChatMessage`
+6. Usage pattern:
+   ```python
+   registry = CouncilRegistry().load()
+   async with APIClient() as client:
+       chat = HumanChat(registry=registry, api_client=client)
+       rec = chat.create_chat("H-001", "Ethics Q&A", member_name="Sage")
+       rec = chat.send_human_message("H-001", "What are your core beliefs?")
+       rec, resp = await chat.get_agent_response("H-001")
+       rec = chat.close_chat("H-001", summary="Discussed ethics.")
+   ```
+7. Key design difference from `AgentChat`: human messages are recorded synchronously (no API call), only agent responses hit the API. The `send_human_message()` + `get_agent_response()` pattern gives the human operator explicit control over turn-taking.
+8. **DRY up `_atomic_write`** into `core/utils.py` — it is now in six separate files.
+

@@ -67,7 +67,7 @@
     {
         "id": "F-009",
         "description": "Human-to-agent chat — direct conversation with individual council members, memories updated",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-002",
             "F-004"
