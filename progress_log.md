@@ -129,3 +129,58 @@ Implemented the unified async API client for OpenRouter and Mancer:
 8. Add `pytest-asyncio` to `pyproject.toml` dev dependencies.
 
 ---
+
+## Session: S-FEAT-00000004
+**Timestamp:** 2026-03-15 09:20:00
+**Feature:** `F-004` — Memory System
+**Status:** completed
+
+### Summary
+Implemented the per-agent and shared memory system for the Jericho AI Council:
+
+- **Created `core/memory.py`** (~310 lines) — Four main components:
+  - **Exception hierarchy**: `MemoryError` (base), `MemoryCorruptionError` (invalid data in memory files).
+  - **Data classes**: `MemoryEntry` (frozen — timestamp, session_id, event_type, content, source, metadata dict) and `CoreBelief` (frozen — topic, content, added_timestamp, source). Both have `to_dict()`, `from_dict()`, and `create()` factory methods.
+  - **`AgentMemory` class** — per-member memory store:
+    - Resolves `data/memories/<name>/` directory, creates if missing
+    - `read_core_beliefs()` / `write_core_belief()` / `remove_core_belief()` — JSON file-backed, topic-keyed (upsert semantics)
+    - `read_session_log()` / `append_session_event()` — JSONL append-only log, optional session_id filter
+    - `get_recent_memories(limit)` — last N entries in reverse chronological order
+  - **`SharedMemory` class** — council-wide memory:
+    - `read_decisions()` / `record_decision()` — JSONL, skips `#` comment lines (compatible with existing stub)
+    - `read_history()` / `append_history()` — markdown narrative history
+  - **Atomic write helper** (`_atomic_write`) — write-to-tmp-then-rename pattern for corruption safety
+- **Created `tests/test_memory.py`** (~370 lines) — 48 tests across 10 classes:
+  - `TestMemoryEntry` (7): fields, defaults, frozen, to_dict, from_dict roundtrip, missing optionals, create factory
+  - `TestCoreBelief` (5): fields, defaults, frozen, to_dict/from_dict roundtrip, create factory
+  - `TestAgentMemoryInit` (5): dir creation, case-insensitive name, whitespace stripping, existing dir, paths
+  - `TestCoreBeliefs` (9): read empty, write one/multiple, upsert same topic, remove existing/nonexistent, persistence, corrupt JSON, wrong type
+  - `TestSessionLog` (7): read empty, append one/multiple, filter by session_id, JSONL format, corrupt line, persistence
+  - `TestRecentMemories` (4): empty, limit, newest-first ordering, across sessions
+  - `TestSharedMemory` (10): dir creation, decisions empty/read/record/multiple/comments/corrupt/format, history read/append
+  - `TestAtomicWrites` (4): create, overwrite, nested dirs, no leftover tmps
+  - `TestEdgeCases` (6): unicode beliefs/logs, empty file, blank lines, member isolation, large entries
+- **All 142 tests pass** (84 existing + 48 new) in 3.49s with zero regressions.
+
+### Technical Debt
+- Existing `core_beliefs.md` stub files in per-member directories are markdown, but the new system uses `core_beliefs.json`. The old `.md` stubs are ignored (not harmful) but could be cleaned up.
+- `_atomic_append` uses plain file append (not temp-file-rename) — acceptable for JSONL line-adds, but a mid-write crash could leave a partial line. This is a known JSONL trade-off.
+- No max-size enforcement on session logs — very long-running projects may accumulate large `.jsonl` files. Consider adding rotation or archival later.
+- Temp files from S-FEAT-00000002 (`test_out.txt`, `test_results.txt`, `tmp_status.txt`) still not cleaned up.
+
+### Advice for Next Agent
+1. **F-005 (Proposal System), F-007 (Council Session Orchestrator), F-008 (Agent-to-Agent Chat), F-009 (Human-to-Agent Chat), and F-011 (Character Templates) are all now unblocked.**
+   - F-007 depends on F-002 + F-003 + F-004 (all completed)
+   - F-008 depends on F-002 + F-004 (all completed)
+   - F-009 depends on F-002 + F-004 (all completed)
+2. **F-005 (Proposal System) is recommended next** — it unlocks F-006 (Voting), F-010 (Discussion Rounds), and is simpler than the orchestrator.
+3. The memory system is importable as: `from core.memory import AgentMemory, SharedMemory, MemoryEntry, CoreBelief`
+4. Usage patterns:
+   - `mem = AgentMemory("sage")` — loads from default `data/memories/sage/`
+   - `mem.write_core_belief(CoreBelief.create("topic", "content", source="session"))` — auto-timestamps
+   - `mem.append_session_event(MemoryEntry.create("S-001", "chat", "message"))` — auto-timestamps
+   - `shared = SharedMemory()` — loads from default `data/memories/shared/`
+5. All writes are synchronous. No async needed.
+6. The old `core_beliefs.md` stubs in per-member dirs can be removed in a cleanup pass — the system does not read them.
+
+---

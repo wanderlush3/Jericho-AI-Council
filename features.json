@@ -24,7 +24,7 @@
     {
         "id": "F-004",
         "description": "Memory system — per-agent read/write, core beliefs, session log (JSONL), shared council memory",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-001"
         ]
