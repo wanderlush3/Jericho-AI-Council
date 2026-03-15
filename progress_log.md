@@ -292,3 +292,78 @@ Implemented the voting engine for the Jericho AI Council:
 7. When integrating with proposals, the orchestrator should: (a) transition proposal to `under_review` or `open`, (b) open voting, (c) collect votes, (d) close voting, (e) transition proposal to `decided` based on tally.
 8. **DRY up `_atomic_write`** into `core/utils.py` — it is now in three separate files.
 
+---
+
+## Session: S-FEAT-00000007
+**Timestamp:** 2026-03-15 09:50:00
+**Feature:** `F-007` — Council Session Orchestrator
+**Status:** completed
+
+### Summary
+Implemented the council session orchestrator — the central module that ties together the API client, registry, and memory system into a complete session lifecycle:
+
+- **Created `core/session.py`** (~580 lines) — Five main components:
+  - **Exception hierarchy**: `SessionError` (base), `SessionNotFoundError`, `SessionStateError`, `SessionValidationError`.
+  - **Data classes**: `SessionMessage` (frozen — speaker, content, timestamp, phase, activity_type, metadata) and `SessionRecord` (frozen — session_id, title, phase, activity_type, agenda, participants, messages, summary, timestamps, metadata). Both have `to_dict()`, `from_dict()`, and `create()` factory methods.
+  - **Phase state machine**: `created → briefing → active → summary → closed`, with transitions validated via `_VALID_TRANSITIONS` dict. No skipping phases, no backward transitions.
+  - **Prompt builders**: `_build_briefing_prompt()` (context + memories + agenda), `_build_discussion_prompt()` (topic + prior contributions), `_build_summary_prompt()` (session recap request). All produce structured markdown for LLM consumption.
+  - **`SessionOrchestrator` class** — filesystem-backed, one JSON file per session (`S-<id>.json`):
+    - `create_session()` — validates participants against registry, creates record file
+    - `start_session()` — transitions to briefing, sets started_at timestamp
+    - `brief_member()` — loads recent memories, sends briefing prompt via API client, records exchange + memory event
+    - `activate_session()` — transitions to active phase
+    - `discuss()` — structured multi-member discussion with sequential prompting (each member sees prior contributions)
+    - `send_to_member()` — freeform single-member interaction, returns both record and raw ChatResponse
+    - `add_human_message()` — inject human messages during briefing or active phases
+    - `begin_summary()` — transitions to summary phase
+    - `collect_summary()` — asks each member for their session takeaways
+    - `close_session()` — transitions to closed, persists summary to shared memory (decisions JSONL + narrative history)
+    - `get()` / `list_sessions()` / `has_session()` / `get_transcript()` — query methods with filtering
+- **Created `tests/test_session.py`** (~550 lines) — 76 tests across 14 classes:
+  - `TestSessionMessage` (5): fields, frozen, roundtrip, create factory, metadata
+  - `TestSessionRecord` (8): fields, frozen, roundtrip, create factory, empty ID, empty title, invalid activity, whitespace stripping
+  - `TestConstants` (3): phases, activity types, valid transitions
+  - `TestOrchestratorInit` (3): dir creation, properties, repr
+  - `TestCreateSession` (6): basic, with options, persistence, duplicate, unknown participant, sequential IDs
+  - `TestPhaseTransitions` (8): all valid transitions, skip phase, closed, not found, backward
+  - `TestBriefMember` (4): messages recorded, API called, wrong phase, memory recorded
+  - `TestDiscussion` (4): messages recorded, API per member, wrong phase, multiple rounds
+  - `TestSendToMember` (2): exchange recorded, wrong phase
+  - `TestHumanMessage` (3): briefing, active, wrong phase
+  - `TestSummaryAndClose` (6): collect summary, wrong phase, close with summary, auto summary, shared memory, history
+  - `TestQueryMethods` (8): get, not found, list, filter by phase, filter by activity, has_session, transcript, transcript filter, corrupt skip
+  - `TestPromptBuilders` (6): briefing title/agenda/memories, discussion topic/prior, summary
+  - `TestExceptions` (4): hierarchy, not found, state error, validation error
+  - `TestEdgeCases` (5): unicode, long agenda, empty participants, full lifecycle, persistence roundtrip
+- **All 359 tests pass** (283 existing + 76 new) in 5.17s with zero regressions.
+
+### Technical Debt
+- The `_atomic_write` helper is now duplicated in **four** modules (`memory.py`, `proposals.py`, `voting.py`, `session.py`). A shared `core/utils.py` should be created to DRY this up — noted since S-FEAT-00000005.
+- No integration with `ProposalManager` or `VotingEngine` yet in the orchestrator. The `discuss()` method handles free-form discussion, but structured proposal review + voting rounds should be added when F-010 (Discussion Rounds) is implemented.
+- The orchestrator does not yet inject core beliefs into briefing context — only recent session memories are loaded. F-018 (Memory Influence) should add relevance-scored belief injection.
+- Session file naming uses `S-<session_id>.json`, meaning the session ID appears twice (e.g., `S-S-001.json`). This is functional but slightly redundant. Consider whether session IDs should include the `S-` prefix or not.
+- Temp files from S-FEAT-00000002 (`test_out.txt`, `test_results.txt`, `tmp_status.txt`) still not cleaned up.
+
+### Advice for Next Agent
+1. **F-008 (Agent-to-Agent Chat) and F-009 (Human-to-Agent Chat) are the natural next steps** — both depend on F-002 + F-004 (completed). They can build on the orchestrator's `send_to_member()` and `add_human_message()` methods.
+2. **F-010 (Discussion Rounds) is now unblocked** — depends on F-008 + F-005. Could be implemented as a higher-level workflow on top of `SessionOrchestrator.discuss()`.
+3. **F-011 (Character Templates) is independently unblocked** — depends only on F-001.
+4. **F-012 (Collaborative Character Design) is now unblocked** — depends on F-007 + F-011.
+5. **F-014 (CLI Interface) is now unblocked** — depends on F-007.
+6. **F-016 (Session Analytics) is now partially unblocked** — depends on F-006 + F-007 (both completed).
+7. The session orchestrator is importable as: `from core.session import SessionOrchestrator, SessionRecord, SessionMessage`
+8. Usage pattern:
+   ```python
+   registry = CouncilRegistry().load()
+   async with APIClient() as client:
+       orch = SessionOrchestrator(registry=registry, api_client=client)
+       rec = orch.create_session("S-001", "Ethics Review", activity_type="discussion", participants=["Sage", "Logic"])
+       rec = await orch.start_session("S-001")
+       rec = await orch.brief_member("S-001", "Sage")
+       rec = await orch.activate_session("S-001")
+       rec = await orch.discuss("S-001", "AI Ethics", ["Sage", "Logic"])
+       rec = await orch.begin_summary("S-001")
+       rec = await orch.close_session("S-001", summary="Ethics discussed.")
+   ```
+9. **DRY up `_atomic_write`** into `core/utils.py` — it is now in four separate files.
+
