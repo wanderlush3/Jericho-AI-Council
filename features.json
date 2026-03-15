@@ -76,7 +76,7 @@
     {
         "id": "F-010",
         "description": "Discussion rounds — structured multi-agent discussion on a proposal before voting",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-008",
             "F-005"

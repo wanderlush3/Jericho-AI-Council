@@ -23,6 +23,7 @@ CHARACTERS_DIR = DATA_DIR / "characters"
 MEMORIES_DIR = DATA_DIR / "memories"
 SHARED_MEMORIES_DIR = MEMORIES_DIR / "shared"
 CONVERSATIONS_DIR = DATA_DIR / "conversations"
+DISCUSSIONS_DIR = DATA_DIR / "discussions"
 TESTS_DIR = PROJECT_ROOT / "tests"
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 LOGS_DIR = PROJECT_ROOT / "logs"
@@ -67,3 +68,7 @@ SESSION_LOG_FORMAT = "jsonl"        # Append-only session memories
 PROPOSAL_STATUSES = ("draft", "open", "under_review", "decided", "withdrawn")
 PROPOSAL_CATEGORIES = ("character", "governance", "ethics", "expansion", "general")
 REVIEW_STANCES = ("support", "oppose", "neutral")
+
+# ─── Discussion Settings ──────────────────────────────────────
+DEFAULT_DISCUSSION_ROUNDS = 2      # Default rounds per discussion
+MAX_DISCUSSION_ROUNDS = 10         # Upper limit to prevent runaway discussions

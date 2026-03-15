@@ -490,3 +490,68 @@ Implemented direct human-to-agent conversations with automatic memory recording:
 7. Key design difference from `AgentChat`: human messages are recorded synchronously (no API call), only agent responses hit the API. The `send_human_message()` + `get_agent_response()` pattern gives the human operator explicit control over turn-taking.
 8. **DRY up `_atomic_write`** into `core/utils.py` — it is now in six separate files.
 
+---
+
+## Session: S-FEAT-00000010
+**Timestamp:** 2026-03-15 10:55:00
+**Feature:** `F-010` — Discussion Rounds
+**Status:** completed
+
+### Summary
+Implemented structured multi-agent discussion rounds on proposals:
+
+- **Created `core/discussion.py`** (~480 lines) — Five main components:
+  - **Exception hierarchy**: `DiscussionError` (base), `DiscussionNotFoundError`, `DiscussionValidationError`, `DiscussionStateError`.
+  - **Data classes**: `DiscussionContribution` (frozen — speaker, content, round_number, timestamp, metadata) and `DiscussionRecord` (frozen — discussion_id, proposal_id, title, participants, contributions list, round_count, current_round, status, summary, created_at, closed_at, metadata). Both have `to_dict()`, `from_dict()`, and `create()` factory methods.
+  - **Prompt builder**: `_build_discussion_prompt()` — includes full proposal details (title, description, body, category, author) plus prior contributions (last 10 for context window), asks member to respond in character about the proposal.
+  - **`DiscussionManager` class** — filesystem-backed, one JSON file per discussion (`D-<id>.json`):
+    - `create_discussion()` — validates proposal exists (via ProposalManager), validates participants against registry, validates round count against MAX_DISCUSSION_ROUNDS, creates record file
+    - `run_round()` — runs one round where each participant speaks in order with proposal context + all prior contributions, records each contribution + memory event, increments `current_round`
+    - `run_all_rounds()` — convenience to run remaining rounds (or custom count), respects remaining round count
+    - `close_discussion()` — sets status to closed, persists summary + metadata to shared memory (decisions JSONL + narrative history)
+    - `get()` / `list_discussions()` / `has_discussion()` / `get_contributions()` — query methods with filtering (proposal_id, status, participant, speaker, round_number)
+  - **Atomic writes** via temp-file + rename pattern (same as other modules)
+- **Updated `config/settings.py`** — added `DISCUSSIONS_DIR`, `DEFAULT_DISCUSSION_ROUNDS` (2), `MAX_DISCUSSION_ROUNDS` (10).
+- **Created `tests/test_discussion.py`** (~540 lines) — 68 tests across 12 classes:
+  - `TestDiscussionContribution` (5): fields, frozen, roundtrip, create factory, metadata
+  - `TestDiscussionRecord` (7): fields, frozen, roundtrip, create factory, empty ID, empty title, whitespace strip
+  - `TestDiscussionManagerInit` (3): dir creation, properties, repr
+  - `TestCreateDiscussion` (8): basic, with options, persistence, duplicate, unknown participant, missing proposal, single participant, exceeds max rounds
+  - `TestRunRound` (8): basic, records contributions, API called, memory recorded, round tracking, closed raises, not found, all rounds complete
+  - `TestRunAllRounds` (5): default rounds, custom rounds, records all, closed raises, respects remaining
+  - `TestCloseDiscussion` (5): basic, with summary, auto summary, shared memory, already closed
+  - `TestQueryMethods` (9): get, not found, list all, filter proposal, filter status, has_discussion, get_contributions (speaker + round), corrupt skip, filter participant
+  - `TestPromptBuilder` (5): proposal title, body, prior contributions, context limit, member identity
+  - `TestExceptions` (4): hierarchy, not found, validation, state error
+  - `TestEdgeCases` (5): unicode, long content, many participants, persistence roundtrip, full lifecycle
+  - `TestMemoryIntegration` (4): each speaker recorded, memory content, session ID, source type
+- **All 559 tests pass** (491 existing + 68 new) in 6.38s with zero regressions.
+
+### Technical Debt
+- The `_atomic_write` helper is now duplicated in **seven** modules (`memory.py`, `proposals.py`, `voting.py`, `session.py`, `agent_chat.py`, `human_chat.py`, `discussion.py`). A shared `core/utils.py` should be created to DRY this up — noted since S-FEAT-00000005.
+- No integration with `VotingEngine` yet — the discussion manager creates and runs discussions, but does not automatically transition proposals or open voting upon discussion close. This should be done by a higher-level workflow or the CLI.
+- The discussion prompt does not inject agent core beliefs or recent memories — F-018 (Memory Influence) should add relevance-scored belief injection to discussion prompts as well.
+- Temp files from S-FEAT-00000002 (`test_out.txt`, `test_results.txt`, `tmp_status.txt`) still not cleaned up.
+
+### Advice for Next Agent
+1. **F-011 (Character Templates) is independently unblocked** — depends only on F-001. It's the simplest remaining feature.
+2. **F-012 (Collaborative Character Design) is now partially unblocked** — depends on F-007 + F-011.
+3. **F-014 (CLI Interface) is unblocked** — depends on F-007. Could integrate discussions as a subcommand.
+4. **F-016 (Session Analytics) is unblocked** — depends on F-006 + F-007.
+5. **F-017 (Test Suite) is unblocked** — depends on F-002–F-006 (all completed). Note: each feature already has its own test suite, so F-017 may be about integration/E2E testing or can be considered implicitly addressed.
+6. **F-018 (Memory Influence) is unblocked** — depends on F-004 + F-007.
+7. **F-019 (Council Expansion) is unblocked** — depends on F-006 + F-003.
+8. The discussion module is importable as: `from core.discussion import DiscussionManager, DiscussionRecord, DiscussionContribution`
+9. Usage pattern:
+   ```python
+   registry = CouncilRegistry().load()
+   proposals = ProposalManager()
+   async with APIClient() as client:
+       mgr = DiscussionManager(registry=registry, api_client=client, proposal_manager=proposals)
+       rec = mgr.create_discussion("D-001", "P-0001", "Ethics Review", participants=["Sage", "Logic", "Drift"])
+       rec = await mgr.run_all_rounds("D-001")
+       rec = mgr.close_discussion("D-001", summary="Council discussed ethics proposal.")
+   ```
+10. Key design difference from `AgentChat`: discussions are proposal-aware (prompt includes full proposal context), have explicit round tracking, and prevent discussion beyond configured round count. Use `AgentChat` for freeform conversations, `DiscussionManager` for structured proposal deliberation.
+11. **DRY up `_atomic_write`** into `core/utils.py` — it is now in seven separate files.
+
