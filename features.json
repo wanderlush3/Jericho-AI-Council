@@ -93,7 +93,7 @@
     {
         "id": "F-012",
         "description": "Collaborative character design — council members contribute to character creation via structured prompts",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-007",
             "F-011"

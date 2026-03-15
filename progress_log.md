@@ -620,3 +620,74 @@ Implemented the character template system for AI characters designed by the coun
    ```
 9. Key design note: Characters are the **output** of the council's work — distinct from council member profiles (`council/members/*.yaml`). Council members are fixed LLM personas; characters are the AI personalities they collaboratively design.
 10. **DRY up `_atomic_write`** into `core/utils.py` — it is now in eight separate files.
+
+---
+
+## Session: S-FEAT-00000012
+**Timestamp:** 2026-03-15 11:13:00
+**Feature:** `F-012` — Collaborative Character Design
+**Status:** completed
+
+### Summary
+Implemented collaborative character design — council members contribute to character creation via structured prompts in a multi-phase workflow:
+
+- **Created `core/character_design.py`** (~600 lines) — Five main components:
+  - **Exception hierarchy**: `DesignError` (base), `DesignNotFoundError` (with `design_id`), `DesignValidationError` (with `errors` list), `DesignStateError` (with `design_id`, `message`).
+  - **Data classes**: `DesignContribution` (frozen — speaker, content, phase, parsed_data, timestamp, metadata) and `DesignRecord` (frozen — design_id, title, contributors, contributions, current_phase, phases_completed, target_character_id, status, summary, timestamps, metadata). Both have `to_dict()`, `from_dict()`, and `create()` factory methods.
+  - **Prompt builders**: Five phase-specific builders (`_build_concept_prompt`, `_build_traits_prompt`, `_build_backstory_prompt`, `_build_prompt_prompt`, `_build_review_prompt`) — each produces structured markdown for the LLM, with prior contributions included for context (limited to last 10).
+  - **`CharacterDesigner` class** — filesystem-backed, one JSON file per design (`CD-<id>.json`):
+    - `create_design()` — validates contributors against registry, enforces MAX_DESIGN_CONTRIBUTORS
+    - `run_phase()` — runs one design phase (concept/traits/backstory/prompt/review) with all contributors, records contributions + memory events, tracks phases_completed
+    - `run_all_phases()` — convenience to run all remaining DEFAULT_DESIGN_PHASES, skips already-completed phases
+    - `assemble_character()` — parses contributions and creates a `CharacterTemplate` via `CharacterManager`: extracts name from concept, traits from traits phase, backstory, system prompt. Links template to design via metadata
+    - `close_design()` — marks closed, persists summary to shared memory (decisions JSONL + narrative history)
+    - `get()` / `list_designs()` / `has_design()` / `get_contributions()` — query methods with filtering (status, contributor, speaker, phase)
+  - **Atomic writes** via temp-file + rename pattern (same as other modules)
+- **Updated `config/settings.py`** — added `CHARACTER_DESIGNS_DIR`, `DEFAULT_DESIGN_PHASES` tuple (concept, traits, backstory, prompt, review), `MAX_DESIGN_CONTRIBUTORS` (9).
+- **Created `tests/test_character_design.py`** (~550 lines) — 69 tests across 12 classes:
+  - `TestDesignContribution` (5): fields, frozen, roundtrip, create factory, metadata
+  - `TestDesignRecord` (7): fields, frozen, roundtrip, create factory, empty ID, empty title, whitespace strip
+  - `TestCharacterDesignerInit` (3): dir creation, properties, repr
+  - `TestCreateDesign` (7): basic, with options, persistence, duplicate, unknown contributor, no contributors, sequential IDs
+  - `TestRunPhase` (8): basic, records contributions, API called, memory recorded, phase tracking, closed raises, not found, invalid phase
+  - `TestRunAllPhases` (5): default phases, records all, closed raises, sequential phases, respects completed
+  - `TestAssembleCharacter` (7): creates template, uses concept name, includes traits, includes backstory, includes prompt, links design_id, not found
+  - `TestCloseDesign` (5): basic, with summary, auto summary, shared memory, already closed
+  - `TestQueryMethods` (8): get, not found, list all, filter status, filter contributor, has_design, get_contributions (phase + speaker), corrupt skip
+  - `TestPromptBuilders` (5): concept content, traits with prior, backstory, prompt/greeting, review
+  - `TestExceptions` (4): hierarchy, not found, validation, state error
+  - `TestEdgeCases` (5): unicode, long content, many contributors, persistence roundtrip, full lifecycle
+- **All 705 tests pass** (636 existing + 69 new) in 7.39s with zero regressions.
+
+### Technical Debt
+- The `_atomic_write` helper is now duplicated in **nine** modules (`memory.py`, `proposals.py`, `voting.py`, `session.py`, `agent_chat.py`, `human_chat.py`, `discussion.py`, `characters.py`, `character_design.py`). A shared `core/utils.py` should be created to DRY this up — noted since S-FEAT-00000005.
+- Trait extraction from LLM-generated text (`_extract_traits`) uses simple heuristic parsing (looks for "- **Name**: Description" patterns). More robust parsing could use structured output from the LLM (e.g., JSON mode) when available.
+- The `_extract_name` helper is similarly heuristic — looks for "Name: something" lines. Could be improved with more robust parsing.
+- Character assembly always sets author to "Council" by default — could be made configurable or derived from the design contributors.
+- Temp files from S-FEAT-00000002 (`test_out.txt`, `test_results.txt`, `tmp_status.txt`) still not cleaned up.
+
+### Advice for Next Agent
+1. **F-013 (Character Evolution) is now unblocked** — depends on F-012 + F-006 (both completed). This is the natural next step, adding governance-based modifications to existing characters.
+2. **F-014 (CLI Interface) is unblocked** — depends on F-007. Could integrate character design as a subcommand.
+3. **F-016 (Session Analytics) is unblocked** — depends on F-006 + F-007.
+4. **F-017 (Test Suite) is unblocked** — depends on F-002–F-006. Each feature already has comprehensive tests, so F-017 may focus on integration/E2E testing.
+5. **F-018 (Memory Influence) is unblocked** — depends on F-004 + F-007.
+6. **F-019 (Council Expansion) is unblocked** — depends on F-006 + F-003.
+7. The character design module is importable as: `from core.character_design import CharacterDesigner, DesignRecord, DesignContribution`
+8. Usage pattern:
+   ```python
+   registry = CouncilRegistry().load()
+   chars = CharacterManager()
+   async with APIClient() as client:
+       designer = CharacterDesigner(
+           registry=registry,
+           api_client=client,
+           character_manager=chars,
+       )
+       rec = designer.create_design("CD-001", "A Curious Explorer", contributors=["Forge", "Spark", "Sage"])
+       rec = await designer.run_all_phases("CD-001")
+       template = designer.assemble_character("CD-001")
+       rec = designer.close_design("CD-001", summary="Character designed collaboratively.")
+   ```
+9. Key design note: The design workflow is separate from but integrates with `CharacterManager`. After `assemble_character()`, the template exists in both the design record (via `target_character_id`) and the character store (as `CH-XXXX.json`). The design record preserves all contributions as the creative provenance.
+10. **DRY up `_atomic_write`** into `core/utils.py` — it is now in nine separate files.

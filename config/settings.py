@@ -76,3 +76,8 @@ MAX_DISCUSSION_ROUNDS = 10         # Upper limit to prevent runaway discussions
 # ─── Character Template Settings ──────────────────────────────
 CHARACTER_STATUSES = ("draft", "active", "archived", "superseded")
 CHARACTER_REQUIRED_TRAIT_TYPES = ("personality", "values", "flaws")
+
+# ─── Character Design Settings ────────────────────────────────
+CHARACTER_DESIGNS_DIR = DATA_DIR / "character_designs"
+DEFAULT_DESIGN_PHASES = ("concept", "traits", "backstory", "prompt", "review")
+MAX_DESIGN_CONTRIBUTORS = 9            # Full council
