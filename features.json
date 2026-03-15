@@ -184,5 +184,18 @@
             "F-011",
             "F-016"
         ]
+    },
+    {
+        "id": "F-022",
+        "title": "Governance Report Generator",
+        "description": "Export governance activity (council roster, proposals, votes, characters, analytics) as structured Markdown documents",
+        "status": "completed",
+        "dependencies": [
+            "F-003",
+            "F-005",
+            "F-006",
+            "F-011",
+            "F-016"
+        ]
     }
 ]

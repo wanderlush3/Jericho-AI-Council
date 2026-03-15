@@ -103,3 +103,7 @@ EXPANSION_REQUIRED_FIELDS = ("name", "role", "description", "api_provider", "mod
 WEB_HOST = "127.0.0.1"
 WEB_PORT = 8080
 WEB_STATIC_DIR = CORE_DIR / "web_static"
+
+# ─── Report Generator Settings ───────────────────────────────
+REPORTS_DIR = DATA_DIR / "reports"
+REPORT_SECTIONS = ("council", "proposals", "votes", "characters", "analytics")

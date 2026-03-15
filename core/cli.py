@@ -588,6 +588,80 @@ def status() -> None:
 
 
 # ═══════════════════════════════════════════════════════════════
+# Report Commands
+# ═══════════════════════════════════════════════════════════════
+
+
+@cli.group()
+def report() -> None:
+    """Generate and manage governance reports."""
+
+
+@report.command("generate")
+@click.option("--title", default=None, help="Custom report title.")
+@click.option("--sections", default=None, help="Comma-separated sections to include (council,proposals,votes,characters,analytics).")
+@click.option("--output", "output_path", type=click.Path(), default=None, help="Save report to this file path.")
+@click.option("--save", is_flag=True, default=False, help="Save report to the default reports directory.")
+def report_generate(title: str | None, sections: str | None, output_path: str | None, save: bool) -> None:
+    """Generate a governance report as Markdown."""
+    from core.analytics import SessionAnalytics
+    from core.reports import ReportGenerator
+
+    registry = None
+    try:
+        registry = CouncilRegistry().load()
+    except Exception:
+        pass
+
+    pmgr = ProposalManager()
+    engine = VotingEngine()
+    cmgr = CharacterManager()
+    analytics = SessionAnalytics(proposal_manager=pmgr, voting_engine=engine)
+
+    gen = ReportGenerator(
+        registry=registry,
+        proposal_manager=pmgr,
+        voting_engine=engine,
+        character_manager=cmgr,
+        analytics_engine=analytics,
+    )
+
+    section_list = [s.strip() for s in sections.split(",")] if sections else None
+
+    try:
+        rpt = gen.full_report(title=title, sections=section_list)
+    except Exception as exc:
+        _error(f"Failed to generate report: {exc}")
+        return
+
+    if output_path:
+        path = gen.save_report(rpt, path=Path(output_path))
+        _renderer.render_success(f"Report saved to {path}")
+    elif save:
+        path = gen.save_report(rpt)
+        _renderer.render_success(f"Report saved to {path}")
+    else:
+        click.echo(rpt.to_markdown())
+
+
+@report.command("list")
+def report_list() -> None:
+    """List previously generated reports."""
+    from core.reports import ReportGenerator
+
+    gen = ReportGenerator()
+    reports = gen.list_reports()
+
+    if not reports:
+        click.echo("No saved reports found.")
+        return
+
+    _renderer.render_success(f"Found {len(reports)} saved reports:")
+    for r in reports:
+        click.echo(f"  • {r['report_id']}  ({r['filename']})")
+
+
+# ═══════════════════════════════════════════════════════════════
 # Web Dashboard Command
 # ═══════════════════════════════════════════════════════════════
 

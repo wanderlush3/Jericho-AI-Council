@@ -1202,3 +1202,41 @@ Implemented a browser-based dashboard with FastAPI backend and single-page HTML/
 3. Launch via `jericho web` or `uvicorn core.web_api:app --port 8080`
 4. To add new API endpoints, add routes inside `create_app()` and corresponding tests in `test_web_api.py`
 5. The SPA uses hash-based routing (`/#council`, `/#proposals/P-0001`, etc.) — add new views by extending `renderView()` in `app.js`
+
+---
+
+## Session: S-FEAT-00000022
+**Timestamp:** 2026-03-15 17:15:00
+**Feature:** `F-022` — Governance Report Generator
+**Status:** completed
+
+### Summary
+Implemented a read-only report engine that exports governance activity as structured Markdown documents:
+
+- **Created `core/reports.py`** (~430 lines) — Report generator module:
+  - `ReportSection` (frozen data class) — title, content, section_type
+  - `GovernanceReport` (frozen data class) — report_id, title, sections, `to_markdown()` method
+  - `ReportGenerator` class with constructor injection for all managers:
+    - `council_roster_section()` — member table with roles, providers, specialties
+    - `proposals_section(status=)` — proposals table + per-proposal detail with reviews
+    - `voting_section()` — vote records with for/against/abstain tallies and approval rates
+    - `characters_section(status=)` — character templates with traits and tags
+    - `analytics_section()` — aggregate stats from SessionAnalytics
+    - `full_report(title=, sections=)` — assembles all available sections
+    - `save_report()` / `list_reports()` / `get_report()` — file persistence via atomic_write
+  - Graceful degradation — any manager can be None, that section is silently skipped
+- **Updated `config/settings.py`** — added `REPORTS_DIR`, `REPORT_SECTIONS`
+- **Updated `core/cli.py`** — added `jericho report generate` and `jericho report list` subcommands
+- **Created `tests/test_reports.py`** — 70 tests covering data classes, section builders, full report assembly, persistence, edge cases, and exceptions
+- **All 1318 tests pass** (1248 existing + 70 new) with zero regressions.
+
+### Technical Debt
+- No PDF/HTML export — Markdown only for now
+- No templating engine — sections are hard-coded in Python
+
+### Advice for Next Agent
+1. All 22 features are now complete with 1318 passing tests.
+2. The report generator is importable as: `from core.reports import ReportGenerator`
+3. Generate via CLI: `jericho report generate` (stdout) or `jericho report generate --save`
+4. To add new report sections, add a builder method to `ReportGenerator` and register it in `full_report()`
+5. Reports are saved as Markdown to `data/reports/` — could be extended to support HTML/PDF
