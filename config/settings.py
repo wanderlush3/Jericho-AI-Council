@@ -93,3 +93,8 @@ EVOLUTION_DIR = DATA_DIR / "character_evolutions"
 EVOLUTION_TYPES = ("trait_add", "trait_remove", "trait_modify", "field_update", "version_bump")
 EVOLUTION_STATUSES = ("draft", "proposed", "voting", "decided", "applied", "rejected")
 MAX_EVOLUTION_CHANGES = 10              # Max changes per evolution proposal
+
+# ─── Council Expansion Settings ───────────────────────────────
+EXPANSION_DIR = DATA_DIR / "council_expansions"
+EXPANSION_STATUSES = ("draft", "proposed", "voting", "decided", "applied", "rejected")
+EXPANSION_REQUIRED_FIELDS = ("name", "role", "description", "api_provider", "model", "system_prompt")

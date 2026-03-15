@@ -381,6 +381,58 @@ def memory_recent(member_name: str, limit: int) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════
+# Expansion Commands
+# ═══════════════════════════════════════════════════════════════
+
+
+@cli.group()
+def expansion() -> None:
+    """Manage council expansion proposals."""
+
+
+@expansion.command("list")
+@click.option("--status", type=str, default=None, help="Filter by status.")
+@click.option("--author", type=str, default=None, help="Filter by author.")
+def expansion_list(status: str | None, author: str | None) -> None:
+    """List council expansion records."""
+    from core.council_expansion import CouncilExpansion
+
+    registry = _load_registry()
+    proposals_mgr = ProposalManager()
+    engine = VotingEngine()
+    exp = CouncilExpansion(
+        registry=registry,
+        proposal_manager=proposals_mgr,
+        voting_engine=engine,
+    )
+    records = exp.list_expansions(status=status, author=author)
+    _renderer.render_expansion_list(records)
+
+
+@expansion.command("show")
+@click.argument("expansion_id")
+def expansion_show(expansion_id: str) -> None:
+    """Show details for a council expansion record."""
+    from core.council_expansion import CouncilExpansion, ExpansionNotFoundError
+
+    registry = _load_registry()
+    proposals_mgr = ProposalManager()
+    engine = VotingEngine()
+    exp = CouncilExpansion(
+        registry=registry,
+        proposal_manager=proposals_mgr,
+        voting_engine=engine,
+    )
+    try:
+        record = exp.get(expansion_id)
+    except ExpansionNotFoundError:
+        _error(f"Expansion '{expansion_id}' not found.")
+        return
+
+    _renderer.render_expansion_detail(record)
+
+
+# ═══════════════════════════════════════════════════════════════
 # Status Command
 # ═══════════════════════════════════════════════════════════════
 

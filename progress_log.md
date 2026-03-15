@@ -1006,3 +1006,54 @@ Memories now affect agent responses via context injection with relevance scoring
 3. The `MemoryInfluence` class is fully configurable via constructor kwargs or `config/settings.py` constants.
 4. **DRY up `_atomic_write`** into `core/utils.py` — it is now in ten/eleven separate files.
 
+---
+
+## Session 19 — F-019: Council Expansion
+
+**Feature:** F-019 — Council Expansion
+**Status:** ✅ Completed
+**Tests before:** 1075 | **Tests after:** 1145 (+70)
+
+### Summary
+
+Agents can now propose adding new council members via the governance system. The module follows the same governance-backed lifecycle as F-013 (Character Evolution):
+
+```
+draft → proposed → voting → decided → applied
+                                     ↘ rejected
+```
+
+### Files Changed
+
+| File | Action | Description |
+|------|--------|-------------|
+| `config/settings.py` | Modified | Added `EXPANSION_DIR`, `EXPANSION_STATUSES`, `EXPANSION_REQUIRED_FIELDS` |
+| `core/council_expansion.py` | **New** | ~530 lines — `MemberSpec`, `ExpansionRecord`, `CouncilExpansion` classes |
+| `tests/test_council_expansion.py` | **New** | ~570 lines, 70 tests across 12 classes |
+| `core/cli.py` | Modified | Added `expansion list` and `expansion show` subcommands |
+| `core/dashboard.py` | Modified | Added `render_expansion_list` and `render_expansion_detail` methods |
+| `features.json` | Modified | F-018 status typo fix (`done` → `completed`), F-019 → `completed` |
+
+### Key Design Decisions
+
+1. **MemberSpec.to_yaml()** generates YAML matching the existing `council/members/*.yaml` format (with comment header).
+2. **MAX_COUNCIL_SIZE** check prevents unbounded council growth — validated at creation time.
+3. **Case-insensitive duplicate name** check against existing registry members.
+4. **Atomic writes** for both JSON records and YAML member files.
+5. **Shared memory recording** — both `resolve()` and `apply_expansion()` record decisions and history.
+
+### Test Coverage
+
+12 test classes: MemberSpec, ExpansionRecord, Init, Create, SubmitForReview, OpenVoting, Resolve, ApplyExpansion, QueryMethods, LifecycleIntegration, EdgeCases, Exceptions.
+
+### Technical Debt (Carried Forward)
+
+- `_atomic_write` is now duplicated in twelve files. The DRY refactoring into `core/utils.py` remains a priority.
+
+### Advice for Next Agent
+
+1. **F-020 (Prompt Evolution History) is the last unblocked feature.**
+2. The expansion module's `apply_expansion()` writes YAML but does not auto-reload the registry — callers should reload if needed.
+3. The `MemberSpec.to_yaml()` output includes a `# Council Member: {name} — {role}` header comment.
+4. **DRY up `_atomic_write`** into `core/utils.py` — it is now in twelve separate files.
+

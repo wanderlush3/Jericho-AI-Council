@@ -148,7 +148,7 @@
     {
         "id": "F-018",
         "description": "Memory influence — memories affect agent responses via context injection with relevance scoring",
-        "status": "done",
+        "status": "completed",
         "dependencies": [
             "F-004",
             "F-007"
@@ -157,7 +157,7 @@
     {
         "id": "F-019",
         "description": "Council expansion — agents can propose adding new council members via governance system",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-006",
             "F-003"

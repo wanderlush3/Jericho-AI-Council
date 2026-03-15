@@ -538,6 +538,78 @@ class DashboardRenderer:
         self.console.print(table)
         self.console.print(f"\n[bold]{len(memories)}[/bold] memor(y/ies)", highlight=False)
 
+    # ── Council Expansion ──────────────────────────────────
+
+    def render_expansion_list(self, records: Sequence[Any]) -> None:
+        """Render a table of council expansion records."""
+        if not records:
+            self.console.print("[dim]No expansion records found.[/dim]")
+            return
+
+        table = Table(
+            title="Council Expansions",
+            title_style="bold cyan",
+            border_style="dim",
+            show_lines=False,
+        )
+        table.add_column("ID", style="bold")
+        table.add_column("Status")
+        table.add_column("Member")
+        table.add_column("Role")
+        table.add_column("Author")
+
+        for rec in records:
+            name = rec.member_spec.name if rec.member_spec else "—"
+            role = rec.member_spec.role if rec.member_spec else "—"
+            table.add_row(
+                rec.expansion_id,
+                _style_status(rec.status),
+                name,
+                _truncate(role, 25),
+                rec.author,
+            )
+
+        self.console.print(table)
+        self.console.print(f"\n[bold]{len(records)}[/bold] expansion(s)", highlight=False)
+
+    def render_expansion_detail(self, record: Any) -> None:
+        """Render a detailed panel for a single expansion record."""
+        spec = record.member_spec
+        lines: list[str] = [
+            f"[bold]Expansion ID:[/bold] {record.expansion_id}",
+            f"[bold]Status:[/bold]       {record.status}",
+            f"[bold]Author:[/bold]       {record.author}",
+            f"[bold]Created:[/bold]      {record.created_at}",
+            f"[bold]Updated:[/bold]      {record.updated_at}",
+        ]
+
+        if record.proposal_id:
+            lines.append(f"[bold]Proposal:[/bold]     {record.proposal_id}")
+        if record.vote_record_id:
+            lines.append(f"[bold]Vote Record:[/bold]  {record.vote_record_id}")
+        if record.applied_member_file:
+            lines.append(f"[bold]Applied File:[/bold] {record.applied_member_file}")
+        if record.summary:
+            lines.append(f"\n[bold]Summary:[/bold] {record.summary}")
+
+        if spec:
+            lines.append(f"\n[bold underline]Proposed Member:[/bold underline]")
+            lines.append(f"  [bold]Name:[/bold]        {spec.name}")
+            lines.append(f"  [bold]Role:[/bold]        {spec.role}")
+            lines.append(f"  [bold]Description:[/bold] {spec.description}")
+            lines.append(f"  [bold]Provider:[/bold]    [magenta]{spec.api_provider}[/magenta]")
+            lines.append(f"  [bold]Model:[/bold]       [dim]{spec.model}[/dim]")
+            lines.append(f"  [bold]Vote Weight:[/bold] {spec.vote_weight}")
+            if spec.specialties:
+                lines.append(f"  [bold]Specialties:[/bold] {', '.join(spec.specialties)}")
+
+        panel = Panel(
+            "\n".join(lines),
+            title=f"[bold cyan]Expansion — {record.expansion_id}[/bold cyan]",
+            border_style="cyan",
+        )
+        self.console.print(panel)
+
     # ── Feedback Messages ──────────────────────────────────
 
     def render_success(self, message: str) -> None:
