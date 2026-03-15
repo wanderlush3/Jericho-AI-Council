@@ -72,3 +72,7 @@ REVIEW_STANCES = ("support", "oppose", "neutral")
 # ─── Discussion Settings ──────────────────────────────────────
 DEFAULT_DISCUSSION_ROUNDS = 2      # Default rounds per discussion
 MAX_DISCUSSION_ROUNDS = 10         # Upper limit to prevent runaway discussions
+
+# ─── Character Template Settings ──────────────────────────────
+CHARACTER_STATUSES = ("draft", "active", "archived", "superseded")
+CHARACTER_REQUIRED_TRAIT_TYPES = ("personality", "values", "flaws")

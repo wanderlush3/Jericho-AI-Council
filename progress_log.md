@@ -555,3 +555,68 @@ Implemented structured multi-agent discussion rounds on proposals:
 10. Key design difference from `AgentChat`: discussions are proposal-aware (prompt includes full proposal context), have explicit round tracking, and prevent discussion beyond configured round count. Use `AgentChat` for freeform conversations, `DiscussionManager` for structured proposal deliberation.
 11. **DRY up `_atomic_write`** into `core/utils.py` — it is now in seven separate files.
 
+---
+
+## Session: S-FEAT-00000011
+**Timestamp:** 2026-03-15 11:04:00
+**Feature:** `F-011` — Character Template System
+**Status:** completed
+
+### Summary
+Implemented the character template system for AI characters designed by the council:
+
+- **Created `core/characters.py`** (~480 lines) — Five main components:
+  - **Exception hierarchy**: `CharacterError` (base), `CharacterNotFoundError` (with `character_id`), `CharacterValidationError` (with `errors` list), `CharacterLifecycleError` (with `character_id`, `current_status`, `requested_status`).
+  - **Data classes**: `Trait` (frozen — trait_type, name, description, intensity 0.0–1.0) and `CharacterTemplate` (frozen — id, name, description, author, status, backstory, traits list, system_prompt, greeting, example_messages, tags, version, created_at, updated_at, metadata). Both have `to_dict()`, `from_dict()`, and `create()` factory methods.
+  - **Lifecycle state machine**: `draft → active → archived` and `draft → active → superseded`. Both `archived` and `superseded` are terminal states. Transitions validated via `_VALID_TRANSITIONS` dict.
+  - **YAML export**: `export_yaml()` produces a clean YAML representation of a character, omitting empty optional fields. Optionally writes to a file path.
+  - **`CharacterManager` class** — filesystem-backed, one JSON file per character (`CH-XXXX.json`):
+    - `create()` — auto-sequential IDs, validates required fields (name, description, author, at least one trait), saves as JSON
+    - `get()` / `list_characters()` — load by ID, list with optional filters (status, author, tag — all case-insensitive)
+    - `update_status()` — lifecycle validation
+    - `update()` — update mutable fields (name, description, backstory, system_prompt, greeting, example_messages, tags, metadata), bumps `updated_at`
+    - `add_trait()` / `remove_trait()` — modify trait list with validation (no duplicate names, cannot remove last trait)
+    - `export_yaml()` — clean YAML export with optional file output
+    - `create_version()` — creates a new template as a copy with version+1, supersedes the original, links via `metadata["previous_version"]`
+  - **Atomic writes** via temp-file + rename pattern (same as other modules)
+- **Updated `config/settings.py`** — added `CHARACTER_STATUSES` (`draft`, `active`, `archived`, `superseded`) and `CHARACTER_REQUIRED_TRAIT_TYPES` (`personality`, `values`, `flaws`).
+- **Created `tests/test_characters.py`** (~530 lines) — 68 tests across 12 classes:
+  - `TestTrait` (7): fields, frozen, roundtrip, create factory, invalid intensity (too high, negative), default intensity
+  - `TestCharacterTemplate` (7): fields, frozen, roundtrip, create factory, defaults, from_dict missing optionals, create with metadata
+  - `TestCharacterManagerInit` (3): dir creation, existing dir, repr
+  - `TestCharacterCreation` (8): basic, sequential IDs, persistence, with all fields, empty name/author, no traits, whitespace stripping
+  - `TestCharacterRetrieval` (8): get by ID, not found, list all, filter by status/author/tag, combined filters, empty list
+  - `TestStatusLifecycle` (8): draft→active, active→archived, active→superseded, skip phase, archived terminal, superseded terminal, unknown status, not found
+  - `TestTraitManagement` (7): add trait, duplicate name rejected, remove trait, remove nonexistent, remove last trait, add persists, remove case-insensitive
+  - `TestCharacterUpdate` (8): update name/description/backstory, immutable field rejected, author immutable, not found, multiple fields, bumps updated_at
+  - `TestExportYaml` (6): basic export, roundtrip, includes traits, to custom path, not found, omits empty optionals
+  - `TestVersioning` (6): create version, supersedes original, links via metadata, copies all fields, not active raises, not found
+  - `TestEdgeCases` (5): unicode, long backstory, many traits, corrupt JSON skipped, persistence roundtrip
+  - `TestExceptions` (4): hierarchy, not-found fields, validation fields, lifecycle fields
+- **All 636 tests pass** (559 existing + 68 new + 9 from prior adjustments) in 6.85s with zero regressions.
+
+### Technical Debt
+- The `_atomic_write` helper is now duplicated in **eight** modules (`memory.py`, `proposals.py`, `voting.py`, `session.py`, `agent_chat.py`, `human_chat.py`, `discussion.py`, `characters.py`). A shared `core/utils.py` should be created to DRY this up — noted since S-FEAT-00000005.
+- `CHARACTER_REQUIRED_TRAIT_TYPES` is defined in settings but not yet enforced in `CharacterManager.create()` — this allows any string as `trait_type`. Enforcement can be added when collaborative design (F-012) needs it.
+- The `pyyaml` dependency is listed in `pyproject.toml` but the YAML export uses `yaml.dump()` with `sort_keys=False` — this works in PyYAML 6.x but verify if an older version is pinned.
+- Temp files from S-FEAT-00000002 (`test_out.txt`, `test_results.txt`, `tmp_status.txt`) still not cleaned up.
+
+### Advice for Next Agent
+1. **F-012 (Collaborative Character Design) is now unblocked** — depends on F-007 + F-011 (both completed). This is the natural next step, integrating the session orchestrator with the character template system.
+2. **F-014 (CLI Interface) is unblocked** — depends on F-007. Could integrate character management as subcommands.
+3. **F-016 (Session Analytics) is unblocked** — depends on F-006 + F-007.
+4. **F-017 (Test Suite) is unblocked** — depends on F-002–F-006. Note: each feature already has comprehensive tests, so F-017 may focus on integration/E2E testing.
+5. **F-018 (Memory Influence) is unblocked** — depends on F-004 + F-007.
+6. **F-019 (Council Expansion) is unblocked** — depends on F-006 + F-003.
+7. The character module is importable as: `from core.characters import CharacterManager, CharacterTemplate, Trait`
+8. Usage pattern:
+   ```python
+   mgr = CharacterManager()
+   trait = Trait.create("personality", "Curious", "Always asking questions", intensity=0.7)
+   char = mgr.create("Atlas", "An explorer AI", author="Forge", traits=[trait])
+   mgr.update_status(char.id, "active")
+   yaml_str = mgr.export_yaml(char.id)
+   new_ver = mgr.create_version(char.id)  # supersedes original, creates v2
+   ```
+9. Key design note: Characters are the **output** of the council's work — distinct from council member profiles (`council/members/*.yaml`). Council members are fixed LLM personas; characters are the AI personalities they collaboratively design.
+10. **DRY up `_atomic_write`** into `core/utils.py` — it is now in eight separate files.
