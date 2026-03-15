@@ -58,7 +58,7 @@
     {
         "id": "F-008",
         "description": "Agent-to-agent chat — orchestrator-mediated conversations between council members with memory recording",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-002",
             "F-004"

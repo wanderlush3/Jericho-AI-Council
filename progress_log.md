@@ -367,3 +367,65 @@ Implemented the council session orchestrator — the central module that ties to
    ```
 9. **DRY up `_atomic_write`** into `core/utils.py` — it is now in four separate files.
 
+---
+
+## Session: S-FEAT-00000008
+**Timestamp:** 2026-03-15 09:58:00
+**Feature:** `F-008` — Agent-to-Agent Chat
+**Status:** completed
+
+### Summary
+Implemented orchestrator-mediated agent-to-agent conversations with automatic memory recording:
+
+- **Created `core/agent_chat.py`** (~430 lines) — Five main components:
+  - **Exception hierarchy**: `ChatError` (base), `ChatNotFoundError` (no conversation record), `ChatValidationError` (invalid data).
+  - **Data classes**: `ChatExchange` (frozen — speaker, content, timestamp, metadata) and `ConversationRecord` (frozen — conversation_id, title, participants, topic, exchanges list, summary, created_at, closed_at, metadata). Both have `to_dict()`, `from_dict()`, and `create()` factory methods.
+  - **Prompt builders**: `_build_opening_prompt()` (initiates conversation with partner context) and `_build_chat_prompt()` (continuation with full history, limited to last 10 exchanges for context window management).
+  - **`AgentChat` class** — filesystem-backed, one JSON file per conversation (`C-<id>.json`):
+    - `create_conversation()` — validates 2+ participants against registry, creates record file
+    - `exchange()` — core method: speaker sees full history, API sends multi-turn messages (own messages as "assistant", others as "user"), records exchange + memory event. Returns updated record and raw ChatResponse
+    - `converse()` — orchestrated multi-turn: each member takes a turn per round, configurable number of rounds
+    - `close_conversation()` — sets closed_at, persists summary to shared memory (decisions JSONL + narrative history)
+    - `get()` / `list_conversations()` / `has_conversation()` / `get_exchanges()` — query methods with filtering (participant, closed/open, speaker)
+  - **API message building**: `_build_api_messages()` converts conversation history into alternating user/assistant messages from the speaker's perspective for natural multi-turn LLM interaction
+- **Created `tests/test_agent_chat.py`** (~530 lines) — 65 tests across 12 classes:
+  - `TestChatExchange` (5): fields, frozen, roundtrip, create factory, metadata
+  - `TestConversationRecord` (6): fields, frozen, roundtrip, create factory, empty ID, whitespace strip
+  - `TestAgentChatInit` (3): dir creation, properties, repr
+  - `TestCreateConversation` (7): basic, with options, persistence, duplicate, unknown participant, single participant rejected, sequential IDs
+  - `TestExchange` (7): basic, records messages, API called, memory recorded, wrong participant, closed conversation, not found
+  - `TestConverse` (7): two members one round, multiple rounds, records all, API calls match, memory per member, closed raises, empty members
+  - `TestCloseConversation` (5): basic, with summary, auto summary, shared memory, already closed
+  - `TestQueryMethods` (8): get, not found, list all, filter participant, filter closed, has_conversation, get_exchanges with filter, corrupt skip
+  - `TestPromptBuilders` (5): opening content, without topic, history, topic, context limit
+  - `TestExceptions` (4): hierarchy, not found, validation, base
+  - `TestEdgeCases` (5): unicode, long content, three-way, persistence roundtrip, full lifecycle
+  - `TestMemoryIntegration` (5): each speaker recorded, both sides recorded, memory content, session ID, source
+- **All 426 tests pass** (359 existing + 65 new + 2 from prior adjustments) in 5.62s with zero regressions.
+
+### Technical Debt
+- The `_atomic_write` helper is now duplicated in **five** modules (`memory.py`, `proposals.py`, `voting.py`, `session.py`, `agent_chat.py`). A shared `core/utils.py` should be created to DRY this up — noted since S-FEAT-00000005.
+- No streaming / real-time callback support — the `exchange()` method waits for full API response. Could add an `on_message` callback for interactive UIs later.
+- Conversation IDs are user-supplied, not auto-generated like proposals (`P-XXXX`). Consider adding auto-sequencing if needed.
+- File naming `C-<id>.json` could collide with session files `S-<id>.json` in the same `conversations/` directory, but the prefixes keep them distinct.
+- Temp files from S-FEAT-00000002 (`test_out.txt`, `test_results.txt`, `tmp_status.txt`) still not cleaned up.
+
+### Advice for Next Agent
+1. **F-009 (Human-to-Agent Chat) is the natural next step** — depends on F-002 + F-004 (completed). Can reuse the same `AgentChat` patterns with a "human" participant or build as a simpler variant.
+2. **F-010 (Discussion Rounds) is now unblocked** — depends on F-008 + F-005. Should build on `AgentChat.converse()` as a higher-level workflow with proposal integration.
+3. **F-011 (Character Templates) is independently unblocked** — depends only on F-001.
+4. **F-014 (CLI Interface) is unblocked** — depends on F-007.
+5. The agent chat module is importable as: `from core.agent_chat import AgentChat, ConversationRecord, ChatExchange`
+6. Usage pattern:
+   ```python
+   registry = CouncilRegistry().load()
+   async with APIClient() as client:
+       chat = AgentChat(registry=registry, api_client=client)
+       chat.create_conversation("C-001", "Ethics Debate", participants=["Sage", "Logic"], topic="AI autonomy")
+       rec = await chat.converse("C-001", ["Sage", "Logic"], "AI autonomy", rounds=3)
+       rec = chat.close_conversation("C-001", summary="Agreed on guidelines.")
+   ```
+7. Key design difference from `SessionOrchestrator`: no phase machine, no briefing/summary phases. Agent chat is lightweight and immediate. Use sessions for formal council proceedings, chat for informal discussions.
+8. The `_build_api_messages()` method converts history into multi-turn format (own messages = "assistant", others = "user") for natural LLM conversation flow.
+9. **DRY up `_atomic_write`** into `core/utils.py` — it is now in five separate files.
+
