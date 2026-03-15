@@ -433,6 +433,101 @@ def expansion_show(expansion_id: str) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════
+# History Commands
+# ═══════════════════════════════════════════════════════════════
+
+
+@cli.group()
+def history() -> None:
+    """View character evolution history — timelines, version diffs."""
+
+
+@history.command("timeline")
+@click.argument("character_id")
+def history_timeline(character_id: str) -> None:
+    """Show the full evolution timeline for a character lineage."""
+    from core.evolution_history import EvolutionHistory
+
+    chars = CharacterManager()
+
+    # Optionally load evolution manager if available
+    evo_mgr = None
+    try:
+        from core.character_evolution import CharacterEvolution
+        from core.proposals import ProposalManager as _PM
+        from core.voting import VotingEngine as _VE
+
+        evo_mgr = CharacterEvolution(
+            character_manager=chars,
+            proposal_manager=_PM(),
+            voting_engine=_VE(),
+        )
+    except Exception:
+        pass  # proceed without evolution data
+
+    hist = EvolutionHistory(character_manager=chars, evolution_manager=evo_mgr)
+
+    try:
+        timeline = hist.build_timeline(character_id)
+    except Exception as exc:
+        _error(f"Failed to build timeline for '{character_id}': {exc}")
+        return
+
+    _renderer.render_evolution_timeline(timeline)
+
+
+@history.command("diff")
+@click.argument("old_id")
+@click.argument("new_id")
+def history_diff(old_id: str, new_id: str) -> None:
+    """Compare two character versions side by side."""
+    from core.evolution_history import EvolutionHistory
+
+    chars = CharacterManager()
+    hist = EvolutionHistory(character_manager=chars)
+
+    try:
+        diffs = hist.diff_versions(old_id, new_id)
+    except Exception as exc:
+        _error(f"Failed to diff '{old_id}' and '{new_id}': {exc}")
+        return
+
+    _renderer.render_version_diff(old_id, new_id, diffs)
+
+
+@history.command("list")
+def history_list() -> None:
+    """List all characters with their evolution history."""
+    from core.evolution_history import EvolutionHistory
+
+    chars = CharacterManager()
+
+    evo_mgr = None
+    try:
+        from core.character_evolution import CharacterEvolution
+        from core.proposals import ProposalManager as _PM
+        from core.voting import VotingEngine as _VE
+
+        evo_mgr = CharacterEvolution(
+            character_manager=chars,
+            proposal_manager=_PM(),
+            voting_engine=_VE(),
+        )
+    except Exception:
+        pass
+
+    hist = EvolutionHistory(character_manager=chars, evolution_manager=evo_mgr)
+
+    try:
+        timelines = hist.list_timelines()
+    except Exception as exc:
+        _error(f"Failed to list timelines: {exc}")
+        return
+
+    _renderer.render_timeline_list(timelines)
+
+
+# ═══════════════════════════════════════════════════════════════
 # Status Command
 # ═══════════════════════════════════════════════════════════════
 

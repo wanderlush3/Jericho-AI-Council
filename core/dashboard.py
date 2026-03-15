@@ -610,6 +610,111 @@ class DashboardRenderer:
         )
         self.console.print(panel)
 
+    # ── Evolution History ──────────────────────────────────
+
+    def render_evolution_timeline(self, timeline: Any) -> None:
+        """Render a character evolution timeline with version chain and events."""
+        lines: list[str] = [
+            f"[bold]Character:[/bold]  {timeline.character_name}",
+            f"[bold]Latest:[/bold]     {timeline.latest_version}",
+            f"[bold]Versions:[/bold]   {len(timeline.version_chain)}",
+        ]
+
+        if timeline.version_chain:
+            lines.append(f"\n[bold underline]Version Chain[/bold underline]")
+            for i, snap in enumerate(timeline.snapshots):
+                marker = "●" if i == len(timeline.snapshots) - 1 else "○"
+                status_style = STATUS_COLOURS.get(snap.status, "white")
+                lines.append(
+                    f"  {marker} [bold]{snap.character_id}[/bold] "
+                    f"v{snap.version} [{status_style}]({snap.status})[/{status_style}] "
+                    f"— {snap.trait_count} trait(s)"
+                )
+                if snap.previous_version:
+                    lines.append(f"    ↑ from {snap.previous_version}")
+
+        if timeline.events:
+            lines.append(f"\n[bold underline]Evolution Events ({len(timeline.events)})[/bold underline]")
+            for evt in timeline.events:
+                status_style = STATUS_COLOURS.get(evt.status, "white")
+                vote_info = f" — {evt.vote_result}" if evt.vote_result else ""
+                lines.append(
+                    f"  [{status_style}]■[/{status_style}] "
+                    f"[bold]{evt.evolution_id}[/bold] "
+                    f"by {evt.author} "
+                    f"[{status_style}]({evt.status})[/{status_style}]"
+                    f"{vote_info}"
+                )
+                lines.append(
+                    f"    Changes: {evt.changes_summary}"
+                )
+                if evt.applied_character_id:
+                    lines.append(
+                        f"    → Applied as {evt.applied_character_id}"
+                    )
+
+        panel = Panel(
+            "\n".join(lines),
+            title=f"[bold cyan]Timeline — {timeline.character_name}[/bold cyan]",
+            border_style="cyan",
+        )
+        self.console.print(panel)
+
+    def render_version_diff(self, old_id: str, new_id: str, diffs: list[str]) -> None:
+        """Render a coloured diff between two character versions."""
+        lines: list[str] = [
+            f"[bold]Compare:[/bold] {old_id} → {new_id}",
+            f"[bold]Changes:[/bold] {len(diffs)}",
+            "",
+        ]
+        for d in diffs:
+            if d.startswith("+"):
+                lines.append(f"  [green]{d}[/green]")
+            elif d.startswith("-"):
+                lines.append(f"  [red]{d}[/red]")
+            elif d.startswith("~"):
+                lines.append(f"  [yellow]{d}[/yellow]")
+            else:
+                lines.append(f"  [dim]{d}[/dim]")
+
+        panel = Panel(
+            "\n".join(lines),
+            title=f"[bold cyan]Diff — {old_id} → {new_id}[/bold cyan]",
+            border_style="cyan",
+        )
+        self.console.print(panel)
+
+    def render_timeline_list(self, timelines: Sequence[Any]) -> None:
+        """Render a table listing all character timelines."""
+        if not timelines:
+            self.console.print("[dim]No characters with evolution history found.[/dim]")
+            return
+
+        table = Table(
+            title="Character Timelines",
+            title_style="bold cyan",
+            border_style="dim",
+            show_lines=False,
+        )
+        table.add_column("Character", style="bold")
+        table.add_column("Latest ID")
+        table.add_column("Versions", justify="right")
+        table.add_column("Events", justify="right")
+
+        for tl in timelines:
+            table.add_row(
+                tl.character_name,
+                tl.latest_version,
+                str(len(tl.version_chain)),
+                str(len(tl.events)),
+            )
+
+        self.console.print(table)
+        self.console.print(
+            f"\n[bold]{len(timelines)}[/bold] character lineage(s)",
+            highlight=False,
+        )
+
     # ── Feedback Messages ──────────────────────────────────
 
     def render_success(self, message: str) -> None:

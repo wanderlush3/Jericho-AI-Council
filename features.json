@@ -166,7 +166,7 @@
     {
         "id": "F-020",
         "description": "Prompt evolution history — visual timeline of how prompts and characters changed over council decisions",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-013",
             "F-015"

@@ -1057,3 +1057,63 @@ draft → proposed → voting → decided → applied
 3. The `MemberSpec.to_yaml()` output includes a `# Council Member: {name} — {role}` header comment.
 4. **DRY up `_atomic_write`** into `core/utils.py` — it is now in twelve separate files.
 
+---
+
+## Session 20 — F-020: Prompt Evolution History
+
+**Feature:** F-020 — Prompt Evolution History
+**Status:** ✅ Completed
+**Tests before:** 1145 | **Tests after:** 1221 (+76)
+
+### Summary
+
+Visual timeline of how characters changed over council decisions. A new read-only engine traces version chains through `metadata["previous_version"]` links and evolution records, producing ordered timelines with Rich-formatted CLI output.
+
+### Files Created
+
+| File | Description |
+|------|-------------|
+| `core/evolution_history.py` | ~360 lines — `VersionSnapshot`, `EvolutionEvent`, `CharacterTimeline` data classes + `EvolutionHistory` engine |
+| `tests/test_evolution_history.py` | ~560 lines, 76 tests across 12 classes |
+
+### Files Modified
+
+| File | Description |
+|------|-------------|
+| `core/dashboard.py` | Added `render_evolution_timeline()`, `render_version_diff()`, `render_timeline_list()` methods |
+| `core/cli.py` | Added `history` subcommand group with `timeline`, `diff`, `list` commands |
+| `features.json` | F-020 → `completed` — **all 20 features now complete** |
+
+### Key Design Decisions
+
+1. **Read-only engine** — `EvolutionHistory` reads from `CharacterManager` and `CharacterEvolution` but writes nothing. Pure computation.
+2. **Version chain walking** — follows `metadata["previous_version"]` backwards from any character to the original, with circular-link guard and graceful handling of missing intermediates.
+3. **Timeline aggregation** — snapshots (compact character summaries) and events (evolution records with vote results) are collected per lineage and sorted chronologically.
+4. **Diff engine** — compares two character versions field-by-field with `+/-/~` notation for traits added/removed/modified, field changes, tag changes, and version bumps.
+5. **Evolution manager optional** — if not provided, timelines are built without evolution events (useful for simpler queries).
+6. **Constructor injection** — fully testable with mocks, no filesystem writes.
+
+### Test Coverage
+
+12 test classes: VersionSnapshot, EvolutionEvent, CharacterTimeline, Helpers, EvolutionHistoryInit, GetVersionChain, GetSnapshot, BuildTimeline, ListTimelines, DiffVersions, EdgeCases, DashboardRendering, CLICommands.
+
+### Technical Debt (Carried Forward)
+
+- `_atomic_write` is still duplicated in twelve modules. The DRY refactoring into `core/utils.py` remains the primary tech debt item.
+- Temp files from earlier sessions (`test_out.txt`, `test_results.txt`, `tmp_status.txt`, `test_failures.json`, `cli_fails.json`, `test_cli_output.txt`, `test_dash_out.txt`, `test_evo_output.txt`) still live in the project root and should be cleaned up or gitignored.
+
+### Advice for Next Agent
+
+1. **All 20 features are now complete.** The project has a full 1221-test suite with zero failures.
+2. The main remaining work is **tech debt reduction** (DRY up `_atomic_write`, clean up temp files, add `pytest-asyncio` to `pyproject.toml`).
+3. If extending the project further, consider: async CLI commands, embedding-based memory influence, streaming API support, web dashboard.
+4. The evolution history module is importable as: `from core.evolution_history import EvolutionHistory, CharacterTimeline, VersionSnapshot, EvolutionEvent`
+5. Usage pattern:
+   ```python
+   chars = CharacterManager()
+   evo = CharacterEvolution(...)
+   history = EvolutionHistory(character_manager=chars, evolution_manager=evo)
+   timeline = history.build_timeline("CH-0003")
+   diffs = history.diff_versions("CH-0001", "CH-0002")
+   ```
+6. Clean up temp files before committing.
