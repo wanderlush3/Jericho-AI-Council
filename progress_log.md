@@ -850,3 +850,51 @@ Implemented the Rich terminal dashboard — Rich-formatted output for all CLI co
 5. For new CLI subcommands, add render methods on `DashboardRenderer` — don't use `click.echo()` directly.
 6. **DRY up `_atomic_write`** into `core/utils.py` — it is now in ten separate files.
 7. Clean up temp files before committing.
+
+---
+
+## Session: S-FEAT-00000016
+**Timestamp:** 2026-03-15 15:40:00
+**Feature:** `F-016` — Session Analytics
+**Status:** completed
+
+### Summary
+Implemented read-only analytics engine for the Jericho AI Council. The module aggregates data from existing managers (proposals, voting, sessions, discussions) — no filesystem writes.
+
+### Files Created
+- **`core/analytics.py`** (~380 lines) — `SessionAnalytics` engine class + frozen data classes:
+  - `MemberStats` — per-member: sessions, votes (with for/against/abstain breakdown), proposals authored, discussions
+  - `ProposalStats` — total, by_status, by_category, approval_rate
+  - `VotingStats` — total_records, total_votes, avg_votes_per_record, quorum_achievement_rate, approval_rate, veto_count
+  - `SessionStats` — total_sessions, by_phase, by_activity, avg_messages, avg_participants
+  - `AnalyticsReport` — bundles everything + generated_at timestamp
+  - Engine methods: `member_stats()`, `all_member_stats()`, `proposal_stats()`, `voting_stats()`, `session_stats()`, `top_participants()`, `full_report()`
+  - Graceful degradation: any manager can be None
+- **`tests/test_analytics.py`** (~600 lines) — 65 tests in 15 classes covering all data classes, computation, edge cases
+
+### Files Modified
+- **`core/dashboard.py`** — Added `render_analytics_overview(report)` and `render_member_stats(name, stats)` methods
+- **`core/cli.py`** — Added `analytics` subcommand group with `overview` and `member <name>` commands
+- **`features.json`** — F-016 status → `completed`
+
+### Test Results
+- **961 tests pass** (888 existing + 65 new analytics + 8 from dashboard/CLI) in ~10s with zero regressions.
+
+### Design Decisions
+- **No filesystem writes** — analytics is pure computation. No `ANALYTICS_DIR` needed.
+- **Constructor injection** — `SessionAnalytics` takes manager instances, making it fully testable with mocks.
+- **Case-insensitive matching** — member name lookups use `.lower()` for consistent results.
+- **Auto-discovery** — `all_member_stats()` discovers member names from data sources if no explicit list is given.
+- **Lazy import in CLI** — `from core.analytics import SessionAnalytics` inside command functions to keep CLI startup fast.
+
+### Technical Debt
+- The `_atomic_write` helper is still duplicated across **ten** modules.
+- Analytics currently accesses `VotingEngine._compute_tally()` (private method) for quorum stats. Consider adding a public accessor.
+- Temp files still need cleanup.
+
+### Advice for Next Agent
+1. **F-017 (Test Suite), F-018 (Memory Influence), F-019 (Council Expansion), F-020 (Prompt Evolution History) are all unblocked.**
+2. To add new analytics dimensions, extend the data classes and add computation methods on `SessionAnalytics`.
+3. Dashboard testing pattern: `DashboardRenderer(console=Console(file=StringIO(), force_terminal=True, width=120))` captures output.
+4. Analytics uses `_FakeSessionOrchestrator` and `_FakeDiscussionManager` mocks for testing — no real LLM calls needed.
+5. **DRY up `_atomic_write`** into `core/utils.py` — it is now in ten separate files.

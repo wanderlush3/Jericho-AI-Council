@@ -331,6 +331,99 @@ class DashboardRenderer:
         )
         self.console.print(panel)
 
+    # ── Analytics ──────────────────────────────────────────
+
+    def render_analytics_overview(self, report: Any) -> None:
+        """Render a full analytics report overview."""
+        self.console.print()
+        self.console.print(
+            Panel(
+                "[bold]Jericho AI Council[/bold] — Analytics Report",
+                style="bold cyan",
+                border_style="cyan",
+            )
+        )
+
+        # Proposals summary
+        ps = report.proposal_stats
+        lines = [
+            f"[bold]{ps.total}[/bold] total proposal(s)",
+        ]
+        for s, cnt in sorted(ps.by_status.items()):
+            colour = STATUS_COLOURS.get(s, "white")
+            lines.append(f"  [{colour}]{s}:[/{colour}] {cnt}")
+        if ps.total > 0:
+            pct = ps.approval_rate
+            lines.append(f"  [bold]Approval rate:[/bold] {pct:.0%}")
+        self.console.print(
+            Panel("\n".join(lines), title="[bold]Proposals[/bold]", border_style="dim")
+        )
+
+        # Voting summary
+        vs = report.voting_stats
+        lines = [
+            f"[bold]{vs.total_records}[/bold] vote record(s)",
+            f"  Total votes cast: {vs.total_votes_cast}",
+            f"  Avg votes/record: {vs.avg_votes_per_record:.1f}",
+            f"  Quorum rate: {vs.quorum_achievement_rate:.0%}",
+            f"  Approval rate: {vs.approval_rate:.0%}",
+            f"  Vetoes: {vs.veto_count}",
+        ]
+        self.console.print(
+            Panel("\n".join(lines), title="[bold]Voting[/bold]", border_style="dim")
+        )
+
+        # Sessions summary
+        ss = report.session_stats
+        lines = [
+            f"[bold]{ss.total_sessions}[/bold] session(s)",
+            f"  Avg messages/session: {ss.avg_messages_per_session:.1f}",
+            f"  Avg participants: {ss.avg_participants:.1f}",
+        ]
+        for act, cnt in sorted(ss.by_activity.items()):
+            lines.append(f"  [magenta]{act}:[/magenta] {cnt}")
+        self.console.print(
+            Panel("\n".join(lines), title="[bold]Sessions[/bold]", border_style="dim")
+        )
+
+        # Top participants
+        if report.top_participants:
+            lines = []
+            for i, (name, count) in enumerate(report.top_participants, 1):
+                lines.append(f"  {i}. [bold]{name}[/bold] — {count} activities")
+            self.console.print(
+                Panel("\n".join(lines), title="[bold]Top Participants[/bold]", border_style="dim")
+            )
+
+        self.console.print(
+            f"\n[dim]Generated: {report.generated_at}[/dim]", highlight=False
+        )
+
+    def render_member_stats(self, name: str, stats: Any) -> None:
+        """Render stats for a single council member."""
+        lines = [
+            f"[bold]Sessions:[/bold]     {stats.sessions_participated}",
+            f"[bold]Votes Cast:[/bold]   {stats.votes_cast}",
+        ]
+        if stats.votes_cast > 0:
+            lines.append(
+                f"  [green]for:[/green] {stats.votes_for}  "
+                f"[red]against:[/red] {stats.votes_against}  "
+                f"[yellow]abstain:[/yellow] {stats.votes_abstain}"
+            )
+        lines.extend([
+            f"[bold]Proposals:[/bold]    {stats.proposals_authored}",
+            f"[bold]Discussions:[/bold]  {stats.discussions_participated}",
+            f"[bold]Total:[/bold]        {stats.total_activity}",
+        ])
+
+        panel = Panel(
+            "\n".join(lines),
+            title=f"[bold cyan]{name}[/bold cyan] — Activity Stats",
+            border_style="cyan",
+        )
+        self.console.print(panel)
+
     # ── Status Dashboard ───────────────────────────────────
 
     def render_status_dashboard(self, stats: dict[str, Any]) -> None:

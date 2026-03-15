@@ -289,6 +289,53 @@ def characters_export(character_id: str, output_path: str | None) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════
+# Analytics Commands
+# ═══════════════════════════════════════════════════════════════
+
+
+@cli.group()
+def analytics() -> None:
+    """View session analytics — participation, voting patterns, proposals."""
+
+
+@analytics.command("overview")
+def analytics_overview() -> None:
+    """Show full analytics report: proposals, voting, sessions, top members."""
+    from core.analytics import SessionAnalytics
+
+    pmgr = ProposalManager()
+    engine = VotingEngine()
+    sa = SessionAnalytics(proposal_manager=pmgr, voting_engine=engine)
+
+    try:
+        report = sa.full_report()
+    except Exception as exc:
+        _error(f"Failed to generate analytics report: {exc}")
+        return
+
+    _renderer.render_analytics_overview(report)
+
+
+@analytics.command("member")
+@click.argument("name")
+def analytics_member(name: str) -> None:
+    """Show activity stats for a specific council member."""
+    from core.analytics import SessionAnalytics
+
+    pmgr = ProposalManager()
+    engine = VotingEngine()
+    sa = SessionAnalytics(proposal_manager=pmgr, voting_engine=engine)
+
+    try:
+        stats = sa.member_stats(name)
+    except Exception as exc:
+        _error(f"Failed to get stats for '{name}': {exc}")
+        return
+
+    _renderer.render_member_stats(name, stats)
+
+
+# ═══════════════════════════════════════════════════════════════
 # Status Command
 # ═══════════════════════════════════════════════════════════════
 
