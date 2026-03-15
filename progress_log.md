@@ -898,3 +898,47 @@ Implemented read-only analytics engine for the Jericho AI Council. The module ag
 3. Dashboard testing pattern: `DashboardRenderer(console=Console(file=StringIO(), force_terminal=True, width=120))` captures output.
 4. Analytics uses `_FakeSessionOrchestrator` and `_FakeDiscussionManager` mocks for testing — no real LLM calls needed.
 5. **DRY up `_atomic_write`** into `core/utils.py` — it is now in ten separate files.
+
+---
+
+## Session: S-FTEST-00000017
+**Timestamp:** 2026-03-15 15:50:00
+**Feature:** `F-017` — Test Suite (Cross-Module Integration Tests)
+**Status:** completed
+
+### Summary
+Implemented F-017 by adding shared test fixtures and cross-module integration tests that exercise real workflows spanning multiple managers.
+
+### Files Created
+- **`tests/conftest.py`** (~120 lines) — Shared pytest fixtures:
+  - `tmp_dirs` — creates all standard project subdirectories
+  - `make_member()`, `mock_registry()`, `mock_api_client()` — reusable helpers
+  - `proposal_mgr`, `voting_engine`, `character_mgr`, `shared_memory` — manager factory fixtures
+- **`tests/test_integration.py`** (~500 lines) — 43 integration tests across 5 suites:
+  - `TestGovernanceWorkflow` (9 tests) — proposal → discussion → vote → decide
+  - `TestCharacterLifecycle` (9 tests) — create → activate → evolve → apply → version
+  - `TestSessionLifecycle` (9 tests) — create → brief → discuss → close → shared memory
+  - `TestMemoryIntegration` (8 tests) — agent memory, shared memory, core beliefs, cross-agent isolation
+  - `TestAnalyticsIntegration` (8 tests) — stats from real managers, full analytics report
+
+### Files Modified
+- **`features.json`** — F-017 status → `completed`
+
+### Test Results
+- **1004 tests pass** (961 existing + 43 new integration tests) with zero regressions.
+
+### Design Decisions
+- **Real managers, mock API** — integration tests use real filesystem-backed managers via `tmp_path`; only API calls are mocked at the transport layer.
+- **Shared fixtures** — `conftest.py` contains reusable factories that any test file can import. Eliminates the `_make_member()` / `_mock_registry()` duplication across test files.
+- **No test-order dependencies** — each test class creates its own environment via fixtures; tests are fully isolated.
+
+### Technical Debt
+- The `_atomic_write` helper is still duplicated across ten modules.
+- Existing test files still define their own `_make_member()` / `_mock_registry()` locally — they could be refactored to use `conftest.py` helpers.
+- Temp files from previous sessions still need cleanup.
+
+### Advice for Next Agent
+1. **F-018 (Memory Influence), F-019 (Council Expansion), F-020 (Prompt Evolution History) are all unblocked.**
+2. New integration tests can be added to `tests/test_integration.py` or to new files — `conftest.py` fixtures are available project-wide.
+3. Existing test files can be gradually migrated to use `conftest.py` helpers instead of local duplicates.
+4. **DRY up `_atomic_write`** into `core/utils.py` — it is now in ten separate files.

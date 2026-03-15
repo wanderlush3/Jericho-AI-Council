@@ -136,7 +136,7 @@
     {
         "id": "F-017",
         "description": "Test suite — comprehensive tests for API client, council registry, memory, governance, and orchestrator",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-002",
             "F-003",
