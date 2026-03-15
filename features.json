@@ -111,7 +111,7 @@
     {
         "id": "F-014",
         "description": "CLI interface — Click-based 'jericho' command with subcommands for council, chat, vote, characters, status",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-007"
         ]
@@ -119,7 +119,7 @@
     {
         "id": "F-015",
         "description": "Rich terminal dashboard — council status display, vote tallies, session activity, member overview",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-014"
         ]

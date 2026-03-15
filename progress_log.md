@@ -771,3 +771,82 @@ Implemented governance-backed character modification via proposals and voting:
    ```
 9. Key design note: Each evolution creates a **new version** of the character — the original is superseded, changes are applied to the copy. This preserves full history and is non-destructive.
 10. **DRY up `_atomic_write`** into `core/utils.py` — it is now in ten separate files.
+
+---
+
+### Session — Implementing F-014 (CLI Interface)
+
+**Date**: 2026-03-15
+**Feature**: F-014 — CLI Interface
+**Status**: ✅ Completed
+
+#### What was done
+1. Created `core/cli.py` — Click-based CLI with 5 subcommand groups:
+   - `council list|show` — council member management
+   - `proposals list|show|create` — governance proposals with filtering
+   - `vote list|show|cast|veto` — voting engine interaction
+   - `characters list|show|export` — character template management
+   - `status` — project overview (member/proposal/vote/character counts)
+2. Created `tests/test_cli.py` — 61 tests across 16 classes using `click.testing.CliRunner`:
+   - All subcommands tested with positive and negative cases
+   - Filter options verified (status, category, author, tag, provider)
+   - Error handling: missing args, nonexistent records, invalid choices
+   - Help output and version verified for all groups
+3. Entry point already wired in `pyproject.toml`: `jericho = "core.cli:cli"`
+
+#### Test results
+- CLI tests: 61 passed
+- Full suite: 837 passed, 0 failed (including all prior tests)
+
+#### Files changed
+- `core/cli.py` (new — 340 lines)
+- `tests/test_cli.py` (new — 715 lines)
+- `features.json` — F-014 status → `completed`
+
+#### Advice for next session
+1. F-015 (Rich Terminal Dashboard) is now unblocked — depends only on F-014.
+2. The CLI outputs plain text via `click.echo()` — F-015 should layer Rich formatting on top.
+3. Consider adding `session` subcommands when F-007 session orchestrator gets CLI exposure.
+4. The `_atomic_write` duplication across 10+ modules should be refactored to `core/utils.py`.
+
+---
+
+## Session: S-FEAT-00000015
+**Timestamp:** 2026-03-15 11:45:00
+**Feature:** `F-015` — Rich Terminal Dashboard
+**Status:** completed
+
+### Summary
+Implemented the Rich terminal dashboard — Rich-formatted output for all CLI commands:
+
+- **Created `core/dashboard.py`** (~300 lines) — Three main components:
+  - **Status colour mapping**: `STATUS_COLOURS` dict maps statuses to Rich colours (draft→dim, open→green, under_review→yellow, decided→blue, withdrawn→red, active→green, archived→dim, superseded→yellow, rejected→red). `_style_status()` returns styled `rich.text.Text`.
+  - **`_truncate()` helper**: moved from `core/cli.py` — display-layer concern.
+  - **`DashboardRenderer` class** — wraps `rich.console.Console` (injectable for testing):
+    - `render_member_list/detail()` — Table/Panel with coloured providers, personality dict, specialties
+    - `render_proposal_list/detail()` — Table/Panel with status-coloured badges, reviews by stance
+    - `render_vote_list/detail()` — Table/Panel with approval bar (█░), quorum/threshold indicators, choice colours
+    - `render_character_list/detail()` — Table/Panel with trait intensity dots (●○), cyan hash-tags
+    - `render_status_dashboard()` — Nested panels for Council, Proposals, Vote Records, Characters
+    - `render_success()` / `render_error()` — styled ✓/Error feedback
+- **Updated `core/cli.py`** (~280 lines, was 470) — replaced all `click.echo()` with `DashboardRenderer`:
+  - Module-level `_renderer = DashboardRenderer()` shared by all commands
+  - YAML export still uses `click.echo()` for raw text output
+- **Created `tests/test_dashboard.py`** (~360 lines) — 51 tests across 10 classes covering all render methods
+- **Updated `tests/test_cli.py`** — adapted 9 assertions for Rich output format
+- **All 888 tests pass** (837 existing + 51 new) in ~9s with zero regressions.
+
+### Technical Debt
+- The `_atomic_write` helper is still duplicated in **ten** modules — noted since S-FEAT-00000005.
+- Module-level `_renderer` creates `Console()` at import time. Fine for CLI, but consider lazy init if import time matters.
+- Temp files need cleanup: `test_out.txt`, `test_results.txt`, `tmp_status.txt`, `test_failures.json`, `cli_fails.json`.
+- Minor: `render_status_dashboard()` has a slightly redundant proposals rendering path.
+
+### Advice for Next Agent
+1. **F-016 (Session Analytics), F-017 (Test Suite), F-018 (Memory Influence), F-019 (Council Expansion) are all unblocked.**
+2. **F-020 (Prompt Evolution History) is now unblocked** — depends on F-013 + F-015 (both completed).
+3. The dashboard module: `from core.dashboard import DashboardRenderer, STATUS_COLOURS, _truncate`
+4. Testing pattern: `DashboardRenderer(console=Console(file=StringIO(), force_terminal=True, width=120))` captures output.
+5. For new CLI subcommands, add render methods on `DashboardRenderer` — don't use `click.echo()` directly.
+6. **DRY up `_atomic_write`** into `core/utils.py` — it is now in ten separate files.
+7. Clean up temp files before committing.
