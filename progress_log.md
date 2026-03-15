@@ -236,3 +236,59 @@ Implemented the proposal system for the Jericho AI Council:
 8. Consider DRYing up `_atomic_write` into `core/utils.py` when working on the next feature.
 
 ---
+
+## Session: S-FEAT-00000006
+**Timestamp:** 2026-03-15 09:42:00
+**Feature:** `F-006` — Voting Engine
+**Status:** completed
+
+### Summary
+Implemented the voting engine for the Jericho AI Council:
+
+- **Created `core/voting.py`** (~370 lines) — Four main components:
+  - **Exception hierarchy**: `VotingError` (base), `VoteNotFoundError` (no record for proposal), `VotingValidationError` (invalid vote data), `VotingStateError` (operation conflicts with current state).
+  - **Data classes**: `Vote` (frozen — voter, choice, reason, timestamp, weight), `VoteTally` (frozen — computed tally with counts, weighted values, approval rate, quorum/threshold/approved/vetoed booleans), `VoteRecord` (frozen — per-proposal record with votes list, status, veto fields, timestamps, metadata). All have `to_dict()`, `from_dict()`, and `create()` factory methods.
+  - **Tally logic**: Approval rate = `weighted_for / (weighted_for + weighted_against)` — abstains do not count toward the ratio. Quorum checks total voter count (not weighted). Threshold defaults to 60% from `settings.py`. Approved requires: quorum met AND threshold met AND not vetoed.
+  - **`VotingEngine` class** — filesystem-backed, one JSON file per proposal (`V-P-XXXX.json`):
+    - `open_voting(proposal_id)` — creates vote record, prevents duplicates
+    - `cast_vote(proposal_id, vote)` — validates voter uniqueness (case-insensitive), requires open status
+    - `tally(proposal_id)` → `VoteTally` — computes approval rate, quorum, threshold, veto status
+    - `close_voting(proposal_id)` — sets status to closed, records timestamp
+    - `veto(proposal_id, reason)` / `lift_veto(proposal_id)` — human veto override power
+    - `get()` / `list_records()` / `has_record()` — query methods
+    - Configurable `quorum` and `threshold` via constructor args (defaults from `settings.py`)
+  - **Atomic writes** via temp-file + rename pattern (same as memory and proposal systems)
+- **Created `tests/test_voting.py`** (~380 lines) — 70 tests across 12 classes:
+  - `TestVote` (9): fields, defaults, frozen, roundtrip, create factory, invalid choice, custom/invalid weight
+  - `TestVoteRecord` (5): fields, frozen, roundtrip, create factory, defaults
+  - `TestVoteTally` (2): to_dict, frozen
+  - `TestVotingEngineInit` (4): directory creation, existing dir, custom quorum/threshold, repr
+  - `TestOpenVoting` (6): basic, creates file, with metadata, duplicate raises, empty/whitespace ID raises
+  - `TestCastVote` (7): basic, multiple, persistence, duplicate voter (case-insensitive), closed raises, nonexistent raises
+  - `TestTally` (10): empty, quorum met/not met, threshold met/not met, abstains excluded from ratio, all abstain, weighted votes, exact boundary, nonexistent raises
+  - `TestCloseVoting` (4): basic, preserves votes, already closed raises, nonexistent raises
+  - `TestHumanVeto` (9): basic, overrides approval, already vetoed raises, nonexistent, without reason, on closed voting, lift veto, not vetoed raises, lift restores approval
+  - `TestListRecords` (5): empty, all, filter by status, has_record, corrupt file skipped
+  - `TestEdgeCases` (6): unicode, exact threshold, just below threshold, large voter count, persistence after reopen, vote after veto-then-lift
+  - `TestExceptions` (4): hierarchy, field access for each exception type
+- **All 283 tests pass** (213 existing + 70 new) in 4.48s with zero regressions.
+
+### Technical Debt
+- The `_atomic_write` helper is now duplicated in three modules (`memory.py`, `proposals.py`, `voting.py`). A shared `core/utils.py` should be created to DRY this up — noted since S-FEAT-00000005.
+- Vote weight comes from the `Vote.create()` caller — there is no automatic integration with council member `vote_weight` from YAML profiles yet. The orchestrator (F-007) should pass `member.vote_weight` when casting votes on behalf of agents.
+- No integration with `ProposalManager` lifecycle yet — the voting engine does not automatically transition proposals to `decided` when voting is closed. This should be done by the orchestrator or a higher-level workflow.
+- The existing `data/votes/` directory contains a legacy `votes.db` file from the jericho01 migration. It is harmlessly ignored (VotingEngine only reads `V-*.json`), but could be cleaned up.
+- Temp files from S-FEAT-00000002 (`test_out.txt`, `test_results.txt`, `tmp_status.txt`) still not cleaned up.
+
+### Advice for Next Agent
+1. **F-007 (Council Session Orchestrator) is the natural next step** — it depends on F-002 + F-003 + F-004 (all completed). It ties together API calls, registry, memory, and can wire in proposals + voting.
+2. **F-008 (Agent-to-Agent Chat) and F-009 (Human-to-Agent Chat) are also unblocked** — both depend on F-002 + F-004.
+3. **F-011 (Character Templates) is independently unblocked** — depends only on F-001.
+4. **F-013 (Character Evolution) and F-019 (Council Expansion) are now partially unblocked** — F-013 needs F-012+F-006; F-019 needs F-006+F-003.
+5. The voting engine is importable as: `from core.voting import VotingEngine, Vote, VoteRecord, VoteTally`
+6. Usage pattern:
+   - `engine = VotingEngine()` — uses defaults from `settings.py`
+   - `engine.open_voting("P-0001")` → `engine.cast_vote("P-0001", Vote.create("Sage", "for", weight=member.vote_weight))` → `tally = engine.tally("P-0001")` → `engine.close_voting("P-0001")`
+7. When integrating with proposals, the orchestrator should: (a) transition proposal to `under_review` or `open`, (b) open voting, (c) collect votes, (d) close voting, (e) transition proposal to `decided` based on tally.
+8. **DRY up `_atomic_write`** into `core/utils.py` — it is now in three separate files.
+

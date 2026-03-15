@@ -1,0 +1,520 @@
+"""
+Jericho — Voting Engine (F-006)
+
+Cast votes, tally results, check quorum, apply approval threshold,
+and enforce human veto power on council proposals.
+
+Storage: one JSON file per vote record in ``data/votes/``, named
+``V-<proposal_id>.json``  (e.g. ``V-P-0001.json``).
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import tempfile
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from config.settings import (
+    APPROVAL_THRESHOLD,
+    QUORUM_MINIMUM,
+    VOTE_OPTIONS,
+    VOTES_DIR,
+)
+
+
+# ─── Exceptions ────────────────────────────────────────────────
+
+
+class VotingError(Exception):
+    """Base exception for voting-engine errors."""
+
+
+class VoteNotFoundError(VotingError):
+    """Raised when no vote record exists for a proposal."""
+
+    def __init__(self, proposal_id: str) -> None:
+        self.proposal_id = proposal_id
+        super().__init__(f"No vote record for proposal '{proposal_id}'")
+
+
+class VotingValidationError(VotingError):
+    """Raised when vote data fails validation."""
+
+    def __init__(self, errors: list[str]) -> None:
+        self.errors = errors
+        super().__init__(f"Validation failed: {'; '.join(errors)}")
+
+
+class VotingStateError(VotingError):
+    """Raised when an operation conflicts with current voting state."""
+
+    def __init__(self, proposal_id: str, message: str) -> None:
+        self.proposal_id = proposal_id
+        super().__init__(f"Voting state error for '{proposal_id}': {message}")
+
+
+# ─── Data Models ───────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class Vote:
+    """A single vote cast by a council member."""
+
+    voter: str
+    choice: str            # for / against / abstain
+    reason: str = ""
+    timestamp: str = ""
+    weight: float = 1.0
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Vote:
+        return cls(
+            voter=data["voter"],
+            choice=data["choice"],
+            reason=data.get("reason", ""),
+            timestamp=data.get("timestamp", ""),
+            weight=data.get("weight", 1.0),
+        )
+
+    @classmethod
+    def create(
+        cls,
+        voter: str,
+        choice: str,
+        reason: str = "",
+        weight: float = 1.0,
+    ) -> Vote:
+        """Factory that auto-fills the timestamp and validates the choice."""
+        if choice not in VOTE_OPTIONS:
+            raise VotingValidationError(
+                [f"Invalid choice '{choice}' — must be one of {VOTE_OPTIONS}"]
+            )
+        if weight <= 0:
+            raise VotingValidationError(
+                [f"Vote weight must be positive, got {weight}"]
+            )
+        return cls(
+            voter=voter,
+            choice=choice,
+            reason=reason,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            weight=weight,
+        )
+
+
+@dataclass(frozen=True)
+class VoteTally:
+    """Immutable tally of votes on a proposal."""
+
+    total_votes: int
+    votes_for: int
+    votes_against: int
+    votes_abstain: int
+    weighted_for: float
+    weighted_against: float
+    weighted_abstain: float
+    approval_rate: float         # weighted_for / (weighted_for + weighted_against)
+    quorum_met: bool
+    threshold_met: bool
+    approved: bool               # quorum_met AND threshold_met AND not vetoed
+    vetoed: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class VoteRecord:
+    """
+    Full vote record for a single proposal.
+
+    Stored as one JSON file per proposal in the votes directory.
+    """
+
+    proposal_id: str
+    status: str = "open"          # open / closed
+    votes: list[Vote] = field(default_factory=list)
+    vetoed: bool = False
+    veto_reason: str = ""
+    veto_timestamp: str = ""
+    opened_at: str = ""
+    closed_at: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> VoteRecord:
+        votes = [Vote.from_dict(v) for v in data.get("votes", [])]
+        return cls(
+            proposal_id=data["proposal_id"],
+            status=data.get("status", "open"),
+            votes=votes,
+            vetoed=data.get("vetoed", False),
+            veto_reason=data.get("veto_reason", ""),
+            veto_timestamp=data.get("veto_timestamp", ""),
+            opened_at=data.get("opened_at", ""),
+            closed_at=data.get("closed_at", ""),
+            metadata=data.get("metadata", {}),
+        )
+
+    @classmethod
+    def create(
+        cls,
+        proposal_id: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> VoteRecord:
+        """Factory that auto-fills the opened_at timestamp."""
+        return cls(
+            proposal_id=proposal_id,
+            status="open",
+            votes=[],
+            vetoed=False,
+            veto_reason="",
+            veto_timestamp="",
+            opened_at=datetime.now(timezone.utc).isoformat(),
+            closed_at="",
+            metadata=metadata or {},
+        )
+
+
+# ─── Helpers ───────────────────────────────────────────────────
+
+
+def _atomic_write(filepath: Path, content: str) -> None:
+    """Write *content* to *filepath* atomically via temp-file + rename."""
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(
+        dir=filepath.parent, suffix=".tmp", prefix=filepath.stem
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.replace(tmp_path, filepath)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
+# ─── Voting Engine ─────────────────────────────────────────────
+
+
+class VotingEngine:
+    """
+    Filesystem-backed voting engine for council proposals.
+
+    Each proposal's votes are stored as ``V-<proposal_id>.json`` in the
+    votes directory (e.g. ``V-P-0001.json``).
+
+    Usage::
+
+        engine = VotingEngine()
+        engine.open_voting("P-0001")
+        engine.cast_vote("P-0001", Vote.create("Sage", "for", "Well argued"))
+        engine.cast_vote("P-0001", Vote.create("Logic", "against", "Needs work"))
+        tally = engine.tally("P-0001")
+        result = engine.close_voting("P-0001")
+    """
+
+    def __init__(
+        self,
+        votes_dir: Path | None = None,
+        quorum: int | None = None,
+        threshold: float | None = None,
+    ) -> None:
+        self._dir = votes_dir or VOTES_DIR
+        self._dir.mkdir(parents=True, exist_ok=True)
+        self._quorum = quorum if quorum is not None else QUORUM_MINIMUM
+        self._threshold = threshold if threshold is not None else APPROVAL_THRESHOLD
+
+    # ── Properties ────────────────────────────────────────────
+
+    @property
+    def directory(self) -> Path:
+        return self._dir
+
+    @property
+    def quorum(self) -> int:
+        return self._quorum
+
+    @property
+    def threshold(self) -> float:
+        return self._threshold
+
+    # ── Open Voting ───────────────────────────────────────────
+
+    def open_voting(
+        self,
+        proposal_id: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> VoteRecord:
+        """
+        Open voting on a proposal.
+
+        Creates a new vote record file.
+
+        Raises:
+            VotingValidationError: if proposal_id is empty.
+            VotingStateError: if voting is already open/closed for this proposal.
+        """
+        if not proposal_id.strip():
+            raise VotingValidationError(["Proposal ID must not be empty"])
+
+        filepath = self._filepath(proposal_id)
+        if filepath.exists():
+            existing = self._load(filepath)
+            raise VotingStateError(
+                proposal_id,
+                f"Voting already exists with status '{existing.status}'",
+            )
+
+        record = VoteRecord.create(proposal_id, metadata=metadata)
+        self._save(record)
+        return record
+
+    # ── Cast Vote ─────────────────────────────────────────────
+
+    def cast_vote(self, proposal_id: str, vote: Vote) -> VoteRecord:
+        """
+        Cast a vote on a proposal.
+
+        Raises:
+            VoteNotFoundError: if no vote record exists for the proposal.
+            VotingStateError: if voting is closed.
+            VotingValidationError: if the voter has already voted.
+        """
+        record = self.get(proposal_id)
+
+        if record.status != "open":
+            raise VotingStateError(
+                proposal_id, "Voting is closed — cannot cast new votes"
+            )
+
+        existing_voters = {v.voter.lower() for v in record.votes}
+        if vote.voter.lower() in existing_voters:
+            raise VotingValidationError(
+                [f"'{vote.voter}' has already voted on proposal '{proposal_id}'"]
+            )
+
+        new_votes = list(record.votes) + [vote]
+        updated = VoteRecord(
+            proposal_id=record.proposal_id,
+            status=record.status,
+            votes=new_votes,
+            vetoed=record.vetoed,
+            veto_reason=record.veto_reason,
+            veto_timestamp=record.veto_timestamp,
+            opened_at=record.opened_at,
+            closed_at=record.closed_at,
+            metadata=dict(record.metadata),
+        )
+        self._save(updated)
+        return updated
+
+    # ── Tally ─────────────────────────────────────────────────
+
+    def tally(self, proposal_id: str) -> VoteTally:
+        """
+        Compute the current vote tally for a proposal.
+
+        Raises:
+            VoteNotFoundError: if no vote record exists for the proposal.
+        """
+        record = self.get(proposal_id)
+        return self._compute_tally(record)
+
+    def _compute_tally(self, record: VoteRecord) -> VoteTally:
+        """Internal tally computation from a VoteRecord."""
+        votes_for = sum(1 for v in record.votes if v.choice == "for")
+        votes_against = sum(1 for v in record.votes if v.choice == "against")
+        votes_abstain = sum(1 for v in record.votes if v.choice == "abstain")
+
+        weighted_for = sum(v.weight for v in record.votes if v.choice == "for")
+        weighted_against = sum(v.weight for v in record.votes if v.choice == "against")
+        weighted_abstain = sum(v.weight for v in record.votes if v.choice == "abstain")
+
+        total_decisive = weighted_for + weighted_against
+        approval_rate = (weighted_for / total_decisive) if total_decisive > 0 else 0.0
+
+        quorum_met = len(record.votes) >= self._quorum
+        threshold_met = approval_rate >= self._threshold
+        approved = quorum_met and threshold_met and not record.vetoed
+
+        return VoteTally(
+            total_votes=len(record.votes),
+            votes_for=votes_for,
+            votes_against=votes_against,
+            votes_abstain=votes_abstain,
+            weighted_for=weighted_for,
+            weighted_against=weighted_against,
+            weighted_abstain=weighted_abstain,
+            approval_rate=round(approval_rate, 4),
+            quorum_met=quorum_met,
+            threshold_met=threshold_met,
+            approved=approved,
+            vetoed=record.vetoed,
+        )
+
+    # ── Close Voting ──────────────────────────────────────────
+
+    def close_voting(self, proposal_id: str) -> VoteRecord:
+        """
+        Close voting on a proposal.
+
+        Raises:
+            VoteNotFoundError: if no vote record exists for the proposal.
+            VotingStateError: if voting is already closed.
+        """
+        record = self.get(proposal_id)
+
+        if record.status != "open":
+            raise VotingStateError(
+                proposal_id, "Voting is already closed"
+            )
+
+        now = datetime.now(timezone.utc).isoformat()
+        updated = VoteRecord(
+            proposal_id=record.proposal_id,
+            status="closed",
+            votes=list(record.votes),
+            vetoed=record.vetoed,
+            veto_reason=record.veto_reason,
+            veto_timestamp=record.veto_timestamp,
+            opened_at=record.opened_at,
+            closed_at=now,
+            metadata=dict(record.metadata),
+        )
+        self._save(updated)
+        return updated
+
+    # ── Human Veto ────────────────────────────────────────────
+
+    def veto(self, proposal_id: str, reason: str = "") -> VoteRecord:
+        """
+        Apply a human veto to a proposal's vote.
+
+        The human veto overrides all votes — a vetoed proposal cannot be
+        approved regardless of vote tallies.
+
+        Raises:
+            VoteNotFoundError: if no vote record exists for the proposal.
+            VotingStateError: if the proposal is already vetoed.
+        """
+        record = self.get(proposal_id)
+
+        if record.vetoed:
+            raise VotingStateError(
+                proposal_id, "Proposal is already vetoed"
+            )
+
+        now = datetime.now(timezone.utc).isoformat()
+        updated = VoteRecord(
+            proposal_id=record.proposal_id,
+            status=record.status,
+            votes=list(record.votes),
+            vetoed=True,
+            veto_reason=reason,
+            veto_timestamp=now,
+            opened_at=record.opened_at,
+            closed_at=record.closed_at,
+            metadata=dict(record.metadata),
+        )
+        self._save(updated)
+        return updated
+
+    def lift_veto(self, proposal_id: str) -> VoteRecord:
+        """
+        Remove a human veto from a proposal's vote.
+
+        Raises:
+            VoteNotFoundError: if no vote record exists for the proposal.
+            VotingStateError: if the proposal is not vetoed.
+        """
+        record = self.get(proposal_id)
+
+        if not record.vetoed:
+            raise VotingStateError(
+                proposal_id, "Proposal is not vetoed"
+            )
+
+        updated = VoteRecord(
+            proposal_id=record.proposal_id,
+            status=record.status,
+            votes=list(record.votes),
+            vetoed=False,
+            veto_reason="",
+            veto_timestamp="",
+            opened_at=record.opened_at,
+            closed_at=record.closed_at,
+            metadata=dict(record.metadata),
+        )
+        self._save(updated)
+        return updated
+
+    # ── Read ──────────────────────────────────────────────────
+
+    def get(self, proposal_id: str) -> VoteRecord:
+        """
+        Load a vote record by proposal ID.
+
+        Raises:
+            VoteNotFoundError: if no record exists.
+        """
+        filepath = self._filepath(proposal_id)
+        if not filepath.exists():
+            raise VoteNotFoundError(proposal_id)
+        return self._load(filepath)
+
+    def list_records(
+        self,
+        *,
+        status: str | None = None,
+    ) -> list[VoteRecord]:
+        """
+        Return all vote records, optionally filtered by status.
+        """
+        records: list[VoteRecord] = []
+        for filepath in sorted(self._dir.glob("V-*.json")):
+            try:
+                rec = self._load(filepath)
+            except (json.JSONDecodeError, KeyError):
+                continue  # skip corrupt files
+            if status is not None and rec.status != status:
+                continue
+            records.append(rec)
+        return records
+
+    def has_record(self, proposal_id: str) -> bool:
+        """Check if a vote record exists for the given proposal."""
+        return self._filepath(proposal_id).exists()
+
+    # ── Internal ──────────────────────────────────────────────
+
+    def _filepath(self, proposal_id: str) -> Path:
+        return self._dir / f"V-{proposal_id}.json"
+
+    def _save(self, record: VoteRecord) -> None:
+        payload = json.dumps(record.to_dict(), indent=2, ensure_ascii=False)
+        _atomic_write(self._filepath(record.proposal_id), payload + "\n")
+
+    def _load(self, filepath: Path) -> VoteRecord:
+        text = filepath.read_text(encoding="utf-8")
+        data = json.loads(text)
+        return VoteRecord.from_dict(data)
+
+    # ── Dunder ────────────────────────────────────────────────
+
+    def __repr__(self) -> str:
+        count = len(list(self._dir.glob("V-*.json")))
+        return f"VotingEngine(records={count}, quorum={self._quorum}, threshold={self._threshold}, dir={self._dir})"

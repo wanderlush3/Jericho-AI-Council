@@ -40,7 +40,7 @@
     {
         "id": "F-006",
         "description": "Voting engine — cast votes, tally, quorum check, approval threshold, human veto power",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-005"
         ]
