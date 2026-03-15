@@ -62,3 +62,8 @@ MAX_COUNCIL_SIZE = 15          # Upper limit for expansion
 # ─── Memory Settings ──────────────────────────────────────────
 MAX_MEMORY_CONTEXT_TOKENS = 4000   # Max tokens of memory injected per agent
 SESSION_LOG_FORMAT = "jsonl"        # Append-only session memories
+
+# ─── Proposal Settings ─────────────────────────────────────────
+PROPOSAL_STATUSES = ("draft", "open", "under_review", "decided", "withdrawn")
+PROPOSAL_CATEGORIES = ("character", "governance", "ethics", "expansion", "general")
+REVIEW_STANCES = ("support", "oppose", "neutral")

@@ -32,7 +32,7 @@
     {
         "id": "F-005",
         "description": "Proposal system — create, list, review proposals with structured markdown format and lifecycle tracking",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-003"
         ]

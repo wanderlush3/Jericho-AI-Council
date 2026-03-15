@@ -184,3 +184,55 @@ Implemented the per-agent and shared memory system for the Jericho AI Council:
 6. The old `core_beliefs.md` stubs in per-member dirs can be removed in a cleanup pass — the system does not read them.
 
 ---
+
+## Session: S-FEAT-00000005
+**Timestamp:** 2026-03-15 09:29:00
+**Feature:** `F-005` — Proposal System
+**Status:** completed
+
+### Summary
+Implemented the proposal system for the Jericho AI Council:
+
+- **Created `core/proposals.py`** (~350 lines) — Four main components:
+  - **Exception hierarchy**: `ProposalError` (base), `ProposalNotFoundError`, `ProposalValidationError`, `ProposalLifecycleError`.
+  - **Data classes**: `Review` (frozen — reviewer, stance, comment, timestamp) and `Proposal` (frozen — id, title, description, author, category, status, created_at, updated_at, body, reviews list, metadata dict). Both have `to_dict()`, `from_dict()`, and `create()` factory methods.
+  - **Lifecycle state machine**: `draft → open → under_review → decided`, with `withdrawn` reachable from any non-terminal state. Transitions validated via `_VALID_TRANSITIONS` dict.
+  - **`ProposalManager` class** — filesystem-backed, one JSON file per proposal (`P-XXXX.json`):
+    - `create()` — auto-generates sequential `P-XXXX` IDs, validates required fields, saves as JSON
+    - `get()` / `list_proposals()` — load by ID or list with optional filters (status, category, author)
+    - `update_status()` — validates lifecycle transitions
+    - `add_review()` — appends review, validates reviewer uniqueness (case-insensitive) and proposal status
+    - `update()` — updates mutable fields only (title, description, body, category, metadata), rejects immutables
+    - `withdraw()` — author-only withdrawal with identity verification
+  - **Atomic writes** via temp-file + rename pattern (same as memory system)
+- **Updated `config/settings.py`** — added `PROPOSAL_STATUSES`, `PROPOSAL_CATEGORIES`, `REVIEW_STANCES` tuples.
+- **Created `tests/test_proposals.py`** (~400 lines) — 71 tests across 11 classes:
+  - `TestReview` (5): fields, frozen, roundtrip, create factory, invalid stance
+  - `TestProposal` (6): fields, frozen, roundtrip, create factory, invalid category, defaults
+  - `TestProposalManagerInit` (3): directory creation, existing dir, repr
+  - `TestProposalCreation` (8): basic, sequential IDs, persistence, body+metadata, invalid category, empty title/author, whitespace stripping
+  - `TestProposalRetrieval` (7): get by ID, not found, list all, filter by status/category/author, empty list, combined filters
+  - `TestStatusLifecycle` (12): valid transitions (draft→open→under_review→decided), invalid skip, terminal states, withdraw from draft/open/under_review, cannot withdraw from decided, cannot unwithdraw, unknown status
+  - `TestReviews` (8): add review, multiple reviewers, duplicate rejected (case-insensitive), draft/decided rejected, under_review allowed, persistence
+  - `TestProposalUpdate` (8): update title/body/category, invalid category, immutable fields rejected (id/author), not found, multiple fields
+  - `TestWithdraw` (4): author can withdraw, case-insensitive, non-author rejected, cannot withdraw decided
+  - `TestEdgeCases` (5): unicode, long body, corrupt JSON skipped, legacy .md ignored, ID sequencing with gaps
+  - `TestExceptions` (4): hierarchy, not-found fields, validation fields, lifecycle fields
+- **All 213 tests pass** (142 existing + 71 new) in 3.75s with zero regressions.
+
+### Technical Debt
+- Legacy markdown proposals (`2023-10-15_ethical_constraints.md`, `2023-10-16_curiosity_framework.md`) remain in `data/proposals/`. They are harmlessly ignored by `ProposalManager` (which only reads `P-*.json`), but could be cleaned up or migrated into JSON format.
+- The `_atomic_write` helper in `proposals.py` is duplicated from `memory.py`. A shared utility module (`core/utils.py`) could be created to DRY this up.
+- Temp files from S-FEAT-00000002 (`test_out.txt`, `test_results.txt`, `tmp_status.txt`) still not cleaned up.
+
+### Advice for Next Agent
+1. **F-006 (Voting Engine) is now unblocked** — it depends only on F-005 (now completed). This is the natural next step, as it builds directly on the proposal system.
+2. **F-011 (Character Templates) is also unblocked** — depends only on F-001. It's independent of the governance chain.
+3. **F-006 is recommended next** — it unlocks F-013 (Character Evolution), F-016 (Session Analytics), and F-019 (Council Expansion).
+4. The proposal system is importable as: `from core.proposals import ProposalManager, Proposal, Review`
+5. Usage pattern: `mgr = ProposalManager(); p = mgr.create("Title", "Desc", author="Sage", category="ethics")`
+6. The `ProposalManager` reads/writes `P-XXXX.json` files — integrate with the voting engine by reading `proposal.reviews` and `proposal.status`.
+7. Lifecycle enforcement: reviews can only be added to `open` or `under_review` proposals. The voting engine should transition proposals to `decided` after tallying votes.
+8. Consider DRYing up `_atomic_write` into `core/utils.py` when working on the next feature.
+
+---
