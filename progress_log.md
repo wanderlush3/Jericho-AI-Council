@@ -691,3 +691,83 @@ Implemented collaborative character design — council members contribute to cha
    ```
 9. Key design note: The design workflow is separate from but integrates with `CharacterManager`. After `assemble_character()`, the template exists in both the design record (via `target_character_id`) and the character store (as `CH-XXXX.json`). The design record preserves all contributions as the creative provenance.
 10. **DRY up `_atomic_write`** into `core/utils.py` — it is now in nine separate files.
+
+---
+
+## Session: S-FEAT-00000013
+**Timestamp:** 2026-03-15 11:23:00
+**Feature:** `F-013` — Character Evolution
+**Status:** completed
+
+### Summary
+Implemented governance-backed character modification via proposals and voting:
+
+- **Created `core/character_evolution.py`** (~530 lines) — Five main components:
+  - **Exception hierarchy**: `EvolutionError` (base), `EvolutionNotFoundError` (with `evolution_id`), `EvolutionValidationError` (with `errors` list), `EvolutionStateError` (with `evolution_id`, `message`).
+  - **Data classes**: `CharacterChange` (frozen — change_type, field_name, old_value, new_value, rationale) and `EvolutionRecord` (frozen — evolution_id, character_id, author, changes list, proposal_id, vote_record_id, status, applied_character_id, summary, timestamps, metadata). Both have `to_dict()`, `from_dict()`, and `create()` factory methods.
+  - **Lifecycle state machine**: `draft → proposed → voting → decided → applied`, with `rejected` reachable from `voting`. Transitions validated via `_VALID_TRANSITIONS` dict.
+  - **Change types**: `trait_add`, `trait_remove`, `trait_modify`, `field_update`, `version_bump` — each applied atomically to a new character version.
+  - **`CharacterEvolution` class** — filesystem-backed, one JSON file per evolution (`EV-XXXX.json`):
+    - `create_evolution()` — validates character exists and is `active`, validates changes count and types, auto-sequential ID
+    - `submit_for_review()` — creates a `Proposal` (category=`"character"`) via `ProposalManager`, transitions to `proposed`
+    - `open_voting()` — opens voting via `VotingEngine`, transitions proposal to `under_review`, transitions to `voting`
+    - `resolve()` — closes voting, tallies results, transitions to `decided` (approved) or `rejected` based on quorum/threshold/veto
+    - `apply_evolution()` — creates new character version via `CharacterManager.create_version()`, applies each change, activates new version, links `applied_character_id`
+    - `get()` / `list_evolutions()` / `has_evolution()` — query methods with filtering (character_id, status, author)
+  - **Atomic writes** via temp-file + rename pattern (same as other modules)
+- **Updated `config/settings.py`** — added `EVOLUTION_DIR`, `EVOLUTION_TYPES`, `EVOLUTION_STATUSES`, `MAX_EVOLUTION_CHANGES`.
+- **Created `tests/test_character_evolution.py`** (~550 lines) — 71 tests across 12 classes:
+  - `TestCharacterChange` (6): fields, frozen, roundtrip, create factory, invalid change_type, empty field_name
+  - `TestEvolutionRecord` (7): fields, frozen, roundtrip, create factory, empty ID, empty character_id, empty author
+  - `TestCharacterEvolutionInit` (3): dir creation, properties, repr
+  - `TestCreateEvolution` (8): basic, sequential IDs, persistence, multiple changes, no changes, character not found, character not active, exceeds max changes
+  - `TestSubmitForReview` (6): basic, creates proposal, links proposal_id, already submitted, not found, wrong status
+  - `TestOpenVoting` (5): basic, links vote record, not proposed, already voting, not found
+  - `TestResolve` (7): approved, rejected below threshold, rejected no quorum, already resolved, not in voting, handles veto, not found
+  - `TestApplyEvolution` (8): creates new version, applies trait_add, applies trait_remove, applies field_update, links applied_character_id, not decided, already applied, not found
+  - `TestQueryMethods` (8): get, not found, list all, filter by character_id, filter by status, filter by author, has_evolution, corrupt skip
+  - `TestLifecycleIntegration` (4): full happy path, rejected path, cannot skip states, persistence roundtrip
+  - `TestEdgeCases` (5): unicode, multiple changes, large rationale, trait_modify, version_bump
+  - `TestExceptions` (4): hierarchy, not found fields, validation fields, state error fields
+- **All 776 tests pass** (705 existing + 71 new) in 8.99s with zero regressions.
+
+### Technical Debt
+- The `_atomic_write` helper is now duplicated in **ten** modules (`memory.py`, `proposals.py`, `voting.py`, `session.py`, `agent_chat.py`, `human_chat.py`, `discussion.py`, `characters.py`, `character_design.py`, `character_evolution.py`). A shared `core/utils.py` should be created to DRY this up — noted since S-FEAT-00000005.
+- The `_apply_change` method for `trait_modify` does a remove-then-add, which silently succeeds even if the original trait doesn't exist. Could be made stricter.
+- No automatic notification to council members when their characters are evolved — could be added as a memory event in the future.
+- Temp files from S-FEAT-00000002 (`test_out.txt`, `test_results.txt`, `tmp_status.txt`) still not cleaned up. `test_evo_output.txt` was also added during this session and should be cleaned up.
+
+### Advice for Next Agent
+1. **F-014 (CLI Interface) is unblocked** — depends on F-007 (completed). This is a good next step to provide a user interface for all the features built so far.
+2. **F-016 (Session Analytics) is unblocked** — depends on F-006 + F-007 (both completed).
+3. **F-017 (Test Suite) is unblocked** — depends on F-002–F-006 (all completed). Each feature already has comprehensive tests, so F-017 may focus on cross-module integration or E2E testing.
+4. **F-018 (Memory Influence) is unblocked** — depends on F-004 + F-007 (both completed).
+5. **F-019 (Council Expansion) is unblocked** — depends on F-006 + F-003 (both completed).
+6. **F-020 (Prompt Evolution History) is NOT yet unblocked** — depends on F-013 (now completed) + F-015 (pending, depends on F-014).
+7. The character evolution module is importable as: `from core.character_evolution import CharacterEvolution, EvolutionRecord, CharacterChange`
+8. Usage pattern:
+   ```python
+   chars = CharacterManager()
+   proposals = ProposalManager()
+   engine = VotingEngine()
+   evo = CharacterEvolution(
+       character_manager=chars,
+       proposal_manager=proposals,
+       voting_engine=engine,
+   )
+   change = CharacterChange.create("trait_add", "courage",
+                                    new_value={"trait_type": "personality",
+                                               "name": "courage",
+                                               "description": "Brave",
+                                               "intensity": 0.7},
+                                    rationale="Needs more bravery")
+   rec = evo.create_evolution("CH-0001", author="Sage", changes=[change])
+   rec = evo.submit_for_review(rec.evolution_id)
+   rec = evo.open_voting(rec.evolution_id)
+   # ... cast votes ...
+   rec = evo.resolve(rec.evolution_id)
+   if rec.status == "decided":
+       template = evo.apply_evolution(rec.evolution_id)
+   ```
+9. Key design note: Each evolution creates a **new version** of the character — the original is superseded, changes are applied to the copy. This preserves full history and is non-destructive.
+10. **DRY up `_atomic_write`** into `core/utils.py` — it is now in ten separate files.

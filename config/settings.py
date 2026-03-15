@@ -81,3 +81,9 @@ CHARACTER_REQUIRED_TRAIT_TYPES = ("personality", "values", "flaws")
 CHARACTER_DESIGNS_DIR = DATA_DIR / "character_designs"
 DEFAULT_DESIGN_PHASES = ("concept", "traits", "backstory", "prompt", "review")
 MAX_DESIGN_CONTRIBUTORS = 9            # Full council
+
+# ─── Character Evolution Settings ─────────────────────────────
+EVOLUTION_DIR = DATA_DIR / "character_evolutions"
+EVOLUTION_TYPES = ("trait_add", "trait_remove", "trait_modify", "field_update", "version_bump")
+EVOLUTION_STATUSES = ("draft", "proposed", "voting", "decided", "applied", "rejected")
+MAX_EVOLUTION_CHANGES = 10              # Max changes per evolution proposal

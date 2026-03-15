@@ -102,7 +102,7 @@
     {
         "id": "F-013",
         "description": "Character evolution — propose and vote on modifications to existing characters via governance system",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-012",
             "F-006"
