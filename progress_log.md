@@ -942,3 +942,67 @@ Implemented F-017 by adding shared test fixtures and cross-module integration te
 2. New integration tests can be added to `tests/test_integration.py` or to new files — `conftest.py` fixtures are available project-wide.
 3. Existing test files can be gradually migrated to use `conftest.py` helpers instead of local duplicates.
 4. **DRY up `_atomic_write`** into `core/utils.py` — it is now in ten separate files.
+
+---
+
+## F-018: Memory Influence ✓
+
+**Date:** 2026-03-15
+
+### Summary
+Memories now affect agent responses via context injection with relevance scoring. A new `MemoryInfluence` engine scores and selects the most relevant core beliefs and session memories for a given conversational context, formats them as markdown, and injects them into prompt builders across all four chat/session modules, making agents contextually aware and consistent based on their past experience.
+
+### Files Created
+- **`core/memory_influence.py`** — Main module (~300 lines). Contains:
+  - `ScoredMemory`, `ScoredBelief`, `MemoryContext` frozen data classes
+  - `MemoryInfluence` engine with keyword-based Jaccard similarity scoring
+  - Configurable thresholds: memory/belief limits, min relevance, belief boost multiplier
+  - `format_for_prompt()` — renders scored context as injectable markdown
+  - `extract_keywords()` — convenience helper for deriving keywords from titles/topics
+  - `_tokenise()`, `_jaccard()` — internal scoring primitives with stop-word filtering
+
+- **`tests/test_memory_influence.py`** — Comprehensive test suite (~450 lines, 71 tests):
+  - `TestTokenise` (6 tests) — tokenisation, stop word removal, unicode, edge cases
+  - `TestJaccard` (6 tests) — similarity metric, degenerate cases
+  - `TestScoredMemory` (5 tests) — data class fields, frozen, roundtrip
+  - `TestScoredBelief` (5 tests) — data class fields, frozen, roundtrip
+  - `TestMemoryContext` (4 tests) — has_content property, roundtrip
+  - `TestMemoryInfluenceInit` (3 tests) — defaults, custom values, repr
+  - `TestScoreMemories` (8 tests) — scoring, thresholds, limits, sort order
+  - `TestScoreBeliefs` (7 tests) — scoring, boost multiplier, capping at 1.0
+  - `TestBuildContext` (4 tests) — end-to-end from filesystem, limits, case insensitivity
+  - `TestFormatForPrompt` (6 tests) — empty input, beliefs-only, memories-only, both
+  - `TestExtractKeywords` (4 tests) — extraction, stop words, sorting
+  - `TestEdgeCases` (7 tests) — unicode, long content, all-below-threshold, special chars
+  - `TestSessionIntegration`, `TestDiscussionIntegration`, `TestAgentChatIntegration`, `TestHumanChatIntegration` (4 tests) — integration verification
+
+### Files Modified
+- **`config/settings.py`** — Added 4 memory influence settings: `MEMORY_INFLUENCE_MAX_MEMORIES`, `MEMORY_INFLUENCE_MAX_BELIEFS`, `MEMORY_INFLUENCE_MIN_RELEVANCE`, `MEMORY_INFLUENCE_BELIEF_BOOST`
+- **`core/session.py`** — `_build_briefing_prompt()` and `_build_discussion_prompt()` accept `memory_context_text`. `SessionOrchestrator.__init__` gains optional `memory_influence` parameter. `brief_member()` and `discuss()` inject memory context when engine is configured.
+- **`core/discussion.py`** — `_build_discussion_prompt()` accepts `memory_context_text`. `DiscussionManager.__init__` gains optional `memory_influence` parameter. `run_round()` injects memory context.
+- **`core/agent_chat.py`** — `_build_opening_prompt()` and `_build_chat_prompt()` accept `memory_context_text`. `AgentChat.__init__` gains optional `memory_influence` parameter. `exchange()` injects memory context.
+- **`core/human_chat.py`** — `_build_human_chat_prompt()` accepts `memory_context_text`. `HumanChat.__init__` gains optional `memory_influence` parameter. `get_agent_response()` injects memory context.
+- **`core/cli.py`** — Added `memory` subcommand group with `beliefs <member>` and `recent <member>` commands.
+- **`core/dashboard.py`** — Added `render_member_beliefs()` and `render_recent_memories()` methods.
+- **`features.json`** — F-018 status → `done`
+
+### Test Results
+- **1075 tests pass** (1004 existing + 71 new) with zero regressions.
+
+### Design Decisions
+- **Jaccard similarity scoring** — Simple, deterministic, zero external dependencies. Tokenises content into lowercase word sets, filters stop words, computes `|intersection| / |union|`. Good enough for keyword-level relevance without heavyweight NLP.
+- **Belief boost multiplier** (default 1.5×) — Core beliefs represent persistent stance and should score higher than ephemeral session memories. Capped at 1.0 after boosting.
+- **Additive integration** — Every prompt builder gains an optional `memory_context_text` parameter. When the `MemoryInfluence` engine is not configured (i.e., passed as `None`), existing behavior is preserved with zero overhead — the feature is opt-in per manager instance.
+- **Fallback in briefing** — `_build_briefing_prompt()` uses scored context when available but falls back to the original bare memory list when `memory_context_text` is empty, maintaining backward compatibility.
+
+### Technical Debt
+- The `_atomic_write` helper is still duplicated across eleven modules (now including `memory_influence.py` is clean — it doesn't need it).
+- Stop-word list is hardcoded in English; a future i18n pass could make it configurable.
+- The scoring algorithm is keyword-level; a future enhancement could add embedding-based similarity.
+
+### Advice for Next Agent
+1. **F-019 (Council Expansion) and F-020 (Prompt Evolution History) are unblocked.**
+2. To enable memory influence for a session, pass `memory_influence=MemoryInfluence()` when constructing `SessionOrchestrator`, `DiscussionManager`, `AgentChat`, or `HumanChat`. Without it, behavior is unchanged.
+3. The `MemoryInfluence` class is fully configurable via constructor kwargs or `config/settings.py` constants.
+4. **DRY up `_atomic_write`** into `core/utils.py` — it is now in ten/eleven separate files.
+

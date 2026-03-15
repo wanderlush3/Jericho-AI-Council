@@ -1,0 +1,38 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.12.9, pytest-8.4.2, pluggy-1.6.0
+rootdir: C:\ai_tools\jericho
+configfile: pyproject.toml
+plugins: asyncio-1.3.0, anyio-4.9.0, hydra-core-1.3.2
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 776 items
+
+tests\test_agent_chat.py ............................................... [  6%]
+....................                                                     [  8%]
+tests\test_api_client.py .............................................   [ 14%]
+tests\test_character_design.py ......................................... [ 19%]
+............................                                             [ 23%]
+tests\test_character_evolution.py ...................................... [ 28%]
+.................................                                        [ 32%]
+tests\test_characters.py ............................................... [ 38%]
+..............................                                           [ 42%]
+tests\test_discussion.py ............................................... [ 48%]
+.....................                                                    [ 51%]
+tests\test_human_chat.py ............................................... [ 57%]
+..................                                                       [ 59%]
+tests\test_memory.py ................................................... [ 66%]
+.......                                                                  [ 67%]
+tests\test_proposals.py ................................................ [ 73%]
+.......................                                                  [ 76%]
+tests\test_registry.py .......................................           [ 81%]
+tests\test_session.py .................................................. [ 87%]
+..........................                                               [ 90%]
+tests\test_voting.py ................................................... [ 97%]
+...................                                                      [100%]
+
+============================== warnings summary ===============================
+tests/test_agent_chat.py::TestExchange::test_basic_exchange
+  C:\ai_tools\jericho\tests\test_agent_chat.py:312: DeprecationWarning: There is no current event loop
+    loop = asyncio.get_event_loop()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 776 passed, 1 warning in 8.99s ========================

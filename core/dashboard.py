@@ -486,6 +486,58 @@ class DashboardRenderer:
             lines.append(f"  [{colour}]{s}:[/{colour}] {cnt}")
         self.console.print(Panel("\n".join(lines), title=f"[bold]{title}[/bold]", border_style="dim"))
 
+    # ── Memory ─────────────────────────────────────────────
+
+    def render_member_beliefs(self, member_name: str, beliefs: Sequence[Any]) -> None:
+        """Render a table of core beliefs for a member."""
+        if not beliefs:
+            self.console.print(f"[dim]No core beliefs found for {member_name}.[/dim]")
+            return
+
+        table = Table(
+            title=f"Core Beliefs — {member_name}",
+            title_style="bold cyan",
+            border_style="dim",
+            show_lines=True,
+        )
+        table.add_column("Topic", style="bold magenta")
+        table.add_column("Belief")
+        table.add_column("Source", style="dim")
+
+        for b in beliefs:
+            table.add_row(b.topic, _truncate(b.content, 80), b.source)
+
+        self.console.print(table)
+        self.console.print(f"\n[bold]{len(beliefs)}[/bold] belief(s)", highlight=False)
+
+    def render_recent_memories(self, member_name: str, memories: Sequence[Any]) -> None:
+        """Render a table of recent session memories for a member."""
+        if not memories:
+            self.console.print(f"[dim]No recent memories found for {member_name}.[/dim]")
+            return
+
+        table = Table(
+            title=f"Recent Memories — {member_name}",
+            title_style="bold cyan",
+            border_style="dim",
+            show_lines=False,
+        )
+        table.add_column("Type", style="magenta")
+        table.add_column("Content")
+        table.add_column("Session", style="dim")
+        table.add_column("Time", style="dim")
+
+        for m in memories:
+            table.add_row(
+                m.event_type,
+                _truncate(m.content, 60),
+                m.session_id,
+                m.timestamp[:19] if m.timestamp else "",
+            )
+
+        self.console.print(table)
+        self.console.print(f"\n[bold]{len(memories)}[/bold] memor(y/ies)", highlight=False)
+
     # ── Feedback Messages ──────────────────────────────────
 
     def render_success(self, message: str) -> None:

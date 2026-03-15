@@ -30,6 +30,7 @@ from typing import Any
 from config.settings import CONVERSATIONS_DIR
 from core.api_client import APIClient, ChatMessage, ChatResponse
 from core.memory import AgentMemory, MemoryEntry, SharedMemory
+from core.memory_influence import MemoryInfluence
 from core.registry import CouncilMember, CouncilRegistry
 
 
@@ -231,6 +232,7 @@ def _build_briefing_prompt(
     record: SessionRecord,
     member: CouncilMember,
     recent_memories: list[MemoryEntry],
+    memory_context_text: str = "",
 ) -> str:
     """Build the briefing message that introduces a member to the session."""
     parts = [
@@ -247,7 +249,10 @@ def _build_briefing_prompt(
             + ", ".join(record.participants)
         )
 
-    if recent_memories:
+    if memory_context_text:
+        parts.append(f"\n{memory_context_text}")
+    elif recent_memories:
+        # Fallback: bare memory list when no scored context is available
         parts.append("\n### Your Recent Memories")
         for mem in recent_memories[:5]:
             parts.append(f"- [{mem.event_type}] {mem.content}")
@@ -265,6 +270,7 @@ def _build_discussion_prompt(
     topic: str,
     member: CouncilMember,
     prior_messages: list[SessionMessage],
+    memory_context_text: str = "",
 ) -> str:
     """Build a prompt for a member to contribute to a discussion."""
     parts = [f"## Discussion Topic\n{topic}"]
@@ -273,6 +279,9 @@ def _build_discussion_prompt(
         parts.append("\n### Prior Contributions")
         for msg in prior_messages[-10:]:  # limit context window
             parts.append(f"**{msg.speaker}:** {msg.content}")
+
+    if memory_context_text:
+        parts.append(f"\n{memory_context_text}")
 
     parts.append(
         f"\n---\n"
@@ -346,12 +355,14 @@ class SessionOrchestrator:
         api_client: APIClient,
         conversations_dir: Path | None = None,
         shared_memory: SharedMemory | None = None,
+        memory_influence: MemoryInfluence | None = None,
     ) -> None:
         self._registry = registry
         self._api_client = api_client
         self._dir = conversations_dir or CONVERSATIONS_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
         self._shared_memory = shared_memory or SharedMemory()
+        self._memory_influence = memory_influence
 
     # ── Properties ────────────────────────────────────────────
 
@@ -465,8 +476,17 @@ class SessionOrchestrator:
         agent_mem = AgentMemory(member.name)
         recent = agent_mem.get_recent_memories(limit=memory_limit)
 
+        # Build memory context if influence engine is configured
+        memory_text = ""
+        if self._memory_influence is not None:
+            keywords = MemoryInfluence.extract_keywords(
+                f"{record.title} {record.agenda}"
+            )
+            ctx = self._memory_influence.build_context(member.name, keywords)
+            memory_text = ctx.formatted_text
+
         # Build and send briefing
-        prompt = _build_briefing_prompt(record, member, recent)
+        prompt = _build_briefing_prompt(record, member, recent, memory_text)
         response = await self._api_client.chat(
             member,
             [ChatMessage(role="user", content=prompt)],
@@ -554,7 +574,15 @@ class SessionOrchestrator:
 
         for name in member_names:
             member = self._registry.get(name)
-            prompt = _build_discussion_prompt(topic, member, discussion_msgs)
+
+            # Build memory context if influence engine is configured
+            memory_text = ""
+            if self._memory_influence is not None:
+                keywords = MemoryInfluence.extract_keywords(topic)
+                ctx = self._memory_influence.build_context(member.name, keywords)
+                memory_text = ctx.formatted_text
+
+            prompt = _build_discussion_prompt(topic, member, discussion_msgs, memory_text)
 
             response = await self._api_client.chat(
                 member,

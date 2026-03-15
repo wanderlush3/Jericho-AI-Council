@@ -23,6 +23,7 @@ from typing import Any
 from config.settings import CONVERSATIONS_DIR
 from core.api_client import APIClient, ChatMessage, ChatResponse
 from core.memory import AgentMemory, MemoryEntry, SharedMemory
+from core.memory_influence import MemoryInfluence
 from core.registry import CouncilMember, CouncilRegistry
 
 
@@ -186,6 +187,7 @@ def _build_human_chat_prompt(
     member: CouncilMember,
     messages: list[HumanChatMessage],
     topic: str,
+    memory_context_text: str = "",
 ) -> str:
     """Build a prompt for the council member to respond to the human."""
     parts = ["## Direct Conversation with Human Operator"]
@@ -197,6 +199,9 @@ def _build_human_chat_prompt(
         for msg in messages[-10:]:  # limit context window
             label = "Human" if msg.role == "human" else member.name
             parts.append(f"**{label}:** {msg.content}")
+
+    if memory_context_text:
+        parts.append(f"\n{memory_context_text}")
 
     parts.append(
         f"\n---\n"
@@ -236,12 +241,14 @@ class HumanChat:
         api_client: APIClient,
         conversations_dir: Path | None = None,
         shared_memory: SharedMemory | None = None,
+        memory_influence: MemoryInfluence | None = None,
     ) -> None:
         self._registry = registry
         self._api_client = api_client
         self._dir = conversations_dir or CONVERSATIONS_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
         self._shared_memory = shared_memory or SharedMemory()
+        self._memory_influence = memory_influence
 
     # ── Properties ────────────────────────────────────────────
 
@@ -347,8 +354,16 @@ class HumanChat:
         effective_topic = record.topic
 
         # Build prompt from conversation history
+        memory_text = ""
+        if self._memory_influence is not None:
+            keywords = MemoryInfluence.extract_keywords(
+                effective_topic or record.title
+            )
+            ctx = self._memory_influence.build_context(member.name, keywords)
+            memory_text = ctx.formatted_text
+
         prompt = _build_human_chat_prompt(
-            member, record.messages, effective_topic
+            member, record.messages, effective_topic, memory_text
         )
 
         # Build API messages

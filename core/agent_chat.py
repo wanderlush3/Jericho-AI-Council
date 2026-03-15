@@ -24,6 +24,7 @@ from typing import Any
 from config.settings import CONVERSATIONS_DIR
 from core.api_client import APIClient, ChatMessage, ChatResponse
 from core.memory import AgentMemory, MemoryEntry, SharedMemory
+from core.memory_influence import MemoryInfluence
 from core.registry import CouncilMember, CouncilRegistry
 
 
@@ -179,6 +180,7 @@ def _build_opening_prompt(
     member: CouncilMember,
     partner_name: str,
     topic: str,
+    memory_context_text: str = "",
 ) -> str:
     """Build the opening prompt for a conversation."""
     parts = [
@@ -186,6 +188,10 @@ def _build_opening_prompt(
     ]
     if topic:
         parts.append(f"\n**Topic:** {topic}")
+
+    if memory_context_text:
+        parts.append(f"\n{memory_context_text}")
+
     parts.append(
         f"\n---\n"
         f"You are **{member.name}** ({member.role}). You are starting a "
@@ -204,6 +210,7 @@ def _build_chat_prompt(
     partner_name: str,
     exchanges: list[ChatExchange],
     topic: str,
+    memory_context_text: str = "",
 ) -> str:
     """Build a continuation prompt with conversation history."""
     parts = [f"## Conversation with {partner_name}"]
@@ -214,6 +221,9 @@ def _build_chat_prompt(
         parts.append("\n### Conversation So Far")
         for ex in exchanges[-10:]:  # limit context window
             parts.append(f"**{ex.speaker}:** {ex.content}")
+
+    if memory_context_text:
+        parts.append(f"\n{memory_context_text}")
 
     parts.append(
         f"\n---\n"
@@ -255,12 +265,14 @@ class AgentChat:
         api_client: APIClient,
         conversations_dir: Path | None = None,
         shared_memory: SharedMemory | None = None,
+        memory_influence: MemoryInfluence | None = None,
     ) -> None:
         self._registry = registry
         self._api_client = api_client
         self._dir = conversations_dir or CONVERSATIONS_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
         self._shared_memory = shared_memory or SharedMemory()
+        self._memory_influence = memory_influence
 
     # ── Properties ────────────────────────────────────────────
 
@@ -381,11 +393,19 @@ class AgentChat:
             partner = others[0] if others else "the group"
 
         # Build prompt
+        memory_text = ""
+        if self._memory_influence is not None:
+            keywords = MemoryInfluence.extract_keywords(
+                effective_topic or record.title
+            )
+            ctx = self._memory_influence.build_context(member.name, keywords)
+            memory_text = ctx.formatted_text
+
         if not record.exchanges:
-            prompt = _build_opening_prompt(member, partner, effective_topic)
+            prompt = _build_opening_prompt(member, partner, effective_topic, memory_text)
         else:
             prompt = _build_chat_prompt(
-                member, partner, record.exchanges, effective_topic
+                member, partner, record.exchanges, effective_topic, memory_text
             )
 
         # Build multi-turn message history for the API

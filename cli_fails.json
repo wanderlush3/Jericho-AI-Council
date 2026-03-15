@@ -1,0 +1,10 @@
+{
+  "failed": [
+    "FAILED tests/test_cli.py::TestStatusCommand::test_status_output - AssertionEr...",
+    "FAILED tests/test_cli.py::TestStatusCommand::test_status_counts - AssertionEr..."
+  ],
+  "errors": [
+    "C:\\\\ai_tools\\\\jericho\\\\tests\\\\test_cli.py:591: AssertionError: assert 'Council Members:' in '\\\\n\\u250c\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u25",
+    "C:\\\\ai_tools\\\\jericho\\\\tests\\\\test_cli.py:605: AssertionError: assert 'Council Members: 2' in '\\\\n\\u250c\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u2500\\u"
+  ]
+}

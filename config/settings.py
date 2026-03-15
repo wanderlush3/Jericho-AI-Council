@@ -64,6 +64,12 @@ MAX_COUNCIL_SIZE = 15          # Upper limit for expansion
 MAX_MEMORY_CONTEXT_TOKENS = 4000   # Max tokens of memory injected per agent
 SESSION_LOG_FORMAT = "jsonl"        # Append-only session memories
 
+# ─── Memory Influence Settings ────────────────────────────────
+MEMORY_INFLUENCE_MAX_MEMORIES = 10     # Max session log entries to inject
+MEMORY_INFLUENCE_MAX_BELIEFS = 5       # Max core beliefs to inject
+MEMORY_INFLUENCE_MIN_RELEVANCE = 0.1   # Minimum relevance score threshold
+MEMORY_INFLUENCE_BELIEF_BOOST = 1.5    # Multiplier for belief scores
+
 # ─── Proposal Settings ─────────────────────────────────────────
 PROPOSAL_STATUSES = ("draft", "open", "under_review", "decided", "withdrawn")
 PROPOSAL_CATEGORIES = ("character", "governance", "ethics", "expansion", "general")

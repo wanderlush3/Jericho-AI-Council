@@ -336,6 +336,51 @@ def analytics_member(name: str) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════
+# Memory Commands
+# ═══════════════════════════════════════════════════════════════
+
+
+@cli.group()
+def memory() -> None:
+    """View agent memory — core beliefs and recent session memories."""
+
+
+@memory.command("beliefs")
+@click.argument("member_name")
+def memory_beliefs(member_name: str) -> None:
+    """Show core beliefs for a council member."""
+    from core.memory import AgentMemory
+
+    agent_mem = AgentMemory(member_name)
+
+    try:
+        beliefs = agent_mem.read_core_beliefs()
+    except Exception as exc:
+        _error(f"Failed to read beliefs for '{member_name}': {exc}")
+        return
+
+    _renderer.render_member_beliefs(member_name, beliefs)
+
+
+@memory.command("recent")
+@click.argument("member_name")
+@click.option("--limit", default=10, type=int, help="Number of recent memories to show.")
+def memory_recent(member_name: str, limit: int) -> None:
+    """Show recent session memories for a council member."""
+    from core.memory import AgentMemory
+
+    agent_mem = AgentMemory(member_name)
+
+    try:
+        memories = agent_mem.get_recent_memories(limit=limit)
+    except Exception as exc:
+        _error(f"Failed to read memories for '{member_name}': {exc}")
+        return
+
+    _renderer.render_recent_memories(member_name, memories)
+
+
+# ═══════════════════════════════════════════════════════════════
 # Status Command
 # ═══════════════════════════════════════════════════════════════
 

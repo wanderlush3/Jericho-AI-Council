@@ -28,6 +28,7 @@ from config.settings import (
 )
 from core.api_client import APIClient, ChatMessage, ChatResponse
 from core.memory import AgentMemory, MemoryEntry, SharedMemory
+from core.memory_influence import MemoryInfluence
 from core.proposals import Proposal, ProposalManager
 from core.registry import CouncilMember, CouncilRegistry
 
@@ -215,6 +216,7 @@ def _build_discussion_prompt(
     proposal: Proposal,
     contributions: list[DiscussionContribution],
     round_number: int,
+    memory_context_text: str = "",
 ) -> str:
     """Build a discussion prompt that includes proposal details and history."""
     parts = [
@@ -233,6 +235,9 @@ def _build_discussion_prompt(
             parts.append(
                 f"**{c.speaker}** (round {c.round_number}): {c.content}"
             )
+
+    if memory_context_text:
+        parts.append(f"\n{memory_context_text}")
 
     parts.append(
         f"\n---\n"
@@ -282,6 +287,7 @@ class DiscussionManager:
         proposal_manager: ProposalManager,
         discussions_dir: Path | None = None,
         shared_memory: SharedMemory | None = None,
+        memory_influence: MemoryInfluence | None = None,
     ) -> None:
         self._registry = registry
         self._api_client = api_client
@@ -289,6 +295,7 @@ class DiscussionManager:
         self._dir = discussions_dir or DISCUSSIONS_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
         self._shared_memory = shared_memory or SharedMemory()
+        self._memory_influence = memory_influence
 
     # ── Properties ────────────────────────────────────────────
 
@@ -413,8 +420,20 @@ class DiscussionManager:
                 list(record.contributions) + new_contributions
             )
             prompt = _build_discussion_prompt(
-                member, proposal, all_contributions, round_number
+                member, proposal, all_contributions, round_number,
             )
+
+            # Inject memory context if influence engine is configured
+            if self._memory_influence is not None:
+                keywords = MemoryInfluence.extract_keywords(
+                    f"{proposal.title} {proposal.description}"
+                )
+                ctx = self._memory_influence.build_context(member.name, keywords)
+                if ctx.formatted_text:
+                    prompt = _build_discussion_prompt(
+                        member, proposal, all_contributions, round_number,
+                        memory_context_text=ctx.formatted_text,
+                    )
 
             # Build API messages
             messages = [ChatMessage(role="user", content=prompt)]
