@@ -23,6 +23,10 @@ Thumbs.db
 
 # Test artifacts
 test_output*.txt
+test_*_out*.txt
+test_*_output*.txt
+*_fails.json
+test_failures.json
 .pytest_cache/
 htmlcov/
 .coverage

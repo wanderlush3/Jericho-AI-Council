@@ -13,8 +13,6 @@ Storage:
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,6 +23,7 @@ from core.api_client import APIClient, ChatMessage, ChatResponse
 from core.memory import AgentMemory, MemoryEntry, SharedMemory
 from core.memory_influence import MemoryInfluence
 from core.registry import CouncilMember, CouncilRegistry
+from core.utils import atomic_write
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -164,23 +163,7 @@ class HumanChatRecord:
 
 # ─── Helpers ───────────────────────────────────────────────────
 
-
-def _atomic_write(filepath: Path, content: str) -> None:
-    """Write *content* to *filepath* atomically via temp-file + rename."""
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(
-        dir=filepath.parent, suffix=".tmp", prefix=filepath.stem
-    )
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(content)
-        os.replace(tmp_path, filepath)
-    except BaseException:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+# _atomic_write is imported from core.utils
 
 
 def _build_human_chat_prompt(
@@ -524,7 +507,7 @@ class HumanChat:
         payload = json.dumps(
             record.to_dict(), indent=2, ensure_ascii=False
         )
-        _atomic_write(self._filepath(record.chat_id), payload + "\n")
+        atomic_write(self._filepath(record.chat_id), payload + "\n")
 
     def _load(self, filepath: Path) -> HumanChatRecord:
         text = filepath.read_text(encoding="utf-8")

@@ -12,9 +12,7 @@ Storage: one JSON file per proposal in ``data/proposals/``, named ``P-XXXX.json`
 from __future__ import annotations
 
 import json
-import os
 import re
-import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,6 +24,7 @@ from config.settings import (
     PROPOSAL_STATUSES,
     REVIEW_STANCES,
 )
+from core.utils import atomic_write
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -191,23 +190,7 @@ class Proposal:
 
 # ─── Helpers ───────────────────────────────────────────────────
 
-
-def _atomic_write(filepath: Path, content: str) -> None:
-    """Write *content* to *filepath* atomically via temp-file + rename."""
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(
-        dir=filepath.parent, suffix=".tmp", prefix=filepath.stem
-    )
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(content)
-        os.replace(tmp_path, filepath)
-    except BaseException:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+# _atomic_write is imported from core.utils
 
 
 # ─── Proposal Manager ─────────────────────────────────────────
@@ -476,7 +459,7 @@ class ProposalManager:
 
     def _save(self, proposal: Proposal) -> None:
         payload = json.dumps(proposal.to_dict(), indent=2, ensure_ascii=False)
-        _atomic_write(self._filepath(proposal.id), payload + "\n")
+        atomic_write(self._filepath(proposal.id), payload + "\n")
 
     def _load(self, filepath: Path) -> Proposal:
         text = filepath.read_text(encoding="utf-8")

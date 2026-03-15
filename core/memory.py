@@ -11,14 +11,13 @@ structured text.  All I/O is synchronous — filesystem ops don't need async.
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from config.settings import MEMORIES_DIR
+from core.utils import atomic_append, atomic_write
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -124,32 +123,7 @@ class CoreBelief:
 
 # ─── Helpers ───────────────────────────────────────────────────
 
-
-def _atomic_write(filepath: Path, content: str) -> None:
-    """Write *content* to *filepath* atomically via temp-file + rename."""
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(
-        dir=filepath.parent, suffix=".tmp", prefix=filepath.stem
-    )
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(content)
-        # On Windows, os.replace handles cross-device atomicity.
-        os.replace(tmp_path, filepath)
-    except BaseException:
-        # Clean up the temp file on failure.
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
-
-
-def _atomic_append(filepath: Path, line: str) -> None:
-    """Append a single line to *filepath* (creates file if missing)."""
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    with open(filepath, "a", encoding="utf-8") as f:
-        f.write(line if line.endswith("\n") else line + "\n")
+# _atomic_write and _atomic_append are imported from core.utils
 
 
 # ─── Agent Memory ─────────────────────────────────────────────
@@ -242,7 +216,7 @@ class AgentMemory:
         payload = json.dumps(
             [b.to_dict() for b in beliefs], indent=2, ensure_ascii=False
         )
-        _atomic_write(self.beliefs_path, payload + "\n")
+        atomic_write(self.beliefs_path, payload + "\n")
 
     # ── Session Log ───────────────────────────────────────────
 
@@ -279,7 +253,7 @@ class AgentMemory:
     def append_session_event(self, entry: MemoryEntry) -> None:
         """Append a single event to the session log (JSONL)."""
         line = json.dumps(entry.to_dict(), ensure_ascii=False)
-        _atomic_append(self.session_log_path, line)
+        atomic_append(self.session_log_path, line)
 
     # ── Convenience ───────────────────────────────────────────
 
@@ -355,7 +329,7 @@ class SharedMemory:
     def record_decision(self, decision: dict[str, Any]) -> None:
         """Append a decision record (one JSON line)."""
         line = json.dumps(decision, ensure_ascii=False)
-        _atomic_append(self.decisions_path, line)
+        atomic_append(self.decisions_path, line)
 
     # ── History ───────────────────────────────────────────────
 
@@ -368,4 +342,4 @@ class SharedMemory:
     def append_history(self, entry: str) -> None:
         """Append a markdown section to the history file."""
         text = entry if entry.endswith("\n") else entry + "\n"
-        _atomic_append(self.history_path, "\n" + text)
+        atomic_append(self.history_path, "\n" + text)

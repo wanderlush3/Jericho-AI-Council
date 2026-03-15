@@ -14,9 +14,7 @@ named ``CE-XXXX.json``.
 from __future__ import annotations
 
 import json
-import os
 import re
-import tempfile
 import yaml
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -31,6 +29,7 @@ from config.settings import (
 from core.registry import CouncilRegistry, VALID_API_PROVIDERS
 from core.memory import SharedMemory
 from core.proposals import ProposalManager
+from core.utils import atomic_write
 from core.voting import VotingEngine
 
 
@@ -260,23 +259,7 @@ class ExpansionRecord:
 
 # ─── Helpers ───────────────────────────────────────────────────
 
-
-def _atomic_write(filepath: Path, content: str) -> None:
-    """Write *content* to *filepath* atomically via temp-file + rename."""
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(
-        dir=filepath.parent, suffix=".tmp", prefix=filepath.stem
-    )
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(content)
-        os.replace(tmp_path, filepath)
-    except BaseException:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+# _atomic_write is imported from core.utils
 
 
 # ─── Council Expansion ─────────────────────────────────────────
@@ -604,7 +587,7 @@ class CouncilExpansion:
         filename = f"{spec.name.lower().replace(' ', '_')}.yaml"
         member_filepath = self._members_dir / filename
 
-        _atomic_write(member_filepath, yaml_content)
+        atomic_write(member_filepath, yaml_content)
 
         now = datetime.now(timezone.utc).isoformat()
         updated = ExpansionRecord(
@@ -713,7 +696,7 @@ class CouncilExpansion:
 
     def _save(self, record: ExpansionRecord) -> None:
         payload = json.dumps(record.to_dict(), indent=2, ensure_ascii=False)
-        _atomic_write(self._filepath(record.expansion_id), payload + "\n")
+        atomic_write(self._filepath(record.expansion_id), payload + "\n")
 
     def _load(self, filepath: Path) -> ExpansionRecord:
         text = filepath.read_text(encoding="utf-8")

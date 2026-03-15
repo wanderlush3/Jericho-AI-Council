@@ -18,8 +18,8 @@ from core.memory import (
     MemoryCorruptionError,
     MemoryEntry,
     SharedMemory,
-    _atomic_write,
 )
+from core.utils import atomic_write
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -471,28 +471,28 @@ class TestSharedMemory:
 
 
 class TestAtomicWrites:
-    """Tests for the _atomic_write helper."""
+    """Tests for the atomic_write helper."""
 
     def test_creates_file(self, tmp_path: Path):
         target = tmp_path / "test.json"
-        _atomic_write(target, '{"key": "value"}\n')
+        atomic_write(target, '{"key": "value"}\n')
         assert target.exists()
         assert json.loads(target.read_text(encoding="utf-8")) == {"key": "value"}
 
     def test_overwrites_existing(self, tmp_path: Path):
         target = tmp_path / "test.json"
         target.write_text("old content", encoding="utf-8")
-        _atomic_write(target, "new content")
+        atomic_write(target, "new content")
         assert target.read_text(encoding="utf-8") == "new content"
 
     def test_creates_parent_directories(self, tmp_path: Path):
         target = tmp_path / "a" / "b" / "c.txt"
-        _atomic_write(target, "deep file")
+        atomic_write(target, "deep file")
         assert target.read_text(encoding="utf-8") == "deep file"
 
     def test_no_leftover_tmp_files(self, tmp_path: Path):
         target = tmp_path / "test.txt"
-        _atomic_write(target, "content")
+        atomic_write(target, "content")
         tmp_files = list(tmp_path.glob("*.tmp"))
         assert len(tmp_files) == 0
 

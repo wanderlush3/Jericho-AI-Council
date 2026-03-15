@@ -1117,3 +1117,47 @@ Visual timeline of how characters changed over council decisions. A new read-onl
    diffs = history.diff_versions("CH-0001", "CH-0002")
    ```
 6. Clean up temp files before committing.
+
+---
+
+## Session: S-TECHDEBT-001
+**Timestamp:** 2026-03-15 21:00:00
+**Feature:** Tech Debt Reduction — DRY `_atomic_write`
+**Status:** completed
+
+### Summary
+Addressed the primary tech debt item: the `_atomic_write` function duplicated identically across 11 core modules.
+
+### Changes Made
+
+1. **Created `core/utils.py`** — new shared utility module containing `atomic_write()` and `atomic_append()` functions.
+2. **Refactored 11 core modules** — removed local `_atomic_write` definitions, added `from core.utils import atomic_write`, updated all call sites:
+   - `core/memory.py` (also had `_atomic_append`)
+   - `core/proposals.py`
+   - `core/voting.py`
+   - `core/session.py`
+   - `core/agent_chat.py`
+   - `core/human_chat.py`
+   - `core/discussion.py`
+   - `core/characters.py`
+   - `core/character_design.py`
+   - `core/character_evolution.py`
+   - `core/council_expansion.py`
+3. **Updated `tests/test_memory.py`** — import `atomic_write` from `core.utils` instead of `core.memory`.
+4. **Deleted 5 temp files** from project root: `test_cli_output.txt`, `test_dash_out.txt`, `test_evo_output.txt`, `cli_fails.json`, `test_failures.json`.
+5. **Updated `.gitignore`** — added patterns for broader temp file exclusion.
+
+### Tests
+- Full suite: **1221 passed**, 0 failures, 1 warning (12.4s)
+- No regressions from refactoring
+
+### Net Impact
+- **~200 lines of duplicated code removed** (18 lines × 11 modules)
+- Unused `import os` and `import tempfile` removed from 11 modules
+- Single source of truth for atomic file operations
+
+### Advice for Next Agent
+1. All 20 features remain complete with 1221 passing tests.
+2. The primary tech debt item (`_atomic_write` duplication) is now resolved.
+3. `pytest-asyncio` was already in `pyproject.toml` — no action needed.
+4. The shared utility is importable as: `from core.utils import atomic_write, atomic_append`
