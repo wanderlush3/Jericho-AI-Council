@@ -1240,3 +1240,161 @@ Implemented a read-only report engine that exports governance activity as struct
 3. Generate via CLI: `jericho report generate` (stdout) or `jericho report generate --save`
 4. To add new report sections, add a builder method to `ReportGenerator` and register it in `full_report()`
 5. Reports are saved as Markdown to `data/reports/` — could be extended to support HTML/PDF
+
+---
+
+## Session: S-FEAT-00000023
+**Timestamp:** 2026-03-15 21:53:00
+**Feature:** `F-023` — Secure API Key Management
+**Status:** completed
+
+### Summary
+Implemented web-based API key configuration with encryption at rest:
+
+- **Created `core/api_keys.py`** — `APIKeyManager` class:
+  - Fernet (AES-128-CBC) encryption for API keys stored in `.env` file
+  - Auto-generates encryption key on first use, stores in `config/.fernet_key`
+  - `save(provider, api_key)` — encrypts and persists to `.env`
+  - `load_all()` — decrypts all keys at startup so `APIClient` reads real keys from `os.environ`
+  - `load_model(provider)` — loads model overrides from `.env`
+  - `get_obfuscated(provider)` — returns `sk-...xxxx` format for safe display
+  - Supports OpenRouter and Mancer providers
+- **Added API endpoints in `core/web_api.py`**:
+  - `GET /api/settings/keys` — returns obfuscated key status for all providers
+  - `POST /api/settings/keys` — saves encrypted API keys
+  - `GET /api/settings/models` — returns current model configuration
+  - `POST /api/settings/models` — saves model overrides
+- **Added Settings page to frontend** (`app.js`) — API key input fields with obfuscated display, model selection, save/clear buttons
+- **Created `tests/test_api_keys.py`** — tests for encryption, decryption, persistence, obfuscation
+- **Startup decryption** — `create_app()` in `web_api.py` calls `mgr.load_all()` and `mgr.load_model()` at startup so keys are available to `APIClient`
+
+### Technical Debt
+- `.fernet_key` is stored as plaintext — acceptable for local use but not production-grade
+- No key rotation mechanism
+
+### Advice for Next Agent
+1. API keys are managed via: `from core.api_keys import APIKeyManager`
+2. Keys are auto-decrypted at web server startup — no manual step needed
+3. The Settings page in the web UI allows key entry without touching `.env` directly
+4. Model overrides (e.g., `JERICHO_MANCER_MODEL`) are stored in `.env` alongside keys
+
+---
+
+## Session: S-FEAT-00000024
+**Timestamp:** 2026-03-16 01:32:00
+**Feature:** `F-024` — Web Chat Interface
+**Status:** completed
+
+### Summary
+Implemented browser-based chat interface with multiple enhancement sessions:
+
+**Session 1 — Basic Chat (ba674e8b):**
+- Added chat view to `app.js` with council member selection and message input
+- SSE streaming endpoint `POST /api/chat/stream` in `web_api.py` for real-time AI responses
+- Chat history display with styled message bubbles
+
+**Session 2 — Enhanced Chat (f3e2922e):**
+- Added ability to include additional council members in a chat session
+- Implemented pause feature for AI-to-AI conversations when multiple members active
+- `POST /api/chat/pause` endpoint to stop ongoing multi-AI conversations
+
+**Session 3 — Multi-Party AI Chat (7dd8ae07):**
+- Enabled multiple AI council members to converse with each other autonomously
+- Message forwarding so each AI sees the full conversation context
+- Clear turn order for sequential AI speaking
+- User interjection capability mid-conversation
+
+**Session 4 — Streaming Fixes (9588b16b):**
+- Fixed `TypeError: 'NoneType' object is not subscriptable` in multi-AI chat responses
+- Added delays between AI responses for better UX
+- Implemented immediate response posting (display each AI output as it arrives via SSE)
+
+**Session 5 — Council UI Debugging (7d188fff):**
+- Fixed council member detail/editing panel visibility issues
+- Verified rendering of council detail view with editable fields
+
+### Files Modified
+- `core/web_api.py` — Added chat streaming endpoint, pause endpoint, multi-member chat orchestration
+- `core/web_static/app.js` — Chat view with SSE streaming, member selection, pause controls, multi-party support
+- `core/web_static/style.css` — Chat message styling, input areas, streaming indicators
+
+### Technical Debt
+- Chat history is session-only (not persisted between page reloads)
+- No integration with the backend `HumanChat` / `AgentChat` persistence layer — chats use direct API calls
+
+### Advice for Next Agent
+1. The chat system uses SSE (Server-Sent Events) via `POST /api/chat/stream` for real-time streaming
+2. Multi-party AI chat uses sequential turn-taking with message forwarding for context
+3. The pause mechanism sets a server-side flag that the streaming generator checks between turns
+4. Chat is stateless on the backend (no persistence) — consider integrating with `HumanChat`/`AgentChat` modules for persistence if needed
+
+---
+
+## Session: S-FEAT-00000025
+**Timestamp:** 2026-03-16 20:30:00
+**Feature:** `F-025` — Proposal System Web UI
+**Status:** completed
+
+### Summary
+Implemented the full interactive proposal lifecycle in the web dashboard, allowing users to create proposals, have AI council members discuss them in real-time, and trigger voting:
+
+### Backend — `core/web_api.py`
+
+6 new API endpoints added:
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/proposals` | POST | Create proposal, auto-open, create discussion with all council members |
+| `/api/proposals/{id}/discuss-stream` | POST | Run one discussion round via SSE (streams each contribution live) |
+| `/api/proposals/{id}/discuss-pause` | POST | Close discussion, transition to under_review |
+| `/api/proposals/{id}/vote` | POST | AI-driven voting — each council member votes based on discussion context, tally computed |
+| `/api/proposals/{id}/withdraw` | POST | Withdraw a proposal by its author |
+| `/api/proposals/{id}/discussion` | GET | Retrieve the discussion record for a proposal |
+
+### Frontend — `core/web_static/app.js`
+
+- **Proposal Creation Form**: Council member author selector, category dropdown, title, description textarea
+- **Lifecycle Progress Bar**: `Draft → Open → Review → Decided` with animated pulsing active dot and withdrawn state
+- **Discussion Feed**: Scrollable panel showing all AI council contributions with avatars, speaker name, round number
+- **SSE Streaming**: Real-time discussion round — each member's response appears as it arrives with slide-in animation
+- **Action Buttons**: "Continue Discussion", "⏸ Pause Discussion", "🗳️ Call Vote", "↩️ Withdraw" — context-aware based on proposal status
+- **Vote Results Panel**: For/Against/Abstain counters, approval bar, quorum/threshold status, individual vote breakdown
+- **Helper Functions**: Added `escapeHtml()` and `escapeAttr()` for XSS safety
+
+### Styling — `core/web_static/style.css`
+
+~340 lines of new CSS for proposal form, lifecycle progress bar with connector lines, discussion message bubbles, vote summary cards, and action button variants.
+
+### Files Modified
+
+| File | Lines Added | Description |
+|------|-------------|-------------|
+| `core/web_api.py` | ~400 | 6 new proposal API endpoints inside `create_app()` |
+| `core/web_static/app.js` | ~350 | Proposal views rewritten + helper functions |
+| `core/web_static/style.css` | ~340 | Full proposal component styling |
+| `features.json` | +13 | F-024 → completed, F-025 added as completed |
+
+### Tests
+- `python -m pytest tests/test_proposals.py` — all existing proposal tests pass
+- `py_compile.compile('core/web_api.py')` — no syntax errors
+- All referenced methods verified: `list_members()`, `list_names()`, `vote_weight`, `StreamingResponse`, `json_module`
+
+### Design Decisions
+1. **Proposal IDs as Discussion IDs** — for simplicity, the proposal ID is reused as the discussion ID
+2. **AI-driven voting** — each council member receives a structured prompt with proposal + discussion summary and casts a vote autonomously
+3. **SSE for discussions** — same streaming pattern as the chat system, but for structured discussion rounds
+4. **Lifecycle enforcement** — action buttons are shown/hidden based on proposal status and discussion state
+
+### Technical Debt
+- No web API tests for the new proposal endpoints yet — should be added to `tests/test_web_api.py`
+- Discussion streaming does not handle partial failures gracefully (if one member's API call fails mid-round)
+- Vote results are not persisted to a separate vote record view — they're embedded in the proposal detail
+
+### Advice for Next Agent
+1. All 25 features are now complete.
+2. The proposal web UI uses the same SSE pattern as the chat system — see `POST /api/chat/stream` for reference
+3. To add new proposal actions, add endpoints in `web_api.py` inside `create_app()` and corresponding UI in `app.js` `renderProposalDetail()`
+4. The `/api/proposals/{id}/vote` endpoint orchestrates the full vote: opens voting, casts all AI votes, closes voting, returns tally
+5. Consider adding tests for the new proposal endpoints in `test_web_api.py`
+6. The lifecycle progress bar CSS uses `:has()` selector — modern browsers only (Chrome 105+, Firefox 121+, Safari 15.4+)
+
