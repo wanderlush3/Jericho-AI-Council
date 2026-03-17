@@ -800,6 +800,13 @@ async function renderProposalDetail(id) {
     let voteData = null;
     try { voteData = await api(`/api/votes/${encodeURIComponent(id)}`); } catch { /* no vote */ }
 
+    // Fetch council members for avatar URLs
+    let proposalMembers = [];
+    try { proposalMembers = await api('/api/council'); } catch { /* empty */ }
+    const proposalAvatarMap = {};
+    proposalMembers.forEach(m => { if (m.avatar_url) proposalAvatarMap[m.name.toLowerCase()] = m.avatar_url; });
+    state.proposalAvatarMap = proposalAvatarMap;  // Store for SSE handlers
+
     const isTerminal = data.status === 'decided' || data.status === 'withdrawn';
     const hasDiscussion = !!discussion;
     const discussionOpen = hasDiscussion && discussion.status === 'open';
@@ -834,7 +841,7 @@ async function renderProposalDetail(id) {
             return `
             <div class="discussion-message">
                 <div class="discussion-message-header">
-                    ${memberAvatar(c.speaker, memberIdx >= 0 ? memberIdx : 0)}
+                    ${memberAvatarWithImage(c.speaker, memberIdx >= 0 ? memberIdx : 0, null, state.proposalAvatarMap && state.proposalAvatarMap[c.speaker.toLowerCase()])}
                     <div>
                         <span class="discussion-speaker">${c.speaker}</span>
                         <span class="discussion-round">Round ${c.round_number}</span>
@@ -1028,7 +1035,7 @@ async function runDiscussionRound(proposalId) {
                             msgDiv.className = 'discussion-message discussion-message-enter';
                             msgDiv.innerHTML = `
                                 <div class="discussion-message-header">
-                                    ${memberAvatar(data.speaker, 0)}
+                                    ${memberAvatarWithImage(data.speaker, 0, null, state.proposalAvatarMap && state.proposalAvatarMap[data.speaker.toLowerCase()])}
                                     <div>
                                         <span class="discussion-speaker">${data.speaker}</span>
                                         <span class="discussion-round">Round ${data.round}</span>
@@ -1437,6 +1444,10 @@ async function renderChat() {
     let members = [];
     try { members = await api('/api/council'); } catch { /* empty */ }
 
+    // Build avatar URL lookup: { "sage": "/api/council/Sage/avatar", ... }
+    const avatarMap = {};
+    members.forEach(m => { if (m.avatar_url) avatarMap[m.name.toLowerCase()] = m.avatar_url; });
+
     const memberOptions = members.map(m =>
         `<option value="${m.name}">${m.name} — ${m.role}</option>`
     ).join('');
@@ -1464,7 +1475,7 @@ async function renderChat() {
             <div class="chat-card-header">
                 <div class="chat-card-info">
                     <div class="chat-card-avatars">
-                        ${members.slice(0, 3).map((m, i) => memberAvatar(m, idx + i)).join('')}
+                        ${members.slice(0, 3).map((m, i) => memberAvatarWithImage(m, idx + i, null, avatarMap[m.toLowerCase()])).join('')}
                         ${members.length > 3 ? `<span class="chat-card-more">+${members.length - 3}</span>` : ''}
                     </div>
                     <div>
@@ -1581,6 +1592,10 @@ async function renderChatDetail(chatId) {
     // Fetch all council members for the add-member dropdown
     let allMembers = [];
     try { allMembers = await api('/api/council'); } catch { /* empty */ }
+    // Build avatar URL lookup: { "sage": "/api/council/Sage/avatar", ... }
+    const avatarMap = {};
+    allMembers.forEach(m => { if (m.avatar_url) avatarMap[m.name.toLowerCase()] = m.avatar_url; });
+    state.chatAvatarMap = avatarMap;  // Store for SSE handlers
     const availableMembers = allMembers.filter(m =>
         !members.some(cm => cm.toLowerCase() === m.name.toLowerCase())
     );
@@ -1590,7 +1605,7 @@ async function renderChatDetail(chatId) {
         const bubbleClass = isHuman ? 'chat-bubble-human' : 'chat-bubble-agent';
         const speakerName = isHuman ? 'You' : (m.speaker || primaryMember);
         const avatarIdx = members.findIndex(cm => cm.toLowerCase() === (m.speaker || '').toLowerCase());
-        const avatar = !isHuman ? memberAvatar(speakerName, avatarIdx >= 0 ? avatarIdx : 0) : '';
+        const avatar = !isHuman ? memberAvatarWithImage(speakerName, avatarIdx >= 0 ? avatarIdx : 0, null, avatarMap[speakerName.toLowerCase()]) : '';
         const time = m.timestamp ? new Date(m.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '';
 
         return `
@@ -1611,7 +1626,7 @@ async function renderChatDetail(chatId) {
         const removeBtn = (!isClosed && members.length > 1)
             ? `<button class="chip-remove" onclick="event.stopPropagation();removeChatMember('${chatId}','${m}')" title="Remove ${m}">✕</button>`
             : '';
-        return `<div class="member-chip">${memberAvatar(m, i)}<span>${m}</span>${removeBtn}</div>`;
+        return `<div class="member-chip">${memberAvatarWithImage(m, i, null, avatarMap[m.toLowerCase()])}<span>${m}</span>${removeBtn}</div>`;
     }).join('');
 
     // Add member dropdown
@@ -1804,7 +1819,8 @@ async function continueChat(chatId) {
                 const data = JSON.parse(dataMatch[1]);
 
                 if (eventType === 'message') {
-                    appendAgentBubble(msgContainer, data.speaker, data.content);
+                    const avatarUrl = state.chatAvatarMap && state.chatAvatarMap[data.speaker.toLowerCase()];
+                    appendAgentBubble(msgContainer, data.speaker, data.content, avatarUrl);
                 } else if (eventType === 'done') {
                     await renderChatDetail(chatId);
                     return;
@@ -1829,13 +1845,13 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function appendAgentBubble(container, speaker, content) {
+function appendAgentBubble(container, speaker, content, avatarUrl) {
     if (!container) return;
     const bubble = document.createElement('div');
     bubble.className = 'chat-message chat-bubble-agent';
     const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     bubble.innerHTML = `
-        <div class="chat-msg-avatar">${memberAvatar(speaker, 0)}</div>
+        <div class="chat-msg-avatar">${memberAvatarWithImage(speaker, 0, null, avatarUrl)}</div>
         <div class="chat-msg-body">
             <div class="chat-msg-header">
                 <span class="chat-msg-speaker">${escapeHtml(speaker)}</span>
@@ -1920,7 +1936,8 @@ async function sendChatMessage(chatId) {
                 const data = JSON.parse(dataMatch[1]);
 
                 if (eventType === 'message') {
-                    appendAgentBubble(msgContainer, data.speaker, data.content);
+                    const avatarUrl = state.chatAvatarMap && state.chatAvatarMap[data.speaker.toLowerCase()];
+                    appendAgentBubble(msgContainer, data.speaker, data.content, avatarUrl);
                 } else if (eventType === 'done') {
                     // Re-render with full server state
                     await renderChatDetail(chatId);

@@ -1398,3 +1398,157 @@ Implemented the full interactive proposal lifecycle in the web dashboard, allowi
 5. Consider adding tests for the new proposal endpoints in `test_web_api.py`
 6. The lifecycle progress bar CSS uses `:has()` selector — modern browsers only (Chrome 105+, Firefox 121+, Safari 15.4+)
 
+---
+
+## Session: S-FEAT-00000026
+**Timestamp:** 2026-03-16 23:40:00
+**Feature:** `F-026` — Council Member Editing & Avatar Upload
+**Status:** completed
+
+### Summary
+Implemented editable council member profiles and avatar upload/framing functionality directly in the web dashboard:
+
+### Backend — `core/registry.py`
+
+- Added field classification constants:
+  - `EDITABLE_FIELDS` — `name`, `api_provider`, `model`, `vote_weight`, `system_prompt`
+  - `EDITABLE_PERSONALITY_FIELDS` — `traits`, `communication_style`, `decision_approach`
+  - `READONLY_FIELDS` — `role`, `description`, `specialties`
+- Added `update_member()` method to `CouncilRegistry`:
+  - Reads YAML file, merges editable field updates, validates via existing `validate()`, writes back, reloads member in registry
+  - Rejects any read-only field modifications with descriptive error messages
+  - Returns the updated `CouncilMember` instance
+
+### Backend — `core/web_api.py`
+
+4 new API endpoints:
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/council/{name}` | PUT | Update editable fields (enforces read-only boundary) |
+| `/api/council/{name}/avatar-upload` | POST | Upload base64-encoded avatar PNG + zoom/offset metadata |
+| `/api/council/{name}/avatar` | GET | Serve avatar PNG from filesystem |
+| `/api/council/{name}/avatar-meta` | GET | Retrieve avatar zoom/offset metadata JSON |
+
+- Updated `GET /api/council` and `GET /api/council/{name}` to include `avatar_url` when an avatar exists
+- Added `COUNCIL_AVATARS_DIR = COUNCIL_DIR / "avatars"` to `config/settings.py`
+
+### Frontend — `core/web_static/app.js`
+
+- **`renderCouncil()`** — updated to display uploaded avatars on member cards (falls back to colored initials)
+- **`renderCouncilDetail()`** — completely rewritten with:
+  - Editable form inputs: name, API provider (dropdown), model, vote weight, traits (comma-separated), communication style, decision approach, system prompt (textarea)
+  - Read-only displays: role, description, specialties (as tags)
+  - Clickable avatar area with hover overlay → opens edit modal
+- **`saveCouncilMember()`** — reads form values, PUTs to API, shows toast feedback
+- **Avatar Editor Modal**: `openAvatarEditor()`, `loadAvatarImage()`, `updateAvatarPreview()`, `saveAvatar()`
+  - Canvas-based circular preview with zoom slider (0.5x–3x) and drag-to-pan
+  - Drag-and-drop file upload support
+  - Saves cropped image as base64 + metadata to backend
+- **Utility functions**: `escapeAttr()`, `escapeHtml()`
+
+### Styling — `core/web_static/style.css`
+
+~290 lines of new CSS for:
+- Council edit form layout (`.council-edit-form`, `.council-fields-grid`, `.council-field-group`)
+- Read-only field displays (`.council-field-readonly`, `.council-readonly-value`)
+- Save bar with gradient primary button + status text
+- Avatar upload area with hover overlay
+- Full-screen avatar editor modal with glassmorphism backdrop
+- Drag-and-drop zone, circular canvas preview, custom zoom slider thumb
+- `.btn-secondary` and `.btn:disabled` states
+
+### Files Modified
+
+| File | Lines Added | Description |
+|------|-------------|-------------|
+| `config/settings.py` | 2 | `COUNCIL_AVATARS_DIR` constant |
+| `core/registry.py` | ~60 | Field constants + `update_member()` method |
+| `core/web_api.py` | ~110 | 4 new council editing/avatar endpoints |
+| `core/web_static/app.js` | ~300 | Council detail rewrite + avatar modal |
+| `core/web_static/style.css` | ~290 | Council edit form + avatar modal CSS |
+| `tests/test_web_api.py` | ~110 | 14 new test cases |
+
+### Tests
+
+Added `TestApiCouncilUpdate` class with 14 test cases:
+- `test_update_member_success` — PUT editable fields verifies YAML updated
+- `test_update_member_readonly_fields_rejected` — role/description/specialties → 400
+- `test_update_member_invalid_provider` — invalid provider → 400
+- `test_update_member_invalid_weight` — negative weight → 400
+- `test_update_member_not_found` — nonexistent member → 404
+- `test_update_system_prompt` — system prompt editable
+- `test_update_api_provider` — provider switch works
+- `test_upload_avatar` — base64 PNG upload saves file
+- `test_get_avatar_not_found` / `test_get_avatar_member_not_found` — 404 cases
+- `test_upload_avatar_missing_data` — missing image_data → 400
+- `test_council_list_no_avatar_url_by_default` — no avatar_url when none uploaded
+
+**All 14 new tests pass. Full test suite passes with zero regressions (exit code 0).**
+
+### Design Decisions
+1. **Editable/readonly boundary** — enforced on both backend (`update_member()` rejects readonly fields) and frontend (readonly fields rendered as plain text, not inputs)
+2. **Avatar storage** — avatars stored as `{name.lower()}.png` in `council/avatars/`, zoom metadata in `{name.lower()}.json` alongside them, separate from YAML config
+3. **Client-side image manipulation** — zoom/pan done on canvas element, cropped image sent as base64 to avoid multipart form complexity
+4. **Avatar framing** — user uploads a PNG, adjusts zoom (0.5x–3x) and pan position, then saves — stored as static PNG with metadata for re-editing
+
+### Technical Debt
+- No image size/format validation on the backend (accepts any base64 data)
+- Avatar modal does not load existin avatar image for re-editing (always starts fresh)
+- No confirmation dialog before overwriting existing avatar
+- The `escapeHtml` and `escapeAttr` utility functions are defined at module scope — could be consolidated
+
+### Advice for Next Agent
+1. Council editing is live — click any member card to edit, scroll down for Save Changes button
+2. Avatar upload: click the avatar area → modal with upload/zoom/pan → Save Avatar
+3. The editable field boundary is enforced in `core/registry.py` constants — to make a new field editable, add it to `EDITABLE_FIELDS` or `EDITABLE_PERSONALITY_FIELDS`
+4. Avatar files are stored in `council/avatars/` — the directory is auto-created on first upload
+5. Browser caching can prevent users from seeing updates — **Ctrl+Shift+R** to force reload
+6. If adding new council member fields to the edit form in `app.js`, also update the `saveCouncilMember()` function to include the new fields in the PUT body
+
+---
+
+## Session: S-FEAT-00000027
+**Timestamp:** 2026-03-17 08:06:00
+**Feature:** `F-027` — Avatar Images in Chat & Proposal Discussions
+**Status:** completed
+
+### Summary
+Linked council member custom avatar images (from F-026) to the chat section and proposal discussion views:
+
+### Frontend — `core/web_static/app.js`
+
+- **`renderChat()`** — builds `avatarMap` lookup from already-fetched `/api/council` data; uses `memberAvatarWithImage()` for chat list card avatars (was `memberAvatar()`)
+- **`renderChatDetail()`** — builds `avatarMap` + stores on `state.chatAvatarMap` for SSE handlers; uses `memberAvatarWithImage()` for:
+  - Chat message bubbles (agent responses)
+  - Member chips in the topbar
+- **`appendAgentBubble()`** — now accepts `avatarUrl` parameter; uses `memberAvatarWithImage()` instead of `memberAvatar()`
+- **`sendChatMessage()`** — SSE handler passes avatar URL from `state.chatAvatarMap` to `appendAgentBubble()`
+- **`continueChat()`** — same pattern as `sendChatMessage()`
+- **`renderProposalDetail()`** — fetches council data, builds `proposalAvatarMap` on `state.proposalAvatarMap`; uses `memberAvatarWithImage()` for discussion contribution messages
+- **`runDiscussionRound()`** — SSE handler uses `state.proposalAvatarMap` for streamed discussion messages
+
+### Call Sites Updated
+
+| Location | Before | After |
+|----------|--------|-------|
+| Chat list card avatars | `memberAvatar(m, idx + i)` | `memberAvatarWithImage(m, idx + i, null, avatarMap[...])` |
+| Chat message bubbles | `memberAvatar(speakerName, idx)` | `memberAvatarWithImage(speakerName, idx, null, avatarMap[...])` |
+| Chat member chips | `memberAvatar(m, i)` | `memberAvatarWithImage(m, i, null, avatarMap[...])` |
+| `appendAgentBubble()` x2 | `memberAvatar(speaker, 0)` | `memberAvatarWithImage(speaker, 0, null, avatarUrl)` |
+| Proposal discussion feed | `memberAvatar(c.speaker, idx)` | `memberAvatarWithImage(c.speaker, idx, null, avatarMap[...])` |
+| Proposal discussion SSE | `memberAvatar(data.speaker, 0)` | `memberAvatarWithImage(data.speaker, 0, null, avatarMap[...])` |
+
+### Tests
+- **All 1394 tests pass** with 4 pre-existing failures (unrelated API key/registry tests).
+- No new test failures introduced — this is a frontend-only change.
+
+### Technical Debt
+- The `/api/council` endpoint is now called an additional time in `renderProposalDetail()` to get avatar URLs. If performance becomes a concern, this data could be cached on `state` or fetched once at app init.
+- The 4 pre-existing test failures should be investigated and fixed separately.
+
+### Advice for Next Agent
+1. Avatar images now appear everywhere council member faces/initials are shown: council page, chat messages, chat list, member chips, and proposal discussions.
+2. The avatar lookup pattern is: build a `{ name.toLowerCase(): avatar_url }` map from `/api/council` data, pass to `memberAvatarWithImage()`.
+3. If adding new views that show member avatars, use `memberAvatarWithImage(name, idx, size, avatarUrl)` — it falls back to colored initials automatically when `avatarUrl` is falsy.
+4. `state.chatAvatarMap` and `state.proposalAvatarMap` are set during render and available to SSE handlers.
