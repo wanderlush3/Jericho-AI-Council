@@ -1552,3 +1552,305 @@ Linked council member custom avatar images (from F-026) to the chat section and 
 2. The avatar lookup pattern is: build a `{ name.toLowerCase(): avatar_url }` map from `/api/council` data, pass to `memberAvatarWithImage()`.
 3. If adding new views that show member avatars, use `memberAvatarWithImage(name, idx, size, avatarUrl)` — it falls back to colored initials automatically when `avatarUrl` is falsy.
 4. `state.chatAvatarMap` and `state.proposalAvatarMap` are set during render and available to SSE handlers.
+
+---
+
+## Session — F-026: World Locations
+
+**Feature**: F-026 — World Locations
+**Status**: ✅ Completed
+
+#### What was done
+1. **Configuration** (`config/settings.py`):
+   - Added `LOCATIONS_DIR`, `LOCATION_STATUSES` (draft, active, archived), and `LOCATION_FEATURE_TYPES` (landmark, district, building, natural, infrastructure, custom).
+
+2. **Core Backend** (`core/locations.py`):
+   - Exception hierarchy: `LocationError`, `LocationNotFoundError`, `LocationValidationError`, `LocationLifecycleError`.
+   - Data models: `LocationFeature` (frozen dataclass with type validation) and `Location` (frozen dataclass with full lifecycle support).
+   - `LocationManager`: filesystem-backed JSON store using `LOC-XXXX` sequential IDs, CRUD operations, status transitions (draft→active→archived), feature management, hierarchical parent/child relationships, and multi-field filtering.
+
+3. **Memory Integration** (`core/memory_influence.py`):
+   - Extended `build_context()` with `locations_dir` parameter.
+   - Extended `format_for_prompt()` with a "World Locations (Your Known World)" section.
+   - Active locations (with features and lore) are now injected into every council member's prompt context.
+
+4. **Web API** (`core/web_api.py`):
+   - `GET /api/locations` — list with optional status/author/tag/parent_location_id filters.
+   - `GET /api/locations/{id}` — detail view.
+   - `POST /api/locations` — create with features, tags, coordinates.
+   - `PUT /api/locations/{id}` — update mutable fields.
+   - `PUT /api/locations/{id}/status` — lifecycle transitions.
+   - `GET /api/status` — now includes `locations` count and status breakdown.
+
+5. **Web Frontend** (`index.html`, `app.js`, `style.css`):
+   - New "World" nav section with 🗺️ Locations link and live count badge.
+   - Dashboard: rose-colored stat card for locations with status breakdown.
+   - Locations list view with inline creation form and clickable cards showing features and tags.
+   - Location detail view with lore, coordinates, features, sub-locations, status actions (Activate/Archive), and inline edit form.
+   - Feature type dots with color-coded indicators per type.
+
+6. **Testing** (`tests/conftest.py`, `tests/test_locations.py`):
+   - Added `location_mgr` fixture to conftest.py.
+   - 70 tests across 10 test classes covering: LocationFeature, Location, LocationManager init, creation, retrieval, lifecycle, feature management, updates, children, edge cases, and exceptions.
+
+#### Test results
+- Location tests: 70 passed
+
+---
+
+### Session — Implementing F-027 (User Description)
+
+**Date**: 2026-03-17
+**Feature**: F-027 — User Description
+**Status**: ✅ Completed
+
+#### What was done
+1. **Configuration** (`config/settings.py`):
+   - Added `USER_DESCRIPTION_ENV` and `USER_DESCRIPTION_MAX_LENGTH` (700) constants.
+
+2. **Storage** (`core/api_keys.py`):
+   - Added `get_user_description()` and `save_user_description()` methods to `APIKeyManager`.
+   - Description stored as plain text in `.env` file with 700-character max enforcement.
+
+3. **API Endpoints** (`core/web_api.py`):
+   - `GET /api/settings/user-description` — retrieve current user description.
+   - `POST /api/settings/user-description` — save user description with length validation.
+
+4. **Chat Context Injection** (`core/human_chat.py`):
+   - Modified `_build_human_chat_prompt()` to accept and inject user description.
+   - Updated all 4 call sites: `get_agent_response`, `get_agent_response_streaming`, `continue_conversation`, `continue_conversation_streaming`.
+
+5. **Web Frontend** (`app.js`, `style.css`):
+   - User Profile card at top of Settings page with 👤 icon and "About You" label.
+   - Textarea with 700-char `maxlength`, live character counter with color feedback (amber at 600+, rose at 700).
+   - Save button with loading state, success/error toast notifications.
+   - Added `escapeHtml()`, `updateCharCount()`, and `saveUserDescription()` functions.
+   - CSS: `.user-profile-card`, `.user-desc-textarea`, `.user-desc-counter` with `.near-limit`/`.at-limit` states.
+
+6. **Testing** (`test_web_api.py`, `test_human_chat.py`):
+   - 5 API tests: empty GET, save+get roundtrip, too-long rejection, exactly 700 acceptance, empty save.
+   - 2 prompt builder tests: description injected when provided, omitted when empty.
+
+---
+
+## S-FEAT-028 — Memory Explorer Web UI
+**Timestamp:** 2026-03-18T20:25:00-04:00
+**Feature:** F-028 — Memory Explorer Web UI
+**Status:** ✅ COMPLETED
+
+### Summary
+Added a dedicated "Memories" section to the web dashboard for browsing council member memories (core beliefs, session events) and shared council memory (decisions, narrative history). Includes belief deletion support.
+
+### Changes Made
+
+1. **Backend API** (`web_api.py`):
+   - `GET /api/memories` — list members with belief/event counts and avatar URLs.
+   - `GET /api/memories/shared` — shared council decisions (JSONL) + narrative history (markdown).
+   - `GET /api/memories/{member}?limit=N` — member's core beliefs + recent session events.
+   - `DELETE /api/memories/{member}/beliefs?topic=X` — remove a core belief by topic.
+   - Updated `GET /api/status` to include memory statistics (total beliefs, events, decisions).
+
+2. **Frontend Navigation** (`index.html`):
+   - Added 🧠 Memories nav item in a new "Memory" section with count badge.
+
+3. **Frontend Views** (`app.js`):
+   - `renderMemories()` — grid of member cards (avatar, name, role, belief/event counts) plus shared memory card.
+   - `renderMemoryDetail(member)` — two-panel view: core beliefs (with delete buttons) and recent events.
+   - `renderSharedMemory()` — two-panel view: council decisions list and narrative history.
+   - `deleteCoreBelief()` — confirmation dialog + DELETE API call + view refresh.
+   - Updated `updateNavCounts()` to display memory count badge.
+
+4. **CSS Styles** (`style.css`):
+   - Memory card styles (`.memory-card`, `.memory-avatar`, `.memory-stats`).
+   - Two-column detail layout (`.memory-detail-grid`, `.memory-panel`).
+   - Belief items (`.belief-item`, `.belief-topic`, `.btn-icon`, `.belief-delete`).
+   - Event items (`.event-item`, `.event-header`, `.event-content`).
+   - Shared history content styling (`.shared-history-content`).
+
+5. **Testing** (`test_web_api.py`):
+   - 13 new tests in `TestApiMemories` class: list with stats, detail with beliefs/events, limit param, case-insensitive lookup, not-found, belief deletion (success/missing topic/unknown topic), shared memory (empty/with data), status includes memories.
+   - Fixed pre-existing test `test_council_list_no_avatar_url_by_default` by patching `COUNCIL_AVATARS_DIR` to temp dir in `client` fixture.
+   - All 115 web_api tests pass (0 failures).
+
+### Advice for Future Agents
+- Memory tests require patching **both** `config.settings.MEMORIES_DIR` and `core.memory.MEMORIES_DIR` because the memory module imports the constant at the module level.
+- The `COUNCIL_AVATARS_DIR` must also be patched in test fixtures to avoid reading real avatar files.
+- 16 pre-existing failures exist in `test_registry.py`, `test_api_client.py`, and `test_memory_influence.py` — these are due to council member YAML changes and are unrelated to F-028.
+
+---
+
+## S-TECHDEBT-002 — Fix 16 Pre-existing Test Failures
+**Timestamp:** 2026-03-19T01:00:00-04:00
+**Status:** ✅ COMPLETED
+
+### Summary
+Resolved all 16 pre-existing test failures caused by user-customized council member YAML profiles. Tests had hardcoded old member names (Sage, Drift, etc.) and provider counts (6 OpenRouter / 3 Mancer) that no longer matched after the user renamed all 9 members and changed the provider split to 8/1.
+
+### Root Causes
+1. **`test_registry.py` (13 failures):** Tests loaded real YAML files and asserted hardcoded names (`Sage`, `Drift`), old provider counts (`openrouter=6`, `mancer=3`), specific personality traits (`thoughtful`), and specific models (`anthropic/claude-3.5-sonnet`).
+2. **`test_api_client.py` (2 failures):** Tests for missing API keys created clients with empty strings, but the `APIClient.__init__` uses `or` which falls through to real env vars when real keys are set.
+3. **`test_memory_influence.py` (1 failure):** `test_empty_member_memories` didn't pass `locations_dir`, so `build_context()` loaded real locations from disk, making `formatted_text` non-empty.
+
+### Changes Made
+
+1. **`tests/test_registry.py`** — Made 8 assertion blocks dynamic:
+   - `test_all_expected_names_present`: Verifies 9 unique members instead of hardcoded name set.
+   - `test_get_by_exact_name`, `test_get_case_insensitive_*`, `test_get_with_whitespace_stripped`: Use `registry.list_names()[0]` instead of `"Sage"`.
+   - `test_contains_case_insensitive`: Uses dynamic first member name.
+   - `test_members_by_provider_openrouter`: Asserts `> 0` instead of `== 6`.
+   - `test_members_by_provider_mancer` → `test_members_by_provider_counts_consistent`: Asserts provider counts sum to total.
+   - `test_sage_fields` → `test_member_fields_complete`: Validates all required fields are populated on first member.
+   - `test_drift_uses_mancer` → `test_mancer_member_properties`: Tests first mancer member if any exist.
+   - `test_sage_uses_openrouter` → `test_openrouter_member_properties`: Tests first openrouter member.
+   - `test_frozen_dataclass`: Uses `registry.list_members()[0]` instead of `registry.get("Sage")`.
+
+2. **`tests/test_api_client.py`** — Added `monkeypatch` to 2 tests:
+   - `test_missing_openrouter_key_raises`: Clears `JERICHO_OPENROUTER_API_KEY` env var.
+   - `test_missing_mancer_key_raises`: Clears `JERICHO_MANCER_API_KEY` env var.
+
+3. **`tests/test_memory_influence.py`** — Fixed 1 test:
+   - `test_empty_member_memories`: Passes `locations_dir` pointing to empty temp dir.
+
+### Test Results
+- **Before:** 1509 passed, 16 failed
+- **After:** 1525 passed, 0 failed, 1 warning
+
+### Advice for Future Agents
+- Tests that load real council member data should **never hardcode member names** — the user actively customizes their YAML profiles. Use `registry.list_names()[0]` or similar dynamic lookups.
+- Tests for "empty" or "missing" API keys must **clear the env vars** with `monkeypatch.delenv()` because the user has real keys set.
+- Tests calling `build_context()` should pass **both** `memories_dir` and `locations_dir` temp dirs to avoid picking up real data.
+
+---
+
+## S-TECHDEBT-003: Consolidate Duplicated Test Helpers
+
+### Summary
+Removed ~300 lines of duplicated helper functions and fixture definitions across 5 test files. Each file had identical copies of `_make_member()`, `_mock_registry()`, and `_mock_api_client()` plus local fixture overrides (`tmp_dirs`, `members`, `registry`, `api_client`) that were already centralized in `conftest.py`.
+
+### Files Changed
+
+1. **`tests/test_agent_chat.py`** — Removed 67 lines, imported `make_member` from `tests.conftest`
+2. **`tests/test_session.py`** — Removed 67 lines, imported `make_member` from `tests.conftest`
+3. **`tests/test_human_chat.py`** — Removed 67 lines, imported `make_member` from `tests.conftest`
+4. **`tests/test_discussion.py`** — Removed 39 lines (3 helper functions), imported `make_member`, `mock_registry`, `mock_api_client` from `tests.conftest`. Kept custom `tmp_dirs`, `members`, `_mock_proposal`, `_mock_proposal_manager` fixtures (legitimately different).
+5. **`tests/test_character_design.py`** — Removed 39 lines (3 helper functions), imported `make_member`, `mock_registry`, `mock_api_client` from `tests.conftest`. Kept custom `tmp_dirs`, `members` fixtures (different directory structure and member names).
+
+### Files Analyzed — No Change Needed
+- **`tests/test_api_client.py`** — Uses `**overrides` dict pattern with different defaults; not a duplicate.
+- **`tests/test_dashboard.py`** — Uses `SimpleNamespace` (not `CouncilMember`); completely different helper.
+
+### Cleanup
+- Deleted `test_output.txt` and `test_output_full.txt` from project root.
+- `.gitignore` already contained `test_output*.txt`.
+
+### Test Results
+- **Before:** 1525 passed, 0 failed
+- **After:** 1525 passed, 0 failed, 1 warning ✅
+
+### Advice for Future Agents
+- Use `from tests.conftest import make_member` (not `from conftest import`) because `tests/` has `__init__.py`.
+- The conftest `mock_api_client` returns `"Acknowledged."` by default — update assertions accordingly when switching from local helpers.
+- Files with legitimately different fixture structures (custom `tmp_dirs` keys, different member names) should keep their local fixtures even when helper functions are consolidated.
+
+---
+
+## F-029 — Evolution Web UI (2026-03-20)
+
+### Summary
+Integrated Character Evolution (F-013) and Evolution History (F-020) backends into the web dashboard (F-021).
+
+### Backend — `core/web_api.py`
+- **10 REST endpoints** added under `/api/evolutions`:
+  - `GET /api/evolutions` — list with optional `character_id`, `status`, `author` filters
+  - `GET /api/evolutions/{id}` — evolution detail
+  - `POST /api/evolutions` — create evolution in draft status
+  - `POST /api/evolutions/{id}/submit` — submit for governance review
+  - `POST /api/evolutions/{id}/open-voting` — open voting
+  - `POST /api/evolutions/{id}/resolve` — resolve voting
+  - `POST /api/evolutions/{id}/apply` — apply approved evolution
+  - `GET /api/evolutions/timelines` — list character timelines
+  - `GET /api/evolutions/timelines/{id}` — timeline for specific character
+  - `GET /api/evolutions/diff?old=...&new=...` — diff two character versions
+- `GET /api/status` updated with `evolutions.count` and `evolutions.by_status`
+
+### Frontend
+- **`index.html`**: Added 🧬 Evolution nav item under Characters section
+- **`app.js`**: Added `evolution` route case, 4 view functions (`renderEvolution`, `renderEvolutionDetail`, `renderEvolutionTimelines`, `renderEvolutionTimelineDetail`), dashboard stat card, nav count updater
+- **`style.css`**: Added `.stat-card.cyan` and ~340 lines of evolution-specific styles (lifecycle stepper, change cards, timeline cards, version chain chips, snapshot cards, event items)
+
+### Tests — `tests/test_web_api.py`
+- 16 new tests in `TestApiEvolutions`:
+  - List (empty, with records, filter by status, filter by character)
+  - Detail (found, not found)
+  - Create (success, missing fields, char not found, char not active)
+  - Status includes evolutions
+  - Timelines (list, detail, not found)
+  - Diff (same version, not found)
+
+### Test Results
+- **Baseline:** 1533 passed, 2 pre-existing failures
+- **After:** 1549 passed, 2 pre-existing failures (same), 0 regressions ✅
+
+---
+
+## Session: S-FEAT-00000030
+**Timestamp:** 2026-03-20 18:55:00
+**Feature:** `F-030` — Presence Wrapper System (SilentPassa)
+**Status:** completed
+
+### Summary
+Implemented the `[PRESENT]/[SILENCE]` wrapper system for agent chat messages — a frontend-only display feature inspired by Ankha's decree:
+
+- **Modified `core/web_static/app.js`** — Five changes:
+  - Added `silentpassaEnabled` flag to `state` object, initialized from `localStorage` (defaults to ON)
+  - Created `wrapPresenceContent(renderedHtml, speakerName)` — wraps agent HTML in `[PRESENT]` tags; empty content becomes `[SILENCE]` with speaker name
+  - Created `toggleSilentPassa(chatId)` — toggles state, persists to `localStorage`, re-renders chat
+  - Applied wrappers to agent messages in `renderChatDetail()` (historical messages) and `appendAgentBubble()` (streaming messages)
+  - Added "SilentPassa" pill toggle button in chat topbar `.chat-topbar-actions`, showing 🔔/🔕 with styled ON/OFF states
+
+- **Modified `core/web_static/style.css`** — ~80 lines:
+  - `.silentpassa-toggle` / `.silentpassa-on` / `.silentpassa-off` — styled toggle button (pill-shaped, cyan glow when active)
+  - `.presence-wrapper` / `.presence-tag` — cyan left-border, monospace `[PRESENT]` tags
+  - `.silence-wrapper` / `.silence-tag` / `.silence-speaker` — muted left-border, dim italic style
+
+- **Updated `features.json`** — added F-030 entry
+
+### Technical Debt
+- None — this is a pure frontend display feature with no backend changes.
+
+### Test Results
+- **1550 passed**, 1 pre-existing failure (`test_archived_terminal` in `test_characters.py` — unrelated), 0 regressions ✅
+
+### Advice for Next Agent
+1. The wrapper system is controlled by `state.silentpassaEnabled` — toggled via `toggleSilentPassa()` in the chat topbar
+2. `localStorage` key is `silentpassa` — values `'on'`/`'off'` (defaults ON when not set)
+3. Wrappers are applied at render time only — stored messages are unmodified
+4. To add new citizens' soul-text expressions, modify `wrapPresenceContent()` to check speaker names and output character-specific wrapper content
+
+---
+
+## Session: S-FEAT-00000031
+**Timestamp:** 2026-03-20 19:21:00
+**Feature:** Evolution Proposal Category
+**Status:** completed
+
+### Summary
+Added `"evolution"` as a new proposal category with navigational handoff to the Evolution section:
+
+- **Modified `config/settings.py`** — added `"evolution"` to `PROPOSAL_CATEGORIES` tuple
+- **Modified `core/web_api.py`** — added `evolution_handoff` field to the vote response when an evolution-category proposal passes (category == "evolution" && tally.approved)
+- **Modified `core/web_static/app.js`** — two changes:
+  - Added `'evolution'` to the hardcoded category dropdown in `renderProposals()`
+  - Added an evolution handoff banner in `renderProposalDetail()` — shows a "🧬 Go to Evolution Section" button when an evolution proposal is approved
+- **Modified `core/web_static/style.css`** — added `badge-evolution` (purple) and `evolution-handoff-banner` styles
+- **Added 2 tests to `tests/test_web_api.py`**:
+  - `test_create_proposal_evolution_category` — verifies evolution-category proposals can be listed/filtered
+  - `test_evolution_category_in_settings` — verifies "evolution" is in PROPOSAL_CATEGORIES
+
+### Test Results
+- **1552 passed**, 1 pre-existing failure (`test_archived_terminal` in `test_characters.py` — unrelated), 0 regressions ✅
+
+### Advice for Next Agent
+1. The handoff is **navigational only** — clicking the button navigates to the Evolution view. No auto-creation of EV-XXXX records from proposals.
+2. The Evolution section already has its own creation flow (`POST /api/evolutions`).
+3. `character_evolution.submit_for_review()` still creates proposals with category `"character"`, not `"evolution"`. The new `"evolution"` category is for user-created proposals that suggest evolutions.

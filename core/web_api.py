@@ -23,6 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from config.settings import (
     CHARACTERS_DIR,
     COUNCIL_MEMBERS_DIR,
+    EVOLUTION_DIR,
     PROPOSALS_DIR,
     VOTES_DIR,
     WEB_STATIC_DIR,
@@ -114,6 +115,68 @@ def create_app() -> FastAPI:
             }
         except Exception:
             data["characters"] = {"count": 0, "by_status": {}}
+
+        try:
+            from core.locations import LocationManager
+            lmgr = LocationManager()
+            locs = lmgr.list_locations()
+            loc_statuses: dict[str, int] = {}
+            for loc in locs:
+                loc_statuses[loc.status] = loc_statuses.get(loc.status, 0) + 1
+            data["locations"] = {
+                "count": len(locs),
+                "by_status": loc_statuses,
+            }
+        except Exception:
+            data["locations"] = {"count": 0, "by_status": {}}
+
+        try:
+            from core.character_evolution import CharacterEvolution
+            from core.characters import CharacterManager
+            from core.proposals import ProposalManager
+            from core.voting import VotingEngine
+            evo_mgr = CharacterEvolution(
+                character_manager=CharacterManager(),
+                proposal_manager=ProposalManager(),
+                voting_engine=VotingEngine(),
+            )
+            evo_list = evo_mgr.list_evolutions()
+            evo_statuses: dict[str, int] = {}
+            for ev in evo_list:
+                evo_statuses[ev.status] = evo_statuses.get(ev.status, 0) + 1
+            data["evolutions"] = {
+                "count": len(evo_list),
+                "by_status": evo_statuses,
+            }
+        except Exception:
+            data["evolutions"] = {"count": 0, "by_status": {}}
+
+        try:
+            from core.memory import AgentMemory, SharedMemory
+            from core.registry import CouncilRegistry
+            registry = CouncilRegistry().load()
+            member_names = registry.list_names()
+            total_beliefs = 0
+            total_events = 0
+            for mname in member_names:
+                amem = AgentMemory(mname)
+                total_beliefs += len(amem.read_core_beliefs())
+                total_events += len(amem.read_session_log())
+            shared = SharedMemory()
+            total_decisions = len(shared.read_decisions())
+            data["memories"] = {
+                "members_with_memories": len(member_names),
+                "total_beliefs": total_beliefs,
+                "total_events": total_events,
+                "total_decisions": total_decisions,
+            }
+        except Exception:
+            data["memories"] = {
+                "members_with_memories": 0,
+                "total_beliefs": 0,
+                "total_events": 0,
+                "total_decisions": 0,
+            }
 
         return data
 
@@ -655,7 +718,7 @@ def create_app() -> FastAPI:
                 vote = Vote.create(
                     voter=member.name,
                     choice=choice,
-                    reason=reason[:500],
+                    reason=reason,
                     weight=member.vote_weight,
                 )
                 try:
@@ -666,7 +729,7 @@ def create_app() -> FastAPI:
                 vote_results.append({
                     "voter": member.name,
                     "choice": choice,
-                    "reason": reason[:200],
+                    "reason": reason,
                 })
             except Exception as exc:
                 vote_results.append({
@@ -691,12 +754,22 @@ def create_app() -> FastAPI:
         tally = engine.tally(proposal_id)
         record = engine.get(proposal_id)
 
-        return {
+        result = {
             "proposal": pmgr.get(proposal_id).to_dict(),
             "vote_record": record.to_dict(),
             "tally": tally.to_dict(),
             "individual_votes": vote_results,
         }
+
+        # Evolution handoff: signal the frontend when an evolution proposal passes
+        decided_proposal = pmgr.get(proposal_id)
+        if decided_proposal.category == "evolution" and tally.approved:
+            result["evolution_handoff"] = {
+                "status": "ready",
+                "message": "Approved evolution proposal — proceed in the Evolution section to create and apply changes.",
+            }
+
+        return result
 
     @application.post("/api/proposals/{proposal_id}/withdraw")
     def api_proposal_withdraw(
@@ -796,6 +869,56 @@ def create_app() -> FastAPI:
         result["tally"] = tally.to_dict()
         return result
 
+    @application.post("/api/votes/{proposal_id}/veto")
+    def api_vote_veto(
+        proposal_id: str, body: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Apply a human veto to a proposal's vote.
+
+        Body (optional): {"reason": "..."}
+        """
+        from core.voting import (
+            VotingEngine, VoteNotFoundError, VotingStateError,
+        )
+        engine = VotingEngine()
+        reason = ""
+        if body:
+            reason = body.get("reason", "").strip()
+        try:
+            record = engine.veto(proposal_id, reason=reason)
+            tally = engine.tally(proposal_id)
+        except VoteNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No vote record for proposal '{proposal_id}'.",
+            )
+        except VotingStateError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        result = record.to_dict()
+        result["tally"] = tally.to_dict()
+        return result
+
+    @application.post("/api/votes/{proposal_id}/lift-veto")
+    def api_vote_lift_veto(proposal_id: str) -> dict[str, Any]:
+        """Remove a human veto from a proposal's vote."""
+        from core.voting import (
+            VotingEngine, VoteNotFoundError, VotingStateError,
+        )
+        engine = VotingEngine()
+        try:
+            record = engine.lift_veto(proposal_id)
+            tally = engine.tally(proposal_id)
+        except VoteNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No vote record for proposal '{proposal_id}'.",
+            )
+        except VotingStateError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        result = record.to_dict()
+        result["tally"] = tally.to_dict()
+        return result
+
     # ── Characters ────────────────────────────────────────────
 
     @application.get("/api/characters")
@@ -806,14 +929,23 @@ def create_app() -> FastAPI:
     ) -> list[dict[str, Any]]:
         """List characters with optional filters."""
         from core.characters import CharacterManager
+        from config.settings import CHARACTER_AVATARS_DIR
         mgr = CharacterManager()
         items = mgr.list_characters(status=status, author=author, tag=tag)
-        return [c.to_dict() for c in items]
+        result = []
+        for c in items:
+            d = c.to_dict()
+            avatar_file = CHARACTER_AVATARS_DIR / f"{c.id}.png"
+            if avatar_file.exists():
+                d["avatar_url"] = f"/api/characters/{c.id}/avatar"
+            result.append(d)
+        return result
 
     @application.get("/api/characters/{character_id}")
     def api_character_detail(character_id: str) -> dict[str, Any]:
         """Get a single character template."""
         from core.characters import CharacterManager, CharacterNotFoundError
+        from config.settings import CHARACTER_AVATARS_DIR
         mgr = CharacterManager()
         try:
             c = mgr.get(character_id)
@@ -822,7 +954,464 @@ def create_app() -> FastAPI:
                 status_code=404,
                 detail=f"Character '{character_id}' not found.",
             )
-        return c.to_dict()
+        d = c.to_dict()
+        avatar_file = CHARACTER_AVATARS_DIR / f"{c.id}.png"
+        if avatar_file.exists():
+            d["avatar_url"] = f"/api/characters/{c.id}/avatar"
+        return d
+
+    @application.post("/api/characters")
+    def api_character_create(body: dict[str, Any]) -> dict[str, Any]:
+        """Create a new character.
+
+        Body: {"name": "...", "description": "...", "author": "...",
+               "backstory": "...", "system_prompt": "...", "greeting": "...",
+               "example_messages": [...], "tags": [...],
+               "traits": [{"trait_type": "...", "name": "...",
+                            "description": "...", "intensity": 0.8}]}
+        """
+        from core.characters import (
+            CharacterManager, CharacterValidationError, Trait,
+        )
+
+        name = body.get("name", "").strip()
+        description = body.get("description", "").strip()
+        author = body.get("author", "").strip()
+        backstory = body.get("backstory", "").strip()
+        system_prompt = body.get("system_prompt", "").strip()
+        greeting = body.get("greeting", "").strip()
+        example_messages = body.get("example_messages", [])
+        tags = body.get("tags", [])
+        raw_traits = body.get("traits", [])
+
+        if not name or not description or not author:
+            raise HTTPException(
+                status_code=400,
+                detail="Fields 'name', 'description', and 'author' are required.",
+            )
+
+        # Parse traits
+        traits: list[Trait] = []
+        for t in raw_traits:
+            try:
+                traits.append(Trait.create(
+                    trait_type=t.get("trait_type", "personality"),
+                    name=t.get("name", ""),
+                    description=t.get("description", ""),
+                    intensity=float(t.get("intensity", 0.5)),
+                ))
+            except CharacterValidationError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+
+        mgr = CharacterManager()
+        try:
+            char = mgr.create(
+                name, description, author=author, backstory=backstory,
+                traits=traits or None, system_prompt=system_prompt,
+                greeting=greeting, example_messages=example_messages or None,
+                tags=tags or None,
+            )
+        except CharacterValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return char.to_dict()
+
+    @application.put("/api/characters/{character_id}")
+    def api_character_update(
+        character_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Update mutable fields on a character.
+
+        Body may contain: name, description, backstory, system_prompt,
+        greeting, example_messages, tags, metadata.
+        """
+        from core.characters import (
+            CharacterManager, CharacterNotFoundError, CharacterValidationError,
+        )
+        mgr = CharacterManager()
+        try:
+            char = mgr.update(character_id, **body)
+        except CharacterNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Character '{character_id}' not found.",
+            )
+        except CharacterValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return char.to_dict()
+
+    @application.put("/api/characters/{character_id}/status")
+    def api_character_status(
+        character_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Transition a character's lifecycle status.
+
+        Body: {"status": "active"}
+        """
+        from core.characters import (
+            CharacterManager, CharacterNotFoundError,
+            CharacterValidationError, CharacterLifecycleError,
+        )
+
+        new_status = body.get("status", "").strip()
+        if not new_status:
+            raise HTTPException(status_code=400, detail="'status' is required.")
+
+        mgr = CharacterManager()
+        try:
+            char = mgr.update_status(character_id, new_status)
+        except CharacterNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Character '{character_id}' not found.",
+            )
+        except (CharacterValidationError, CharacterLifecycleError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return char.to_dict()
+
+    @application.post("/api/characters/{character_id}/avatar-upload")
+    def api_character_avatar_upload(
+        character_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Upload avatar as base64 JSON.
+
+        Body: {"image_data": "data:image/png;base64,..."}
+        """
+        import base64
+        from config.settings import CHARACTER_AVATARS_DIR
+        from core.characters import CharacterManager, CharacterNotFoundError
+
+        mgr = CharacterManager()
+        try:
+            mgr.get(character_id)
+        except CharacterNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Character '{character_id}' not found.",
+            )
+
+        image_data = body.get("image_data", "")
+        if not image_data:
+            raise HTTPException(status_code=400, detail="'image_data' is required.")
+
+        try:
+            if "," in image_data:
+                image_data = image_data.split(",", 1)[1]
+            raw_bytes = base64.b64decode(image_data)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid base64 image data.")
+
+        CHARACTER_AVATARS_DIR.mkdir(parents=True, exist_ok=True)
+        avatar_path = CHARACTER_AVATARS_DIR / f"{character_id}.png"
+        with open(avatar_path, "wb") as f:
+            f.write(raw_bytes)
+
+        return {
+            "status": "ok",
+            "avatar_url": f"/api/characters/{character_id}/avatar",
+        }
+
+    @application.get("/api/characters/{character_id}/avatar")
+    def api_character_avatar_get(character_id: str):
+        """Serve a character's avatar PNG."""
+        from config.settings import CHARACTER_AVATARS_DIR
+        from core.characters import CharacterManager, CharacterNotFoundError
+
+        mgr = CharacterManager()
+        try:
+            mgr.get(character_id)
+        except CharacterNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Character '{character_id}' not found.",
+            )
+
+        avatar_path = CHARACTER_AVATARS_DIR / f"{character_id}.png"
+        if not avatar_path.exists():
+            raise HTTPException(
+                status_code=404, detail="No avatar uploaded for this character.",
+            )
+
+        return FileResponse(str(avatar_path), media_type="image/png")
+
+    @application.get("/api/characters/{character_id}/export-png")
+    def api_character_export_png(character_id: str):
+        """Export a character as a PNG with embedded TavernCard v2 metadata.
+
+        If the character has an avatar, that image is used as the base PNG.
+        Otherwise a minimal placeholder PNG is generated.
+        """
+        from config.settings import CHARACTER_AVATARS_DIR
+        from core.characters import CharacterManager, CharacterNotFoundError
+        from core.png_embed import (
+            embed_character_in_png, create_minimal_png,
+        )
+
+        mgr = CharacterManager()
+        try:
+            char = mgr.get(character_id)
+        except CharacterNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Character '{character_id}' not found.",
+            )
+
+        # Use avatar if exists, otherwise minimal placeholder
+        avatar_path = CHARACTER_AVATARS_DIR / f"{character_id}.png"
+        if avatar_path.exists():
+            png_bytes = avatar_path.read_bytes()
+        else:
+            png_bytes = create_minimal_png()
+
+        result_bytes = embed_character_in_png(png_bytes, char)
+
+        from starlette.responses import Response
+        safe_name = char.name.replace(" ", "_").replace("/", "_")
+        return Response(
+            content=result_bytes,
+            media_type="image/png",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_name}.png"',
+            },
+        )
+
+    @application.post("/api/characters/{character_id}/export-png")
+    def api_character_export_png_upload(
+        character_id: str, body: dict[str, Any],
+    ):
+        """Export a character as a PNG with embedded TavernCard v2 metadata,
+        using a user-supplied PNG as the base image.
+
+        Body: {"image_data": "data:image/png;base64,..."}
+        Returns the embedded PNG named jericho_<character_name>.png.
+        """
+        import base64
+        from core.characters import CharacterManager, CharacterNotFoundError
+        from core.png_embed import embed_character_in_png
+
+        mgr = CharacterManager()
+        try:
+            char = mgr.get(character_id)
+        except CharacterNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Character '{character_id}' not found.",
+            )
+
+        image_data = body.get("image_data", "")
+        if not image_data:
+            raise HTTPException(status_code=400, detail="'image_data' is required.")
+
+        try:
+            if "," in image_data:
+                image_data = image_data.split(",", 1)[1]
+            png_bytes = base64.b64decode(image_data)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid base64 image data.")
+
+        if png_bytes[:8] != b"\x89PNG\r\n\x1a\n":
+            raise HTTPException(status_code=400, detail="Uploaded file is not a valid PNG.")
+
+        result_bytes = embed_character_in_png(png_bytes, char)
+
+        from starlette.responses import Response
+        safe_name = char.name.replace(" ", "_").replace("/", "_")
+        filename = f"jericho_{safe_name}.png"
+        return Response(
+            content=result_bytes,
+            media_type="image/png",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+            },
+        )
+
+    # ── Character Traits ──────────────────────────────────────
+
+    @application.post("/api/characters/{character_id}/traits")
+    def api_character_add_trait(
+        character_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Add a trait to a character.
+
+        Body: {"trait_type": "personality", "name": "Curious",
+               "description": "Always asking questions", "intensity": 0.8}
+        """
+        from core.characters import (
+            CharacterManager, CharacterNotFoundError,
+            CharacterValidationError, Trait,
+        )
+
+        mgr = CharacterManager()
+        try:
+            trait = Trait.create(
+                trait_type=body.get("trait_type", "personality"),
+                name=body.get("name", "").strip(),
+                description=body.get("description", "").strip(),
+                intensity=float(body.get("intensity", 0.5)),
+            )
+            char = mgr.add_trait(character_id, trait)
+        except CharacterNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Character '{character_id}' not found.",
+            )
+        except CharacterValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return char.to_dict()
+
+    @application.delete("/api/characters/{character_id}/traits/{trait_name}")
+    def api_character_remove_trait(
+        character_id: str, trait_name: str,
+    ) -> dict[str, Any]:
+        """Remove a trait from a character by name."""
+        from core.characters import (
+            CharacterManager, CharacterNotFoundError,
+            CharacterValidationError,
+        )
+
+        mgr = CharacterManager()
+        try:
+            char = mgr.remove_trait(character_id, trait_name)
+        except CharacterNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Character '{character_id}' not found.",
+            )
+        except CharacterValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return char.to_dict()
+
+    # ── Locations ─────────────────────────────────────────────
+
+    @application.get("/api/locations")
+    def api_locations_list(
+        status: str | None = Query(None),
+        author: str | None = Query(None),
+        tag: str | None = Query(None),
+        parent_location_id: str | None = Query(None),
+    ) -> list[dict[str, Any]]:
+        """List locations with optional filters."""
+        from core.locations import LocationManager
+        mgr = LocationManager()
+        items = mgr.list_locations(
+            status=status, author=author, tag=tag,
+            parent_location_id=parent_location_id,
+        )
+        return [loc.to_dict() for loc in items]
+
+    @application.get("/api/locations/{location_id}")
+    def api_location_detail(location_id: str) -> dict[str, Any]:
+        """Get a single location."""
+        from core.locations import LocationManager, LocationNotFoundError
+        mgr = LocationManager()
+        try:
+            loc = mgr.get(location_id)
+        except LocationNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Location '{location_id}' not found.",
+            )
+        return loc.to_dict()
+
+    @application.post("/api/locations")
+    def api_location_create(body: dict[str, Any]) -> dict[str, Any]:
+        """Create a new location.
+
+        Body: {"name": "...", "description": "...", "author": "...",
+               "lore": "...", "features": [...], "tags": [...],
+               "parent_location_id": "...", "coordinates": "..."}
+        """
+        from core.locations import (
+            LocationManager, LocationValidationError, LocationFeature,
+        )
+
+        name = body.get("name", "").strip()
+        description = body.get("description", "").strip()
+        author = body.get("author", "").strip()
+        lore = body.get("lore", "").strip()
+        raw_features = body.get("features", [])
+        tags = body.get("tags", [])
+        parent = body.get("parent_location_id", "")
+        coords = body.get("coordinates", "")
+
+        if not name or not description or not author:
+            raise HTTPException(
+                status_code=400,
+                detail="Fields 'name', 'description', and 'author' are required.",
+            )
+
+        # Parse features
+        features = []
+        for f in raw_features:
+            try:
+                features.append(LocationFeature.create(
+                    name=f.get("name", ""),
+                    description=f.get("description", ""),
+                    feature_type=f.get("feature_type", "custom"),
+                ))
+            except LocationValidationError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+
+        mgr = LocationManager()
+        try:
+            loc = mgr.create(
+                name, description, author=author, lore=lore,
+                features=features, tags=tags,
+                parent_location_id=parent, coordinates=coords,
+            )
+        except LocationValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return loc.to_dict()
+
+    @application.put("/api/locations/{location_id}")
+    def api_location_update(location_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Update mutable fields on a location.
+
+        Body may contain: name, description, lore, tags, metadata,
+        parent_location_id, coordinates.
+        """
+        from core.locations import LocationManager, LocationNotFoundError, LocationValidationError
+        mgr = LocationManager()
+        try:
+            loc = mgr.update(location_id, **body)
+        except LocationNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Location '{location_id}' not found.",
+            )
+        except LocationValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return loc.to_dict()
+
+    @application.put("/api/locations/{location_id}/status")
+    def api_location_status(
+        location_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Transition a location's lifecycle status.
+
+        Body: {"status": "active"}
+        """
+        from core.locations import (
+            LocationManager, LocationNotFoundError,
+            LocationValidationError, LocationLifecycleError,
+        )
+
+        new_status = body.get("status", "").strip()
+        if not new_status:
+            raise HTTPException(status_code=400, detail="'status' is required.")
+
+        mgr = LocationManager()
+        try:
+            loc = mgr.update_status(location_id, new_status)
+        except LocationNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Location '{location_id}' not found.",
+            )
+        except (LocationValidationError, LocationLifecycleError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return loc.to_dict()
 
     # ── Analytics ─────────────────────────────────────────────
 
@@ -877,17 +1466,19 @@ def create_app() -> FastAPI:
         return result
 
     # ── Settings / Models ─────────────────────────────────────
+    # NOTE: Settings models are the *fallback default*. A council member's
+    # own model takes priority unless set to "Default".
 
     @application.get("/api/settings/models")
     def api_models_status() -> list[dict[str, Any]]:
-        """Return configured model for each API provider."""
+        """Return configured default model for each API provider."""
         from core.api_keys import APIKeyManager
         mgr = APIKeyManager()
         return mgr.all_model_status()
 
     @application.post("/api/settings/models")
     def api_models_save(body: dict[str, Any]) -> dict[str, Any]:
-        """Save a model name.  Body: {"provider": "openrouter", "model": "anthropic/claude-3.5-sonnet"}."""
+        """Save a default model name.  Body: {"provider": "openrouter", "model": "anthropic/claude-3.5-sonnet"}."""
         from core.api_keys import APIKeyManager
         provider = body.get("provider", "").strip().lower()
         model = body.get("model", "").strip()
@@ -898,6 +1489,40 @@ def create_app() -> FastAPI:
         mgr = APIKeyManager()
         try:
             result = mgr.save_model(provider, model)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return result
+
+    @application.get("/api/settings/mancer-models")
+    def api_mancer_models() -> list[str]:
+        """Return the list of valid Mancer model options for dropdown menus."""
+        from config.settings import MANCER_MODEL_OPTIONS
+        return list(MANCER_MODEL_OPTIONS)
+
+    @application.get("/api/settings/openrouter-models")
+    def api_openrouter_models() -> list[str]:
+        """Return the list of valid OpenRouter model options for dropdown menus."""
+        from config.settings import OPENROUTER_MODEL_OPTIONS
+        return list(OPENROUTER_MODEL_OPTIONS)
+
+    # ── Settings / User Description ───────────────────────────
+
+    @application.get("/api/settings/user-description")
+    def api_user_description_get() -> dict[str, Any]:
+        """Return the user's self-description."""
+        from core.api_keys import APIKeyManager
+        mgr = APIKeyManager()
+        return {"description": mgr.get_user_description()}
+
+    @application.post("/api/settings/user-description")
+    def api_user_description_save(body: dict[str, Any]) -> dict[str, Any]:
+        """Save the user's self-description.  Body: {"description": "..."}."""
+        from core.api_keys import APIKeyManager
+        text = body.get("description", "")
+
+        mgr = APIKeyManager()
+        try:
+            result = mgr.save_user_description(text)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
         return result
@@ -964,19 +1589,25 @@ def create_app() -> FastAPI:
 
     @application.post("/api/chat")
     def api_chat_create(body: dict[str, Any]) -> dict[str, Any]:
-        """Create a new chat. Body: {\"member_name\": \"Sage\", \"title\": \"Ethics Q&A\", \"topic\": \"...\"}."""
+        """Create a new chat. Body: {\"member_name\": \"Sage\", \"title\": \"...\", \"topic\": \"...\", \"character_id\": \"CH-0001\"}."""
         from core.human_chat import HumanChat, HumanChatValidationError
         from core.registry import CouncilRegistry
         from core.api_client import APIClient
 
         member_name = body.get("member_name", "").strip()
+        character_id = body.get("character_id", "").strip()
         title = body.get("title", "").strip()
         topic = body.get("topic", "").strip()
 
-        if not member_name or not title:
+        if not title:
             raise HTTPException(
                 status_code=400,
-                detail="Both 'member_name' and 'title' are required.",
+                detail="'title' is required.",
+            )
+        if not member_name and not character_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Either 'member_name' or 'character_id' is required.",
             )
 
         registry = CouncilRegistry().load()
@@ -986,7 +1617,10 @@ def create_app() -> FastAPI:
         chat_id = _next_chat_id()
         try:
             rec = hc.create_chat(
-                chat_id, title, member_name=member_name, topic=topic,
+                chat_id, title,
+                member_name=member_name,
+                character_id=character_id,
+                topic=topic,
             )
         except HumanChatValidationError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
@@ -1067,6 +1701,54 @@ def create_app() -> FastAPI:
 
         try:
             rec = hc.remove_council_member(chat_id, member_name)
+        except HumanChatNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Chat '{chat_id}' not found.")
+        except (HumanChatError, HumanChatValidationError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return rec.to_dict()
+
+    @application.post("/api/chat/{chat_id}/add-character")
+    def api_chat_add_character(chat_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Add a character to the chat. Body: {\"character_id\": \"CH-0001\"}."""
+        from core.human_chat import HumanChat, HumanChatNotFoundError, HumanChatError, HumanChatValidationError
+        from core.registry import CouncilRegistry
+        from core.api_client import APIClient
+
+        character_id = body.get("character_id", "").strip()
+        if not character_id:
+            raise HTTPException(status_code=400, detail="'character_id' is required.")
+
+        registry = CouncilRegistry().load()
+        client = APIClient()
+        hc = HumanChat(registry=registry, api_client=client)
+
+        try:
+            rec = hc.add_character(chat_id, character_id)
+        except HumanChatNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Chat '{chat_id}' not found.")
+        except (HumanChatError, HumanChatValidationError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return rec.to_dict()
+
+    @application.post("/api/chat/{chat_id}/remove-character")
+    def api_chat_remove_character(chat_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Remove a character from the chat. Body: {\"character_id\": \"CH-0001\"}."""
+        from core.human_chat import HumanChat, HumanChatNotFoundError, HumanChatError, HumanChatValidationError
+        from core.registry import CouncilRegistry
+        from core.api_client import APIClient
+
+        character_id = body.get("character_id", "").strip()
+        if not character_id:
+            raise HTTPException(status_code=400, detail="'character_id' is required.")
+
+        registry = CouncilRegistry().load()
+        client = APIClient()
+        hc = HumanChat(registry=registry, api_client=client)
+
+        try:
+            rec = hc.remove_character(chat_id, character_id)
         except HumanChatNotFoundError:
             raise HTTPException(status_code=404, detail=f"Chat '{chat_id}' not found.")
         except (HumanChatError, HumanChatValidationError) as exc:
@@ -1263,6 +1945,412 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc))
 
         return rec.to_dict()
+
+    # ── Memories ──────────────────────────────────────────────
+
+    @application.get("/api/memories")
+    def api_memories_list() -> list[dict[str, Any]]:
+        """List all council members with their memory statistics."""
+        from core.memory import AgentMemory
+        from core.registry import CouncilRegistry
+        from config.settings import COUNCIL_AVATARS_DIR
+
+        registry = CouncilRegistry().load()
+        members = registry.list_members()
+        result = []
+        for m in members:
+            amem = AgentMemory(m.name)
+            beliefs = amem.read_core_beliefs()
+            events = amem.read_session_log()
+            d: dict[str, Any] = {
+                "name": m.name,
+                "role": m.role,
+                "belief_count": len(beliefs),
+                "event_count": len(events),
+            }
+            avatar_file = COUNCIL_AVATARS_DIR / f"{m.name.lower()}.png"
+            if avatar_file.exists():
+                d["avatar_url"] = f"/api/council/{m.name}/avatar"
+            result.append(d)
+        return result
+
+    @application.get("/api/memories/shared")
+    def api_memories_shared() -> dict[str, Any]:
+        """Get shared council memory: decisions and narrative history."""
+        from core.memory import SharedMemory
+
+        shared = SharedMemory()
+        decisions = shared.read_decisions()
+        history = shared.read_history()
+        return {
+            "decisions": decisions,
+            "decision_count": len(decisions),
+            "history": history,
+        }
+
+    @application.get("/api/memories/{member}")
+    def api_memory_detail(
+        member: str,
+        limit: int = Query(20, ge=1, le=200),
+    ) -> dict[str, Any]:
+        """Get a council member's core beliefs and recent session events."""
+        from core.memory import AgentMemory
+        from core.registry import CouncilRegistry, MemberNotFoundError
+
+        registry = CouncilRegistry().load()
+        try:
+            m = registry.get(member)
+        except MemberNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Council member '{member}' not found.",
+            )
+
+        amem = AgentMemory(m.name)
+        beliefs = amem.read_core_beliefs()
+        recent = amem.get_recent_memories(limit=limit)
+
+        return {
+            "name": m.name,
+            "beliefs": [b.to_dict() for b in beliefs],
+            "belief_count": len(beliefs),
+            "events": [e.to_dict() for e in recent],
+            "event_count": len(amem.read_session_log()),
+        }
+
+    @application.delete("/api/memories/{member}/beliefs")
+    def api_memory_delete_belief(
+        member: str,
+        topic: str = Query(None),
+    ) -> dict[str, Any]:
+        """Remove a core belief by topic."""
+        from core.memory import AgentMemory
+        from core.registry import CouncilRegistry, MemberNotFoundError
+
+        if not topic:
+            raise HTTPException(
+                status_code=400,
+                detail="Query parameter 'topic' is required.",
+            )
+
+        registry = CouncilRegistry().load()
+        try:
+            m = registry.get(member)
+        except MemberNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Council member '{member}' not found.",
+            )
+
+        amem = AgentMemory(m.name)
+        removed = amem.remove_core_belief(topic)
+        if not removed:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No belief with topic '{topic}' found for {m.name}.",
+            )
+
+        beliefs = amem.read_core_beliefs()
+        return {
+            "status": "deleted",
+            "topic": topic,
+            "remaining_beliefs": len(beliefs),
+        }
+
+    # ── Evolutions ────────────────────────────────────────────
+
+    @application.get("/api/evolutions")
+    def api_evolutions_list(
+        character_id: str | None = Query(None),
+        status: str | None = Query(None),
+        author: str | None = Query(None),
+    ) -> list[dict[str, Any]]:
+        """List evolution records with optional filters."""
+        from core.characters import CharacterManager
+        from core.proposals import ProposalManager
+        from core.voting import VotingEngine
+        from core.character_evolution import CharacterEvolution
+
+        evo = CharacterEvolution(
+            character_manager=CharacterManager(),
+            proposal_manager=ProposalManager(),
+            voting_engine=VotingEngine(),
+        )
+        items = evo.list_evolutions(
+            character_id=character_id, status=status, author=author,
+        )
+        return [r.to_dict() for r in items]
+
+    @application.get("/api/evolutions/timelines")
+    def api_evolutions_timelines() -> list[dict[str, Any]]:
+        """List evolution timelines for all head characters."""
+        from core.characters import CharacterManager
+        from core.proposals import ProposalManager
+        from core.voting import VotingEngine
+        from core.character_evolution import CharacterEvolution
+        from core.evolution_history import EvolutionHistory
+
+        chars = CharacterManager()
+        evo = CharacterEvolution(
+            character_manager=chars,
+            proposal_manager=ProposalManager(),
+            voting_engine=VotingEngine(),
+        )
+        history = EvolutionHistory(
+            character_manager=chars,
+            evolution_manager=evo,
+        )
+        timelines = history.list_timelines()
+        return [t.to_dict() for t in timelines]
+
+    @application.get("/api/evolutions/timelines/{character_id}")
+    def api_evolutions_timeline_detail(character_id: str) -> dict[str, Any]:
+        """Get evolution timeline for a specific character."""
+        from core.characters import CharacterManager, CharacterNotFoundError
+        from core.proposals import ProposalManager
+        from core.voting import VotingEngine
+        from core.character_evolution import CharacterEvolution
+        from core.evolution_history import EvolutionHistory
+
+        chars = CharacterManager()
+        evo = CharacterEvolution(
+            character_manager=chars,
+            proposal_manager=ProposalManager(),
+            voting_engine=VotingEngine(),
+        )
+        history = EvolutionHistory(
+            character_manager=chars,
+            evolution_manager=evo,
+        )
+        try:
+            timeline = history.build_timeline(character_id)
+        except CharacterNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Character '{character_id}' not found.",
+            )
+        return timeline.to_dict()
+
+    @application.get("/api/evolutions/diff")
+    def api_evolutions_diff(
+        old: str = Query(...),
+        new: str = Query(...),
+    ) -> dict[str, Any]:
+        """Diff two character versions."""
+        from core.characters import CharacterManager, CharacterNotFoundError
+        from core.proposals import ProposalManager
+        from core.voting import VotingEngine
+        from core.character_evolution import CharacterEvolution
+        from core.evolution_history import EvolutionHistory
+
+        chars = CharacterManager()
+        evo = CharacterEvolution(
+            character_manager=chars,
+            proposal_manager=ProposalManager(),
+            voting_engine=VotingEngine(),
+        )
+        history = EvolutionHistory(
+            character_manager=chars,
+            evolution_manager=evo,
+        )
+        try:
+            diffs = history.diff_versions(old, new)
+        except CharacterNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc))
+        return {"old_id": old, "new_id": new, "diffs": diffs}
+
+    @application.get("/api/evolutions/{evolution_id}")
+    def api_evolution_detail(evolution_id: str) -> dict[str, Any]:
+        """Get a single evolution record."""
+        from core.characters import CharacterManager
+        from core.proposals import ProposalManager
+        from core.voting import VotingEngine
+        from core.character_evolution import (
+            CharacterEvolution, EvolutionNotFoundError,
+        )
+
+        evo = CharacterEvolution(
+            character_manager=CharacterManager(),
+            proposal_manager=ProposalManager(),
+            voting_engine=VotingEngine(),
+        )
+        try:
+            record = evo.get(evolution_id)
+        except EvolutionNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Evolution '{evolution_id}' not found.",
+            )
+        return record.to_dict()
+
+    @application.post("/api/evolutions")
+    def api_evolution_create(body: dict[str, Any]) -> dict[str, Any]:
+        """Create a new evolution in draft status.
+
+        Body: {"character_id": "CH-0001", "author": "Sage",
+               "changes": [{"change_type": "trait_add", "field_name": "brave",
+                             "new_value": {...}, "rationale": "..."}]}
+        """
+        from core.characters import CharacterManager, CharacterNotFoundError
+        from core.proposals import ProposalManager
+        from core.voting import VotingEngine
+        from core.character_evolution import (
+            CharacterEvolution, CharacterChange,
+            EvolutionValidationError,
+        )
+
+        character_id = body.get("character_id", "").strip()
+        author = body.get("author", "").strip()
+        raw_changes = body.get("changes", [])
+
+        if not character_id or not author:
+            raise HTTPException(
+                status_code=400,
+                detail="Fields 'character_id' and 'author' are required.",
+            )
+
+        # Build CharacterChange objects
+        changes = []
+        for rc in raw_changes:
+            try:
+                changes.append(CharacterChange.create(
+                    change_type=rc.get("change_type", ""),
+                    field_name=rc.get("field_name", ""),
+                    old_value=rc.get("old_value", ""),
+                    new_value=rc.get("new_value", ""),
+                    rationale=rc.get("rationale", ""),
+                ))
+            except EvolutionValidationError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+
+        evo = CharacterEvolution(
+            character_manager=CharacterManager(),
+            proposal_manager=ProposalManager(),
+            voting_engine=VotingEngine(),
+        )
+
+        try:
+            record = evo.create_evolution(
+                character_id, author=author, changes=changes,
+            )
+        except CharacterNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Character '{character_id}' not found.",
+            )
+        except EvolutionValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return record.to_dict()
+
+    @application.post("/api/evolutions/{evolution_id}/submit")
+    def api_evolution_submit(evolution_id: str) -> dict[str, Any]:
+        """Submit evolution for governance review (draft → proposed)."""
+        from core.characters import CharacterManager
+        from core.proposals import ProposalManager
+        from core.voting import VotingEngine
+        from core.character_evolution import (
+            CharacterEvolution, EvolutionNotFoundError, EvolutionStateError,
+        )
+
+        evo = CharacterEvolution(
+            character_manager=CharacterManager(),
+            proposal_manager=ProposalManager(),
+            voting_engine=VotingEngine(),
+        )
+        try:
+            record = evo.submit_for_review(evolution_id)
+        except EvolutionNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Evolution '{evolution_id}' not found.",
+            )
+        except EvolutionStateError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return record.to_dict()
+
+    @application.post("/api/evolutions/{evolution_id}/open-voting")
+    def api_evolution_open_voting(evolution_id: str) -> dict[str, Any]:
+        """Open voting on evolution (proposed → voting)."""
+        from core.characters import CharacterManager
+        from core.proposals import ProposalManager
+        from core.voting import VotingEngine
+        from core.character_evolution import (
+            CharacterEvolution, EvolutionNotFoundError, EvolutionStateError,
+        )
+
+        evo = CharacterEvolution(
+            character_manager=CharacterManager(),
+            proposal_manager=ProposalManager(),
+            voting_engine=VotingEngine(),
+        )
+        try:
+            record = evo.open_voting(evolution_id)
+        except EvolutionNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Evolution '{evolution_id}' not found.",
+            )
+        except EvolutionStateError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return record.to_dict()
+
+    @application.post("/api/evolutions/{evolution_id}/resolve")
+    def api_evolution_resolve(evolution_id: str) -> dict[str, Any]:
+        """Resolve voting (voting → decided/rejected)."""
+        from core.characters import CharacterManager
+        from core.proposals import ProposalManager
+        from core.voting import VotingEngine
+        from core.character_evolution import (
+            CharacterEvolution, EvolutionNotFoundError, EvolutionStateError,
+        )
+
+        evo = CharacterEvolution(
+            character_manager=CharacterManager(),
+            proposal_manager=ProposalManager(),
+            voting_engine=VotingEngine(),
+        )
+        try:
+            record = evo.resolve(evolution_id)
+        except EvolutionNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Evolution '{evolution_id}' not found.",
+            )
+        except EvolutionStateError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return record.to_dict()
+
+    @application.post("/api/evolutions/{evolution_id}/apply")
+    def api_evolution_apply(evolution_id: str) -> dict[str, Any]:
+        """Apply approved evolution (decided → applied)."""
+        from core.characters import CharacterManager
+        from core.proposals import ProposalManager
+        from core.voting import VotingEngine
+        from core.character_evolution import (
+            CharacterEvolution, EvolutionNotFoundError, EvolutionStateError,
+        )
+
+        evo = CharacterEvolution(
+            character_manager=CharacterManager(),
+            proposal_manager=ProposalManager(),
+            voting_engine=VotingEngine(),
+        )
+        try:
+            template = evo.apply_evolution(evolution_id)
+        except EvolutionNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Evolution '{evolution_id}' not found.",
+            )
+        except EvolutionStateError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        record = evo.get(evolution_id)
+        return {
+            "evolution": record.to_dict(),
+            "new_character": template.to_dict(),
+        }
 
     # ── Static Files ──────────────────────────────────────────
 
