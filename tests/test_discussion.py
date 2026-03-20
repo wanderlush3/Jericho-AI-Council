@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from tests.conftest import make_member, mock_registry, mock_api_client
 from core.discussion import (
     DiscussionContribution,
     DiscussionError,
@@ -28,45 +29,6 @@ from core.registry import CouncilMember, CouncilRegistry
 
 
 # ─── Fixtures ──────────────────────────────────────────────────
-
-
-def _make_member(
-    name: str = "Sage",
-    role: str = "Ethics",
-    api_provider: str = "openrouter",
-    model: str = "test-model",
-) -> CouncilMember:
-    return CouncilMember(
-        name=name,
-        role=role,
-        description=f"{name} description",
-        api_provider=api_provider,
-        model=model,
-        system_prompt=f"You are {name}.",
-    )
-
-
-def _mock_registry(*members: CouncilMember) -> CouncilRegistry:
-    """Build a mock registry pre-loaded with given members."""
-    reg = MagicMock(spec=CouncilRegistry)
-    member_dict = {m.name.lower(): m for m in members}
-    reg.get.side_effect = lambda name: member_dict[name.strip().lower()]
-    reg.list_names.return_value = [m.name for m in members]
-    reg.list_members.return_value = list(members)
-    reg.__len__ = lambda self: len(members)
-    reg.__contains__ = lambda self, n: n.strip().lower() in member_dict
-    return reg
-
-
-def _mock_api_client(content: str = "Test response.") -> AsyncMock:
-    """Build a mock async API client."""
-    client = AsyncMock()
-    client.chat = AsyncMock(return_value=ChatResponse(
-        content=content,
-        model="test-model",
-        provider="openrouter",
-    ))
-    return client
 
 
 def _mock_proposal(
@@ -109,20 +71,20 @@ def tmp_dirs(tmp_path: Path):
 
 @pytest.fixture
 def members():
-    sage = _make_member("Sage", "Ethics")
-    logic = _make_member("Logic", "Systems")
-    drift = _make_member("Drift", "Devil's Advocate", api_provider="mancer")
+    sage = make_member("Sage", "Ethics")
+    logic = make_member("Logic", "Systems")
+    drift = make_member("Drift", "Devil's Advocate", api_provider="mancer")
     return sage, logic, drift
 
 
 @pytest.fixture
 def registry(members):
-    return _mock_registry(*members)
+    return mock_registry(*members)
 
 
 @pytest.fixture
 def api_client():
-    return _mock_api_client()
+    return mock_api_client()
 
 
 @pytest.fixture
@@ -682,19 +644,19 @@ class TestQueryMethods:
 
 class TestPromptBuilder:
     def test_includes_proposal_title(self):
-        member = _make_member("Sage")
+        member = make_member("Sage")
         proposal = _mock_proposal(title="Ethics Framework")
         prompt = _build_discussion_prompt(member, proposal, [], 1)
         assert "Ethics Framework" in prompt
 
     def test_includes_proposal_body(self):
-        member = _make_member("Sage")
+        member = make_member("Sage")
         proposal = _mock_proposal(body="Detailed body content")
         prompt = _build_discussion_prompt(member, proposal, [], 1)
         assert "Detailed body content" in prompt
 
     def test_includes_prior_contributions(self):
-        member = _make_member("Logic")
+        member = make_member("Logic")
         proposal = _mock_proposal()
         contributions = [
             DiscussionContribution.create("Sage", "I support this.", round_number=1),
@@ -704,7 +666,7 @@ class TestPromptBuilder:
         assert "I support this" in prompt
 
     def test_context_limit(self):
-        member = _make_member("Sage")
+        member = make_member("Sage")
         proposal = _mock_proposal()
         # Generate more than 10 contributions
         contributions = [
@@ -717,7 +679,7 @@ class TestPromptBuilder:
         assert "Message 4" not in prompt
 
     def test_member_identity(self):
-        member = _make_member("Logic", "Systems")
+        member = make_member("Logic", "Systems")
         proposal = _mock_proposal()
         prompt = _build_discussion_prompt(member, proposal, [], 1)
         assert "Logic" in prompt

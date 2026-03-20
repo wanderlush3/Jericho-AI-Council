@@ -9,6 +9,11 @@ When starting a coding session, follow the protocol below.
 
 // turbo-all
 
+0. **Read the project reference FIRST** — it contains critical gotchas, architecture maps, and file section indices that prevent wasting context tokens:
+```
+view_file .agents/workflows/project-reference.md
+```
+
 1. Check project status:
 ```
 sw --project . status

@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from tests.conftest import make_member
 from core.human_chat import (
     HumanChat,
     HumanChatError,
@@ -26,73 +27,6 @@ from core.registry import CouncilMember, CouncilRegistry
 
 
 # ─── Fixtures ──────────────────────────────────────────────────
-
-
-def _make_member(
-    name: str = "Sage",
-    role: str = "Ethics",
-    api_provider: str = "openrouter",
-    model: str = "test-model",
-) -> CouncilMember:
-    return CouncilMember(
-        name=name,
-        role=role,
-        description=f"{name} description",
-        api_provider=api_provider,
-        model=model,
-        system_prompt=f"You are {name}.",
-    )
-
-
-def _mock_registry(*members: CouncilMember) -> CouncilRegistry:
-    """Build a mock registry pre-loaded with given members."""
-    reg = MagicMock(spec=CouncilRegistry)
-    member_dict = {m.name.lower(): m for m in members}
-    reg.get.side_effect = lambda name: member_dict[name.strip().lower()]
-    reg.list_names.return_value = [m.name for m in members]
-    reg.list_members.return_value = list(members)
-    reg.__len__ = lambda self: len(members)
-    reg.__contains__ = lambda self, n: n.strip().lower() in member_dict
-    return reg
-
-
-def _mock_api_client(content: str = "Test response.") -> AsyncMock:
-    """Build a mock async API client."""
-    client = AsyncMock()
-    client.chat = AsyncMock(return_value=ChatResponse(
-        content=content,
-        model="test-model",
-        provider="openrouter",
-    ))
-    return client
-
-
-@pytest.fixture
-def tmp_dirs(tmp_path: Path):
-    """Provide temp dirs for conversations and memories."""
-    return {
-        "conversations": tmp_path / "conversations",
-        "memories": tmp_path / "memories",
-        "shared": tmp_path / "memories" / "shared",
-    }
-
-
-@pytest.fixture
-def members():
-    sage = _make_member("Sage", "Ethics")
-    logic = _make_member("Logic", "Systems")
-    spark = _make_member("Spark", "Creative", api_provider="mancer")
-    return sage, logic, spark
-
-
-@pytest.fixture
-def registry(members):
-    return _mock_registry(*members)
-
-
-@pytest.fixture
-def api_client():
-    return _mock_api_client()
 
 
 @pytest.fixture
@@ -354,7 +288,7 @@ class TestGetAgentResponse:
         assert rec.messages[0].role == "human"
         assert rec.messages[1].role == "agent"
         assert rec.messages[1].speaker == "Sage"
-        assert response.content == "Test response."
+        assert response.content == "Acknowledged."
 
     def test_api_called(self, human_chat, api_client):
         self._create_chat_with_msg(human_chat)
@@ -548,7 +482,7 @@ class TestQueryMethods:
 
 class TestPromptBuilder:
     def test_prompt_with_history(self):
-        member = _make_member("Sage")
+        member = make_member("Sage")
         messages = [
             HumanChatMessage.create("human", "Human", "What is ethics?"),
             HumanChatMessage.create("agent", "Sage", "Ethics is..."),
@@ -560,13 +494,13 @@ class TestPromptBuilder:
         assert "Ethics is..." in prompt
 
     def test_prompt_without_topic(self):
-        member = _make_member("Sage")
+        member = make_member("Sage")
         prompt = _build_human_chat_prompt(member, [], "")
         assert "Sage" in prompt
         assert "human operator" in prompt
 
     def test_human_messages_labeled(self):
-        member = _make_member("Sage")
+        member = make_member("Sage")
         messages = [
             HumanChatMessage.create("human", "Human", "My question"),
         ]
@@ -574,7 +508,7 @@ class TestPromptBuilder:
         assert "**Human:**" in prompt
 
     def test_context_limit(self):
-        member = _make_member("Sage")
+        member = make_member("Sage")
         # Generate more than 10 messages
         messages = [
             HumanChatMessage.create("human", "Human", f"Message {i}")
@@ -585,6 +519,24 @@ class TestPromptBuilder:
         assert "Message 14" in prompt
         assert "Message 5" in prompt
         assert "Message 4" not in prompt
+
+    def test_prompt_includes_user_description(self):
+        member = make_member("Sage")
+        desc = "I'm a game developer interested in AI ethics."
+        prompt = _build_human_chat_prompt(
+            member, [], "Ethics",
+            user_description=desc,
+        )
+        assert "About the Human Operator" in prompt
+        assert desc in prompt
+
+    def test_prompt_omits_empty_user_description(self):
+        member = make_member("Sage")
+        prompt = _build_human_chat_prompt(
+            member, [], "Ethics",
+            user_description="",
+        )
+        assert "About the Human Operator" not in prompt
 
 
 # ─── Exception Tests ─────────────────────────────────────────
@@ -757,3 +709,257 @@ class TestMemoryIntegration:
             call_args = mock_mem_instance.append_session_event.call_args
             entry = call_args[0][0]
             assert entry.source == "human_chat"
+
+
+# ─── Multi-Member Forwarding Tests ──────────────────────────
+
+
+class TestMultiMemberForwarding:
+    """Tests for multi-member chat message forwarding and attribution."""
+
+    def _setup_multi_chat(self, human_chat):
+        """Create a chat with Sage + Logic and a human message."""
+        human_chat.create_chat(
+            "H-001", "Group Debate",
+            member_name="Sage",
+            topic="AI Ethics",
+        )
+        human_chat.add_council_member("H-001", "Logic")
+        human_chat.send_human_message("H-001", "What do you think?")
+
+    def test_messages_attributed_correctly(self, human_chat, api_client):
+        """Each agent message has the correct speaker field."""
+        # Make the API return different content per call
+        api_client.chat = AsyncMock(
+            side_effect=[
+                ChatResponse(content="Sage reply", model="m", provider="p"),
+                ChatResponse(content="Logic reply", model="m", provider="p"),
+            ]
+        )
+        self._setup_multi_chat(human_chat)
+        loop = asyncio.get_event_loop()
+        rec, _ = loop.run_until_complete(
+            human_chat.get_agent_response("H-001")
+        )
+        # Should have: human msg, Sage msg, Logic msg
+        assert len(rec.messages) == 3
+        assert rec.messages[1].speaker == "Sage"
+        assert rec.messages[1].content == "Sage reply"
+        assert rec.messages[2].speaker == "Logic"
+        assert rec.messages[2].content == "Logic reply"
+
+    def test_api_messages_attribute_other_speakers(self, human_chat, api_client):
+        """When Logic responds, Sage's prior message appears as user with [Sage]: prefix."""
+        call_messages = []
+
+        async def capture_chat(member, messages):
+            call_messages.append((member.name, list(messages)))
+            return ChatResponse(content=f"{member.name} says hi", model="m", provider="p")
+
+        api_client.chat = AsyncMock(side_effect=capture_chat)
+        self._setup_multi_chat(human_chat)
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(human_chat.get_agent_response("H-001"))
+
+        # Logic's API call (second call) - should have Sage's message as user with [Sage]: prefix
+        assert len(call_messages) == 2
+        logic_name, logic_msgs = call_messages[1]
+        assert logic_name == "Logic"
+
+        # Find Sage's response in Logic's message list
+        sage_msgs = [
+            m for m in logic_msgs
+            if m.role == "user" and "[Sage]:" in m.content
+        ]
+        assert len(sage_msgs) >= 1, "Logic should see Sage's message with [Sage]: prefix"
+
+    def test_prompt_shows_all_speakers(self, members):
+        """Prompt builder labels each message with actual speaker name."""
+        sage = members[0]
+        messages = [
+            HumanChatMessage.create("human", "Human", "Question?"),
+            HumanChatMessage.create("agent", "Sage", "Sage answer"),
+            HumanChatMessage.create("agent", "Logic", "Logic answer"),
+        ]
+        prompt = _build_human_chat_prompt(
+            sage, messages, "Ethics",
+            council_members=["Sage", "Logic"],
+        )
+        assert "**Human:**" in prompt
+        assert "**Sage:**" in prompt
+        assert "**Logic:**" in prompt
+        # Should mention group context
+        assert "Logic" in prompt
+        assert "group conversation" in prompt
+
+    def test_continue_conversation(self, human_chat, api_client):
+        """continue_conversation triggers all members and auto-pauses."""
+        api_client.chat = AsyncMock(
+            side_effect=[
+                # First round from get_agent_response
+                ChatResponse(content="Sage r1", model="m", provider="p"),
+                ChatResponse(content="Logic r1", model="m", provider="p"),
+                # Second round from continue_conversation
+                ChatResponse(content="Sage r2", model="m", provider="p"),
+                ChatResponse(content="Logic r2", model="m", provider="p"),
+            ]
+        )
+        self._setup_multi_chat(human_chat)
+        loop = asyncio.get_event_loop()
+
+        # First: get_agent_response (auto-pauses with 2+ members)
+        rec, _ = loop.run_until_complete(
+            human_chat.get_agent_response("H-001")
+        )
+        assert rec.paused is True
+
+        # Continue: AI-to-AI round
+        rec, responses = loop.run_until_complete(
+            human_chat.continue_conversation("H-001")
+        )
+        assert len(responses) == 2
+        assert responses[0].content == "Sage r2"
+        assert responses[1].content == "Logic r2"
+        # Should have 5 messages total: 1 human + 2 round1 + 2 round2
+        assert len(rec.messages) == 5
+        # Should be paused again
+        assert rec.paused is True
+
+    def test_continue_requires_multi_member(self, human_chat):
+        """continue_conversation raises error for single-member chats."""
+        human_chat.create_chat(
+            "H-001", "Solo Chat", member_name="Sage"
+        )
+        human_chat.send_human_message("H-001", "Hello")
+        loop = asyncio.get_event_loop()
+        with pytest.raises(HumanChatError) as exc_info:
+            loop.run_until_complete(
+                human_chat.continue_conversation("H-001")
+            )
+        assert "2+ participants" in str(exc_info.value)
+
+
+# ─── Null Content Handling Tests ─────────────────────────────
+
+
+class TestNullContentHandling:
+    """Tests for graceful handling of None response.content from API."""
+
+    def test_get_agent_response_none_content(self, human_chat, api_client):
+        """get_agent_response handles None content without crashing."""
+        api_client.chat = AsyncMock(
+            return_value=ChatResponse(content=None, model="m", provider="p")
+        )
+        human_chat.create_chat("H-001", "Null Test", member_name="Sage")
+        human_chat.send_human_message("H-001", "Hello")
+
+        loop = asyncio.get_event_loop()
+        rec, resp = loop.run_until_complete(
+            human_chat.get_agent_response("H-001")
+        )
+        # Should use empty string instead of crashing
+        assert rec.messages[1].content == ""
+        assert rec.messages[1].speaker == "Sage"
+
+    def test_continue_conversation_none_content(self, human_chat, api_client):
+        """continue_conversation handles None content without crashing."""
+        api_client.chat = AsyncMock(
+            side_effect=[
+                # First round via get_agent_response
+                ChatResponse(content="Sage ok", model="m", provider="p"),
+                ChatResponse(content="Logic ok", model="m", provider="p"),
+                # Continue round with None content
+                ChatResponse(content=None, model="m", provider="p"),
+                ChatResponse(content="Logic reply", model="m", provider="p"),
+            ]
+        )
+        human_chat.create_chat("H-001", "Null Group", member_name="Sage")
+        human_chat.add_council_member("H-001", "Logic")
+        human_chat.send_human_message("H-001", "Hello")
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(human_chat.get_agent_response("H-001"))
+
+        rec, responses = loop.run_until_complete(
+            human_chat.continue_conversation("H-001")
+        )
+        # Sage's None content should be empty string
+        sage_msg = [m for m in rec.messages if m.speaker == "Sage"]
+        assert sage_msg[-1].content == ""
+        assert responses[0].content is None  # raw response unchanged
+
+
+# ─── Streaming Generator Tests ──────────────────────────────
+
+
+class TestStreamingGenerators:
+    """Tests for the streaming async generator methods."""
+
+    def _setup_multi_chat(self, human_chat):
+        human_chat.create_chat(
+            "H-001", "Stream Test",
+            member_name="Sage",
+            topic="AI Ethics",
+        )
+        human_chat.add_council_member("H-001", "Logic")
+        human_chat.send_human_message("H-001", "What do you think?")
+
+    def test_get_agent_response_streaming_yields_per_member(
+        self, human_chat, api_client
+    ):
+        """Streaming gen yields once per member."""
+        api_client.chat = AsyncMock(
+            side_effect=[
+                ChatResponse(content="Sage stream", model="m", provider="p"),
+                ChatResponse(content="Logic stream", model="m", provider="p"),
+            ]
+        )
+        self._setup_multi_chat(human_chat)
+        loop = asyncio.get_event_loop()
+
+        results = []
+
+        async def collect():
+            async for name, resp, rec in human_chat.get_agent_response_streaming("H-001"):
+                results.append((name, resp.content))
+
+        loop.run_until_complete(collect())
+        assert len(results) == 2
+        assert results[0] == ("Sage", "Sage stream")
+        assert results[1] == ("Logic", "Logic stream")
+
+    def test_continue_conversation_streaming_yields_per_member(
+        self, human_chat, api_client
+    ):
+        """Continue streaming gen yields once per member."""
+        api_client.chat = AsyncMock(
+            side_effect=[
+                # First round
+                ChatResponse(content="Sage r1", model="m", provider="p"),
+                ChatResponse(content="Logic r1", model="m", provider="p"),
+                # Continue streaming round
+                ChatResponse(content="Sage r2", model="m", provider="p"),
+                ChatResponse(content="Logic r2", model="m", provider="p"),
+            ]
+        )
+        self._setup_multi_chat(human_chat)
+        loop = asyncio.get_event_loop()
+
+        # First: trigger a round so the chat exists with messages
+        loop.run_until_complete(human_chat.get_agent_response("H-001"))
+
+        results = []
+
+        async def collect():
+            async for name, resp, rec in human_chat.continue_conversation_streaming("H-001"):
+                results.append((name, resp.content))
+
+        loop.run_until_complete(collect())
+        assert len(results) == 2
+        assert results[0] == ("Sage", "Sage r2")
+        assert results[1] == ("Logic", "Logic r2")
+
+        # Should be paused after
+        rec = human_chat.get("H-001")
+        assert rec.paused is True
+

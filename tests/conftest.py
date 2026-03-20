@@ -15,6 +15,7 @@ import pytest
 
 from core.api_client import ChatResponse
 from core.characters import CharacterManager, CharacterTemplate, Trait
+from core.locations import LocationManager
 from core.memory import AgentMemory, SharedMemory
 from core.proposals import ProposalManager
 from core.registry import CouncilMember, CouncilRegistry
@@ -37,6 +38,7 @@ def tmp_dirs(tmp_path: Path) -> dict[str, Path]:
         "designs": tmp_path / "designs",
         "memories": tmp_path / "memories",
         "shared": tmp_path / "memories" / "shared",
+        "locations": tmp_path / "locations",
     }
     for d in dirs.values():
         d.mkdir(parents=True, exist_ok=True)
@@ -139,3 +141,9 @@ def character_mgr(tmp_dirs: dict[str, Path]) -> CharacterManager:
 def shared_memory(tmp_dirs: dict[str, Path]) -> SharedMemory:
     """SharedMemory backed by tmp directory."""
     return SharedMemory(shared_dir=tmp_dirs["shared"])
+
+
+@pytest.fixture
+def location_mgr(tmp_dirs: dict[str, Path]) -> LocationManager:
+    """LocationManager backed by tmp directory."""
+    return LocationManager(locations_dir=tmp_dirs["locations"])

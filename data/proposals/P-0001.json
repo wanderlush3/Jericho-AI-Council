@@ -1,0 +1,13 @@
+{
+  "id": "P-0001",
+  "title": "Test Proposal",
+  "description": "Give me a test proposal to check functionality.",
+  "author": "Anchor",
+  "category": "general",
+  "status": "decided",
+  "created_at": "2026-03-17T00:46:10.643190+00:00",
+  "updated_at": "2026-03-17T00:52:40.333811+00:00",
+  "body": "",
+  "reviews": [],
+  "metadata": {}
+}

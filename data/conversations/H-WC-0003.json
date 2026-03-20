@@ -1,0 +1,31 @@
+{
+  "chat_id": "WC-0003",
+  "title": "Council in Session Test",
+  "member_name": "Anchor",
+  "topic": "",
+  "messages": [
+    {
+      "role": "human",
+      "speaker": "Human",
+      "content": "Welcome.  The full Council is in session.",
+      "timestamp": "2026-03-16T01:48:11.463400+00:00",
+      "metadata": {}
+    }
+  ],
+  "summary": "Chat 'Council in Session Test' between human and Anchor, Drift, Echo, Forge, Lens, Logic, Pulse, Sage, Spark with 1 messages (1 human, 0 agent).",
+  "created_at": "2026-03-16T01:47:45.860788+00:00",
+  "closed_at": "2026-03-16T01:50:48.973381+00:00",
+  "metadata": {},
+  "council_members": [
+    "Anchor",
+    "Drift",
+    "Echo",
+    "Forge",
+    "Lens",
+    "Logic",
+    "Pulse",
+    "Sage",
+    "Spark"
+  ],
+  "paused": false
+}

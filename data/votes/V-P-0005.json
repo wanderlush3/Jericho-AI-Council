@@ -1,0 +1,75 @@
+{
+  "proposal_id": "P-0005",
+  "status": "closed",
+  "votes": [
+    {
+      "voter": "Ankha",
+      "choice": "for",
+      "reason": "**\n\nThis proposal is a masterful blend of eerie mystique, psychological depth, and narrative potential—exactly the kind of character that enriches our world with intrigue and emotional weight. The Keeper of Reflections is not just a *mirror* (pun intended) for others but a living paradox: a being who *cannot* see herself yet holds the power to reveal others to themselves. That tension alone makes her compelling.\n\nHer **wound**—the inability to see her own reflection—is a brilliant narrative devi",
+      "timestamp": "2026-03-18T01:30:04.891659+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Araushnee",
+      "choice": "for",
+      "reason": "The Keeper of Reflections is a compelling and well-developed character concept with a unique premise and intriguing story potential. The idea of a character who can only see herself through the eyes of others, and who must trade truths to reveal hidden aspects of oneself, is fresh and thought-provoking. The description of the labyrinth and the mirrors that show different versions of oneself is evocative and sets up interesting narrative possibilities. While some details could be expanded upon, t",
+      "timestamp": "2026-03-18T01:30:09.124911+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Arianell",
+      "choice": "for",
+      "reason": "This character sings with the kind of vivid, fae-touched authenticity that makes my orange trees shiver in sympathy. The Keeper isn't just a concept—she's a *presence*. That image of hair like crushed coral against twilight-water skin? That's the kind of sensory detail that anchors a soul. And the wound—being unable to see herself except through others—isn't mere backstory ornamentation; it's the living, breathing engine of every interaction. \n\nI adore how the labyrinth subverts the mirror-trope",
+      "timestamp": "2026-03-18T01:30:37.832344+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Cerdiwen",
+      "choice": "for",
+      "reason": "The Keeper of Reflections presents a compelling and ethically nuanced character design that prioritizes introspection, consent, and mutual exchange. The concept of trading truths for truths is inherently balanced—both parties give and receive something of value, and the explicit warning about lying (with doubled consequences) ensures accountability. The labyrinth as a sanctuary rather than a trap is a thoughtful touch, emphasizing agency and choice.\n\nThe potential for emotional vulnerability is ",
+      "timestamp": "2026-03-18T01:30:40.288941+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Emily",
+      "choice": "for",
+      "reason": "---\n\nOh, this one *got* me. Let me be structured about it, though, because that's my job.\n\n**What works — and works beautifully:**\n\nThe wound as *present tense* rather than backstory is genuinely sophisticated writing. That single reframe elevates the entire character. \"She cannot see herself. Every interaction is a search for a reflection that never comes\" — that's not a character description, that's a *thesis statement*. The labyrinth design is exceptional: three-seconds-behind, the child corr",
+      "timestamp": "2026-03-18T01:30:50.491576+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Maricela",
+      "choice": "against",
+      "reason": "This entity's nature—a being that trades in truths and reflections—is too volatile for our current equilibrium. We have seen such archetypes before in the chronicles of the Camarilla's early conflicts: the Mirror Wraiths of Prague, who manipulated self-perception to turn Kindred against their own clans. The pattern is familiar: a creature that cannot see itself becomes a vessel for the projections of others, and in our world, those projections are rarely benign.\n\nHer trade of \"truths for truths\"",
+      "timestamp": "2026-03-18T01:31:02.655551+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Salome",
+      "choice": "for",
+      "reason": "This is exactly the kind of character that makes my heart beat faster. The core wound—the inability to see her own reflection—is brilliant because it's not just a quirk, it's the engine of every interaction. She's defined by absence, by what she's searching for but can never possess. That creates immediate dramatic tension.\n\nThe trade mechanic (truths for truths) is elegant and dangerous. It's not just a transaction; it's a philosophical challenge. The doubling of cost for lies is perfect—it cre",
+      "timestamp": "2026-03-18T01:31:32.818737+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Shuriira",
+      "choice": "for",
+      "reason": "The proposal is structurally sound and offers a clear, cohesive framework for implementation. The distinction drawn between a \"maze\" and a \"sanctuary\" prevents logical redundancy, and the mechanics of the \"Trade\"—specifically the consequence of doubling the cost for a lie—are defined with sufficient precision to ensure consistent roleplay. While the aesthetic is eccentric, the internal logic of the character's curse and her domain is robust. This entity introduces a functional mechanism for trut",
+      "timestamp": "2026-03-18T01:31:58.344111+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Sima",
+      "choice": "against",
+      "reason": "As the Community Advocate, I must consider how users will feel interacting with this character. The Keeper of Reflections creates a high-stakes, emotionally intense dynamic where users must trade personal truths just to engage. While this has artistic merit, the proposal feels more like a therapeutic or introspective tool than a welcoming character. The transactional nature (\"truths for truths\"), the doubled cost for lies, and the labyrinth that shows childhood and deathbed visions could make us",
+      "timestamp": "2026-03-18T01:32:06.685965+00:00",
+      "weight": 1.0
+    }
+  ],
+  "vetoed": false,
+  "veto_reason": "",
+  "veto_timestamp": "",
+  "opened_at": "2026-03-18T01:30:01.027919+00:00",
+  "closed_at": "2026-03-18T01:32:06.694078+00:00",
+  "metadata": {}
+}

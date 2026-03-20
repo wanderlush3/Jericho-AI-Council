@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from tests.conftest import make_member, mock_registry, mock_api_client
 from core.character_design import (
     CharacterDesigner,
     DesignContribution,
@@ -34,45 +35,6 @@ from core.registry import CouncilMember, CouncilRegistry
 # ─── Fixtures ──────────────────────────────────────────────────
 
 
-def _make_member(
-    name: str = "Forge",
-    role: str = "Character Builder",
-    api_provider: str = "openrouter",
-    model: str = "test-model",
-) -> CouncilMember:
-    return CouncilMember(
-        name=name,
-        role=role,
-        description=f"{name} description",
-        api_provider=api_provider,
-        model=model,
-        system_prompt=f"You are {name}.",
-    )
-
-
-def _mock_registry(*members: CouncilMember) -> CouncilRegistry:
-    """Build a mock registry pre-loaded with given members."""
-    reg = MagicMock(spec=CouncilRegistry)
-    member_dict = {m.name.lower(): m for m in members}
-    reg.get.side_effect = lambda name: member_dict[name.strip().lower()]
-    reg.list_names.return_value = [m.name for m in members]
-    reg.list_members.return_value = list(members)
-    reg.__len__ = lambda self: len(members)
-    reg.__contains__ = lambda self, n: n.strip().lower() in member_dict
-    return reg
-
-
-def _mock_api_client(content: str = "Test response.") -> AsyncMock:
-    """Build a mock async API client."""
-    client = AsyncMock()
-    client.chat = AsyncMock(return_value=ChatResponse(
-        content=content,
-        model="test-model",
-        provider="openrouter",
-    ))
-    return client
-
-
 @pytest.fixture
 def tmp_dirs(tmp_path: Path):
     """Provide temp dirs for designs, characters, and memories."""
@@ -86,20 +48,20 @@ def tmp_dirs(tmp_path: Path):
 
 @pytest.fixture
 def members():
-    forge = _make_member("Forge", "Character Builder")
-    spark = _make_member("Spark", "Creative")
-    sage = _make_member("Sage", "Ethics")
+    forge = make_member("Forge", "Character Builder")
+    spark = make_member("Spark", "Creative")
+    sage = make_member("Sage", "Ethics")
     return forge, spark, sage
 
 
 @pytest.fixture
 def registry(members):
-    return _mock_registry(*members)
+    return mock_registry(*members)
 
 
 @pytest.fixture
 def api_client():
-    return _mock_api_client()
+    return mock_api_client()
 
 
 @pytest.fixture
@@ -705,7 +667,7 @@ class TestQueryMethods:
 
 class TestPromptBuilders:
     def test_concept_content(self):
-        member = _make_member("Forge")
+        member = make_member("Forge")
         record = DesignRecord(design_id="CD-001", title="Explorer")
         prompt = _build_concept_prompt(record, member)
         assert "Explorer" in prompt
@@ -713,7 +675,7 @@ class TestPromptBuilders:
         assert "Name" in prompt
 
     def test_traits_with_prior(self):
-        member = _make_member("Spark")
+        member = make_member("Spark")
         record = DesignRecord(design_id="CD-001", title="Explorer")
         prior = [
             DesignContribution.create(
@@ -727,7 +689,7 @@ class TestPromptBuilders:
         assert "personality" in prompt.lower() or "trait" in prompt.lower()
 
     def test_backstory_content(self):
-        member = _make_member("Sage")
+        member = make_member("Sage")
         record = DesignRecord(design_id="CD-001", title="Explorer")
         prior = [
             DesignContribution.create("Forge", "Concept content.", phase="concept"),
@@ -737,7 +699,7 @@ class TestPromptBuilders:
         assert "backstory" in prompt.lower() or "Backstory" in prompt
 
     def test_prompt_phase_content(self):
-        member = _make_member("Forge")
+        member = make_member("Forge")
         record = DesignRecord(design_id="CD-001", title="Explorer")
         prior = [
             DesignContribution.create("Sage", "Backstory content.", phase="backstory"),
@@ -747,7 +709,7 @@ class TestPromptBuilders:
         assert "system prompt" in prompt.lower()
 
     def test_review_content(self):
-        member = _make_member("Spark")
+        member = make_member("Spark")
         record = DesignRecord(design_id="CD-001", title="Explorer")
         prior = [
             DesignContribution.create("Forge", "Prompt content.", phase="prompt"),

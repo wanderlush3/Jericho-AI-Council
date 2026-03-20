@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from tests.conftest import make_member
 from core.agent_chat import (
     AgentChat,
     ChatError,
@@ -27,73 +28,6 @@ from core.registry import CouncilMember, CouncilRegistry
 
 
 # ─── Fixtures ──────────────────────────────────────────────────
-
-
-def _make_member(
-    name: str = "Sage",
-    role: str = "Ethics",
-    api_provider: str = "openrouter",
-    model: str = "test-model",
-) -> CouncilMember:
-    return CouncilMember(
-        name=name,
-        role=role,
-        description=f"{name} description",
-        api_provider=api_provider,
-        model=model,
-        system_prompt=f"You are {name}.",
-    )
-
-
-def _mock_registry(*members: CouncilMember) -> CouncilRegistry:
-    """Build a mock registry pre-loaded with given members."""
-    reg = MagicMock(spec=CouncilRegistry)
-    member_dict = {m.name.lower(): m for m in members}
-    reg.get.side_effect = lambda name: member_dict[name.strip().lower()]
-    reg.list_names.return_value = [m.name for m in members]
-    reg.list_members.return_value = list(members)
-    reg.__len__ = lambda self: len(members)
-    reg.__contains__ = lambda self, n: n.strip().lower() in member_dict
-    return reg
-
-
-def _mock_api_client(content: str = "Test response.") -> AsyncMock:
-    """Build a mock async API client."""
-    client = AsyncMock()
-    client.chat = AsyncMock(return_value=ChatResponse(
-        content=content,
-        model="test-model",
-        provider="openrouter",
-    ))
-    return client
-
-
-@pytest.fixture
-def tmp_dirs(tmp_path: Path):
-    """Provide temp dirs for conversations and memories."""
-    return {
-        "conversations": tmp_path / "conversations",
-        "memories": tmp_path / "memories",
-        "shared": tmp_path / "memories" / "shared",
-    }
-
-
-@pytest.fixture
-def members():
-    sage = _make_member("Sage", "Ethics")
-    logic = _make_member("Logic", "Systems")
-    spark = _make_member("Spark", "Creative", api_provider="mancer")
-    return sage, logic, spark
-
-
-@pytest.fixture
-def registry(members):
-    return _mock_registry(*members)
-
-
-@pytest.fixture
-def api_client():
-    return _mock_api_client()
 
 
 @pytest.fixture
@@ -315,7 +249,7 @@ class TestExchange:
         )
         assert len(rec.exchanges) == 1
         assert rec.exchanges[0].speaker == "Sage"
-        assert response.content == "Test response."
+        assert response.content == "Acknowledged."
 
     def test_records_messages(self, agent_chat):
         self._create_active_convo(agent_chat)
@@ -594,20 +528,20 @@ class TestQueryMethods:
 
 class TestPromptBuilders:
     def test_opening_prompt_content(self):
-        member = _make_member("Sage")
+        member = make_member("Sage")
         prompt = _build_opening_prompt(member, "Logic", "AI Ethics")
         assert "Sage" in prompt
         assert "Logic" in prompt
         assert "AI Ethics" in prompt
 
     def test_opening_prompt_without_topic(self):
-        member = _make_member("Sage")
+        member = make_member("Sage")
         prompt = _build_opening_prompt(member, "Logic", "")
         assert "Sage" in prompt
         assert "Logic" in prompt
 
     def test_chat_prompt_with_history(self):
-        member = _make_member("Logic")
+        member = make_member("Logic")
         exchanges = [
             ChatExchange.create("Sage", "I think ethics matter."),
         ]
@@ -617,12 +551,12 @@ class TestPromptBuilders:
         assert "Logic" in prompt
 
     def test_chat_prompt_with_topic(self):
-        member = _make_member("Logic")
+        member = make_member("Logic")
         prompt = _build_chat_prompt(member, "Sage", [], "AI Freedom")
         assert "AI Freedom" in prompt
 
     def test_context_limit(self):
-        member = _make_member("Sage")
+        member = make_member("Sage")
         # Generate more than 10 exchanges
         exchanges = [
             ChatExchange.create(f"Speaker{i}", f"Message {i}")

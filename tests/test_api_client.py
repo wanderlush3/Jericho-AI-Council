@@ -237,13 +237,17 @@ class TestEndpointResolution:
             client._resolve_endpoint(member)
 
     def test_missing_openrouter_key_raises(
-        self, openrouter_member: CouncilMember
+        self, openrouter_member: CouncilMember, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        monkeypatch.delenv("JERICHO_OPENROUTER_API_KEY", raising=False)
         c = APIClient(openrouter_api_key="", mancer_api_key="k")
         with pytest.raises(APIAuthenticationError, match="OpenRouter API key not set"):
             c._resolve_endpoint(openrouter_member)
 
-    def test_missing_mancer_key_raises(self, mancer_member: CouncilMember) -> None:
+    def test_missing_mancer_key_raises(
+        self, mancer_member: CouncilMember, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.delenv("JERICHO_MANCER_API_KEY", raising=False)
         c = APIClient(openrouter_api_key="k", mancer_api_key="")
         with pytest.raises(APIAuthenticationError, match="Mancer API key not set"):
             c._resolve_endpoint(mancer_member)
@@ -256,8 +260,12 @@ class TestRequestBuilding:
     """Tests for _build_request_body."""
 
     def test_basic_body_shape(
-        self, openrouter_member: CouncilMember, messages: list[ChatMessage]
+        self, openrouter_member: CouncilMember, messages: list[ChatMessage],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        # Clear any model override env vars so the member's own model is used
+        monkeypatch.delenv("JERICHO_OPENROUTER_MODEL", raising=False)
+        monkeypatch.delenv("JERICHO_MANCER_MODEL", raising=False)
         body = APIClient._build_request_body(
             openrouter_member, messages, temperature=0.7, max_tokens=2048
         )
@@ -296,6 +304,101 @@ class TestRequestBuilding:
             openrouter_member, [], temperature=0.7, max_tokens=2048
         )
         assert len(body["messages"]) == 1  # Just the system prompt
+
+
+# ─── Model Precedence Tests ──────────────────────────────────
+
+
+class TestModelPrecedence:
+    """Tests for reversed model precedence: member model > env var default."""
+
+    def test_member_model_used_when_specific(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When member has a specific model, it is used regardless of env var."""
+        monkeypatch.setenv("JERICHO_OPENROUTER_MODEL", "some/other-model")
+        member = _make_member(model="anthropic/claude-3.5-sonnet")
+        body = APIClient._build_request_body(
+            member, [ChatMessage(role="user", content="Hi")],
+            temperature=0.7, max_tokens=100,
+        )
+        assert body["model"] == "anthropic/claude-3.5-sonnet"
+
+    def test_default_falls_back_to_env_var(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When member model is 'Default', falls back to env var."""
+        monkeypatch.setenv("JERICHO_OPENROUTER_MODEL", "google/gemini-pro")
+        member = _make_member(model="Default")
+        body = APIClient._build_request_body(
+            member, [ChatMessage(role="user", content="Hi")],
+            temperature=0.7, max_tokens=100,
+        )
+        assert body["model"] == "google/gemini-pro"
+
+    def test_default_case_insensitive(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """'default' (lowercase) also triggers fallback."""
+        monkeypatch.setenv("JERICHO_OPENROUTER_MODEL", "google/gemini-pro")
+        member = _make_member(model="default")
+        body = APIClient._build_request_body(
+            member, [ChatMessage(role="user", content="Hi")],
+            temperature=0.7, max_tokens=100,
+        )
+        assert body["model"] == "google/gemini-pro"
+
+    def test_empty_model_falls_back_to_env_var(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When member model is empty string, falls back to env var."""
+        monkeypatch.setenv("JERICHO_OPENROUTER_MODEL", "google/gemini-pro")
+        member = _make_member(model="")
+        body = APIClient._build_request_body(
+            member, [ChatMessage(role="user", content="Hi")],
+            temperature=0.7, max_tokens=100,
+        )
+        assert body["model"] == "google/gemini-pro"
+
+    def test_default_no_env_var_keeps_default(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When model is 'Default' and no env var, keeps 'Default' literally."""
+        monkeypatch.delenv("JERICHO_OPENROUTER_MODEL", raising=False)
+        member = _make_member(model="Default")
+        body = APIClient._build_request_body(
+            member, [ChatMessage(role="user", content="Hi")],
+            temperature=0.7, max_tokens=100,
+        )
+        assert body["model"] == "Default"
+
+    def test_mancer_member_model_used_when_specific(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Mancer member with specific model ignores env var."""
+        monkeypatch.setenv("JERICHO_MANCER_MODEL", "some-mancer-fallback")
+        member = _make_member(
+            api_provider="mancer", model="mythomax",
+        )
+        body = APIClient._build_request_body(
+            member, [ChatMessage(role="user", content="Hi")],
+            temperature=0.7, max_tokens=100,
+        )
+        assert body["model"] == "mythomax"
+
+    def test_mancer_default_falls_back_to_env_var(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Mancer member with 'Default' model uses env var."""
+        monkeypatch.setenv("JERICHO_MANCER_MODEL", "magnum-72b-v4")
+        member = _make_member(
+            api_provider="mancer", model="Default",
+        )
+        body = APIClient._build_request_body(
+            member, [ChatMessage(role="user", content="Hi")],
+            temperature=0.7, max_tokens=100,
+        )
+        assert body["model"] == "magnum-72b-v4"
 
 
 # ─── Response Parsing Tests ───────────────────────────────────

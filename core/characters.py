@@ -67,9 +67,9 @@ class CharacterLifecycleError(CharacterError):
 
 _VALID_TRANSITIONS: dict[str, set[str]] = {
     "draft": {"active"},
-    "active": {"archived", "superseded"},
-    "archived": set(),       # terminal
-    "superseded": set(),     # terminal
+    "active": {"archived", "superseded", "draft"},
+    "archived": {"active", "draft"},
+    "superseded": set(),     # terminal (versioning)
 }
 
 
@@ -133,6 +133,8 @@ class CharacterTemplate:
     greeting: str = ""
     example_messages: list[str] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
+    api_provider: str = "openrouter"
+    model: str = "Default"
     version: int = 1
     created_at: str = ""
     updated_at: str = ""
@@ -156,6 +158,8 @@ class CharacterTemplate:
             greeting=data.get("greeting", ""),
             example_messages=data.get("example_messages", []),
             tags=data.get("tags", []),
+            api_provider=data.get("api_provider", "openrouter"),
+            model=data.get("model", "Default"),
             version=data.get("version", 1),
             created_at=data.get("created_at", ""),
             updated_at=data.get("updated_at", ""),
@@ -176,6 +180,8 @@ class CharacterTemplate:
         greeting: str = "",
         example_messages: list[str] | None = None,
         tags: list[str] | None = None,
+        api_provider: str = "openrouter",
+        model: str = "Default",
         version: int = 1,
         metadata: dict[str, Any] | None = None,
     ) -> CharacterTemplate:
@@ -193,6 +199,8 @@ class CharacterTemplate:
             greeting=greeting,
             example_messages=example_messages or [],
             tags=tags or [],
+            api_provider=api_provider,
+            model=model,
             version=version,
             created_at=now,
             updated_at=now,
@@ -328,6 +336,63 @@ class CharacterManager:
             characters.append(c)
         return characters
 
+    # ── Update ────────────────────────────────────────────────
+
+    def update(self, character_id: str, **fields: Any) -> CharacterTemplate:
+        """
+        Update mutable fields on a character template.
+
+        Accepted keyword args: ``name``, ``description``, ``backstory``,
+        ``system_prompt``, ``greeting``, ``example_messages``, ``tags``,
+        ``metadata``.
+
+        Raises:
+            CharacterNotFoundError: if character does not exist.
+            CharacterValidationError: if name or description would become empty.
+        """
+        character = self.get(character_id)
+
+        MUTABLE = {
+            "name", "description", "backstory", "system_prompt",
+            "greeting", "example_messages", "tags", "metadata",
+            "api_provider", "model",
+        }
+        unknown = set(fields) - MUTABLE
+        if unknown:
+            raise CharacterValidationError(
+                [f"Cannot update immutable/unknown fields: {unknown}"]
+            )
+
+        new_name = fields.get("name", character.name)
+        new_desc = fields.get("description", character.description)
+        if isinstance(new_name, str) and not new_name.strip():
+            raise CharacterValidationError(["Name must not be empty"])
+        if isinstance(new_desc, str) and not new_desc.strip():
+            raise CharacterValidationError(["Description must not be empty"])
+
+        now = datetime.now(timezone.utc).isoformat()
+        updated = CharacterTemplate(
+            id=character.id,
+            name=fields.get("name", character.name),
+            description=fields.get("description", character.description),
+            author=character.author,
+            status=character.status,
+            backstory=fields.get("backstory", character.backstory),
+            traits=list(character.traits),
+            system_prompt=fields.get("system_prompt", character.system_prompt),
+            greeting=fields.get("greeting", character.greeting),
+            example_messages=list(fields.get("example_messages", character.example_messages)),
+            tags=list(fields.get("tags", character.tags)),
+            api_provider=fields.get("api_provider", character.api_provider),
+            model=fields.get("model", character.model),
+            version=character.version,
+            created_at=character.created_at,
+            updated_at=now,
+            metadata=dict(fields.get("metadata", character.metadata)),
+        )
+        self._save(updated)
+        return updated
+
     # ── Status Lifecycle ──────────────────────────────────────
 
     def update_status(self, character_id: str, new_status: str) -> CharacterTemplate:
@@ -363,6 +428,8 @@ class CharacterManager:
             greeting=character.greeting,
             example_messages=list(character.example_messages),
             tags=list(character.tags),
+            api_provider=character.api_provider,
+            model=character.model,
             version=character.version,
             created_at=character.created_at,
             updated_at=now,
@@ -403,6 +470,8 @@ class CharacterManager:
             greeting=character.greeting,
             example_messages=list(character.example_messages),
             tags=list(character.tags),
+            api_provider=character.api_provider,
+            model=character.model,
             version=character.version,
             created_at=character.created_at,
             updated_at=now,
@@ -444,6 +513,8 @@ class CharacterManager:
             greeting=character.greeting,
             example_messages=list(character.example_messages),
             tags=list(character.tags),
+            api_provider=character.api_provider,
+            model=character.model,
             version=character.version,
             created_at=character.created_at,
             updated_at=now,
@@ -457,6 +528,7 @@ class CharacterManager:
     _MUTABLE_FIELDS = {
         "name", "description", "backstory", "system_prompt",
         "greeting", "example_messages", "tags", "metadata",
+        "api_provider", "model",
     }
 
     def update(self, character_id: str, **fields: Any) -> CharacterTemplate:
@@ -492,6 +564,8 @@ class CharacterManager:
             greeting=fields.get("greeting", character.greeting),
             example_messages=fields.get("example_messages", list(character.example_messages)),
             tags=fields.get("tags", list(character.tags)),
+            api_provider=fields.get("api_provider", character.api_provider),
+            model=fields.get("model", character.model),
             version=character.version,
             created_at=character.created_at,
             updated_at=now,
@@ -606,6 +680,8 @@ class CharacterManager:
             greeting=original.greeting,
             example_messages=list(original.example_messages),
             tags=list(original.tags),
+            api_provider=original.api_provider,
+            model=original.model,
             version=original.version + 1,
             created_at=now,
             updated_at=now,

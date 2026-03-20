@@ -22,8 +22,10 @@ from config.settings import (
     API_TIMEOUT_SECONDS,
     MANCER_API_KEY_ENV,
     MANCER_BASE_URL,
+    MANCER_MODEL_ENV,
     OPENROUTER_API_KEY_ENV,
     OPENROUTER_BASE_URL,
+    OPENROUTER_MODEL_ENV,
 )
 from core.registry import CouncilMember
 
@@ -300,6 +302,11 @@ class APIClient:
 
     # ── Request Building ───────────────────────────────────────
 
+    _MODEL_ENV_OVERRIDES: dict[str, str] = {
+        "openrouter": OPENROUTER_MODEL_ENV,
+        "mancer": MANCER_MODEL_ENV,
+    }
+
     @staticmethod
     def _build_request_body(
         member: CouncilMember,
@@ -314,8 +321,19 @@ class APIClient:
         ]
         all_messages.extend(msg.to_dict() for msg in messages)
 
+        # Council member's model takes priority; fall back to Settings
+        # default if the member's model is "Default" (case-insensitive)
+        # or empty.
+        model = member.model
+        if not model or model.strip().lower() == "default":
+            env_var = APIClient._MODEL_ENV_OVERRIDES.get(member.api_provider)
+            if env_var:
+                override = os.environ.get(env_var, "").strip()
+                if override:
+                    model = override
+
         return {
-            "model": member.model,
+            "model": model,
             "messages": all_messages,
             "temperature": temperature,
             "max_tokens": max_tokens,

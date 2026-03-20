@@ -231,5 +231,68 @@
             "F-021",
             "F-024"
         ]
+    },
+    {
+        "id": "F-026",
+        "title": "World Locations",
+        "description": "Filesystem-backed location management system with hierarchical relationships, lifecycle (draft/active/archived), location features, memory-influence integration for prompt context injection, full CRUD REST API, and responsive web dashboard UI",
+        "status": "completed",
+        "dependencies": [
+            "F-011",
+            "F-014",
+            "F-021"
+        ]
+    },
+    {
+        "id": "F-027",
+        "title": "User Description",
+        "description": "Settings-page textarea (700-char max) for a user self-description that is injected into AI chat prompts so council members have context about the human operator",
+        "status": "completed",
+        "dependencies": [
+            "F-009",
+            "F-021",
+            "F-023"
+        ]
+    },
+    {
+        "id": "F-028",
+        "title": "Memory Explorer Web UI",
+        "description": "Web dashboard section for browsing council member memories (core beliefs, session events) and shared council memory (decisions, narrative history) with belief deletion support",
+        "status": "completed",
+        "dependencies": [
+            "F-004",
+            "F-021"
+        ]
+    },
+    {
+        "id": "F-029",
+        "title": "Evolution Web UI",
+        "description": "Web dashboard section for character evolutions — list, detail, create, lifecycle actions (submit/vote/resolve/apply), timelines, and version diff views with evolution counts in dashboard and nav",
+        "status": "completed",
+        "dependencies": [
+            "F-013",
+            "F-020",
+            "F-021"
+        ]
+    },
+    {
+        "id": "F-030",
+        "title": "Presence Wrapper System",
+        "description": "SilentPassa — [PRESENT]/[SILENCE] wrappers for agent messages in chat, with toggle button and localStorage persistence",
+        "status": "completed",
+        "dependencies": [
+            "F-024"
+        ]
+    },
+    {
+        "id": "F-031",
+        "title": "Council Promotion UI",
+        "description": "Add Council Member button in the Council view — lists eligible active characters, lets user assign a council role name and description, creates YAML profile in council/members/",
+        "status": "completed",
+        "dependencies": [
+            "F-003",
+            "F-011",
+            "F-021"
+        ]
     }
 ]

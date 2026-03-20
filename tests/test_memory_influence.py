@@ -461,9 +461,13 @@ class TestBuildContext:
     def test_empty_member_memories(self, tmp_path: Path):
         mem_dir = tmp_path / "memories"
         mem_dir.mkdir()
+        loc_dir = tmp_path / "locations"
+        loc_dir.mkdir()
 
         mi = MemoryInfluence()
-        ctx = mi.build_context("newmember", ["ethics"], memories_dir=mem_dir)
+        ctx = mi.build_context(
+            "newmember", ["ethics"], memories_dir=mem_dir, locations_dir=loc_dir,
+        )
 
         assert ctx.has_content is False
         assert ctx.beliefs == []

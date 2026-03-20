@@ -39,6 +39,9 @@ class RegistryValidationError(ValueError):
 
 REQUIRED_FIELDS = {"name", "role", "description", "api_provider", "model", "system_prompt"}
 VALID_API_PROVIDERS = {"openrouter", "mancer"}
+EDITABLE_FIELDS = {"name", "api_provider", "model", "vote_weight", "system_prompt"}
+EDITABLE_PERSONALITY_FIELDS = {"traits", "communication_style", "decision_approach"}
+READONLY_FIELDS = {"role", "description", "specialties"}
 
 
 @dataclass(frozen=True)
@@ -151,6 +154,71 @@ class CouncilRegistry:
     def members_by_provider(self, provider: str) -> list[CouncilMember]:
         """Return members filtered by API provider."""
         return [m for m in self.list_members() if m.api_provider == provider]
+
+    # ── Updating ────────────────────────────────────────────────
+
+    def update_member(self, name: str, updates: dict) -> CouncilMember:
+        """
+        Update editable fields of a council member and persist to YAML.
+
+        Only fields in EDITABLE_FIELDS and EDITABLE_PERSONALITY_FIELDS are
+        accepted.  Any attempt to modify read-only fields raises ValueError.
+
+        Returns the updated CouncilMember.
+
+        Raises:
+            MemberNotFoundError: if the member doesn't exist.
+            ValueError: if read-only fields are included or validation fails.
+        """
+        member = self.get(name)
+        source = member.source_file
+        if source is None or not source.exists():
+            raise ValueError(f"Source file not found for member '{name}'.")
+
+        # Reject read-only fields
+        for field_name in READONLY_FIELDS:
+            if field_name in updates:
+                raise ValueError(
+                    f"Field '{field_name}' is read-only and cannot be changed via the web interface."
+                )
+
+        # Read the raw YAML
+        with open(source, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+
+        # Apply top-level editable fields
+        for field_name in EDITABLE_FIELDS:
+            if field_name in updates:
+                data[field_name] = updates[field_name]
+
+        # Apply personality sub-fields
+        if "personality" not in data:
+            data["personality"] = {}
+        for pfield in EDITABLE_PERSONALITY_FIELDS:
+            if pfield in updates:
+                data["personality"][pfield] = updates[pfield]
+
+        # Validate the merged data
+        errors = self.validate(data, source)
+        if errors:
+            raise ValueError(f"Validation failed: {'; '.join(errors)}")
+
+        # Write back — rebuild the YAML comment header
+        comment = f"# Council Member: {data['name']} — {data['role']}\n"
+        yaml_body = yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        with open(source, "w", encoding="utf-8") as f:
+            f.write(comment)
+            f.write(yaml_body)
+
+        # Reload this member in the registry
+        key = member.name.lower()
+        new_member = self._build_member(data, source)
+        # If name changed, remove old key
+        if name.lower() != new_member.name.lower():
+            del self._members[key]
+        self._members[new_member.name.lower()] = new_member
+
+        return new_member
 
     # ── Validation ─────────────────────────────────────────────
 

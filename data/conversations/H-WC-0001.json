@@ -1,0 +1,64 @@
+{
+  "chat_id": "WC-0001",
+  "title": "test",
+  "member_name": "Anchor",
+  "topic": "",
+  "messages": [
+    {
+      "role": "human",
+      "speaker": "Human",
+      "content": "mic check, you there?",
+      "timestamp": "2026-03-15T23:52:49.124214+00:00",
+      "metadata": {}
+    },
+    {
+      "role": "agent",
+      "speaker": "Anchor",
+      "content": "Yes, I'm here and ready to serve as Moderator of the Council. How can I help facilitate our discussion today?",
+      "timestamp": "2026-03-15T23:52:50.953315+00:00",
+      "metadata": {
+        "model": "anthropic/claude-3.5-sonnet",
+        "provider": "openrouter"
+      }
+    },
+    {
+      "role": "human",
+      "speaker": "Human",
+      "content": "We are testing functionality.  I appreciate the effort.",
+      "timestamp": "2026-03-15T23:53:55.619882+00:00",
+      "metadata": {}
+    },
+    {
+      "role": "human",
+      "speaker": "Human",
+      "content": "We are testing functionality.  I appreciate the effort.",
+      "timestamp": "2026-03-15T23:54:16.413004+00:00",
+      "metadata": {}
+    },
+    {
+      "role": "human",
+      "speaker": "Human",
+      "content": "We are testing functionality.  I appreciate the effort.",
+      "timestamp": "2026-03-15T23:54:40.662827+00:00",
+      "metadata": {}
+    },
+    {
+      "role": "agent",
+      "speaker": "Anchor",
+      "content": "I understand this is a functionality test. As Anchor, I aim to facilitate effective discussions and appreciate your thoroughness in ensuring the system is working properly. Is there anything specific you'd like me to demonstrate in my role as Council Moderator?",
+      "timestamp": "2026-03-15T23:54:43.149934+00:00",
+      "metadata": {
+        "model": "anthropic/claude-3.5-sonnet",
+        "provider": "openrouter"
+      }
+    }
+  ],
+  "summary": "Chat 'test' between human and Anchor with 6 messages (4 human, 2 agent).",
+  "created_at": "2026-03-15T23:52:36.876899+00:00",
+  "closed_at": "2026-03-15T23:54:59.429511+00:00",
+  "metadata": {},
+  "council_members": [
+    "Anchor"
+  ],
+  "paused": false
+}

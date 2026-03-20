@@ -669,11 +669,20 @@ def report_list() -> None:
 @cli.command()
 @click.option("--host", default="127.0.0.1", help="Host to bind to.")
 @click.option("--port", default=8080, type=int, help="Port to listen on.")
-def web(host: str, port: int) -> None:
+@click.option("--no-browser", is_flag=True, default=False, help="Don't auto-open the browser.")
+def web(host: str, port: int, no_browser: bool) -> None:
     """Launch the web dashboard in your browser."""
+    import threading
+    import webbrowser
+
     import uvicorn
 
-    click.echo(f"🏛️  Jericho Web Dashboard → http://{host}:{port}")
+    url = f"http://{host}:{port}"
+    click.echo(f"🏛️  Jericho Web Dashboard → {url}")
+
+    if not no_browser:
+        threading.Timer(1.5, webbrowser.open, args=[url]).start()
+
     uvicorn.run("core.web_api:app", host=host, port=port, log_level="info")
 
 

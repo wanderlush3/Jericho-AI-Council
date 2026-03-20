@@ -208,6 +208,141 @@ def create_app() -> FastAPI:
             result.append(d)
         return result
 
+    @application.get("/api/council/candidates")
+    def api_council_candidates() -> list[dict[str, Any]]:
+        """List active characters that are not already council members.
+
+        Returns characters eligible for promotion to council membership.
+        Only active characters whose names don't match an existing
+        council member (case-insensitive) are included.
+        """
+        from core.registry import CouncilRegistry
+        from core.characters import CharacterManager
+        from config.settings import CHARACTER_AVATARS_DIR
+
+        registry = CouncilRegistry().load()
+        cmgr = CharacterManager()
+        active_chars = cmgr.list_characters(status="active")
+
+        # Build set of existing council member names (lowercase)
+        council_names = {m.name.lower() for m in registry.list_members()}
+
+        candidates = []
+        for c in active_chars:
+            if c.name.lower() not in council_names:
+                d = {
+                    "id": c.id,
+                    "name": c.name,
+                    "description": c.description,
+                    "status": c.status,
+                    "api_provider": c.api_provider,
+                    "model": c.model,
+                    "system_prompt": c.system_prompt,
+                }
+                avatar_file = CHARACTER_AVATARS_DIR / f"{c.id}.png"
+                if avatar_file.exists():
+                    d["avatar_url"] = f"/api/characters/{c.id}/avatar"
+                candidates.append(d)
+        return candidates
+
+    @application.post("/api/council/promote")
+    def api_council_promote(body: dict[str, Any]) -> dict[str, Any]:
+        """Promote a character to council member.
+
+        Body: {
+            "character_id": "CH-0001",
+            "role": "Innovation Advisor",
+            "role_description": "Explores new ideas and advises on creative solutions",
+            "api_provider": "openrouter",   // optional, defaults to character's
+            "model": "anthropic/claude-3.5-sonnet"  // optional, defaults to character's
+        }
+
+        Creates a new YAML profile in council/members/ and returns
+        the new council member data.
+        """
+        import yaml as yaml_mod
+        from core.registry import CouncilRegistry
+        from core.characters import CharacterManager, CharacterNotFoundError
+
+        character_id = body.get("character_id", "").strip()
+        role = body.get("role", "").strip()
+        role_description = body.get("role_description", "").strip()
+
+        errors = []
+        if not character_id:
+            errors.append("'character_id' is required")
+        if not role:
+            errors.append("'role' is required")
+        if not role_description:
+            errors.append("'role_description' is required")
+        if errors:
+            raise HTTPException(status_code=400, detail="; ".join(errors))
+
+        # Load character
+        cmgr = CharacterManager()
+        try:
+            character = cmgr.get(character_id)
+        except CharacterNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Character '{character_id}' not found.",
+            )
+
+        if character.status != "active":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Character '{character.name}' is not active (status: {character.status}).",
+            )
+
+        # Check not already on council
+        registry = CouncilRegistry().load()
+        if character.name.lower() in {m.name.lower() for m in registry.list_members()}:
+            raise HTTPException(
+                status_code=400,
+                detail=f"'{character.name}' is already a council member.",
+            )
+
+        # Determine provider & model
+        api_provider = body.get("api_provider", "").strip() or character.api_provider
+        model = body.get("model", "").strip() or character.model
+        if model == "Default":
+            model = "anthropic/claude-3.5-sonnet"
+
+        # Build YAML data
+        member_data = {
+            "name": character.name,
+            "role": role,
+            "description": role_description,
+            "api_provider": api_provider,
+            "model": model,
+            "vote_weight": 1.0,
+            "system_prompt": character.system_prompt or f"You are {character.name}, the {role} on the Jericho Council.",
+        }
+
+        # Write YAML to council/members/
+        filename = f"{character.name.lower().replace(' ', '_')}.yaml"
+        member_filepath = COUNCIL_MEMBERS_DIR / filename
+        comment = f"# Council Member: {character.name} — {role}\n"
+        yaml_body = yaml_mod.dump(
+            member_data, default_flow_style=False,
+            allow_unicode=True, sort_keys=False,
+        )
+        with open(member_filepath, "w", encoding="utf-8") as f:
+            f.write(comment)
+            f.write(yaml_body)
+
+        return {
+            "status": "ok",
+            "name": character.name,
+            "role": role,
+            "description": role_description,
+            "api_provider": api_provider,
+            "model": model,
+            "vote_weight": 1.0,
+            "system_prompt": member_data["system_prompt"],
+            "member_file": filename,
+        }
+
     @application.get("/api/council/{name}")
     def api_council_detail(name: str) -> dict[str, Any]:
         """Get a single council member by name."""

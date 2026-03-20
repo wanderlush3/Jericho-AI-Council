@@ -2056,3 +2056,157 @@ class TestApiEvolutions:
             "/api/evolutions/diff?old=CH-9999&new=CH-0001",
         )
         assert resp.status_code == 404
+
+
+# ─── Council Promotion Endpoints ─────────────────────────────
+
+
+class TestApiCouncilPromotion:
+    """Tests for GET /api/council/candidates and POST /api/council/promote."""
+
+    def test_candidates_lists_non_council_characters(self, client):
+        """Active characters not on the council should appear as candidates."""
+        resp = client.get("/api/council/candidates")
+        assert resp.status_code == 200
+        data = resp.json()
+        # Atlas is active and not a council member (Sage, Logic are council)
+        names = [c["name"] for c in data]
+        assert "Atlas" in names
+        # Council members should not appear
+        assert "Sage" not in names
+        assert "Logic" not in names
+
+    def test_candidates_has_expected_fields(self, client):
+        resp = client.get("/api/council/candidates")
+        data = resp.json()
+        assert len(data) >= 1
+        candidate = data[0]
+        for field in ("id", "name", "description", "status", "api_provider", "model"):
+            assert field in candidate
+
+    def test_candidates_excludes_non_active(self, client, characters_dir):
+        """Draft characters should not appear as candidates."""
+        draft_char = {
+            "id": "CH-0002",
+            "name": "Phantom",
+            "description": "A draft character",
+            "author": "Forge",
+            "status": "draft",
+            "backstory": "",
+            "traits": [{"trait_type": "personality", "name": "Shy", "description": "Quiet", "intensity": 0.5}],
+            "system_prompt": "You are Phantom.",
+            "greeting": "",
+            "example_messages": [],
+            "tags": [],
+            "version": 1,
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+            "metadata": {},
+        }
+        (characters_dir / "CH-0002.json").write_text(
+            json.dumps(draft_char, indent=2), encoding="utf-8",
+        )
+        resp = client.get("/api/council/candidates")
+        names = [c["name"] for c in resp.json()]
+        assert "Phantom" not in names
+
+    def test_candidates_excludes_same_name_as_council(self, client, characters_dir):
+        """A character named 'Sage' (same as council member) should not appear."""
+        sage_char = {
+            "id": "CH-0003",
+            "name": "Sage",
+            "description": "An active character with same name",
+            "author": "Forge",
+            "status": "active",
+            "backstory": "",
+            "traits": [{"trait_type": "personality", "name": "Wise", "description": "Wise", "intensity": 0.9}],
+            "system_prompt": "You are Sage the character.",
+            "greeting": "",
+            "example_messages": [],
+            "tags": [],
+            "version": 1,
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+            "metadata": {},
+        }
+        (characters_dir / "CH-0003.json").write_text(
+            json.dumps(sage_char, indent=2), encoding="utf-8",
+        )
+        resp = client.get("/api/council/candidates")
+        names = [c["name"] for c in resp.json()]
+        assert "Sage" not in names
+
+    def test_promote_success(self, client, members_dir):
+        """Promote Atlas to council — should create YAML file."""
+        resp = client.post("/api/council/promote", json={
+            "character_id": "CH-0001",
+            "role": "Explorer Lead",
+            "role_description": "Leads expeditions and scouts new territories",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "ok"
+        assert data["name"] == "Atlas"
+        assert data["role"] == "Explorer Lead"
+        assert data["description"] == "Leads expeditions and scouts new territories"
+        # YAML file should now exist
+        yaml_path = members_dir / "atlas.yaml"
+        assert yaml_path.exists()
+
+    def test_promote_missing_role(self, client):
+        resp = client.post("/api/council/promote", json={
+            "character_id": "CH-0001",
+            "role": "",
+            "role_description": "Some duties",
+        })
+        assert resp.status_code == 400
+        assert "role" in resp.json()["detail"].lower()
+
+    def test_promote_missing_description(self, client):
+        resp = client.post("/api/council/promote", json={
+            "character_id": "CH-0001",
+            "role": "Explorer",
+            "role_description": "",
+        })
+        assert resp.status_code == 400
+        assert "role_description" in resp.json()["detail"].lower()
+
+    def test_promote_invalid_character(self, client):
+        resp = client.post("/api/council/promote", json={
+            "character_id": "CH-9999",
+            "role": "Explorer",
+            "role_description": "Duties",
+        })
+        assert resp.status_code == 404
+        assert "not found" in resp.json()["detail"].lower()
+
+    def test_promote_already_on_council(self, client, characters_dir):
+        """A character with the name of an existing council member can't be promoted."""
+        sage_char = {
+            "id": "CH-0010",
+            "name": "Sage",
+            "description": "Character named Sage",
+            "author": "Forge",
+            "status": "active",
+            "backstory": "",
+            "traits": [{"trait_type": "personality", "name": "Wise", "description": "Wise", "intensity": 0.9}],
+            "system_prompt": "You are Sage.",
+            "greeting": "",
+            "example_messages": [],
+            "tags": [],
+            "version": 1,
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+            "metadata": {},
+        }
+        (characters_dir / "CH-0010.json").write_text(
+            json.dumps(sage_char, indent=2), encoding="utf-8",
+        )
+        resp = client.post("/api/council/promote", json={
+            "character_id": "CH-0010",
+            "role": "Advisor",
+            "role_description": "Advises",
+        })
+        assert resp.status_code == 400
+        assert "already" in resp.json()["detail"].lower()
+

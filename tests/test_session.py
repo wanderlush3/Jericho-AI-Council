@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from tests.conftest import make_member
 from core.session import (
     ACTIVITY_TYPES,
     SESSION_PHASES,
@@ -32,73 +33,6 @@ from core.registry import CouncilMember, CouncilRegistry
 
 
 # ─── Fixtures ──────────────────────────────────────────────────
-
-
-def _make_member(
-    name: str = "Sage",
-    role: str = "Ethics",
-    api_provider: str = "openrouter",
-    model: str = "test-model",
-) -> CouncilMember:
-    return CouncilMember(
-        name=name,
-        role=role,
-        description=f"{name} description",
-        api_provider=api_provider,
-        model=model,
-        system_prompt=f"You are {name}.",
-    )
-
-
-def _mock_registry(*members: CouncilMember) -> CouncilRegistry:
-    """Build a mock registry pre-loaded with given members."""
-    reg = MagicMock(spec=CouncilRegistry)
-    member_dict = {m.name.lower(): m for m in members}
-    reg.get.side_effect = lambda name: member_dict[name.strip().lower()]
-    reg.list_names.return_value = [m.name for m in members]
-    reg.list_members.return_value = list(members)
-    reg.__len__ = lambda self: len(members)
-    reg.__contains__ = lambda self, n: n.strip().lower() in member_dict
-    return reg
-
-
-def _mock_api_client(content: str = "Acknowledged.") -> APIClient:
-    """Build a mock async API client."""
-    client = AsyncMock()
-    client.chat = AsyncMock(return_value=ChatResponse(
-        content=content,
-        model="test-model",
-        provider="openrouter",
-    ))
-    return client
-
-
-@pytest.fixture
-def tmp_dirs(tmp_path: Path):
-    """Provide temp dirs for conversations and memories."""
-    return {
-        "conversations": tmp_path / "conversations",
-        "memories": tmp_path / "memories",
-        "shared": tmp_path / "memories" / "shared",
-    }
-
-
-@pytest.fixture
-def members():
-    sage = _make_member("Sage", "Ethics")
-    logic = _make_member("Logic", "Systems")
-    spark = _make_member("Spark", "Creative", api_provider="mancer")
-    return sage, logic, spark
-
-
-@pytest.fixture
-def registry(members):
-    return _mock_registry(*members)
-
-
-@pytest.fixture
-def api_client():
-    return _mock_api_client()
 
 
 @pytest.fixture
@@ -709,7 +643,7 @@ class TestQueryMethods:
 class TestPromptBuilders:
     def test_briefing_prompt_contains_title(self):
         rec = SessionRecord.create("S-001", "Ethics Review", activity_type="discussion")
-        member = _make_member("Sage")
+        member = make_member("Sage")
         prompt = _build_briefing_prompt(rec, member, [])
         assert "Ethics Review" in prompt
         assert "Sage" in prompt
@@ -719,13 +653,13 @@ class TestPromptBuilders:
         rec = SessionRecord.create(
             "S-001", "Test", agenda="Discuss AI autonomy"
         )
-        member = _make_member("Sage")
+        member = make_member("Sage")
         prompt = _build_briefing_prompt(rec, member, [])
         assert "Discuss AI autonomy" in prompt
 
     def test_briefing_prompt_with_memories(self):
         rec = SessionRecord.create("S-001", "Test")
-        member = _make_member("Sage")
+        member = make_member("Sage")
         memories = [
             MemoryEntry.create("S-000", "chat", "Previous discussion"),
         ]
@@ -733,13 +667,13 @@ class TestPromptBuilders:
         assert "Previous discussion" in prompt
 
     def test_discussion_prompt_contains_topic(self):
-        member = _make_member("Sage")
+        member = make_member("Sage")
         prompt = _build_discussion_prompt("Ethics of AI", member, [])
         assert "Ethics of AI" in prompt
         assert "Sage" in prompt
 
     def test_discussion_prompt_with_prior_messages(self):
-        member = _make_member("Logic")
+        member = make_member("Logic")
         prior = [
             SessionMessage.create("Sage", "I think ethics matter."),
         ]
@@ -753,7 +687,7 @@ class TestPromptBuilders:
             title="Test Session",
             messages=[SessionMessage.create("Sage", "Hello")],
         )
-        member = _make_member("Sage")
+        member = make_member("Sage")
         prompt = _build_summary_prompt(rec, member)
         assert "Test Session" in prompt
         assert "Sage" in prompt

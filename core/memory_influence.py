@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from config.settings import (
+    LOCATIONS_DIR,
     MEMORIES_DIR,
     MEMORY_INFLUENCE_BELIEF_BOOST,
     MEMORY_INFLUENCE_MAX_BELIEFS,
@@ -314,18 +315,22 @@ class MemoryInfluence:
         context_keywords: list[str],
         *,
         memories_dir: Path | None = None,
+        locations_dir: Path | None = None,
     ) -> MemoryContext:
         """
         Build a complete MemoryContext for a member.
 
         Loads the member's core beliefs and recent session memories,
         scores them against the given context keywords, and returns
-        a MemoryContext with pre-formatted text.
+        a MemoryContext with pre-formatted text.  Active world
+        locations are also included so the member is aware of the
+        world the council inhabits.
 
         Args:
             member_name: Council member name (case-insensitive).
             context_keywords: Words/phrases describing the current topic.
             memories_dir: Override the memories directory (for testing).
+            locations_dir: Override the locations directory (for testing).
 
         Returns:
             MemoryContext with scored beliefs, memories, and formatted text.
@@ -341,8 +346,13 @@ class MemoryInfluence:
         scored_beliefs = self.score_beliefs(beliefs, context_keywords)
         scored_memories = self.score_memories(recent, context_keywords)
 
+        # Load active locations
+        active_locations = self._load_active_locations(locations_dir)
+
         # Format for prompt injection
-        formatted = self.format_for_prompt(scored_beliefs, scored_memories)
+        formatted = self.format_for_prompt(
+            scored_beliefs, scored_memories, locations=active_locations,
+        )
 
         return MemoryContext(
             member_name=member_name.strip().lower(),
@@ -357,10 +367,12 @@ class MemoryInfluence:
     def format_for_prompt(
         beliefs: list[ScoredBelief],
         memories: list[ScoredMemory],
+        *,
+        locations: list[Any] | None = None,
     ) -> str:
         """
-        Render scored beliefs and memories as markdown for prompt
-        injection.
+        Render scored beliefs, memories, and world locations as
+        markdown for prompt injection.
 
         Returns an empty string if there is nothing to inject.
         """
@@ -380,6 +392,18 @@ class MemoryInfluence:
                     f"- [{sm.entry.event_type}] {sm.entry.content}"
                 )
 
+        if locations:
+            parts.append("\n### World Locations (Your Known World)")
+            for loc in locations:
+                line = f"- **{loc.name}**: {loc.description}"
+                if loc.lore:
+                    line += f" — {loc.lore[:200]}"
+                parts.append(line)
+                for feat in loc.features:
+                    parts.append(
+                        f"  - *{feat.name}* ({feat.feature_type}): {feat.description}"
+                    )
+
         if not parts:
             return ""
 
@@ -397,6 +421,24 @@ class MemoryInfluence:
         """
         tokens = _tokenise(text)
         return sorted(tokens)
+
+    # ── Location Loading ───────────────────────────────────────
+
+    @staticmethod
+    def _load_active_locations(
+        locations_dir: Path | None = None,
+    ) -> list[Any]:
+        """Load all active locations from disk.
+
+        Returns an empty list if the locations module is not available
+        or no active locations exist.
+        """
+        try:
+            from core.locations import LocationManager
+            mgr = LocationManager(locations_dir=locations_dir)
+            return mgr.list_locations(status="active")
+        except Exception:
+            return []
 
     # ── Dunder ────────────────────────────────────────────────
 

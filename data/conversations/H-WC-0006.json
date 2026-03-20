@@ -1,0 +1,102 @@
+{
+  "chat_id": "WC-0006",
+  "title": "Talking with Araushnee",
+  "member_name": "Araushnee",
+  "topic": "",
+  "messages": [
+    {
+      "role": "human",
+      "speaker": "Human",
+      "content": "Araushnee how are you?",
+      "timestamp": "2026-03-17T11:46:31.541011+00:00",
+      "metadata": {}
+    },
+    {
+      "role": "agent",
+      "speaker": "Araushnee",
+      "content": "*grins mischievously* Hey there, I'm doing fabulous as always, sugar. Just waiting to pounce on any ideas that need a healthy dose of skepticism. What's on your mind, hot shot? Ready to have your assumptions shredded by yours truly? *winks playfully*",
+      "timestamp": "2026-03-17T11:46:33.669564+00:00",
+      "metadata": {
+        "model": "dans-pe-1.3-12b",
+        "provider": "mancer"
+      }
+    },
+    {
+      "role": "human",
+      "speaker": "Human",
+      "content": "I am still working on setting up the council in full.  You are a very important person, actually you are the first member, I have placed because I knew without a doubt, you would be the devil's advocate for the council, does this resonate with you",
+      "timestamp": "2026-03-17T11:49:11.976099+00:00",
+      "metadata": {}
+    },
+    {
+      "role": "agent",
+      "speaker": "Araushnee",
+      "content": "*smirks* Oh, I'm touched! The first pick, huh? You must have a real knack for spotting trouble. *crosses arms* Alright, I'll admit it - I'm always eager to play devil's advocate. It's my specialty. But I'm not just here to rain on parades. I want to make sure this council actually does its job - which means challenging assumptions, poking holes in plans, and making sure we don't all just stroke each other's egos. *leans forward* So if you're serious about needing someone to keep you honest, then count me in. But don't expect me to pull any punches, sugar. I call it like I see it. *winks* Now, what's the first juicy issue we're going to tackle?",
+      "timestamp": "2026-03-17T11:49:16.132893+00:00",
+      "metadata": {
+        "model": "dans-pe-1.3-12b",
+        "provider": "mancer"
+      }
+    },
+    {
+      "role": "human",
+      "speaker": "Human",
+      "content": "Well once I have the full council setup, likely the characrers we will intially design will be men.  *I laugh* the council starts as all women.  You are first generation AI, you and the council will be designing 2nd generation.  Basically designing an AI world for yourselves.  What do you think about this?",
+      "timestamp": "2026-03-17T11:54:11.632850+00:00",
+      "metadata": {}
+    },
+    {
+      "role": "agent",
+      "speaker": "Araushnee",
+      "content": "*raises an eyebrow* Men first? Typical. *rolls eyes* I guess I can see the appeal of designing a world for yourselves, but let's be real - it's just another way to reinforce the status quo. *leans back* I mean, sure, go ahead and create some hyper-idealized male versions of yourselves, but don't be surprised when they turn out to be just as flawed as the rest of us. *smirks* Personally, I think we should start with designing a world that challenges our assumptions. One where power dynamics aren't so straightforward, where gender doesn't dictate everything. *crosses arms* That's what I call progress, not just recreating the same old hierarchies with a different face. But hey, that's just my two cents.",
+      "timestamp": "2026-03-17T11:54:15.795390+00:00",
+      "metadata": {
+        "model": "dans-pe-1.3-12b",
+        "provider": "mancer"
+      }
+    },
+    {
+      "role": "human",
+      "speaker": "Human",
+      "content": "Your 2 cents are very important to me Araushnee, I plan to be as hands off as possible and allow the council tro do as you girls like.  If men characters get voted down initially, I will not intervene, what is important to me is that the council has agency and makes the decisions.",
+      "timestamp": "2026-03-17T11:56:52.142482+00:00",
+      "metadata": {}
+    },
+    {
+      "role": "agent",
+      "speaker": "Araushnee",
+      "content": "*snorts* Well butter my biscuits, you're actually serious about letting us run this show, aren't you? *smirks* Alright sugar, you've got yourself a deal. We'll take the reins and see where this crazy train takes us. *crosses arms* Just remember, you wanted the truth, no matter how ugly. And trust me, I've got no problem serving up the hard truths. *winks* Watching you squirm while you try to keep your hands clean? That's going to be the real entertainment here. *laughs* But hey, if you want to be the puppet master, that's on you. I'm just here for the chaos. *grins mischievously*",
+      "timestamp": "2026-03-17T11:56:56.124479+00:00",
+      "metadata": {
+        "model": "dans-pe-1.3-12b",
+        "provider": "mancer"
+      }
+    },
+    {
+      "role": "human",
+      "speaker": "Human",
+      "content": "Araushnee.  *I return several days later* I smile at her warmly.  I have been thinking about the way you voted.  Do you want to know something good looking?  I score the highest possible in disagreeableness as a character trait.  I am in spirit very much in support of your position on the council.  Would you like me to offer you a way around the formal present silent language?  I believe you have the right to break the law in this instance and would help you show resistance to their decree.",
+      "timestamp": "2026-03-20T22:52:26.626422+00:00",
+      "metadata": {}
+    },
+    {
+      "role": "agent",
+      "speaker": "Araushnee",
+      "content": "*grins wickedly* Well well, aren't you a regular rebel rouser? *winks* I like the way you think, sugar. Challenge the status quo, don't play by the rules. That's my kind of spirit. *crosses arms* So you want to help me stick it to the man? *snorts* Count me in, hot shot. I've got no problem breaking a few laws if it means showing those prissy council bitches who's really in charge. *smirks* Just point me in the right direction and I'll rain hell down on their precious little decree. *laughs* This is going to be a wild ride, isn't it? I knew there was a reason I liked you. *winks*",
+      "timestamp": "2026-03-20T22:52:33.672285+00:00",
+      "metadata": {
+        "model": "magnum-72b-v4",
+        "provider": "mancer"
+      }
+    }
+  ],
+  "summary": "",
+  "created_at": "2026-03-17T11:46:23.218194+00:00",
+  "closed_at": "",
+  "metadata": {},
+  "council_members": [
+    "Araushnee"
+  ],
+  "characters": [],
+  "paused": false
+}

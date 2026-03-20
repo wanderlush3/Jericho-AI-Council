@@ -1,0 +1,18 @@
+{
+  "chat_id": "WC-0018",
+  "title": "Verify chat",
+  "member_name": "The Keeper of Reflections",
+  "topic": "",
+  "messages": [],
+  "summary": "Chat 'Verify chat' between human and The Keeper of Reflections, The Keeper of Reflections with 0 messages (0 human, 0 agent).",
+  "created_at": "2026-03-20T10:24:51.198939+00:00",
+  "closed_at": "2026-03-20T10:25:17.505579+00:00",
+  "metadata": {},
+  "council_members": [
+    "The Keeper of Reflections"
+  ],
+  "characters": [
+    "CH-0001"
+  ],
+  "paused": false
+}

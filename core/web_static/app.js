@@ -312,7 +312,10 @@ async function renderCouncil() {
 
     if (!data.length) {
         $main().innerHTML = `
-            <div class="page-header"><h2>Council Members</h2></div>
+            <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+                <div><h2>Council Members</h2></div>
+                <button class="btn btn-primary" onclick="openPromoteModal()" id="btn-add-council">➕ Add Council Member</button>
+            </div>
             <div class="empty-state"><div class="empty-icon">👥</div><p>No council members found.</p></div>`;
         return;
     }
@@ -335,12 +338,131 @@ async function renderCouncil() {
 
     $main().innerHTML = `
         <div class="view-enter">
-            <div class="page-header">
-                <h2>Council Members</h2>
-                <p>${data.length} members across ${new Set(data.map(m=>m.api_provider)).size} providers</p>
+            <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+                <div>
+                    <h2>Council Members</h2>
+                    <p>${data.length} members across ${new Set(data.map(m=>m.api_provider)).size} providers</p>
+                </div>
+                <button class="btn btn-primary" onclick="openPromoteModal()" id="btn-add-council">➕ Add Council Member</button>
             </div>
             <div class="member-grid">${cards}</div>
         </div>`;
+}
+
+// ─── Council Promotion Modal ───────────────────────────────────
+
+let _promoteSelectedId = null;
+
+async function openPromoteModal() {
+    try {
+        const candidates = await api('/api/council/candidates');
+        _promoteSelectedId = null;
+
+        const listHTML = candidates.length
+            ? candidates.map(c => `
+                <div class="promote-candidate-item" id="cand-${c.id}"
+                     onclick="selectCandidate('${c.id}', '${c.name.replace(/'/g, "\\'")}')">
+                    <div>
+                        <div class="promote-candidate-name">${c.name}</div>
+                        <div class="promote-candidate-desc">${truncate(c.description || '', 80)}</div>
+                    </div>
+                </div>`).join('')
+            : '<div class="promote-empty">No eligible characters found. Create an active character first.</div>';
+
+        // Remove any existing modal
+        const existing = document.getElementById('promote-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'promote-modal';
+        modal.className = 'promote-modal';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="promote-modal-content">
+                <div class="promote-modal-header">
+                    <h3>➕ Add Council Member</h3>
+                    <button class="detail-close" onclick="closePromoteModal()">✕</button>
+                </div>
+                <div class="promote-modal-body">
+                    <div class="promote-form-group">
+                        <label>Select Character to Promote</label>
+                        <div class="promote-candidate-list">${listHTML}</div>
+                    </div>
+                    <div class="promote-form-group">
+                        <label for="promote-role">Council Role *</label>
+                        <input type="text" id="promote-role" class="form-input"
+                               placeholder="e.g. Innovation Advisor, Security Lead" />
+                    </div>
+                    <div class="promote-form-group">
+                        <label for="promote-desc">Role Description / Duties *</label>
+                        <textarea id="promote-desc" class="form-input" rows="3"
+                                  placeholder="Describe what this council role is responsible for..."></textarea>
+                    </div>
+                </div>
+                <div class="promote-modal-footer">
+                    <button class="btn" onclick="closePromoteModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="promoteToCouncil()" id="btn-confirm-promote">Promote to Council</button>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closePromoteModal();
+        });
+    } catch (err) {
+        showToast('Failed to load candidates: ' + err.message, true);
+    }
+}
+
+function selectCandidate(id, name) {
+    _promoteSelectedId = id;
+    document.querySelectorAll('.promote-candidate-item').forEach(el => el.classList.remove('selected'));
+    const item = document.getElementById('cand-' + id);
+    if (item) item.classList.add('selected');
+}
+
+function closePromoteModal() {
+    const modal = document.getElementById('promote-modal');
+    if (modal) modal.remove();
+    _promoteSelectedId = null;
+}
+
+async function promoteToCouncil() {
+    if (!_promoteSelectedId) {
+        showToast('Please select a character first.', true);
+        return;
+    }
+    const role = (document.getElementById('promote-role')?.value || '').trim();
+    const desc = (document.getElementById('promote-desc')?.value || '').trim();
+    if (!role) { showToast('Council Role is required.', true); return; }
+    if (!desc) { showToast('Role Description is required.', true); return; }
+
+    const btn = document.getElementById('btn-confirm-promote');
+    if (btn) { btn.disabled = true; btn.textContent = 'Promoting…'; }
+
+    try {
+        const resp = await fetch('/api/council/promote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                character_id: _promoteSelectedId,
+                role: role,
+                role_description: desc,
+            }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Promotion failed' }));
+            throw new Error(err.detail);
+        }
+        const result = await resp.json();
+        showToast(`${result.name} promoted to Council as ${result.role}! ✅`);
+        closePromoteModal();
+        renderCouncil(); // refresh
+    } catch (err) {
+        showToast('Promotion failed: ' + err.message, true);
+        if (btn) { btn.disabled = false; btn.textContent = 'Promote to Council'; }
+    }
 }
 
 async function renderCouncilDetail(name) {

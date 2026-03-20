@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0"
 title Jericho AI Council
 echo.
 echo  ================================================
@@ -70,4 +71,4 @@ echo  API docs:   http://127.0.0.1:8080/docs
 echo.
 echo  Press Ctrl+C to stop the server.
 echo.
-python -m uvicorn core.web_api:app --host 127.0.0.1 --port 8080
+python -m core.cli web
