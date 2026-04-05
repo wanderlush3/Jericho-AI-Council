@@ -17,9 +17,146 @@ const state = {
     locationsData: null,
     analyticsData: null,
     silentpassaEnabled: localStorage.getItem('silentpassa') !== 'off',
+    activeSkin: localStorage.getItem('jericho-skin') || 'default',
 };
 
 const $main = () => document.getElementById('main-content');
+
+function escapeHtml(str) {
+    const el = document.createElement('div');
+    el.textContent = str || '';
+    return el.innerHTML;
+}
+
+function escapeAttr(str) {
+    return (str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ─── Skin / Theme System ──────────────────────────────────────
+
+const SKINS = {
+    default: {
+        label: 'Default',
+        icon: '🌑',
+        desc: 'Dark premium dashboard',
+        swatches: ['#0a0e17', '#111827', '#3b82f6', '#06b6d4', '#8b5cf6'],
+        vars: {},
+    },
+    frutiger_aero: {
+        label: 'Frutiger Aero',
+        icon: '🫧',
+        desc: 'Glossy Y2K optimism',
+        swatches: ['#e8f4fd', '#f0fdf4', '#ffffff', '#38bdf8', '#f97316'],
+        vars: {
+            /* Background palette — light, airy, sky-inspired */
+            '--bg-primary': '#e4f0fb',
+            '--bg-secondary': '#f0f7ff',
+            '--bg-card': 'rgba(255, 255, 255, 0.65)',
+            '--bg-card-hover': 'rgba(255, 255, 255, 0.85)',
+            '--bg-input': 'rgba(255, 255, 255, 0.7)',
+            '--bg-sidebar': 'rgba(224, 242, 254, 0.92)',
+
+            /* Text palette — dark on light */
+            '--text-primary': '#1e293b',
+            '--text-secondary': '#475569',
+            '--text-muted': '#64748b',
+            '--text-accent': '#0284c7',
+
+            /* Accent colors — vibrant, warm, nature-inspired */
+            '--accent-blue': '#0ea5e9',
+            '--accent-cyan': '#06b6d4',
+            '--accent-emerald': '#10b981',
+            '--accent-amber': '#f59e0b',
+            '--accent-rose': '#f43f5e',
+            '--accent-violet': '#8b5cf6',
+            '--accent-indigo': '#6366f1',
+
+            /* Borders — glossy, translucent white */
+            '--border-subtle': 'rgba(148, 163, 184, 0.25)',
+            '--border-medium': 'rgba(148, 163, 184, 0.35)',
+            '--border-glow': 'rgba(14, 165, 233, 0.4)',
+
+            /* Shadows — soft, light-mode glow */
+            '--shadow-sm': '0 1px 3px rgba(0, 0, 0, 0.08)',
+            '--shadow-md': '0 4px 14px rgba(0, 0, 0, 0.1)',
+            '--shadow-lg': '0 8px 30px rgba(0, 0, 0, 0.12)',
+            '--shadow-glow': '0 0 20px rgba(14, 165, 233, 0.15)',
+        },
+    },
+    vaporwave: {
+        label: 'Vaporwave',
+        icon: '🌴',
+        desc: 'Retro-futuristic neon glow',
+        swatches: ['#1a0a2e', '#16213e', '#ff71ce', '#01cdfe', '#b967ff'],
+        vars: {
+            /* Background palette — deep purple-navy */
+            '--bg-primary': '#0d0221',
+            '--bg-secondary': '#150535',
+            '--bg-card': 'rgba(26, 10, 46, 0.75)',
+            '--bg-card-hover': 'rgba(36, 15, 62, 0.85)',
+            '--bg-input': 'rgba(22, 8, 42, 0.8)',
+            '--bg-sidebar': 'rgba(13, 2, 33, 0.95)',
+
+            /* Text palette — soft pastels on dark */
+            '--text-primary': '#e8d5f5',
+            '--text-secondary': '#b8a0cc',
+            '--text-muted': '#8a6faa',
+            '--text-accent': '#ff71ce',
+
+            /* Accent colors — neon retro palette */
+            '--accent-blue': '#01cdfe',
+            '--accent-cyan': '#05ffa1',
+            '--accent-emerald': '#05ffa1',
+            '--accent-amber': '#fffb96',
+            '--accent-rose': '#ff71ce',
+            '--accent-violet': '#b967ff',
+            '--accent-indigo': '#7b5ea7',
+
+            /* Borders — neon-tinged */
+            '--border-subtle': 'rgba(185, 103, 255, 0.15)',
+            '--border-medium': 'rgba(185, 103, 255, 0.3)',
+            '--border-glow': 'rgba(255, 113, 206, 0.4)',
+
+            /* Shadows — neon glow */
+            '--shadow-sm': '0 1px 4px rgba(185, 103, 255, 0.1)',
+            '--shadow-md': '0 4px 16px rgba(185, 103, 255, 0.12)',
+            '--shadow-lg': '0 8px 32px rgba(185, 103, 255, 0.15)',
+            '--shadow-glow': '0 0 24px rgba(255, 113, 206, 0.2)',
+        },
+    },
+};
+
+/** Track which CSS variables were last set so we can clear them. */
+let _lastSkinVarKeys = [];
+
+function applySkin(name) {
+    const skin = SKINS[name];
+    if (!skin) return;
+
+    const root = document.documentElement;
+
+    // Enable transition
+    root.setAttribute('data-skin-transitioning', '');
+
+    // Clear previous overrides
+    _lastSkinVarKeys.forEach(k => root.style.removeProperty(k));
+    _lastSkinVarKeys = [];
+
+    // Apply new overrides
+    if (skin.vars) {
+        Object.entries(skin.vars).forEach(([k, v]) => {
+            root.style.setProperty(k, v);
+            _lastSkinVarKeys.push(k);
+        });
+    }
+
+    root.setAttribute('data-skin', name);
+    state.activeSkin = name;
+    localStorage.setItem('jericho-skin', name);
+
+    // Remove transition attribute after animation completes
+    setTimeout(() => root.removeAttribute('data-skin-transitioning'), 500);
+}
 
 // ─── API Helpers ──────────────────────────────────────────────
 
@@ -155,10 +292,17 @@ async function renderView(view, detail) {
             case 'votes': detail ? await renderVoteDetail(detail) : await renderVotes(); break;
             case 'characters': detail ? await renderCharacterDetail(detail) : await renderCharacters(); break;
             case 'evolution': detail ? await renderEvolutionDetail(detail) : await renderEvolution(); break;
+            case 'tasks': detail ? await renderTaskDetail(detail) : await renderTasks(); break;
             case 'locations': detail ? await renderLocationDetail(detail) : await renderLocations(); break;
+            case 'laws': detail ? await renderLawDetail(detail) : await renderLaws(); break;
+            case 'items': detail ? await renderItemDetail(detail) : await renderItems(); break;
+            case 'stores': detail ? await renderStoreDetail(detail) : await renderStores(); break;
             case 'analytics': await renderAnalytics(); break;
             case 'chat': detail ? await renderChatDetail(detail) : await renderChat(); break;
-            case 'memories': detail === 'shared' ? await renderSharedMemory() : detail ? await renderMemoryDetail(detail) : await renderMemories(); break;
+            case 'memories': detail === 'shared' ? await renderSharedMemory() : detail === 'law_shared' ? await renderLawSharedMemory() : detail ? await renderMemoryDetail(detail) : await renderMemories(); break;
+            case 'sessions': detail ? await renderCouncilSessionDetail(detail) : await renderCouncilSessions(); break;
+            case 'treasury': detail ? await renderTreasuryDetail(detail) : await renderTreasury(); break;
+            case 'taxation': await renderTaxation(); break;
             case 'settings': await renderSettings(); break;
             default: await renderDashboard();
         }
@@ -226,11 +370,33 @@ async function renderDashboard() {
             .join('');
     }
 
+    const it = data.items || {};
+    let itemChips = '';
+    if (it.by_status) {
+        itemChips = Object.entries(it.by_status)
+            .map(([k, cnt]) => `<span class="stat-chip badge badge-${k}">${k}: ${cnt}</span>`)
+            .join('');
+    }
+
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header">
                 <h2>Dashboard</h2>
                 <p>Jericho AI Council — collaborative AI character design through democratic governance</p>
+            </div>
+
+            <div class="narrative-banner" id="narrative-banner">
+                <div class="narrative-banner-header">
+                    <span class="narrative-banner-title">📰 Jericho Times</span>
+                    <span class="narrative-banner-controls">
+                        <button class="narrative-btn" id="narrative-prev" title="Previous">◀</button>
+                        <span class="narrative-counter" id="narrative-counter"></span>
+                        <button class="narrative-btn" id="narrative-next" title="Next">▶</button>
+                    </span>
+                </div>
+                <div class="narrative-ticker" id="narrative-ticker">
+                    <div class="narrative-loading">Loading bulletins...</div>
+                </div>
             </div>
 
             <div class="stats-grid">
@@ -270,8 +436,107 @@ async function renderDashboard() {
                     <div class="stat-label">Evolutions</div>
                     ${evoChips ? `<div class="stat-breakdown">${evoChips}</div>` : ''}
                 </div>
+                <div class="stat-card" style="border-image:linear-gradient(135deg, #FFD700, #C0C0C0, #CD7F32) 1">
+                    <div class="stat-icon">🪙</div>
+                    <div class="stat-value">${(data.treasury || {}).total_accounts || 0}</div>
+                    <div class="stat-label">Treasury Accounts</div>
+                    ${(data.treasury && data.treasury.government_balance) ? `<div class="stat-breakdown"><span class="stat-chip badge badge-government">Gov: ${data.treasury.government_balance.gold}G</span></div>` : ''}
+                </div>
+                <div class="stat-card" style="border-image:linear-gradient(135deg, hsl(30,70%,50%), hsl(40,80%,55%)) 1">
+                    <div class="stat-icon">📦</div>
+                    <div class="stat-value">${it.count || 0}</div>
+                    <div class="stat-label">Items</div>
+                    ${itemChips ? `<div class="stat-breakdown">${itemChips}</div>` : ''}
+                </div>
+                <div class="stat-card" style="border-image:linear-gradient(135deg, hsl(220,60%,50%), hsl(200,55%,45%)) 1">
+                    <div class="stat-icon">⚖️</div>
+                    <div class="stat-value">${(data.laws || {}).count || 0}</div>
+                    <div class="stat-label">Laws</div>
+                    ${(data.laws && data.laws.by_status) ? Object.entries(data.laws.by_status).map(([k, cnt]) => `<span class="stat-chip badge badge-${k}">${k}: ${cnt}</span>`).join('') : ''}
+                </div>
             </div>
         </div>`;
+
+    // -- Narrative Banner: fetch and cycle bulletins --
+    _initNarrativeBanner();
+}
+
+/** Fetch bulletins and start the auto-cycling ticker. */
+async function _initNarrativeBanner() {
+    const ticker = document.getElementById('narrative-ticker');
+    const counter = document.getElementById('narrative-counter');
+    const prevBtn = document.getElementById('narrative-prev');
+    const nextBtn = document.getElementById('narrative-next');
+    const banner = document.getElementById('narrative-banner');
+    if (!ticker) return;
+
+    let bulletins = [];
+    try {
+        bulletins = await api('/api/narrative-bulletins');
+    } catch (_) {
+        bulletins = [];
+    }
+
+    if (!bulletins || bulletins.length === 0) {
+        ticker.innerHTML = '<div class="narrative-empty">No recent news. The council chambers are quiet.</div>';
+        if (counter) counter.textContent = '';
+        return;
+    }
+
+    let currentIdx = 0;
+    let cycleTimer = null;
+
+    const SOURCE_NAV = {
+        proposal: 'proposals',
+        vote: 'votes',
+        character: 'characters',
+        item: 'items',
+        location: 'locations',
+        treasury: 'treasury',
+        session: 'sessions',
+    };
+
+    function renderBulletin(idx) {
+        const b = bulletins[idx];
+        const navView = SOURCE_NAV[b.source_type] || '';
+        const clickAttr = navView ? `onclick="navigate('${navView}')" style="cursor:pointer;" title="Go to ${navView}"` : '';
+        ticker.classList.remove('narrative-fade-in');
+        // Force reflow for animation restart
+        void ticker.offsetWidth;
+        ticker.classList.add('narrative-fade-in');
+        ticker.innerHTML = `
+            <div class="narrative-item" ${clickAttr}>
+                <span class="narrative-icon">${b.icon}</span>
+                <div class="narrative-content">
+                    <div class="narrative-headline">${_escHtml(b.headline)}</div>
+                    <div class="narrative-body">${_escHtml(b.body)}</div>
+                </div>
+            </div>`;
+        if (counter) counter.textContent = (idx + 1) + ' / ' + bulletins.length;
+    }
+
+    function advance(dir) {
+        currentIdx = (currentIdx + dir + bulletins.length) % bulletins.length;
+        renderBulletin(currentIdx);
+        resetTimer();
+    }
+
+    function resetTimer() {
+        if (cycleTimer) clearInterval(cycleTimer);
+        cycleTimer = setInterval(() => advance(1), 8000);
+    }
+
+    if (prevBtn) prevBtn.addEventListener('click', (e) => { e.stopPropagation(); advance(-1); });
+    if (nextBtn) nextBtn.addEventListener('click', (e) => { e.stopPropagation(); advance(1); });
+
+    renderBulletin(0);
+    resetTimer();
+}
+
+/** Minimal HTML escaper for bulletin text. */
+function _escHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -519,20 +784,14 @@ async function renderCouncilDetail(name) {
                             <select id="cf-provider" class="settings-input" onchange="updateModelFieldForProvider()">
                                 <option value="openrouter" ${data.api_provider === 'openrouter' ? 'selected' : ''}>OpenRouter</option>
                                 <option value="mancer" ${data.api_provider === 'mancer' ? 'selected' : ''}>Mancer</option>
+                                <option value="lmstudio" ${data.api_provider === 'lmstudio' ? 'selected' : ''}>LM Studio</option>
                             </select>
                         </div>
 
                         <div class="council-field-group">
                             <label for="cf-model">Model</label>
                             <div id="cf-model-container">
-                                ${data.api_provider === 'mancer'
-                                    ? `<select id="cf-model" class="settings-input">
-                                           ${MANCER_MODEL_OPTIONS.map(m => `<option value="${m}" ${data.model === m || (!data.model && m === 'Default') ? 'selected' : ''}>${m}</option>`).join('')}
-                                       </select>`
-                                    : `<select id="cf-model" class="settings-input">
-                                           ${OPENROUTER_MODEL_OPTIONS.map(m => `<option value="${m}" ${data.model === m || (!data.model && m === 'Default') ? 'selected' : ''}>${m}</option>`).join('')}
-                                       </select>`
-                                }
+                                ${renderModelField('cf-model', data.api_provider, data.model, true)}
                             </div>
                             <span class="council-field-hint">Set to "Default" to use the model configured in Settings</span>
                         </div>
@@ -631,16 +890,7 @@ function updateModelFieldForProvider() {
     const provider = document.getElementById('cf-provider').value;
     const container = document.getElementById('cf-model-container');
     if (!container) return;
-
-    if (provider === 'mancer') {
-        container.innerHTML = `<select id="cf-model" class="settings-input">
-            ${MANCER_MODEL_OPTIONS.map(m => `<option value="${m}">${m}</option>`).join('')}
-        </select>`;
-    } else {
-        container.innerHTML = `<select id="cf-model" class="settings-input">
-            ${OPENROUTER_MODEL_OPTIONS.map(m => `<option value="${m}">${m}</option>`).join('')}
-        </select>`;
-    }
+    container.innerHTML = renderModelField('cf-model', provider, '', true);
 }
 
 async function saveCouncilMember(originalName) {
@@ -847,11 +1097,23 @@ async function renderProposals() {
     let members = [];
     try { members = await api('/api/council'); } catch { /* empty */ }
 
-    const memberOptions = members.map(m =>
+    // Fetch the user's display name so they can author proposals too
+    let userName = '';
+    try {
+        const userResp = await api('/api/settings/user-name');
+        userName = (userResp.name || '').trim();
+    } catch { /* empty */ }
+
+    const userOption = userName
+        ? `<option value="${userName}">${userName} — You</option>
+           <option disabled>──────────</option>`
+        : '';
+
+    const memberOptions = userOption + members.map(m =>
         `<option value="${m.name}">${m.name} — ${m.role}</option>`
     ).join('');
 
-    const categoryOptions = ['character', 'governance', 'ethics', 'expansion', 'general', 'evolution']
+    const categoryOptions = ['character', 'governance', 'ethics', 'expansion', 'general', 'evolution', 'location', 'item', 'law']
         .map(c => `<option value="${c}">${c.charAt(0).toUpperCase() + c.slice(1)}</option>`)
         .join('');
 
@@ -907,7 +1169,7 @@ async function renderProposals() {
                     </div>
                     <div class="filter-group">
                         <label for="proposal-category-select">Category</label>
-                        <select id="proposal-category-select" class="settings-input">
+                        <select id="proposal-category-select" class="settings-input" onchange="toggleProposalCategoryFields()">
                             ${categoryOptions}
                         </select>
                     </div>
@@ -917,10 +1179,198 @@ async function renderProposals() {
                     </div>
                 </div>
                 <div class="filter-group" style="margin-top:var(--space-sm)">
-                    <label for="proposal-desc-input">Description</label>
+                    <label for="proposal-desc-input">Description <span id="proposal-desc-hint" style="font-weight:400;font-size:0.78rem;color:var(--accent-cyan)"></span></label>
                     <textarea id="proposal-desc-input" class="settings-input proposal-textarea" rows="3"
                         placeholder="Describe the proposal and its goals…"></textarea>
                 </div>
+
+                <!-- Character-specific fields (shown when category=character) -->
+                <div id="proposal-char-fields" class="character-fields-panel" style="display:none">
+                    <div class="char-fields-header">🎭 Character Details</div>
+                    <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
+                        <div class="filter-group" style="flex:2">
+                            <label for="proposal-char-name">Character Name</label>
+                            <input id="proposal-char-name" class="settings-input" placeholder="e.g. Atlas" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="proposal-char-provider">API Provider</label>
+                            <select id="proposal-char-provider" class="settings-input" onchange="updateProposalCharModelField()">
+                                <option value="openrouter">OpenRouter</option>
+                                <option value="mancer">Mancer</option>
+                                <option value="lmstudio">LM Studio</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="proposal-char-model">Model</label>
+                            <div id="proposal-char-model-container">
+                                ${renderModelField('proposal-char-model', 'openrouter', '', true)}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="filter-group" style="margin-top:var(--space-sm)">
+                        <label for="proposal-char-backstory">Backstory</label>
+                        <textarea id="proposal-char-backstory" class="settings-input proposal-textarea" rows="3"
+                            placeholder="Character history and background — the lion's share of the character's story…"></textarea>
+                    </div>
+                    <div class="filter-group" style="margin-top:var(--space-sm)">
+                        <label for="proposal-char-prompt">System Prompt</label>
+                        <textarea id="proposal-char-prompt" class="settings-input proposal-textarea" rows="3"
+                            placeholder="You are {{char}}, an adventurous AI who…"></textarea>
+                    </div>
+                    <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
+                        <div class="filter-group" style="flex:2">
+                            <label for="proposal-char-greeting">Greeting</label>
+                            <input id="proposal-char-greeting" class="settings-input" placeholder="First message the character says…" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="proposal-char-tags">Tags</label>
+                            <input id="proposal-char-tags" class="settings-input" placeholder="explorer, brave (comma-separated)" />
+                        </div>
+                    </div>
+                    <div class="filter-group" style="margin-top:var(--space-sm)">
+                        <label for="proposal-char-examples">Example Messages</label>
+                        <textarea id="proposal-char-examples" class="settings-input proposal-textarea" rows="2"
+                            placeholder="One message per line…"></textarea>
+                    </div>
+
+                    <div class="char-trait-editor" style="margin-top:var(--space-md)">
+                        <label>Traits</label>
+                        <div id="proposal-char-trait-list"></div>
+                        <div class="proposal-form-grid" style="margin-top:var(--space-xs)">
+                            <div class="filter-group">
+                                <input id="proposal-char-trait-name" class="settings-input" placeholder="Trait name (e.g. Curious)" />
+                            </div>
+                            <div class="filter-group">
+                                <select id="proposal-char-trait-type" class="settings-input">
+                                    <option value="personality">Personality</option>
+                                    <option value="values">Values</option>
+                                    <option value="flaws">Flaws</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                            </div>
+                            <div class="filter-group" style="flex:2">
+                                <input id="proposal-char-trait-desc" class="settings-input" placeholder="Trait description…" />
+                            </div>
+                            <div class="filter-group" style="flex:0.5">
+                                <input id="proposal-char-trait-intensity" type="range" min="0" max="1" step="0.1" value="0.5"
+                                    class="avatar-zoom-slider" oninput="document.getElementById('proposal-char-trait-intensity-val').textContent = this.value" />
+                                <span id="proposal-char-trait-intensity-val" style="font-size:0.78rem;color:var(--text-muted)">0.5</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-sm)" onclick="addProposalCharTrait()">
+                            ➕ Add Trait
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Location-specific fields (shown when category=location) -->
+                <div id="proposal-loc-fields" class="location-fields-panel" style="display:none">
+                    <div class="loc-fields-header">🌍 Location Details</div>
+                    <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
+                        <div class="filter-group" style="flex:2">
+                            <label for="proposal-loc-name">Location Name</label>
+                            <input id="proposal-loc-name" class="settings-input" placeholder="e.g. Ironhaven" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="proposal-loc-coords">Coordinates</label>
+                            <input id="proposal-loc-coords" class="settings-input" placeholder="e.g. 42.3N, 71.1W (optional)" />
+                        </div>
+                    </div>
+                    <div class="filter-group" style="margin-top:var(--space-sm)">
+                        <label for="proposal-loc-lore">Lore</label>
+                        <textarea id="proposal-loc-lore" class="settings-input proposal-textarea" rows="3"
+                            placeholder="History and background of this place…"></textarea>
+                    </div>
+                    <div class="filter-group" style="margin-top:var(--space-sm)">
+                        <label for="proposal-loc-tags">Tags</label>
+                        <input id="proposal-loc-tags" class="settings-input" placeholder="port, fortress, capital (comma-separated)" />
+                    </div>
+                    <div class="loc-feature-editor" style="margin-top:var(--space-md)">
+                        <label>Features</label>
+                        <div id="proposal-loc-feature-list"></div>
+                        <div class="proposal-form-grid" style="margin-top:var(--space-xs)">
+                            <div class="filter-group" style="flex:2">
+                                <input id="proposal-loc-feature-name" class="settings-input" placeholder="Feature name (e.g. Great Hall)" />
+                            </div>
+                            <div class="filter-group">
+                                <select id="proposal-loc-feature-type" class="settings-input">
+                                    ${LOCATION_FEATURE_TYPES.map(ft => `<option value="${ft}">${ft.charAt(0).toUpperCase() + ft.slice(1)}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="filter-group" style="flex:2">
+                                <input id="proposal-loc-feature-desc" class="settings-input" placeholder="Feature description…" />
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-sm)" onclick="addProposalLocFeature()">
+                            ➕ Add Feature
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Item-specific fields (shown when category=item) -->
+                <div id="proposal-item-fields" class="location-fields-panel" style="display:none">
+                    <div class="loc-fields-header">📦 Item Details</div>
+                    <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
+                        <div class="filter-group" style="flex:2">
+                            <label for="proposal-item-name">Item Name</label>
+                            <input id="proposal-item-name" class="settings-input" placeholder="e.g. Starfall Blade" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="proposal-item-rarity">Rarity</label>
+                            <select id="proposal-item-rarity" class="settings-input">
+                                <option value="common">Common</option>
+                                <option value="uncommon">Uncommon</option>
+                                <option value="rare">Rare</option>
+                                <option value="epic">Epic</option>
+                                <option value="legendary">Legendary</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="proposal-item-tier">Tier <span style="color:var(--accent-rose);font-size:0.75rem">(required)</span></label>
+                            <select id="proposal-item-tier" class="settings-input">
+                                <option value="">-- Select Tier --</option>
+                                ${ITEM_TIERS.map(t => `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`).join('')}
+                        </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="proposal-item-legality">Legality</label>
+                            <select id="proposal-item-legality" class="settings-input">
+                                <option value="">-- Select Legality --</option>
+                                ${ITEM_LEGALITY.map(l => `<option value="${l}">${l.charAt(0).toUpperCase() + l.slice(1)}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filter-group" style="margin-top:var(--space-sm)">
+                        <label for="proposal-item-lore">Lore</label>
+                        <textarea id="proposal-item-lore" class="settings-input proposal-textarea" rows="3"
+                            placeholder="History and origin of this item…"></textarea>
+                    </div>
+                    <div class="filter-group" style="margin-top:var(--space-sm)">
+                        <label for="proposal-item-tags">Tags</label>
+                        <input id="proposal-item-tags" class="settings-input" placeholder="weapon, legendary, enchanted (comma-separated)" />
+                    </div>
+                    <div class="loc-feature-editor" style="margin-top:var(--space-md)">
+                        <label>Properties</label>
+                        <div id="proposal-item-property-list"></div>
+                        <div class="proposal-form-grid" style="margin-top:var(--space-xs)">
+                            <div class="filter-group" style="flex:2">
+                                <input id="proposal-item-property-name" class="settings-input" placeholder="Property name (e.g. Fire Enchantment)" />
+                            </div>
+                            <div class="filter-group">
+                                <select id="proposal-item-property-type" class="settings-input">
+                                    ${ITEM_PROPERTY_TYPES.map(pt => `<option value="${pt}">${pt.charAt(0).toUpperCase() + pt.slice(1)}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="filter-group" style="flex:2">
+                                <input id="proposal-item-property-desc" class="settings-input" placeholder="Property description…" />
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-sm)" onclick="addProposalItemProperty()">
+                            ➕ Add Property
+                        </button>
+                    </div>
+                </div>
+
                 <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                     <button class="btn btn-primary" onclick="createNewProposal()" id="proposal-create-btn">
                         🚀 Submit Proposal
@@ -931,6 +1381,162 @@ async function renderProposals() {
 
             ${tableHtml}
         </div>`;
+}
+
+// ── Category Fields Toggle & Traits/Features for Proposal ────
+
+let proposalCharTraits = [];
+let proposalLocFeatures = [];
+let proposalItemProperties = [];
+
+function toggleProposalCategoryFields() {
+    const cat = document.getElementById('proposal-category-select').value;
+    const charPanel = document.getElementById('proposal-char-fields');
+    const locPanel = document.getElementById('proposal-loc-fields');
+    const itemPanel = document.getElementById('proposal-item-fields');
+    const hint = document.getElementById('proposal-desc-hint');
+    const descEl = document.getElementById('proposal-desc-input');
+
+    // Hide all category panels first
+    if (charPanel) charPanel.style.display = 'none';
+    if (locPanel) locPanel.style.display = 'none';
+    if (itemPanel) itemPanel.style.display = 'none';
+    if (hint) hint.textContent = '';
+    if (descEl) descEl.placeholder = 'Describe the proposal and its goals…';
+
+    if (cat === 'character') {
+        if (charPanel) charPanel.style.display = 'block';
+        if (hint) hint.textContent = '(character description / background)';
+        if (descEl) descEl.placeholder = 'Describe the character — this becomes the character description…';
+    } else if (cat === 'location') {
+        if (locPanel) locPanel.style.display = 'block';
+        if (hint) hint.textContent = '(location description)';
+        if (descEl) descEl.placeholder = 'Describe the location — this becomes the location description…';
+    } else if (cat === 'item') {
+        if (itemPanel) itemPanel.style.display = 'block';
+        if (hint) hint.textContent = '(item description)';
+        if (descEl) descEl.placeholder = 'Describe the item — this becomes the item description…';
+    }
+}
+
+// Keep old name as alias for backward compatibility
+function toggleProposalCharFields() { toggleProposalCategoryFields(); }
+
+// ── Location Feature Editor for Proposal ─────────────────────
+
+function addProposalLocFeature() {
+    const nameEl = document.getElementById('proposal-loc-feature-name');
+    const name = nameEl.value.trim();
+    const featureType = document.getElementById('proposal-loc-feature-type').value;
+    const desc = document.getElementById('proposal-loc-feature-desc').value.trim();
+    if (!name) { nameEl.focus(); return; }
+    if (proposalLocFeatures.some(f => f.name.toLowerCase() === name.toLowerCase())) {
+        showToast('Feature with that name already added', true);
+        return;
+    }
+    proposalLocFeatures.push({ name, description: desc || name, feature_type: featureType });
+    nameEl.value = '';
+    document.getElementById('proposal-loc-feature-desc').value = '';
+    renderProposalLocFeatures();
+}
+
+function removeProposalLocFeature(index) {
+    proposalLocFeatures.splice(index, 1);
+    renderProposalLocFeatures();
+}
+
+function renderProposalLocFeatures() {
+    const container = document.getElementById('proposal-loc-feature-list');
+    if (!container) return;
+    if (!proposalLocFeatures.length) { container.innerHTML = ''; return; }
+    container.innerHTML = proposalLocFeatures.map((f, i) => `
+        <div class="trait-item" style="margin-bottom:var(--space-xs)">
+            <span class="trait-name">${escapeHtml(f.name)}</span>
+            <span class="specialty-tag">${f.feature_type}</span>
+            <span class="trait-desc-small">${escapeHtml(f.description)}</span>
+            <button class="btn btn-sm btn-danger-subtle" onclick="removeProposalLocFeature(${i})" title="Remove">🗑️</button>
+        </div>`).join('');
+}
+
+// ── Item Property Editor for Proposal ────────────────────────
+
+function addProposalItemProperty() {
+    const nameEl = document.getElementById('proposal-item-property-name');
+    const name = nameEl.value.trim();
+    const propertyType = document.getElementById('proposal-item-property-type').value;
+    const desc = document.getElementById('proposal-item-property-desc').value.trim();
+    if (!name) { nameEl.focus(); return; }
+    if (proposalItemProperties.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+        showToast('Property with that name already added', true);
+        return;
+    }
+    proposalItemProperties.push({ name, description: desc || name, property_type: propertyType });
+    nameEl.value = '';
+    document.getElementById('proposal-item-property-desc').value = '';
+    renderProposalItemProperties();
+}
+
+function removeProposalItemProperty(index) {
+    proposalItemProperties.splice(index, 1);
+    renderProposalItemProperties();
+}
+
+function renderProposalItemProperties() {
+    const container = document.getElementById('proposal-item-property-list');
+    if (!container) return;
+    if (!proposalItemProperties.length) { container.innerHTML = ''; return; }
+    container.innerHTML = proposalItemProperties.map((p, i) => `
+        <div class="trait-item" style="margin-bottom:var(--space-xs)">
+            <span class="trait-name">${escapeHtml(p.name)}</span>
+            <span class="specialty-tag">${p.property_type}</span>
+            <span class="trait-desc-small">${escapeHtml(p.description)}</span>
+            <button class="btn btn-sm btn-danger-subtle" onclick="removeProposalItemProperty(${i})" title="Remove">🗑️</button>
+        </div>`).join('');
+}
+
+function updateProposalCharModelField() {
+    const provider = document.getElementById('proposal-char-provider').value;
+    const container = document.getElementById('proposal-char-model-container');
+    if (!container) return;
+    container.innerHTML = renderModelField('proposal-char-model', provider, '', true);
+}
+
+function addProposalCharTrait() {
+    const nameEl = document.getElementById('proposal-char-trait-name');
+    const name = nameEl.value.trim();
+    const traitType = document.getElementById('proposal-char-trait-type').value;
+    const desc = document.getElementById('proposal-char-trait-desc').value.trim();
+    const intensity = parseFloat(document.getElementById('proposal-char-trait-intensity').value);
+    if (!name) { nameEl.focus(); return; }
+    if (proposalCharTraits.some(t => t.name.toLowerCase() === name.toLowerCase())) {
+        showToast('Trait with that name already added', true);
+        return;
+    }
+    proposalCharTraits.push({ trait_type: traitType, name, description: desc || name, intensity });
+    nameEl.value = '';
+    document.getElementById('proposal-char-trait-desc').value = '';
+    document.getElementById('proposal-char-trait-intensity').value = '0.5';
+    document.getElementById('proposal-char-trait-intensity-val').textContent = '0.5';
+    renderProposalCharTraits();
+}
+
+function removeProposalCharTrait(index) {
+    proposalCharTraits.splice(index, 1);
+    renderProposalCharTraits();
+}
+
+function renderProposalCharTraits() {
+    const container = document.getElementById('proposal-char-trait-list');
+    if (!container) return;
+    if (!proposalCharTraits.length) { container.innerHTML = ''; return; }
+    container.innerHTML = proposalCharTraits.map((t, i) => `
+        <div class="trait-item" style="margin-bottom:var(--space-xs)">
+            <span class="trait-name">${escapeHtml(t.name)}</span>
+            <span class="specialty-tag">${t.trait_type}</span>
+            <span class="trait-intensity">${Math.round(t.intensity * 100)}%</span>
+            <span class="trait-desc-small">${escapeHtml(t.description)}</span>
+            <button class="btn btn-sm btn-danger-subtle" onclick="removeProposalCharTrait(${i})" title="Remove">🗑️</button>
+        </div>`).join('');
 }
 
 async function createNewProposal() {
@@ -945,21 +1551,157 @@ async function createNewProposal() {
     if (!title) { document.getElementById('proposal-title-input').focus(); return; }
     if (!description) { document.getElementById('proposal-desc-input').focus(); return; }
 
+    // Build character_data if category is character
+    let character_data = null;
+    if (category === 'character') {
+        const charName = (document.getElementById('proposal-char-name').value || '').trim();
+        const backstory = (document.getElementById('proposal-char-backstory').value || '').trim();
+        const systemPrompt = (document.getElementById('proposal-char-prompt').value || '').trim();
+        const greeting = (document.getElementById('proposal-char-greeting').value || '').trim();
+        const tagsRaw = (document.getElementById('proposal-char-tags').value || '').trim();
+        const examplesRaw = (document.getElementById('proposal-char-examples').value || '').trim();
+        const provider = document.getElementById('proposal-char-provider').value;
+        const model = document.getElementById('proposal-char-model').value;
+
+        // Collect any unsaved trait from inputs
+        const traitName = (document.getElementById('proposal-char-trait-name').value || '').trim();
+        const traits = [...proposalCharTraits];
+        if (traitName) {
+            traits.push({
+                trait_type: document.getElementById('proposal-char-trait-type').value,
+                name: traitName,
+                description: (document.getElementById('proposal-char-trait-desc').value || '').trim() || traitName,
+                intensity: parseFloat(document.getElementById('proposal-char-trait-intensity').value),
+            });
+        }
+
+        if (!charName) {
+            document.getElementById('proposal-char-name').focus();
+            status.textContent = 'Character name is required for character proposals';
+            return;
+        }
+        if (!traits.length) {
+            document.getElementById('proposal-char-trait-name').focus();
+            status.textContent = 'At least one trait is required for character proposals';
+            return;
+        }
+
+        character_data = {
+            name: charName,
+            backstory,
+            system_prompt: systemPrompt,
+            greeting,
+            tags: tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
+            example_messages: examplesRaw ? examplesRaw.split('\n').map(l => l.trim()).filter(Boolean) : [],
+            traits,
+            api_provider: provider,
+            model,
+        };
+    }
+
+    // Build location_data if category is location
+    let location_data = null;
+    if (category === 'location') {
+        const locName = (document.getElementById('proposal-loc-name').value || '').trim();
+        const lore = (document.getElementById('proposal-loc-lore').value || '').trim();
+        const locTagsRaw = (document.getElementById('proposal-loc-tags').value || '').trim();
+        const coordinates = (document.getElementById('proposal-loc-coords').value || '').trim();
+
+        // Collect any unsaved feature from inputs
+        const featName = (document.getElementById('proposal-loc-feature-name').value || '').trim();
+        const features = [...proposalLocFeatures];
+        if (featName) {
+            features.push({
+                name: featName,
+                description: (document.getElementById('proposal-loc-feature-desc').value || '').trim() || featName,
+                feature_type: document.getElementById('proposal-loc-feature-type').value,
+            });
+        }
+
+        if (!locName) {
+            document.getElementById('proposal-loc-name').focus();
+            status.textContent = 'Location name is required for location proposals';
+            return;
+        }
+
+        location_data = {
+            name: locName,
+            description: description,
+            lore,
+            tags: locTagsRaw ? locTagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
+            coordinates,
+            features,
+        };
+    }
+
+    // Build item_data if category is item
+    let item_data = null;
+    if (category === 'item') {
+        const itemName = (document.getElementById('proposal-item-name').value || '').trim();
+        const lore = (document.getElementById('proposal-item-lore').value || '').trim();
+        const itemTagsRaw = (document.getElementById('proposal-item-tags').value || '').trim();
+        const rarity = document.getElementById('proposal-item-rarity').value;
+        const tier = document.getElementById('proposal-item-tier').value;
+        const legality = document.getElementById('proposal-item-legality').value;
+
+        // Collect any unsaved property from inputs
+        const propName = (document.getElementById('proposal-item-property-name').value || '').trim();
+        const properties = [...proposalItemProperties];
+        if (propName) {
+            properties.push({
+                name: propName,
+                description: (document.getElementById('proposal-item-property-desc').value || '').trim() || propName,
+                property_type: document.getElementById('proposal-item-property-type').value,
+            });
+        }
+
+        if (!itemName) {
+            document.getElementById('proposal-item-name').focus();
+            status.textContent = 'Item name is required for item proposals';
+            return;
+        }
+
+        if (!tier) {
+            document.getElementById('proposal-item-tier').focus();
+            status.textContent = 'Tier is required for item proposals';
+            return;
+        }
+
+        item_data = {
+            name: itemName,
+            description: description,
+            lore,
+            tags: itemTagsRaw ? itemTagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
+            rarity,
+            tier,
+            legality,
+            properties,
+        };
+    }
+
     btn.disabled = true;
     btn.textContent = '⏳ Creating…';
     status.textContent = 'Creating proposal and opening discussion…';
 
     try {
+        const payload = { author, title, description, category };
+        if (character_data) payload.character_data = character_data;
+        if (location_data) payload.location_data = location_data;
+        if (item_data) payload.item_data = item_data;
+
         const resp = await fetch('/api/proposals', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ author, title, description, category }),
+            body: JSON.stringify(payload),
         });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({ detail: 'Failed to create proposal' }));
             throw new Error(err.detail);
         }
         const data = await resp.json();
+        proposalCharTraits = [];  // Reset
+        proposalLocFeatures = [];  // Reset
+        proposalItemProperties = [];  // Reset
         showToast(`Proposal ${data.id} created by ${author} ✅`);
         navigateTo('proposals', data.id);
     } catch (err) {
@@ -994,9 +1736,10 @@ async function renderProposalDetail(id) {
     const hasDiscussion = !!discussion;
     const discussionOpen = hasDiscussion && discussion.status === 'open';
     const hasVote = !!voteData;
+    const isReviewing = data.status === 'open_to_review';
 
     // Lifecycle progress bar
-    const stages = ['draft', 'open', 'under_review', 'decided'];
+    const stages = ['draft', 'open', 'open_to_review', 'under_review', 'decided'];
     const currentIdx = stages.indexOf(data.status);
     const isWithdrawn = data.status === 'withdrawn';
     const lifecycleHtml = `
@@ -1010,7 +1753,7 @@ async function renderProposalDetail(id) {
                 } else if (i === currentIdx) {
                     cls += ' lifecycle-active';
                 }
-                const labels = { draft: 'Draft', open: 'Open', under_review: 'Review', decided: 'Decided' };
+                const labels = { draft: 'Draft', open: 'Open', open_to_review: 'Reviewing', under_review: 'Review', decided: 'Decided' };
                 return `<div class="${cls}"><span class="lifecycle-dot"></span><span class="lifecycle-label">${labels[s]}</span></div>`;
             }).join('<div class="lifecycle-connector"></div>')}
             ${isWithdrawn ? '<div class="lifecycle-connector"></div><div class="lifecycle-step lifecycle-active lifecycle-withdrawn"><span class="lifecycle-dot"></span><span class="lifecycle-label">Withdrawn</span></div>' : ''}
@@ -1021,6 +1764,8 @@ async function renderProposalDetail(id) {
     if (hasDiscussion && discussion.contributions && discussion.contributions.length) {
         const contribs = discussion.contributions.map(c => {
             const memberIdx = (discussion.participants || []).indexOf(c.speaker);
+            const renderedContent = renderMarkdown(c.content);
+            const displayContent = state.silentpassaEnabled ? wrapPresenceContent(renderedContent, c.speaker) : renderedContent;
             return `
             <div class="discussion-message">
                 <div class="discussion-message-header">
@@ -1030,7 +1775,7 @@ async function renderProposalDetail(id) {
                         <span class="discussion-round">Round ${c.round_number}</span>
                     </div>
                 </div>
-                <div class="discussion-content">${renderMarkdown(c.content)}</div>
+                <div class="discussion-content">${displayContent}</div>
             </div>`;
         }).join('');
         discussionFeedHtml = `
@@ -1068,7 +1813,10 @@ async function renderProposalDetail(id) {
         if (discussionOpen) {
             buttons.push(`<button class="btn btn-secondary" onclick="pauseDiscussion('${id}')" id="pause-btn">⏸ Pause Discussion</button>`);
         }
-        if (!hasVote && (data.status === 'open' || data.status === 'under_review')) {
+        if (discussionOpen && data.status === 'open') {
+            buttons.push(`<button class="btn" onclick="sendToReview('${id}')" id="send-review-btn" style="background:linear-gradient(135deg, hsl(45,80%,50%), hsl(35,70%,45%));color:#fff">📝 Send to Review</button>`);
+        }
+        if (!hasVote && (data.status === 'open' || data.status === 'under_review' || data.status === 'open_to_review')) {
             buttons.push(`<button class="btn btn-accent" onclick="callProposalVote('${id}')" id="vote-btn">🗳️ Call Vote</button>`);
         }
         if (data.status !== 'decided') {
@@ -1077,6 +1825,37 @@ async function renderProposalDetail(id) {
         if (buttons.length) {
             actionsHtml = `<div class="proposal-actions">${buttons.join('')}</div>`;
         }
+    }
+
+    // Scheduled message section (only when discussion is open)
+    let scheduledMsgHtml = '';
+    if (discussionOpen) {
+        let existingMsg = '';
+        try {
+            const smResp = await api(`/api/proposals/${encodeURIComponent(id)}/scheduled-message`);
+            if (smResp && smResp.message) existingMsg = smResp.message;
+        } catch { /* no scheduled message */ }
+
+        scheduledMsgHtml = `
+            <div class="detail-section scheduled-message-section">
+                <h4>📨 Schedule Message for Next Round</h4>
+                <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-sm)">
+                    This message will be injected into the discussion at the start of the next round, before the council members speak.
+                </p>
+                <textarea id="scheduled-msg-input" class="settings-input scheduled-message-textarea"
+                    rows="3" placeholder="Type your message for the council to consider…">${existingMsg ? escapeHtml(existingMsg) : ''}</textarea>
+                <div style="display:flex;gap:var(--space-sm);align-items:center;margin-top:var(--space-sm)">
+                    <button class="btn btn-primary btn-sm" onclick="scheduleDiscussionMessage('${id}')" id="schedule-msg-btn">
+                        📨 Schedule Message
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="clearScheduledMessage('${id}')" id="clear-msg-btn">
+                        🗑️ Clear
+                    </button>
+                    <span id="scheduled-msg-status" style="font-size:0.78rem;color:var(--text-muted)">
+                        ${existingMsg ? '✅ Message scheduled' : ''}
+                    </span>
+                </div>
+            </div>`;
     }
 
     // Vote results
@@ -1161,11 +1940,19 @@ async function renderProposalDetail(id) {
                             ${badge(data.category)}
                         </div>
                     </div>
-                    <button class="detail-close" onclick="navigateTo('proposals')">✕</button>
+                    <div style="display:flex;gap:var(--space-sm);align-items:flex-start">
+                        <button class="btn btn-sm silentpassa-toggle ${state.silentpassaEnabled ? 'silentpassa-on' : 'silentpassa-off'}" onclick="toggleSilentPass('proposals','${id}')" title="Toggle [PRESENT]/[SILENCE] wrappers">
+                            ${state.silentpassaEnabled ? '🔔 SilentPass' : '🔕 SilentPass'}
+                        </button>
+                        <button class="detail-close" onclick="navigateTo('proposals')">✕</button>
+                    </div>
                 </div>
 
                 ${lifecycleHtml}
                 ${actionsHtml}
+                ${scheduledMsgHtml}
+
+                ${isReviewing ? _buildFinalProposalForm(data) : ''}
 
                 <div class="detail-section">
                     <h4>Description</h4>
@@ -1183,6 +1970,38 @@ async function renderProposalDetail(id) {
                         <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">This evolution proposal has been <strong>approved</strong> by the council. Proceed to the Evolution section to create and apply the character changes.</p>
                         <button class="btn btn-primary" onclick="navigateTo('evolution')" style="background:linear-gradient(135deg, hsl(275,60%,55%), hsl(300,50%,45%))">
                             🧬 Go to Evolution Section
+                        </button>
+                    </div>` : ''}
+                ${(data.category === 'character' && data.status === 'decided' && hasVote && voteData.tally && voteData.tally.approved)
+                    ? `<div class="detail-section character-handoff-banner">
+                        <h4>🎭 Character Handoff</h4>
+                        <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">This character proposal has been <strong>approved</strong> by the council. Create a draft character from the proposal data to continue development in the Characters section.</p>
+                        <button class="btn btn-primary" onclick="handoffCharacterProposal('${data.id}')" id="char-handoff-btn" style="background:linear-gradient(135deg, hsl(200,70%,50%), hsl(170,60%,45%))">
+                            🎭 Create Draft Character
+                        </button>
+                    </div>` : ''}
+                ${(data.category === 'location' && data.status === 'decided' && hasVote && voteData.tally && voteData.tally.approved)
+                    ? `<div class="detail-section location-handoff-banner">
+                        <h4>🌍 Location Handoff</h4>
+                        <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">This location proposal has been <strong>approved</strong> by the council. Create a draft location from the proposal data to continue development in the Locations section.</p>
+                        <button class="btn btn-primary" onclick="handoffLocationProposal('${data.id}')" id="loc-handoff-btn" style="background:linear-gradient(135deg, hsl(160,60%,45%), hsl(140,55%,40%))">
+                            🌍 Create Draft Location
+                        </button>
+                    </div>` : ''}
+                ${(data.category === 'item' && data.status === 'decided' && hasVote && voteData.tally && voteData.tally.approved)
+                    ? `<div class="detail-section item-handoff-banner">
+                        <h4>📦 Item Handoff</h4>
+                        <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">This item proposal has been <strong>approved</strong> by the council. Create a draft item from the proposal data to continue development in the Items section.</p>
+                        <button class="btn btn-primary" onclick="handoffItemProposal('${data.id}')" id="item-handoff-btn" style="background:linear-gradient(135deg, hsl(30,70%,50%), hsl(40,80%,55%))">
+                            📦 Create Draft Item
+                        </button>
+                    </div>` : ''}
+                ${(data.category === 'law' && data.status === 'decided' && hasVote && voteData.tally && voteData.tally.approved)
+                    ? `<div class="detail-section law-handoff-banner">
+                        <h4>⚖️ Law Handoff</h4>
+                        <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">This law proposal has been <strong>approved</strong> by the council. Create a draft law from the proposal data to continue development in the Laws section.</p>
+                        <button class="btn btn-primary" onclick="handoffLawProposal('${data.id}')" id="law-handoff-btn" style="background:linear-gradient(135deg, hsl(220,60%,50%), hsl(200,55%,45%))">
+                            ⚖️ Create Draft Law
                         </button>
                     </div>` : ''}
                 ${reviewsHtml}
@@ -1229,19 +2048,30 @@ async function runDiscussionRound(proposalId) {
                     try {
                         const data = JSON.parse(jsonStr);
                         if (eventType === 'message' && feed) {
+                            const isUser = data.speaker === 'User';
                             const msgDiv = document.createElement('div');
-                            msgDiv.className = 'discussion-message discussion-message-enter';
+                            msgDiv.className = `discussion-message discussion-message-enter${isUser ? ' discussion-message-user' : ''}`;
                             msgDiv.innerHTML = `
                                 <div class="discussion-message-header">
-                                    ${memberAvatarWithImage(data.speaker, 0, null, state.proposalAvatarMap && state.proposalAvatarMap[data.speaker.toLowerCase()])}
+                                    ${isUser
+                                        ? `<div class="member-avatar" style="background:linear-gradient(135deg, hsl(45,80%,55%), hsl(35,90%,50%))">👤</div>`
+                                        : memberAvatarWithImage(data.speaker, 0, null, state.proposalAvatarMap && state.proposalAvatarMap[data.speaker.toLowerCase()])}
                                     <div>
                                         <span class="discussion-speaker">${data.speaker}</span>
                                         <span class="discussion-round">Round ${data.round}</span>
                                     </div>
                                 </div>
-                                <div class="discussion-content">${renderMarkdown(data.content)}</div>`;
+                                <div class="discussion-content">${state.silentpassaEnabled ? wrapPresenceContent(renderMarkdown(data.content), data.speaker) : renderMarkdown(data.content)}</div>`;
                             feed.appendChild(msgDiv);
                             feed.scrollTop = feed.scrollHeight;
+
+                            // Clear scheduled message status after it's been consumed
+                            if (isUser) {
+                                const statusEl = document.getElementById('scheduled-msg-status');
+                                if (statusEl) statusEl.textContent = '✅ Delivered this round';
+                                const inputEl = document.getElementById('scheduled-msg-input');
+                                if (inputEl) inputEl.value = '';
+                            }
                         } else if (eventType === 'error') {
                             showToast(data.detail || 'Discussion error', true);
                         }
@@ -1257,6 +2087,60 @@ async function runDiscussionRound(proposalId) {
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
         if (btn) { btn.disabled = false; btn.textContent = '▶️ Continue Discussion'; }
+    }
+}
+
+async function scheduleDiscussionMessage(proposalId) {
+    const input = document.getElementById('scheduled-msg-input');
+    const message = (input && input.value || '').trim();
+    if (!message) { if (input) input.focus(); return; }
+
+    const btn = document.getElementById('schedule-msg-btn');
+    const status = document.getElementById('scheduled-msg-status');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+
+    try {
+        const resp = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}/scheduled-message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Failed to schedule' }));
+            throw new Error(err.detail);
+        }
+        showToast('Message scheduled for next round 📨');
+        if (status) status.textContent = '✅ Message scheduled';
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📨 Schedule Message'; }
+    }
+}
+
+async function clearScheduledMessage(proposalId) {
+    const btn = document.getElementById('clear-msg-btn');
+    const status = document.getElementById('scheduled-msg-status');
+    const input = document.getElementById('scheduled-msg-input');
+    if (btn) { btn.disabled = true; }
+
+    try {
+        const resp = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}/scheduled-message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: '' }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Failed to clear' }));
+            throw new Error(err.detail);
+        }
+        if (input) input.value = '';
+        if (status) status.textContent = '';
+        showToast('Scheduled message cleared 🗑️');
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    } finally {
+        if (btn) { btn.disabled = false; }
     }
 }
 
@@ -1277,6 +2161,312 @@ async function pauseDiscussion(proposalId) {
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
         if (btn) { btn.disabled = false; btn.textContent = '⏸ Pause Discussion'; }
+    }
+}
+
+// ── Send to Review ──────────────────────────────────────────
+
+async function sendToReview(proposalId) {
+    const btn = document.getElementById('send-review-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending to review…'; }
+
+    try {
+        const resp = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}/send-to-review`, {
+            method: 'POST',
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Failed to send to review' }));
+            throw new Error(err.detail);
+        }
+        showToast('Proposal sent to review — prepare the final version 📝');
+        await renderProposalDetail(proposalId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '📝 Send to Review'; }
+    }
+}
+
+// ── Final Proposal Form Builder ─────────────────────────────
+
+let _finalProposalTraits = [];
+let _finalProposalFeatures = [];
+let _finalProposalProperties = [];
+
+function _buildFinalProposalForm(data) {
+    const meta = data.metadata || {};
+    const cat = data.category;
+
+    // Character-specific
+    let charFieldsHtml = '';
+    if (cat === 'character') {
+        const cd = meta.character_data || {};
+        _finalProposalTraits = cd.traits || [];
+        charFieldsHtml = `
+            <div class="char-fields-header" style="margin-top:var(--space-md)">🎭 Character Details</div>
+            <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
+                <div class="filter-group" style="flex:2">
+                    <label for="fp-char-name">Character Name</label>
+                    <input id="fp-char-name" class="settings-input" value="${escapeAttr(cd.name || '')}" />
+                </div>
+                <div class="filter-group">
+                    <label for="fp-char-provider">API Provider</label>
+                    <select id="fp-char-provider" class="settings-input">
+                        <option value="openrouter" ${(cd.api_provider || '') === 'openrouter' ? 'selected' : ''}>OpenRouter</option>
+                        <option value="mancer" ${(cd.api_provider || '') === 'mancer' ? 'selected' : ''}>Mancer</option>
+                        <option value="lmstudio" ${(cd.api_provider || '') === 'lmstudio' ? 'selected' : ''}>LM Studio</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="fp-char-model">Model</label>
+                    <input id="fp-char-model" class="settings-input" value="${escapeAttr(cd.model || 'Default')}" />
+                </div>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="fp-char-backstory">Backstory</label>
+                <textarea id="fp-char-backstory" class="settings-input proposal-textarea" rows="3">${escapeHtml(cd.backstory || '')}</textarea>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="fp-char-prompt">System Prompt</label>
+                <textarea id="fp-char-prompt" class="settings-input proposal-textarea" rows="3">${escapeHtml(cd.system_prompt || '')}</textarea>
+            </div>
+            <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
+                <div class="filter-group" style="flex:2">
+                    <label for="fp-char-greeting">Greeting</label>
+                    <input id="fp-char-greeting" class="settings-input" value="${escapeAttr(cd.greeting || '')}" />
+                </div>
+                <div class="filter-group">
+                    <label for="fp-char-tags">Tags</label>
+                    <input id="fp-char-tags" class="settings-input" value="${escapeAttr((cd.tags || []).join(', '))}" />
+                </div>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="fp-char-examples">Example Messages</label>
+                <textarea id="fp-char-examples" class="settings-input proposal-textarea" rows="2">${escapeHtml((cd.example_messages || []).join('\n'))}</textarea>
+            </div>
+            <div style="margin-top:var(--space-sm)">
+                <label>Traits</label>
+                <div id="fp-char-trait-list">
+                    ${_finalProposalTraits.map((t, i) => `
+                        <div class="trait-item" style="margin-bottom:var(--space-xs)">
+                            <span class="trait-name">${escapeHtml(t.name)}</span>
+                            <span class="specialty-tag">${t.trait_type || 'personality'}</span>
+                            <span class="trait-intensity">${Math.round((t.intensity || 0.5) * 100)}%</span>
+                            <span class="trait-desc-small">${escapeHtml(t.description || '')}</span>
+                        </div>`).join('')}
+                </div>
+            </div>`;
+    }
+
+    // Location-specific
+    let locFieldsHtml = '';
+    if (cat === 'location') {
+        const ld = meta.location_data || {};
+        _finalProposalFeatures = ld.features || [];
+        locFieldsHtml = `
+            <div class="loc-fields-header" style="margin-top:var(--space-md)">🌍 Location Details</div>
+            <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
+                <div class="filter-group" style="flex:2">
+                    <label for="fp-loc-name">Location Name</label>
+                    <input id="fp-loc-name" class="settings-input" value="${escapeAttr(ld.name || '')}" />
+                </div>
+                <div class="filter-group">
+                    <label for="fp-loc-coords">Coordinates</label>
+                    <input id="fp-loc-coords" class="settings-input" value="${escapeAttr(ld.coordinates || '')}" />
+                </div>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="fp-loc-lore">Lore</label>
+                <textarea id="fp-loc-lore" class="settings-input proposal-textarea" rows="3">${escapeHtml(ld.lore || '')}</textarea>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="fp-loc-tags">Tags</label>
+                <input id="fp-loc-tags" class="settings-input" value="${escapeAttr((ld.tags || []).join(', '))}" />
+            </div>
+            <div style="margin-top:var(--space-sm)">
+                <label>Features</label>
+                <div id="fp-loc-feature-list">
+                    ${_finalProposalFeatures.map((f, i) => `
+                        <div class="trait-item" style="margin-bottom:var(--space-xs)">
+                            <span class="trait-name">${escapeHtml(f.name)}</span>
+                            <span class="specialty-tag">${f.feature_type || 'custom'}</span>
+                            <span class="trait-desc-small">${escapeHtml(f.description || '')}</span>
+                        </div>`).join('')}
+                </div>
+            </div>`;
+    }
+
+    // Item-specific
+    let itemFieldsHtml = '';
+    if (cat === 'item') {
+        const id = meta.item_data || {};
+        _finalProposalProperties = id.properties || [];
+        itemFieldsHtml = `
+            <div class="loc-fields-header" style="margin-top:var(--space-md)">📦 Item Details</div>
+            <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
+                <div class="filter-group" style="flex:2">
+                    <label for="fp-item-name">Item Name</label>
+                    <input id="fp-item-name" class="settings-input" value="${escapeAttr(id.name || '')}" />
+                </div>
+                <div class="filter-group">
+                    <label for="fp-item-rarity">Rarity</label>
+                    <select id="fp-item-rarity" class="settings-input">
+                        ${['common','uncommon','rare','epic','legendary'].map(r =>
+                            `<option value="${r}" ${(id.rarity || '') === r ? 'selected' : ''}>${r.charAt(0).toUpperCase() + r.slice(1)}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="fp-item-tier">Tier</label>
+                    <select id="fp-item-tier" class="settings-input">
+                        ${['permanent','consumable','degradable'].map(t =>
+                            `<option value="${t}" ${(id.tier || '') === t ? 'selected' : ''}>${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="fp-item-legality">Legality</label>
+                    <select id="fp-item-legality" class="settings-input">
+                        ${['contraband','legal'].map(l =>
+                            `<option value="${l}" ${(id.legality || '') === l ? 'selected' : ''}>${l.charAt(0).toUpperCase() + l.slice(1)}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="fp-item-lore">Lore</label>
+                <textarea id="fp-item-lore" class="settings-input proposal-textarea" rows="3">${escapeHtml(id.lore || '')}</textarea>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="fp-item-tags">Tags</label>
+                <input id="fp-item-tags" class="settings-input" value="${escapeAttr((id.tags || []).join(', '))}" />
+            </div>
+            <div style="margin-top:var(--space-sm)">
+                <label>Properties</label>
+                <div id="fp-item-property-list">
+                    ${_finalProposalProperties.map((p, i) => `
+                        <div class="trait-item" style="margin-bottom:var(--space-xs)">
+                            <span class="trait-name">${escapeHtml(p.name)}</span>
+                            <span class="specialty-tag">${p.property_type || 'custom'}</span>
+                            <span class="trait-desc-small">${escapeHtml(p.description || '')}</span>
+                        </div>`).join('')}
+                </div>
+            </div>`;
+    }
+
+    return `
+        <div class="detail-section" style="border:2px solid var(--accent-amber);border-radius:var(--radius-lg);padding:var(--space-lg);background:rgba(245,158,11,0.05)">
+            <h4 style="margin-bottom:var(--space-xs)">📝 Final Proposal</h4>
+            <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-md)">
+                Review the discussion and edit the proposal to reflect the council's consensus before calling a vote.
+                This is the version the council will vote on.
+            </p>
+            <div class="filter-group">
+                <label for="fp-title">Title</label>
+                <input id="fp-title" class="settings-input" value="${escapeAttr(data.title)}" />
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="fp-description">Description</label>
+                <textarea id="fp-description" class="settings-input proposal-textarea" rows="3">${escapeHtml(data.description)}</textarea>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="fp-body">Body</label>
+                <textarea id="fp-body" class="settings-input proposal-textarea" rows="4">${escapeHtml(data.body || '')}</textarea>
+            </div>
+
+            ${charFieldsHtml}
+            ${locFieldsHtml}
+            ${itemFieldsHtml}
+
+            <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
+                <button class="btn btn-primary" onclick="saveFinalProposal('${data.id}')" id="fp-save-btn">
+                    💾 Save Final Proposal
+                </button>
+                <span id="fp-save-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
+            </div>
+        </div>`;
+}
+
+// ── Save Final Proposal ─────────────────────────────────────
+
+async function saveFinalProposal(proposalId) {
+    const btn = document.getElementById('fp-save-btn');
+    const status = document.getElementById('fp-save-status');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+
+    try {
+        const title = (document.getElementById('fp-title')?.value || '').trim();
+        const description = (document.getElementById('fp-description')?.value || '').trim();
+        const body = (document.getElementById('fp-body')?.value || '').trim();
+
+        if (!title) { document.getElementById('fp-title')?.focus(); throw new Error('Title is required'); }
+        if (!description) { document.getElementById('fp-description')?.focus(); throw new Error('Description is required'); }
+
+        // Build updated metadata from category-specific fields
+        let metadata = null;
+
+        // Character
+        const charNameEl = document.getElementById('fp-char-name');
+        if (charNameEl) {
+            metadata = { character_data: {
+                name: charNameEl.value.trim(),
+                api_provider: document.getElementById('fp-char-provider')?.value || 'openrouter',
+                model: (document.getElementById('fp-char-model')?.value || 'Default').trim(),
+                backstory: (document.getElementById('fp-char-backstory')?.value || '').trim(),
+                system_prompt: (document.getElementById('fp-char-prompt')?.value || '').trim(),
+                greeting: (document.getElementById('fp-char-greeting')?.value || '').trim(),
+                tags: (document.getElementById('fp-char-tags')?.value || '').split(',').map(t => t.trim()).filter(Boolean),
+                example_messages: (document.getElementById('fp-char-examples')?.value || '').split('\n').map(l => l.trim()).filter(Boolean),
+                traits: _finalProposalTraits,
+            }};
+        }
+
+        // Location
+        const locNameEl = document.getElementById('fp-loc-name');
+        if (locNameEl) {
+            metadata = { location_data: {
+                name: locNameEl.value.trim(),
+                description: description,
+                lore: (document.getElementById('fp-loc-lore')?.value || '').trim(),
+                tags: (document.getElementById('fp-loc-tags')?.value || '').split(',').map(t => t.trim()).filter(Boolean),
+                coordinates: (document.getElementById('fp-loc-coords')?.value || '').trim(),
+                features: _finalProposalFeatures,
+            }};
+        }
+
+        // Item
+        const itemNameEl = document.getElementById('fp-item-name');
+        if (itemNameEl) {
+            metadata = { item_data: {
+                name: itemNameEl.value.trim(),
+                description: description,
+                lore: (document.getElementById('fp-item-lore')?.value || '').trim(),
+                tags: (document.getElementById('fp-item-tags')?.value || '').split(',').map(t => t.trim()).filter(Boolean),
+                rarity: document.getElementById('fp-item-rarity')?.value || '',
+                tier: document.getElementById('fp-item-tier')?.value || '',
+                legality: document.getElementById('fp-item-legality')?.value || '',
+                properties: _finalProposalProperties,
+            }};
+        }
+
+        const payload = { title, description, body };
+        if (metadata) payload.metadata = metadata;
+
+        const resp = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}/final-proposal`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Failed to save' }));
+            throw new Error(err.detail);
+        }
+        showToast('Final proposal saved 💾');
+        if (status) status.textContent = '✅ Saved';
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (status) status.textContent = '';
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '💾 Save Final Proposal'; }
     }
 }
 
@@ -1378,6 +2568,90 @@ async function liftVetoProposal(proposalId) {
     }
 }
 
+async function handoffCharacterProposal(proposalId) {
+    const btn = document.getElementById('char-handoff-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating character…'; }
+
+    try {
+        const resp = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}/handoff-character`, {
+            method: 'POST',
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Handoff failed' }));
+            throw new Error(err.detail);
+        }
+        const data = await resp.json();
+        showToast(`Draft character "${data.name}" created ✅`);
+        navigateTo('characters', data.id);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '🎭 Create Draft Character'; }
+    }
+}
+
+async function handoffLocationProposal(proposalId) {
+    const btn = document.getElementById('loc-handoff-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating location…'; }
+
+    try {
+        const resp = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}/handoff-location`, {
+            method: 'POST',
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Handoff failed' }));
+            throw new Error(err.detail);
+        }
+        const data = await resp.json();
+        showToast(`Draft location "${data.name}" created ✅`);
+        navigateTo('locations', data.id);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '🌍 Create Draft Location'; }
+    }
+}
+
+async function handoffItemProposal(proposalId) {
+    const btn = document.getElementById('item-handoff-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating item…'; }
+
+    try {
+        const resp = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}/handoff-item`, {
+            method: 'POST',
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Handoff failed' }));
+            throw new Error(err.detail);
+        }
+        const data = await resp.json();
+        showToast(`Draft item "${data.name}" created ✅`);
+        navigateTo('items', data.id);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '📦 Create Draft Item'; }
+    }
+}
+
+async function handoffLawProposal(proposalId) {
+    const btn = document.getElementById('law-handoff-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating law…'; }
+
+    try {
+        const resp = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}/handoff-law`, {
+            method: 'POST',
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Handoff failed' }));
+            throw new Error(err.detail);
+        }
+        const data = await resp.json();
+        showToast(`Draft law "${data.title}" created ✅`);
+        navigateTo('laws', data.id);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '⚖️ Create Draft Law'; }
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Votes View
 // ═══════════════════════════════════════════════════════════════
@@ -1432,13 +2706,18 @@ async function renderVoteDetail(proposalId) {
     const data = await api(`/api/votes/${encodeURIComponent(proposalId)}`);
     const t = data.tally || {};
 
-    const votesHtml = (data.votes || []).map(v => `
+    const votesHtml = (data.votes || []).map(v => {
+        const reasonText = v.reason || '—';
+        const renderedReason = renderMarkdown(reasonText);
+        const displayReason = state.silentpassaEnabled ? wrapPresenceContent(renderedReason, v.voter) : renderedReason;
+        return `
         <div class="vote-item">
             <span class="vote-voter">${v.voter}</span>
             ${badge(v.choice)}
-            <span class="vote-reason">${v.reason || '—'}</span>
+            <span class="vote-reason">${displayReason}</span>
             <span class="vote-weight">w:${v.weight}</span>
-        </div>`).join('');
+        </div>`;
+    }).join('');
 
     $main().innerHTML = `
         <div class="view-enter">
@@ -1453,7 +2732,12 @@ async function renderVoteDetail(proposalId) {
                             ${data.vetoed ? '<span class="badge badge-rejected">🚫 VETOED</span>' : ''}
                         </div>
                     </div>
-                    <button class="detail-close" onclick="navigateTo('votes')">✕</button>
+                    <div style="display:flex;gap:var(--space-sm);align-items:flex-start">
+                        <button class="btn btn-sm silentpassa-toggle ${state.silentpassaEnabled ? 'silentpassa-on' : 'silentpassa-off'}" onclick="toggleSilentPass('votes','${data.proposal_id}')" title="Toggle [PRESENT]/[SILENCE] wrappers">
+                            ${state.silentpassaEnabled ? '🔔 SilentPass' : '🔕 SilentPass'}
+                        </button>
+                        <button class="detail-close" onclick="navigateTo('votes')">✕</button>
+                    </div>
                 </div>
 
                 <div class="stats-grid" style="margin-bottom:var(--space-xl)">
@@ -1514,6 +2798,22 @@ async function renderCharacters() {
                 <div class="filter-group">
                     <label for="char-author-input">Author</label>
                     <input id="char-author-input" class="settings-input" placeholder="e.g. Forge" />
+                </div>
+            </div>
+            <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
+                <div class="filter-group">
+                    <label for="char-provider-input">API Provider</label>
+                    <select id="char-provider-input" class="settings-input" onchange="updateCharCreateModelField()">
+                        <option value="openrouter">OpenRouter</option>
+                        <option value="mancer">Mancer</option>
+                        <option value="lmstudio">LM Studio</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="char-model-input">Model</label>
+                    <div id="char-model-container">
+                        ${renderModelField('char-model-input', 'openrouter', '', true)}
+                    </div>
                 </div>
             </div>
             <div class="filter-group" style="margin-top:var(--space-sm)">
@@ -1773,6 +3073,23 @@ async function renderCharacterDetail(id) {
                             <input id="char-edit-tags" class="settings-input" value="${escapeAttr((data.tags || []).join(', '))}" />
                         </div>
                     </div>
+                    <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
+                        <div class="filter-group">
+                            <label for="char-edit-provider">API Provider</label>
+                            <select id="char-edit-provider" class="settings-input" onchange="updateCharEditModelField()">
+                                <option value="openrouter" ${(data.api_provider || 'openrouter') === 'openrouter' ? 'selected' : ''}>OpenRouter</option>
+                                <option value="mancer" ${data.api_provider === 'mancer' ? 'selected' : ''}>Mancer</option>
+                                <option value="lmstudio" ${data.api_provider === 'lmstudio' ? 'selected' : ''}>LM Studio</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="char-edit-model">Model</label>
+                            <div id="char-edit-model-container">
+                                ${renderModelField('char-edit-model', data.api_provider || 'openrouter', data.model || 'Default', true)}
+                            </div>
+                            <span class="council-field-hint">Set to "Default" to use the model configured in Settings</span>
+                        </div>
+                    </div>
                     <div class="filter-group" style="margin-top:var(--space-sm)">
                         <label for="char-edit-desc">Description</label>
                         <textarea id="char-edit-desc" class="settings-input proposal-textarea" rows="2">${escapeHtml(data.description)}</textarea>
@@ -1935,6 +3252,9 @@ async function createCharacter() {
     const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
     const exampleMessages = examplesRaw ? examplesRaw.split('\n').map(l => l.trim()).filter(Boolean) : [];
 
+    const apiProvider = document.getElementById('char-provider-input').value;
+    const model = document.getElementById('char-model-input').value.trim() || 'Default';
+
     try {
         const resp = await fetch('/api/characters', {
             method: 'POST',
@@ -1943,6 +3263,7 @@ async function createCharacter() {
                 name, description, author, backstory,
                 system_prompt: systemPrompt, greeting,
                 example_messages: exampleMessages, tags, traits,
+                api_provider: apiProvider, model,
             }),
         });
         if (!resp.ok) {
@@ -1984,6 +3305,8 @@ async function saveCharacterEdit(characterId) {
         system_prompt: document.getElementById('char-edit-prompt').value.trim(),
         example_messages: exampleMessages,
         tags,
+        api_provider: document.getElementById('char-edit-provider').value,
+        model: document.getElementById('char-edit-model').value.trim() || 'Default',
     };
 
     try {
@@ -2399,7 +3722,9 @@ async function renderLocationDetail(id) {
     if (data.status === 'draft') {
         statusActions = `<button class="btn btn-primary btn-sm" onclick="updateLocationStatus('${data.id}', 'active')">✅ Activate</button>`;
     } else if (data.status === 'active') {
-        statusActions = `<button class="btn btn-secondary btn-sm" onclick="updateLocationStatus('${data.id}', 'archived')">Archive</button>`;
+        statusActions = `
+            <button class="btn btn-secondary btn-sm" onclick="updateLocationStatus('${data.id}', 'draft')">📝 → Draft</button>
+            <button class="btn btn-secondary btn-sm" onclick="updateLocationStatus('${data.id}', 'archived')">📦 Archive</button>`;
     }
 
     $main().innerHTML = `
@@ -2576,6 +3901,1043 @@ async function updateLocationStatus(locationId, newStatus) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// Items View
+// ═══════════════════════════════════════════════════════════════
+
+const ITEM_PROPERTY_TYPES = ['magical', 'physical', 'consumable', 'equipment', 'material', 'custom'];
+const ITEM_TIERS = ['permanent', 'consumable', 'degradable'];
+const ITEM_LEGALITY = ['contraband', 'legal'];
+
+async function renderItems() {
+    showLoading();
+    const data = await api('/api/items');
+    state.itemsData = data;
+
+    const createForm = `
+        <div class="card location-create-form">
+            <h3>📦 New Item</h3>
+            <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-md)">
+                Define a new world item for the council's domain.
+            </p>
+            <div class="proposal-form-grid">
+                <div class="filter-group" style="flex:2">
+                    <label for="item-name-input">Name</label>
+                    <input id="item-name-input" class="settings-input" placeholder="e.g. Starfall Blade" />
+                </div>
+                <div class="filter-group">
+                    <label for="item-author-input">Author</label>
+                    <input id="item-author-input" class="settings-input" placeholder="e.g. Council" />
+                </div>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="item-desc-input">Description</label>
+                <textarea id="item-desc-input" class="settings-input proposal-textarea" rows="2"
+                    placeholder="Describe this item…"></textarea>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="item-lore-input">Lore</label>
+                <textarea id="item-lore-input" class="settings-input proposal-textarea" rows="2"
+                    placeholder="History and background of this item…"></textarea>
+            </div>
+            <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
+                <div class="filter-group" style="flex:2">
+                    <label for="item-tags-input">Tags</label>
+                    <input id="item-tags-input" class="settings-input" placeholder="weapon, legendary, enchanted (comma-separated)" />
+                </div>
+                <div class="filter-group">
+                    <label for="item-rarity-input">Rarity</label>
+                    <input id="item-rarity-input" class="settings-input" placeholder="e.g. legendary (optional)" />
+                </div>
+                <div class="filter-group">
+                    <label for="item-tier-input">Tier <span style="color:var(--accent-rose);font-size:0.75rem">(required for activation)</span></label>
+                    <select id="item-tier-input" class="settings-input">
+                        <option value="">-- Select Tier --</option>
+                        ${ITEM_TIERS.map(t => `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="item-legality-input">Legality</label>
+                    <select id="item-legality-input" class="settings-input">
+                        <option value="">-- Select Legality --</option>
+                        ${ITEM_LEGALITY.map(l => `<option value="${l}">${l.charAt(0).toUpperCase() + l.slice(1)}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
+                <button class="btn btn-primary" onclick="createItem()" id="item-create-btn">
+                    📦 Create Item
+                </button>
+                <span id="item-create-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
+            </div>
+        </div>`;
+
+    if (!data.length) {
+        $main().innerHTML = `
+            <div class="view-enter">
+                <div class="page-header">
+                    <h2>📦 Items</h2>
+                    <p>No items defined yet. Create one below!</p>
+                </div>
+                ${createForm}
+            </div>`;
+        return;
+    }
+
+    const statusFilter = (s) => data.filter(i => i.status === s);
+    const active = statusFilter('active');
+    const drafts = statusFilter('draft');
+    const archived = statusFilter('archived');
+
+    const itemCard = (item) => `
+        <div class="card proposal-card" onclick="navigateTo('items', '${item.id}')" style="cursor:pointer">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <h3 style="margin:0">${item.name}</h3>
+                <div style="display:flex;gap:var(--space-xs);align-items:center">
+                    ${item.tier ? `<span class="badge badge-tier-${item.tier}" style="background:linear-gradient(135deg,hsl(${item.tier==='permanent'?'210,60%,50%':item.tier==='consumable'?'40,70%,50%':'0,55%,50%'}),hsl(${item.tier==='permanent'?'230,55%,45%':item.tier==='consumable'?'55,65%,45%':'15,50%,45%'}));font-size:0.7rem;padding:2px 8px">${item.tier.charAt(0).toUpperCase()+item.tier.slice(1)}</span>` : ''}
+                    ${item.legality ? `<span class="badge" style="background:linear-gradient(135deg,${item.legality==='legal'?'hsl(150,55%,42%),hsl(160,50%,38%)':'hsl(0,60%,48%),hsl(10,55%,43%)'});font-size:0.7rem;padding:2px 8px">${item.legality.charAt(0).toUpperCase()+item.legality.slice(1)}</span>` : ''}
+                    ${item.owner ? `<span class="badge store-owned-badge">Owned by ${escapeHtml(item.owner)}</span>` : ''}
+                    ${item.rarity ? `<span class="badge badge-${item.rarity}">${item.rarity}</span>` : ''}
+                    ${badge(item.status)}
+                </div>
+            </div>
+            <p style="margin:var(--space-xs) 0;color:var(--text-secondary)">${truncate(item.description, 120)}</p>
+            <div style="display:flex;gap:var(--space-xs);flex-wrap:wrap;margin-top:var(--space-xs)">
+                ${(item.tags||[]).map(t => `<span class="badge badge-general">${t}</span>`).join('')}
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:var(--space-sm);font-size:0.78rem;color:var(--text-muted)">
+                <span>📦 ${item.properties ? item.properties.length : 0} properties</span>
+                <span>by ${item.author} · ${formatDate(item.created_at)}</span>
+            </div>
+        </div>`;
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <div class="page-header">
+                <h2>📦 Items</h2>
+                <p>${data.length} item${data.length !== 1 ? 's' : ''} · ${active.length} active · ${drafts.length} draft · ${archived.length} archived</p>
+            </div>
+            ${createForm}
+            ${active.length ? `<h3 style="margin:var(--space-lg) 0 var(--space-sm)">✨ Active Items</h3>` : ''}
+            ${active.map(itemCard).join('')}
+            ${drafts.length ? `<h3 style="margin:var(--space-lg) 0 var(--space-sm)">📝 Drafts</h3>` : ''}
+            ${drafts.map(itemCard).join('')}
+            ${archived.length ? `<h3 style="margin:var(--space-lg) 0 var(--space-sm)">📁 Archived</h3>` : ''}
+            ${archived.map(itemCard).join('')}
+        </div>`;
+}
+
+async function renderItemDetail(id) {
+    showLoading();
+    const data = await api(`/api/items/${encodeURIComponent(id)}`);
+
+    const tierBadge = data.tier
+        ? `<span class="badge" style="background:linear-gradient(135deg,hsl(${data.tier==='permanent'?'210,60%,50%':data.tier==='consumable'?'40,70%,50%':'0,55%,50%'}),hsl(${data.tier==='permanent'?'230,55%,45%':data.tier==='consumable'?'55,65%,45%':'15,50%,45%'}));font-size:0.78rem;padding:3px 10px">${data.tier.charAt(0).toUpperCase()+data.tier.slice(1)}</span>`
+        : `<span class="badge" style="background:var(--accent-rose);font-size:0.72rem;padding:2px 8px">⚠ No Tier</span>`;
+
+    const statusActions = {
+        draft: `<button class="btn" onclick="updateItemStatus('${id}','active')" style="background:linear-gradient(135deg, hsl(160,60%,45%),hsl(140,55%,40%));">✨ Set Active</button>`,
+        active: `<button class="btn" onclick="updateItemStatus('${id}','archived')" style="background:linear-gradient(135deg, hsl(0,50%,50%),hsl(15,55%,45%));">📁 Archive</button>`,
+        archived: '',
+    };
+
+    const propsHtml = (data.properties || []).map(p => `
+        <div class="detail-row" style="display:flex;align-items:center;gap:var(--space-sm)">
+            <span class="badge badge-${p.property_type}">${p.property_type}</span>
+            <strong>${p.name}</strong>
+            <span style="color:var(--text-secondary)">${p.description}</span>
+            <button class="btn" style="margin-left:auto;padding:2px 8px;font-size:0.75rem" onclick="removeItemProperty('${id}','${p.name.replace(/'/g,"\\'")}')">✕</button>
+        </div>`).join('');
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                    <button class="btn" onclick="navigateTo('items')" style="margin-bottom:var(--space-sm);font-size:0.82rem">← Back to Items</button>
+                    <h2>${data.name} ${tierBadge} ${data.legality ? `<span class="badge" style="background:linear-gradient(135deg,${data.legality==='legal'?'hsl(150,55%,42%),hsl(160,50%,38%)':'hsl(0,60%,48%),hsl(10,55%,43%)'});font-size:0.78rem;padding:3px 10px">${data.legality.charAt(0).toUpperCase()+data.legality.slice(1)}</span>` : ''} ${data.rarity ? `<span class="badge badge-${data.rarity}">${data.rarity}</span>` : ''} ${data.owner ? `<span class="badge store-owned-badge">Owned by ${escapeHtml(data.owner)}</span>` : ''}</h2>
+                    <p>${badge(data.status)} · ID: ${data.id} · v${data.version} · by ${data.author}</p>
+                </div>
+                <div style="display:flex;gap:var(--space-sm)">
+                    ${statusActions[data.status] || ''}
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <h3>📝 Edit Item</h3>
+                <div class="proposal-form-grid">
+                    <div class="filter-group" style="flex:2">
+                        <label for="item-edit-name">Name</label>
+                        <input id="item-edit-name" class="settings-input" value="${data.name.replace(/"/g, '&quot;')}" />
+                    </div>
+                    <div class="filter-group">
+                        <label for="item-edit-rarity">Rarity</label>
+                        <input id="item-edit-rarity" class="settings-input" value="${(data.rarity || '').replace(/"/g, '&quot;')}" placeholder="e.g. legendary" />
+                    </div>
+                    <div class="filter-group">
+                        <label for="item-edit-tier">Tier <span style="color:var(--accent-rose);font-size:0.75rem">(required)</span></label>
+                        <select id="item-edit-tier" class="settings-input">
+                            <option value="">-- Select Tier --</option>
+                            ${ITEM_TIERS.map(t => `<option value="${t}" ${data.tier === t ? 'selected' : ''}>${t.charAt(0).toUpperCase() + t.slice(1)}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="item-edit-legality">Legality</label>
+                        <select id="item-edit-legality" class="settings-input">
+                            <option value="">-- Select Legality --</option>
+                            ${ITEM_LEGALITY.map(l => `<option value="${l}" ${data.legality === l ? 'selected' : ''}>${l.charAt(0).toUpperCase() + l.slice(1)}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-group" style="margin-top:var(--space-sm)">
+                    <label for="item-edit-desc">Description</label>
+                    <textarea id="item-edit-desc" class="settings-input proposal-textarea" rows="3">${data.description}</textarea>
+                </div>
+                <div class="filter-group" style="margin-top:var(--space-sm)">
+                    <label for="item-edit-lore">Lore</label>
+                    <textarea id="item-edit-lore" class="settings-input proposal-textarea" rows="3">${data.lore || ''}</textarea>
+                </div>
+                <div class="filter-group" style="margin-top:var(--space-sm)">
+                    <label for="item-edit-tags">Tags</label>
+                    <input id="item-edit-tags" class="settings-input" value="${(data.tags || []).join(', ')}" />
+                </div>
+                <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
+                    <button class="btn btn-primary" onclick="saveItemEdit('${id}')" id="item-save-btn">💾 Save Changes</button>
+                    <span id="item-save-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <h3>⚙️ Properties (${data.properties ? data.properties.length : 0})</h3>
+                ${propsHtml || '<p style="color:var(--text-muted)">No properties yet.</p>'}
+                <div style="margin-top:var(--space-md);padding-top:var(--space-md);border-top:1px solid var(--border-subtle)">
+                    <h4>Add Property</h4>
+                    <div class="proposal-form-grid">
+                        <div class="filter-group" style="flex:2">
+                            <label for="item-prop-name">Name</label>
+                            <input id="item-prop-name" class="settings-input" placeholder="e.g. Fire Enchantment" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="item-prop-type">Type</label>
+                            <select id="item-prop-type" class="settings-input">
+                                ${ITEM_PROPERTY_TYPES.map(t => `<option value="${t}">${t}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filter-group" style="margin-top:var(--space-sm)">
+                        <label for="item-prop-desc">Description</label>
+                        <input id="item-prop-desc" class="settings-input" placeholder="What does this property do?" />
+                    </div>
+                    <button class="btn" onclick="addItemProperty('${id}')" style="margin-top:var(--space-sm)">➕ Add Property</button>
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <h3>📋 Metadata</h3>
+                <div class="detail-row"><span class="label">Created</span><span class="value">${formatDate(data.created_at)}</span></div>
+                <div class="detail-row"><span class="label">Updated</span><span class="value">${formatDate(data.updated_at)}</span></div>
+                <div class="detail-row"><span class="label">Version</span><span class="value">${data.version}</span></div>
+                ${data.metadata && data.metadata.source_proposal ? `<div class="detail-row"><span class="label">Source Proposal</span><span class="value"><a href="#proposals/${data.metadata.source_proposal}" style="color:var(--accent-primary)">${data.metadata.source_proposal}</a></span></div>` : ''}
+            </div>
+        </div>`;
+}
+
+// ── Item Creation ────────────────────────────────────────────
+
+async function createItem() {
+    const btn = document.getElementById('item-create-btn');
+    const status = document.getElementById('item-create-status');
+    btn.disabled = true;
+    btn.textContent = '⏳ Creating…';
+
+    const name = document.getElementById('item-name-input').value.trim();
+    const description = document.getElementById('item-desc-input').value.trim();
+    const author = document.getElementById('item-author-input').value.trim();
+    const lore = document.getElementById('item-lore-input').value.trim();
+    const tagsRaw = document.getElementById('item-tags-input').value.trim();
+    const rarity = document.getElementById('item-rarity-input').value.trim();
+    const tier = document.getElementById('item-tier-input').value;
+    const legality = document.getElementById('item-legality-input').value;
+    const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+    if (!name || !description || !author) {
+        showToast('Name, description, and author are required.', true);
+        btn.disabled = false;
+        btn.textContent = '📦 Create Item';
+        return;
+    }
+
+    try {
+        const resp = await fetch('/api/items', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, description, author, lore, tags, rarity, tier, legality }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Create failed' }));
+            throw new Error(err.detail);
+        }
+        const data = await resp.json();
+        showToast(`Item "${data.name}" created ✅`);
+        navigateTo('items', data.id);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        status.textContent = '❌ Failed';
+        status.style.color = 'var(--accent-rose)';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '📦 Create Item';
+    }
+}
+
+// ── Item Edit ────────────────────────────────────────────────
+
+async function saveItemEdit(itemId) {
+    const btn = document.getElementById('item-save-btn');
+    const status = document.getElementById('item-save-status');
+    btn.disabled = true;
+    btn.textContent = '⏳ Saving…';
+
+    const tagsRaw = document.getElementById('item-edit-tags').value.trim();
+    const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+    const body = {
+        name: document.getElementById('item-edit-name').value.trim(),
+        description: document.getElementById('item-edit-desc').value.trim(),
+        lore: document.getElementById('item-edit-lore').value.trim(),
+        tags,
+        rarity: document.getElementById('item-edit-rarity').value.trim(),
+        tier: document.getElementById('item-edit-tier').value,
+        legality: document.getElementById('item-edit-legality').value,
+    };
+
+    try {
+        const resp = await fetch(`/api/items/${encodeURIComponent(itemId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
+            throw new Error(err.detail);
+        }
+        showToast('Item updated ✅');
+        status.textContent = '✅ Saved';
+        status.style.color = 'var(--accent-emerald)';
+        await renderItemDetail(itemId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        status.textContent = '❌ Failed';
+        status.style.color = 'var(--accent-rose)';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Save Changes';
+    }
+}
+
+// ── Item Status ──────────────────────────────────────────────
+
+async function updateItemStatus(itemId, newStatus) {
+    // Client-side guard: check tier before activation
+    if (newStatus === 'active') {
+        try {
+            const item = await api(`/api/items/${encodeURIComponent(itemId)}`);
+            if (!item.tier) {
+                showToast('A tier must be set before activating an item. Edit the item and select a tier first.', true);
+                return;
+            }
+        } catch { /* let server-side validation handle it */ }
+    }
+    try {
+        const resp = await fetch(`/api/items/${encodeURIComponent(itemId)}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Failed' }));
+            throw new Error(err.detail);
+        }
+        showToast(`Item set to ${newStatus} ✅`);
+        await renderItemDetail(itemId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
+
+// ── Item Property Management ─────────────────────────────────
+
+async function addItemProperty(itemId) {
+    const name = document.getElementById('item-prop-name').value.trim();
+    const propType = document.getElementById('item-prop-type').value;
+    const desc = document.getElementById('item-prop-desc').value.trim();
+
+    if (!name) { document.getElementById('item-prop-name').focus(); return; }
+
+    try {
+        const resp = await fetch(`/api/items/${encodeURIComponent(itemId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                properties: [{ name, description: desc || name, property_type: propType }],
+            }),
+        });
+        // Actually we need a dedicated endpoint for add_property.
+        // Let's do it via full item re-fetch and re-save pattern.
+    } catch (err) {
+        // fallback
+    }
+
+    // Better approach: get current item, add property, update
+    try {
+        const current = await api(`/api/items/${encodeURIComponent(itemId)}`);
+        const newProps = [...(current.properties || []), { name, description: desc || name, property_type: propType }];
+        const resp = await fetch(`/api/items/${encodeURIComponent(itemId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ properties: newProps }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Failed to add property' }));
+            throw new Error(err.detail);
+        }
+        showToast(`Property "${name}" added ✅`);
+        await renderItemDetail(itemId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
+
+async function removeItemProperty(itemId, propName) {
+    if (!confirm(`Remove property "${propName}"?`)) return;
+
+    try {
+        const current = await api(`/api/items/${encodeURIComponent(itemId)}`);
+        const newProps = (current.properties || []).filter(p => p.name !== propName);
+        const resp = await fetch(`/api/items/${encodeURIComponent(itemId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ properties: newProps }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Failed to remove property' }));
+            throw new Error(err.detail);
+        }
+        showToast(`Property "${propName}" removed ✅`);
+        await renderItemDetail(itemId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Stores View  (StoreManager-backed — F-036)
+// ═══════════════════════════════════════════════════════════════
+
+const STORE_TYPE_ICONS = {
+    general: '🏪', blacksmith: '⚒️', alchemist: '⚗️',
+    enchanter: '✨', tavern: '🍺', custom: '🏷️',
+};
+
+async function renderStores() {
+    showLoading();
+    const data = await api('/api/stores');
+    state.storesData = data;
+
+    if (!data.length) {
+        $main().innerHTML = `
+            <div class="view-enter">
+                <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+                    <div><h2>🏪 Stores</h2><p>Create and manage world stores where items can be purchased</p></div>
+                    <div style="display:flex;gap:var(--space-sm)">
+                        <button class="btn btn-secondary" onclick="openLocationStoreModal()" id="btn-add-loc-store">📍 Add Location as Store</button>
+                        <button class="btn btn-primary" onclick="document.getElementById('store-create-form').style.display='block'" id="btn-create-store">➕ Create Store</button>
+                    </div>
+                </div>
+                ${_storeCreateForm()}
+                <div class="empty-state">
+                    <div class="empty-icon">🏪</div>
+                    <p>No stores yet. Click <strong>Create Store</strong> or <strong>Add Location as Store</strong> to add one.</p>
+                </div>
+            </div>`;
+        return;
+    }
+
+    const filterStatus = state.storeFilterStatus || '';
+    const filtered = filterStatus ? data.filter(s => s.status === filterStatus) : data;
+    const statusCounts = {};
+    data.forEach(s => statusCounts[s.status] = (statusCounts[s.status] || 0) + 1);
+
+    const filters = `
+        <div class="filter-group">
+            <button class="btn btn-sm ${!filterStatus ? 'btn-primary' : 'btn-secondary'}" onclick="state.storeFilterStatus='';renderStores()">All (${data.length})</button>
+            ${Object.entries(statusCounts).map(([st, cnt]) =>
+                `<button class="btn btn-sm ${filterStatus === st ? 'btn-primary' : 'btn-secondary'}" onclick="state.storeFilterStatus='${st}';renderStores()">${st} (${cnt})</button>`
+            ).join('')}
+        </div>`;
+
+    const cards = filtered.map(store => {
+        const icon = STORE_TYPE_ICONS[store.store_type] || '🏪';
+        const invCount = (store.inventory || []).length;
+        const tagsHtml = (store.tags || []).map(t => `<span class="tag">#${escapeHtml(t)}</span>`).join('');
+        return `
+        <div class="card card-clickable store-card" onclick="navigateTo('stores','${store.id}')">
+            <div class="store-card-header">
+                <div class="store-card-icon">${icon}</div>
+                <div style="flex:1">
+                    <div class="store-card-name">${escapeHtml(store.name)}</div>
+                    <div class="store-card-author">by ${escapeHtml(store.author)} · ${badge(store.status)} · ${badge(store.store_type)}</div>
+                </div>
+                <div class="store-card-stats">
+                    <span class="store-stat">📦 ${invCount} item${invCount !== 1 ? 's' : ''}</span>
+                    ${store.owner ? `<span class="store-stat">👤 ${escapeHtml(store.owner)}</span>` : ''}
+                </div>
+            </div>
+            <div class="store-card-desc">${truncate(store.description, 140)}</div>
+            ${tagsHtml ? `<div class="tag-list">${tagsHtml}</div>` : ''}
+        </div>`;
+    }).join('');
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+                <div><h2>🏪 Stores</h2><p>${data.length} store${data.length !== 1 ? 's' : ''}</p></div>
+                <div style="display:flex;gap:var(--space-sm)">
+                    <button class="btn btn-secondary" onclick="openLocationStoreModal()" id="btn-add-loc-store">📍 Add Location as Store</button>
+                    <button class="btn btn-primary" onclick="document.getElementById('store-create-form').style.display='block'" id="btn-create-store">➕ Create Store</button>
+                </div>
+            </div>
+            ${_storeCreateForm()}
+            ${filters}
+            <div class="store-grid">${cards}</div>
+        </div>`;
+}
+
+function _storeCreateForm() {
+    const typeOptions = ['general','blacksmith','alchemist','enchanter','tavern','custom']
+        .map(t => `<option value="${t}">${STORE_TYPE_ICONS[t] || ''} ${t}</option>`).join('');
+    return `
+    <div class="card store-form-card" id="store-create-form" style="display:none;margin-bottom:var(--space-xl)">
+        <h3 class="store-form-title">✨ Create New Store</h3>
+        <div class="store-form-grid">
+            <div class="store-form-field">
+                <label class="store-form-label">Store Name</label>
+                <input type="text" id="store-new-name" class="store-form-input" placeholder="e.g. Ironhaven Smithy">
+            </div>
+            <div class="store-form-field">
+                <label class="store-form-label">Author</label>
+                <input type="text" id="store-new-author" class="store-form-input" placeholder="e.g. Council">
+            </div>
+            <div class="store-form-field">
+                <label class="store-form-label">Store Type</label>
+                <select id="store-new-type" class="store-form-input">${typeOptions}</select>
+            </div>
+            <div class="store-form-field">
+                <label class="store-form-label">Owner <span class="store-form-hint">(character or member)</span></label>
+                <input type="text" id="store-new-owner" class="store-form-input" placeholder="e.g. Sage">
+            </div>
+            <div class="store-form-field store-form-full">
+                <label class="store-form-label">Description</label>
+                <textarea id="store-new-desc" class="store-form-textarea" rows="3" placeholder="A master forge run by the finest artisans…"></textarea>
+            </div>
+            <div class="store-form-field store-form-full">
+                <label class="store-form-label">Lore <span class="store-form-hint">(optional)</span></label>
+                <textarea id="store-new-lore" class="store-form-textarea" rows="2" placeholder="Long ago, the first hammer struck…"></textarea>
+            </div>
+            <div class="store-form-field">
+                <label class="store-form-label">Location ID <span class="store-form-hint">(optional)</span></label>
+                <input type="text" id="store-new-location" class="store-form-input" placeholder="e.g. LOC-0001">
+            </div>
+            <div class="store-form-field">
+                <label class="store-form-label">Tags <span class="store-form-hint">(comma-separated)</span></label>
+                <input type="text" id="store-new-tags" class="store-form-input" placeholder="weapons, armor">
+            </div>
+        </div>
+        <div class="store-form-actions">
+            <button class="btn btn-primary" onclick="submitNewStore()" id="btn-submit-store">🏪 Create Store</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('store-create-form').style.display='none'">Cancel</button>
+        </div>
+    </div>`;
+}
+
+// ── Add Location as Store modal ──────────────────────────────
+
+async function openLocationStoreModal() {
+    let locations = [];
+    try {
+        locations = await api('/api/locations?status=active');
+    } catch (err) {
+        showToast('Failed to load locations: ' + err.message, true);
+        return;
+    }
+
+    if (!locations.length) {
+        showToast('No active locations found. Activate a location first.', true);
+        return;
+    }
+
+    const typeOptions = ['general','blacksmith','alchemist','enchanter','tavern','custom']
+        .map(t => `<option value="${t}">${STORE_TYPE_ICONS[t] || ''} ${t}</option>`).join('');
+
+    const locOptions = locations.map(l =>
+        `<option value="${l.id}" data-name="${escapeAttr(l.name)}" data-desc="${escapeAttr(l.description)}">${l.id} — ${escapeHtml(l.name)}</option>`
+    ).join('');
+
+    // Build modal
+    const overlay = document.createElement('div');
+    overlay.className = 'promote-modal-overlay';
+    overlay.id = 'loc-store-modal';
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    overlay.innerHTML = `
+        <div class="store-form-card" style="width:620px;max-width:90vw">
+            <h3 class="store-form-title">📍 Add Location as Store</h3>
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:var(--space-lg)">
+                Create a new store based on an existing active location. The location's name and description will be used.
+            </p>
+            <div class="store-form-grid">
+                <div class="store-form-field store-form-full">
+                    <label class="store-form-label">Select Location</label>
+                    <select id="loc-store-select" class="store-form-input" onchange="prefillLocationStore()">${locOptions}</select>
+                </div>
+                <div class="store-form-field">
+                    <label class="store-form-label">Store Name</label>
+                    <input type="text" id="loc-store-name" class="store-form-input" value="${escapeAttr(locations[0].name)}">
+                </div>
+                <div class="store-form-field">
+                    <label class="store-form-label">Author</label>
+                    <input type="text" id="loc-store-author" class="store-form-input" placeholder="e.g. Council">
+                </div>
+                <div class="store-form-field">
+                    <label class="store-form-label">Store Type</label>
+                    <select id="loc-store-type" class="store-form-input">${typeOptions}</select>
+                </div>
+                <div class="store-form-field">
+                    <label class="store-form-label">Owner <span class="store-form-hint">(optional)</span></label>
+                    <input type="text" id="loc-store-owner" class="store-form-input" placeholder="e.g. Sage">
+                </div>
+                <div class="store-form-field store-form-full">
+                    <label class="store-form-label">Description</label>
+                    <textarea id="loc-store-desc" class="store-form-textarea" rows="3">${escapeHtml(locations[0].description)}</textarea>
+                </div>
+            </div>
+            <div class="store-form-actions">
+                <button class="btn btn-primary" onclick="submitLocationStore()" id="btn-loc-store-submit">🏪 Create Store from Location</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('loc-store-modal').remove()">Cancel</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+}
+
+function prefillLocationStore() {
+    const sel = document.getElementById('loc-store-select');
+    const opt = sel.options[sel.selectedIndex];
+    document.getElementById('loc-store-name').value = opt.dataset.name || '';
+    document.getElementById('loc-store-desc').value = opt.dataset.desc || '';
+}
+
+async function submitLocationStore() {
+    const location_id = document.getElementById('loc-store-select').value;
+    const name = document.getElementById('loc-store-name').value.trim();
+    const author = document.getElementById('loc-store-author').value.trim();
+    const description = document.getElementById('loc-store-desc').value.trim();
+    const store_type = document.getElementById('loc-store-type').value;
+    const owner = document.getElementById('loc-store-owner').value.trim();
+
+    if (!name || !description || !author) {
+        showToast('Name, description, and author are required.', true);
+        return;
+    }
+
+    const btn = document.getElementById('btn-loc-store-submit');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating…'; }
+
+    try {
+        const resp = await fetch('/api/stores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, description, author, store_type, owner, location_id }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Create failed' }));
+            throw new Error(err.detail);
+        }
+        const result = await resp.json();
+        showToast(`Store "${result.name}" created from location ✅`);
+        const modal = document.getElementById('loc-store-modal');
+        if (modal) modal.remove();
+        navigateTo('stores', result.id);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '🏪 Create Store from Location'; }
+    }
+}
+
+async function submitNewStore() {
+    const name = document.getElementById('store-new-name').value.trim();
+    const description = document.getElementById('store-new-desc').value.trim();
+    const author = document.getElementById('store-new-author').value.trim();
+    const store_type = document.getElementById('store-new-type').value;
+    const owner = document.getElementById('store-new-owner').value.trim();
+    const lore = document.getElementById('store-new-lore').value.trim();
+    const location_id = document.getElementById('store-new-location').value.trim();
+    const rawTags = document.getElementById('store-new-tags').value.trim();
+    const tags = rawTags ? rawTags.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+    if (!name || !description || !author) {
+        showToast('Name, description, and author are required.', true);
+        return;
+    }
+
+    const btn = document.getElementById('btn-submit-store');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating…'; }
+
+    try {
+        const resp = await fetch('/api/stores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, description, author, store_type, owner, lore, location_id, tags }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Create failed' }));
+            throw new Error(err.detail);
+        }
+        const result = await resp.json();
+        showToast(`Store "${result.name}" created ✅`);
+        navigateTo('stores', result.id);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '🏪 Create Store'; }
+    }
+}
+
+async function renderStoreDetail(storeId) {
+    showLoading();
+    let data;
+    let activeItems = [];
+    try {
+        data = await api(`/api/stores/${encodeURIComponent(storeId)}`);
+    } catch (err) {
+        showError(err.message);
+        return;
+    }
+    try {
+        activeItems = await api('/api/items?status=active');
+    } catch { /* items may not exist yet */ }
+
+    const icon = STORE_TYPE_ICONS[data.store_type] || '🏪';
+    const inv = data.inventory || [];
+
+    // Status transition buttons
+    const transitions = { draft: ['active'], active: ['draft', 'archived'], archived: [] };
+    const allowed = transitions[data.status] || [];
+    const statusBtns = allowed.map(s =>
+        `<button class="btn btn-sm ${s === 'draft' ? 'btn-secondary' : 'btn-primary'}" onclick="setStoreStatus('${storeId}','${s}')" id="btn-store-status-${s}">→ ${s}</button>`
+    ).join('');
+
+    // Inventory table
+    let invHtml = '';
+    if (inv.length) {
+        const rows = inv.map(si => {
+            const priceDisplay = [
+                si.price_gold ? `${si.price_gold}G` : '',
+                si.price_silver ? `${si.price_silver}S` : '',
+                si.price_bronze ? `${si.price_bronze}B` : '',
+            ].filter(Boolean).join(' ') || '—';
+            const qtyDisplay = si.quantity === -1 ? '∞' : si.quantity;
+            return `
+            <tr>
+                <td style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:var(--accent-cyan)">${si.item_id}${(() => { const m = activeItems.find(it => it.id === si.item_id); return m ? ` <span style="font-family:inherit;color:var(--text-secondary)">— ${escapeHtml(m.name)}</span>` : ''; })()}</td>
+                <td class="store-price-cell">🪙 ${priceDisplay}</td>
+                <td style="text-align:center">${qtyDisplay}</td>
+                <td style="font-size:0.78rem;color:var(--text-muted)">${formatDate(si.added_at)}</td>
+                <td>
+                    <button class="btn btn-sm btn-secondary" onclick="removeStoreInventory('${storeId}','${si.item_id}')" title="Remove">🗑️</button>
+                </td>
+            </tr>`;
+        }).join('');
+        invHtml = `
+        <table class="store-inv-table">
+            <thead><tr><th>Item ID</th><th>Price</th><th>Qty</th><th>Added</th><th></th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+    } else {
+        invHtml = '<p style="color:var(--text-muted)">No items in inventory yet.</p>';
+    }
+
+    // Build active-items dropdown options (exclude items already in inventory)
+    const existingItemIds = new Set(inv.map(si => si.item_id));
+    const availableItems = activeItems.filter(it => !existingItemIds.has(it.id));
+    const itemOptions = availableItems.length
+        ? availableItems.map(it => `<option value="${it.id}">${it.id} — ${escapeHtml(it.name)}</option>`).join('')
+        : '<option value="" disabled>No active items available</option>';
+
+    // Add inventory form
+    const addInvForm = `
+    <div class="card store-form-card" id="store-add-inv-form" style="display:none;margin-top:var(--space-md)">
+        <h4 class="store-form-title" style="font-size:1rem">📦 Add Inventory Item</h4>
+        <div class="store-form-grid">
+            <div class="store-form-field">
+                <label class="store-form-label">Select Item</label>
+                <select id="sinv-item-id" class="store-form-input">${itemOptions}</select>
+            </div>
+            <div class="store-form-field">
+                <label class="store-form-label">Gold Price</label>
+                <input type="number" id="sinv-gold" class="store-form-input" value="0" min="0">
+            </div>
+            <div class="store-form-field">
+                <label class="store-form-label">Silver Price</label>
+                <input type="number" id="sinv-silver" class="store-form-input" value="0" min="0">
+            </div>
+            <div class="store-form-field">
+                <label class="store-form-label">Bronze Price</label>
+                <input type="number" id="sinv-bronze" class="store-form-input" value="0" min="0">
+            </div>
+            <div class="store-form-field">
+                <label class="store-form-label">Quantity <span class="store-form-hint">(-1 = unlimited)</span></label>
+                <input type="number" id="sinv-qty" class="store-form-input" value="-1" min="-1">
+            </div>
+        </div>
+        <div class="store-form-actions">
+            <button class="btn btn-primary btn-sm" onclick="addStoreInventory('${storeId}')" id="btn-add-inv">➕ Add Item</button>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('store-add-inv-form').style.display='none'">Cancel</button>
+        </div>
+    </div>`;
+
+    // Edit form fields
+    const tagsStr = (data.tags || []).join(', ');
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <button class="back-btn" onclick="navigateTo('stores')">← Back to Stores</button>
+            <div class="detail-panel">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-xl)">
+                    <div>
+                        <div style="font-size:0.78rem;font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);margin-bottom:var(--space-xs)">${data.id}</div>
+                        <div style="font-size:1.4rem;font-weight:700">${icon} ${escapeHtml(data.name)}</div>
+                        <div style="color:var(--text-secondary);margin-top:var(--space-xs);font-size:0.87rem">
+                            by <strong>${escapeHtml(data.author)}</strong> · ${formatDate(data.created_at)}
+                        </div>
+                        <div style="margin-top:var(--space-sm);display:flex;gap:var(--space-sm);align-items:center">
+                            ${badge(data.status)} ${badge(data.store_type)}
+                            ${data.owner ? `<span style="color:var(--text-secondary);font-size:0.82rem">👤 ${escapeHtml(data.owner)}</span>` : ''}
+                            ${data.location_id ? `<span style="color:var(--text-secondary);font-size:0.82rem">📍 ${escapeHtml(data.location_id)}</span>` : ''}
+                            <span class="store-stat">📦 ${inv.length} item${inv.length !== 1 ? 's' : ''}</span>
+                            ${statusBtns}
+                        </div>
+                    </div>
+                    <button class="detail-close" onclick="navigateTo('stores')">✕</button>
+                </div>
+
+                <div class="detail-section">
+                    <h4>Description</h4>
+                    <p>${escapeHtml(data.description)}</p>
+                </div>
+
+                ${data.lore ? `<div class="detail-section"><h4>📜 Lore</h4><p style="white-space:pre-line">${escapeHtml(data.lore)}</p></div>` : ''}
+
+                <div class="detail-section">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <h4>🛒 Inventory (${inv.length})</h4>
+                        <button class="btn btn-sm btn-primary" onclick="document.getElementById('store-add-inv-form').style.display='block'">➕ Add Item</button>
+                    </div>
+                    ${invHtml}
+                    ${addInvForm}
+                </div>
+
+                ${data.status === 'active' && inv.length ? `
+                <div class="detail-section">
+                    <h4>💰 Purchase an Item</h4>
+                    <div class="store-form-grid">
+                        <div class="store-form-field">
+                            <label class="store-form-label">Select Item</label>
+                            <select id="purchase-item-id" class="store-form-input">
+                                ${inv.map(si => {
+                                    const matchedItem = activeItems.find(it => it.id === si.item_id);
+                                    const label = matchedItem ? `${si.item_id} — ${escapeHtml(matchedItem.name)}` : si.item_id;
+                                    const qtyLabel = si.quantity === -1 ? '∞' : si.quantity;
+                                    const priceLabel = [si.price_gold ? si.price_gold + 'G' : '', si.price_silver ? si.price_silver + 'S' : '', si.price_bronze ? si.price_bronze + 'B' : ''].filter(Boolean).join(' ') || 'Free';
+                                    return `<option value="${si.item_id}">${label} · ${priceLabel} · Qty: ${qtyLabel}</option>`;
+                                }).join('')}
+                            </select>
+                        </div>
+                        <div class="store-form-field">
+                            <label class="store-form-label">Buyer Account ID</label>
+                            <input type="text" id="purchase-buyer" class="store-form-input" placeholder="ACCT-user-human">
+                        </div>
+                    </div>
+                    <div class="store-form-actions">
+                        <button class="btn btn-primary" onclick="purchaseFromStore('${storeId}')" id="btn-purchase">💰 Purchase</button>
+                    </div>
+                </div>` : ''}
+
+                <div class="detail-section">
+                    <h4>✏️ Edit Store</h4>
+                    <div class="store-form-grid">
+                        <div class="store-form-field">
+                            <label class="store-form-label">Name</label>
+                            <input type="text" id="store-edit-name" class="store-form-input" value="${escapeAttr(data.name)}">
+                        </div>
+                        <div class="store-form-field">
+                            <label class="store-form-label">Owner</label>
+                            <input type="text" id="store-edit-owner" class="store-form-input" value="${escapeAttr(data.owner || '')}">
+                        </div>
+                        <div class="store-form-field">
+                            <label class="store-form-label">Store Type</label>
+                            <select id="store-edit-type" class="store-form-input">
+                                ${['general','blacksmith','alchemist','enchanter','tavern','custom']
+                                    .map(t => `<option value="${t}" ${t===data.store_type?'selected':''}>${STORE_TYPE_ICONS[t]||''} ${t}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="store-form-field">
+                            <label class="store-form-label">Location ID</label>
+                            <input type="text" id="store-edit-location" class="store-form-input" value="${escapeAttr(data.location_id || '')}">
+                        </div>
+                        <div class="store-form-field store-form-full">
+                            <label class="store-form-label">Description</label>
+                            <textarea id="store-edit-desc" class="store-form-textarea" rows="3">${escapeHtml(data.description)}</textarea>
+                        </div>
+                        <div class="store-form-field store-form-full">
+                            <label class="store-form-label">Lore</label>
+                            <textarea id="store-edit-lore" class="store-form-textarea" rows="2">${escapeHtml(data.lore || '')}</textarea>
+                        </div>
+                        <div class="store-form-field">
+                            <label class="store-form-label">Tags</label>
+                            <input type="text" id="store-edit-tags" class="store-form-input" value="${escapeAttr(tagsStr)}">
+                        </div>
+                    </div>
+                    <div class="store-form-actions">
+                        <button class="btn btn-primary" onclick="updateStore('${storeId}')" id="btn-update-store">💾 Save Changes</button>
+                    </div>
+                </div>
+
+                <div class="detail-section" style="font-size:0.82rem;color:var(--text-muted)">
+                    Created: ${formatDate(data.created_at)} · Updated: ${formatDate(data.updated_at)} · Version: ${data.version}
+                </div>
+            </div>
+        </div>`;
+}
+
+async function setStoreStatus(storeId, newStatus) {
+    try {
+        const resp = await fetch(`/api/stores/${encodeURIComponent(storeId)}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Status change failed' }));
+            throw new Error(err.detail);
+        }
+        showToast(`Store status → ${newStatus} ✅`);
+        await renderStoreDetail(storeId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
+
+async function addStoreInventory(storeId) {
+    const item_id = document.getElementById('sinv-item-id').value.trim();
+    const price_gold = parseInt(document.getElementById('sinv-gold').value, 10) || 0;
+    const price_silver = parseInt(document.getElementById('sinv-silver').value, 10) || 0;
+    const price_bronze = parseInt(document.getElementById('sinv-bronze').value, 10) || 0;
+    const quantity = parseInt(document.getElementById('sinv-qty').value, 10);
+
+    if (!item_id) { showToast('Item ID is required.', true); return; }
+
+    try {
+        const resp = await fetch(`/api/stores/${encodeURIComponent(storeId)}/inventory`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_id, price_gold, price_silver, price_bronze, quantity }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Add failed' }));
+            throw new Error(err.detail);
+        }
+        showToast(`Item ${item_id} added to inventory ✅`);
+        await renderStoreDetail(storeId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
+
+async function removeStoreInventory(storeId, itemId) {
+    if (!confirm(`Remove ${itemId} from inventory?`)) return;
+    try {
+        const resp = await fetch(`/api/stores/${encodeURIComponent(storeId)}/inventory/${encodeURIComponent(itemId)}`, {
+            method: 'DELETE',
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Remove failed' }));
+            throw new Error(err.detail);
+        }
+        showToast(`Item ${itemId} removed ✅`);
+        await renderStoreDetail(storeId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
+
+async function updateStore(storeId) {
+    const body = {
+        name: document.getElementById('store-edit-name').value.trim(),
+        description: document.getElementById('store-edit-desc').value.trim(),
+        lore: document.getElementById('store-edit-lore').value.trim(),
+        owner: document.getElementById('store-edit-owner').value.trim(),
+        store_type: document.getElementById('store-edit-type').value,
+        location_id: document.getElementById('store-edit-location').value.trim(),
+        tags: document.getElementById('store-edit-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+    };
+    const btn = document.getElementById('btn-update-store');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+    try {
+        const resp = await fetch(`/api/stores/${encodeURIComponent(storeId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Update failed' }));
+            throw new Error(err.detail);
+        }
+        showToast('Store updated ✅');
+        await renderStoreDetail(storeId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = 'Save Changes'; }
+    }
+}
+
+async function purchaseFromStore(storeId) {
+    const item_id = document.getElementById('purchase-item-id').value.trim();
+    const buyer_account_id = document.getElementById('purchase-buyer').value.trim();
+
+    if (!item_id || !buyer_account_id) {
+        showToast('Item ID and Buyer Account ID are required.', true);
+        return;
+    }
+
+    const btn = document.getElementById('btn-purchase');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Processing…'; }
+
+    try {
+        const resp = await fetch(`/api/stores/${encodeURIComponent(storeId)}/purchase`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_id, buyer_account_id }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Purchase failed' }));
+            throw new Error(err.detail);
+        }
+        const result = await resp.json();
+        showToast(`Purchased ${result.item.item_id} successfully! ✅`);
+        await renderStoreDetail(storeId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '💰 Purchase'; }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Analytics View
 // ═══════════════════════════════════════════════════════════════
 
@@ -2733,13 +5095,13 @@ async function renderChat() {
     }
 
     const activeHtml = activeChats.length
-        ? activeChats.map((c, i) => chatCard(c, i)).join('')
+        ? [...activeChats].reverse().map((c, i) => chatCard(c, i)).join('')
         : '<div class="empty-state"><div class="empty-icon">💬</div><p>No active chats. Start a new conversation!</p></div>';
 
     const closedHtml = closedChats.length
         ? `<details class="chat-closed-section">
             <summary class="chat-closed-toggle">Closed Chats (${closedChats.length})</summary>
-            <div class="chat-list">${closedChats.map((c, i) => chatCard(c, i + activeChats.length)).join('')}</div>
+            <div class="chat-list">${[...closedChats].reverse().map((c, i) => chatCard(c, i + activeChats.length)).join('')}</div>
            </details>`
         : '';
 
@@ -2982,8 +5344,8 @@ async function renderChatDetail(chatId) {
                     </div>
                 </div>
                 <div class="chat-topbar-actions">
-                    <button class="btn btn-sm silentpassa-toggle ${state.silentpassaEnabled ? 'silentpassa-on' : 'silentpassa-off'}" onclick="toggleSilentPassa('${chatId}')" id="silentpassa-btn" title="Toggle [PRESENT]/[SILENCE] wrappers">
-                        ${state.silentpassaEnabled ? '🔔 SilentPassa' : '🔕 SilentPassa'}
+                    <button class="btn btn-sm silentpassa-toggle ${state.silentpassaEnabled ? 'silentpassa-on' : 'silentpassa-off'}" onclick="toggleSilentPass('chat','${chatId}')" id="silentpassa-btn" title="Toggle [PRESENT]/[SILENCE] wrappers">
+                        ${state.silentpassaEnabled ? '🔔 SilentPass' : '🔕 SilentPass'}
                     </button>
                     ${pauseResumeHtml}
                     ${closeBtn}
@@ -3198,15 +5560,23 @@ function wrapPresenceContent(renderedHtml, speakerName) {
 }
 
 /**
- * Toggle the SilentPassa feature on/off and re-render the current chat.
+ * Toggle the SilentPass feature on/off and re-render the current view.
+ * @param {string} viewType - 'chat', 'proposals', 'votes', or 'sessions'
+ * @param {string} viewId - The ID relevant to re-render the correct detail view
  */
-async function toggleSilentPassa(chatId) {
+async function toggleSilentPass(viewType, viewId) {
     state.silentpassaEnabled = !state.silentpassaEnabled;
     localStorage.setItem('silentpassa', state.silentpassaEnabled ? 'on' : 'off');
-    if (chatId) {
-        await renderChatDetail(chatId);
+    if (!viewId) return;
+    switch (viewType) {
+        case 'chat': await renderChatDetail(viewId); break;
+        case 'proposals': await renderProposalDetail(viewId); break;
+        case 'votes': await renderVoteDetail(viewId); break;
+        case 'sessions': await renderCouncilSessionDetail(viewId); break;
     }
 }
+// Legacy alias
+async function toggleSilentPassa(chatId) { return toggleSilentPass('chat', chatId); }
 
 function appendAgentBubble(container, speaker, content, avatarUrl) {
     if (!container) return;
@@ -3344,27 +5714,78 @@ async function closeChatConversation(chatId) {
 const PROVIDER_LABELS = {
     openrouter: { name: 'OpenRouter', icon: '🌐', url: 'https://openrouter.ai/keys' },
     mancer:     { name: 'Mancer',     icon: '🧠', url: 'https://mancer.tech' },
+    lmstudio:   { name: 'LM Studio', icon: '🖥️', url: 'https://lmstudio.ai' },
 };
 
 // Model dropdown options (fetched from API, cached here)
 let MANCER_MODEL_OPTIONS = ['Default'];
 let OPENROUTER_MODEL_OPTIONS = ['Default'];
+let LMSTUDIO_MODEL_OPTIONS = ['Default'];
+let _modelOptionsLoaded = false;
+
+/** Eagerly fetch model option lists from the API so they're available
+ *  before the user visits any form (council, character, proposal). */
+async function loadModelOptions() {
+    if (_modelOptionsLoaded) return;
+    try {
+        const [mancer, openrouter, lmstudio] = await Promise.all([
+            api('/api/settings/mancer-models').catch(() => ['Default']),
+            api('/api/settings/openrouter-models').catch(() => ['Default']),
+            api('/api/settings/lmstudio-models').catch(() => ['Default']),
+        ]);
+        if (mancer && mancer.length) MANCER_MODEL_OPTIONS = mancer;
+        if (openrouter && openrouter.length) OPENROUTER_MODEL_OPTIONS = openrouter;
+        if (lmstudio && lmstudio.length) LMSTUDIO_MODEL_OPTIONS = lmstudio;
+        _modelOptionsLoaded = true;
+    } catch (_) { /* silently degrade — will try again on Settings visit */ }
+}
+
+/** Return model options array for a given provider. */
+function getModelOptionsForProvider(provider) {
+    if (provider === 'mancer') return MANCER_MODEL_OPTIONS;
+    if (provider === 'lmstudio') return LMSTUDIO_MODEL_OPTIONS;
+    return OPENROUTER_MODEL_OPTIONS;
+}
+
+/** Render a model dropdown (or LM Studio info message) for a given provider.
+ *  @param {string} selectId - the id for the <select> element
+ *  @param {string} provider - 'openrouter' | 'mancer' | 'lmstudio'
+ *  @param {string} currentModel - the currently selected model value
+ *  @param {boolean} includeDefault - whether to include 'Default' as an option
+ */
+function renderModelField(selectId, provider, currentModel, includeDefault) {
+    if (provider === 'lmstudio') {
+        return `<div class="lmstudio-model-info" style="padding:var(--space-sm);background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--radius-md);color:var(--text-secondary);font-size:0.85rem">
+            🖥️ Model is selected in the LM Studio application
+            <input type="hidden" id="${selectId}" value="Loaded Model" />
+        </div>`;
+    }
+    const opts = getModelOptionsForProvider(provider);
+    const filteredOpts = includeDefault ? opts : opts.filter(m => m !== 'Default');
+    return `<select id="${selectId}" class="settings-input">
+        ${filteredOpts.map(m => `<option value="${m}" ${currentModel === m || (!currentModel && m === 'Default') ? 'selected' : ''}>${m}</option>`).join('')}
+    </select>`;
+}
 
 async function renderSettings() {
     showLoading();
-    const [keys, models, userDescData, mancerModels, openrouterModels] = await Promise.all([
+    const [keys, models, userDescData, userNameData, mancerModels, openrouterModels, lmstudioModels] = await Promise.all([
         api('/api/settings/keys'),
         api('/api/settings/models'),
         api('/api/settings/user-description'),
+        api('/api/settings/user-name').catch(() => ({ name: '' })),
         api('/api/settings/mancer-models').catch(() => ['Default']),
         api('/api/settings/openrouter-models').catch(() => ['Default']),
+        api('/api/settings/lmstudio-models').catch(() => ['Default']),
     ]);
 
     // Cache model options for use in council member editing
     if (mancerModels && mancerModels.length) MANCER_MODEL_OPTIONS = mancerModels;
     if (openrouterModels && openrouterModels.length) OPENROUTER_MODEL_OPTIONS = openrouterModels;
+    if (lmstudioModels && lmstudioModels.length) LMSTUDIO_MODEL_OPTIONS = lmstudioModels;
 
     const userDesc = userDescData.description || '';
+    const userName = userNameData.name || '';
     const maxLen = 700;
 
     // Build a map of provider -> model info
@@ -3427,6 +5848,10 @@ async function renderSettings() {
                         ? `<select id="model-input-${k.provider}" class="settings-input">
                                ${mancerModels.filter(m => m !== 'Default').map(m => `<option value="${m}" ${currentModel === m ? 'selected' : ''}>${m}</option>`).join('')}
                            </select>`
+                        : k.provider === 'lmstudio'
+                        ? `<select id="model-input-${k.provider}" class="settings-input">
+                               ${lmstudioModels.filter(m => m !== 'Default').map(m => `<option value="${m}" ${currentModel === m ? 'selected' : ''}>${m}</option>`).join('')}
+                           </select>`
                         : `<select id="model-input-${k.provider}" class="settings-input">
                                ${openrouterModels.filter(m => m !== 'Default').map(m => `<option value="${m}" ${currentModel === m ? 'selected' : ''}>${m}</option>`).join('')}
                            </select>`
@@ -3451,12 +5876,30 @@ async function renderSettings() {
                     <div class="settings-provider-info">
                         <span class="settings-provider-icon">👤</span>
                         <div>
-                            <div class="settings-provider-name">User Profile</div>
-                            <span class="settings-provider-link" style="cursor:default">Tell the AI council about yourself</span>
+                            <div class="settings-provider-name">About You</div>
+                            <span class="settings-provider-link" style="cursor:default">Tell the AI council about yourself so they know who they're speaking with</span>
                         </div>
                     </div>
                 </div>
                 <div class="settings-form" style="margin-top:var(--space-sm)">
+                    <div class="filter-group" style="margin-bottom:var(--space-md)">
+                        <label for="user-name-input" class="user-desc-label">
+                            Your Name
+                            <span class="user-desc-hint">How the council members and characters will address you.</span>
+                        </label>
+                        <div class="settings-input-row">
+                            <input id="user-name-input"
+                                   class="settings-input"
+                                   type="text"
+                                   maxlength="100"
+                                   placeholder="Enter your name…"
+                                   value="${escapeHtml(userName)}" />
+                            <button class="btn btn-primary" onclick="saveUserName()" id="user-name-save-btn">
+                                💾 Save
+                            </button>
+                        </div>
+                        <span id="user-name-status" style="font-size:0.82rem;color:var(--text-muted);margin-top:var(--space-xs);display:block"></span>
+                    </div>
                     <label for="user-desc-input" class="user-desc-label">
                         About You
                         <span class="user-desc-hint">This description is shared with council members so they know who they're speaking with.</span>
@@ -3605,6 +6048,39 @@ async function saveUserDescription() {
     }
 }
 
+async function saveUserName() {
+    const input = document.getElementById('user-name-input');
+    const btn = document.getElementById('user-name-save-btn');
+    const status = document.getElementById('user-name-status');
+    const name = input.value.trim();
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Saving…';
+    status.textContent = '';
+
+    try {
+        const resp = await fetch('/api/settings/user-name', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
+            throw new Error(err.detail);
+        }
+        showToast('Name saved ✅');
+        status.textContent = '✅ Saved';
+        status.style.color = 'var(--accent-emerald)';
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        status.textContent = '❌ Failed';
+        status.style.color = 'var(--accent-rose)';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Save';
+    }
+}
+
 function escapeHtml(text) {
     const el = document.createElement('span');
     el.textContent = text;
@@ -3636,6 +6112,8 @@ async function renderMemories() {
     const data = await api('/api/memories');
     let sharedData = { decision_count: 0, history: '' };
     try { sharedData = await api('/api/memories/shared'); } catch { /* empty */ }
+    let lawSharedData = { law_count: 0 };
+    try { lawSharedData = await api('/api/memories/law-shared'); } catch { /* empty */ }
 
     const memberCards = data.map((m, i) => {
         const avatarHtml = m.avatar_url
@@ -3684,6 +6162,23 @@ async function renderMemories() {
             </div>
         </div>`;
 
+    const lawSharedCard = `
+        <div class="card card-clickable memory-card memory-card-shared" onclick="navigateTo('memories','law_shared')">
+            <div class="memory-card-header">
+                <div class="memory-avatar memory-avatar-shared" style="background:linear-gradient(135deg, var(--accent-blue), var(--accent-indigo))">⚖️</div>
+                <div>
+                    <div class="member-name">Law Shared Memory</div>
+                    <div class="member-role">Active laws accessible to the LLM</div>
+                </div>
+            </div>
+            <div class="memory-stats">
+                <div class="memory-stat">
+                    <span class="memory-stat-value">${lawSharedData.law_count}</span>
+                    <span class="memory-stat-label">Active Laws</span>
+                </div>
+            </div>
+        </div>`;
+
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header">
@@ -3692,6 +6187,7 @@ async function renderMemories() {
             </div>
             <div class="member-grid">
                 ${sharedCard}
+                ${lawSharedCard}
                 ${memberCards}
             </div>
         </div>`;
@@ -3775,14 +6271,38 @@ async function renderSharedMemory() {
             <div class="event-header">
                 <span class="badge badge-decided">#${i + 1}</span>
                 ${ts ? `<span class="event-timestamp">${formatDate(ts)}</span>` : ''}
+                <button class="btn-icon belief-delete" onclick="deleteSharedDecision(${i}, '${escapeAttr(truncate(summary, 50))}')" title="Delete decision">
+                    🗑️
+                </button>
             </div>
             <div class="event-content">${escapeHtml(summary)}</div>
         </div>`;
     }).join('') : '<div class="empty-state"><div class="empty-icon">📜</div><p>No council decisions recorded yet.</p></div>';
 
-    const historyHtml = data.history
-        ? `<div class="shared-history-content">${escapeHtml(data.history)}</div>`
-        : '<div class="empty-state"><div class="empty-icon">📖</div><p>No narrative history written yet.</p></div>';
+    // Narrative History with sort toggle
+    const historyNewestFirst = localStorage.getItem('jericho-history-sort') === 'newest';
+    let historyHtml;
+    if (data.history) {
+        let displayHistory = data.history;
+        if (historyNewestFirst) {
+            // Split by ## headings and reverse sections
+            const sections = data.history.split(/(?=^## )/m);
+            // Separate any preamble (content before first ## heading)
+            let preamble = '';
+            let headingSections = sections;
+            if (sections.length > 0 && !sections[0].startsWith('## ')) {
+                preamble = sections[0];
+                headingSections = sections.slice(1);
+            }
+            displayHistory = preamble + headingSections.reverse().join('');
+        }
+        historyHtml = `<div class="shared-history-content">${escapeHtml(displayHistory)}</div>`;
+    } else {
+        historyHtml = '<div class="empty-state"><div class="empty-icon">📖</div><p>No narrative history written yet.</p></div>';
+    }
+
+    const sortLabel = historyNewestFirst ? 'Newest First' : 'Oldest First';
+    const sortIcon = historyNewestFirst ? '⬇️' : '⬆️';
 
     $main().innerHTML = `
         <div class="view-enter">
@@ -3806,11 +6326,37 @@ async function renderSharedMemory() {
                 <div class="memory-panel">
                     <div class="memory-panel-header">
                         <h3>📖 Narrative History</h3>
+                        <button class="btn btn-sm" onclick="toggleHistorySort()" title="Toggle sort order" id="history-sort-btn">
+                            ${sortIcon} ${sortLabel}
+                        </button>
                     </div>
                     ${historyHtml}
                 </div>
             </div>
         </div>`;
+}
+
+function toggleHistorySort() {
+    const current = localStorage.getItem('jericho-history-sort') === 'newest';
+    localStorage.setItem('jericho-history-sort', current ? 'oldest' : 'newest');
+    renderSharedMemory();
+}
+
+async function deleteSharedDecision(index, label) {
+    if (!confirm(`Delete decision "${label}"?`)) return;
+    try {
+        const resp = await fetch(`/api/memories/shared/decisions?index=${index}`, {
+            method: 'DELETE',
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Delete failed' }));
+            throw new Error(err.detail);
+        }
+        showToast(`Decision deleted ✅`);
+        await renderSharedMemory();
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
 }
 
 async function deleteCoreBelief(memberName, topic) {
@@ -3845,6 +6391,556 @@ function updateNavCounts(data) {
     if (data.evolutions) {
         const evoEl = document.getElementById('count-evolutions');
         if (evoEl) evoEl.textContent = data.evolutions.count || 0;
+    }
+    if (data.treasury) {
+        const tEl = document.getElementById('count-treasury');
+        if (tEl) tEl.textContent = data.treasury.total_accounts || 0;
+    }
+    if (data.items) {
+        const iEl = document.getElementById('count-items');
+        if (iEl) iEl.textContent = data.items.count || 0;
+    }
+    if (data.laws) {
+        const lawEl = document.getElementById('count-laws');
+        if (lawEl) lawEl.textContent = data.laws.count || 0;
+    }
+    if (data.stores) {
+        const sEl = document.getElementById('count-stores');
+        if (sEl) sEl.textContent = data.stores.count || 0;
+    }
+}
+// ═══════════════════════════════════════════════════════════════
+// Treasury View
+// ═══════════════════════════════════════════════════════════════
+
+const ACCT_TYPE_LABELS = {
+    council_member: { icon: '👥', label: 'Council Member', badge: 'council_member' },
+    character:      { icon: '🎭', label: 'Character',      badge: 'character' },
+    user:           { icon: '👤', label: 'User',            badge: 'user' },
+    government:     { icon: '🏛️', label: 'Government',     badge: 'government' },
+};
+
+function obeliskBadge(balance) {
+    if (!balance) return '';
+    const parts = [];
+    if (balance.gold)   parts.push(`<span class="obelisk-coin obelisk-gold">🥇 ${balance.gold}</span>`);
+    if (balance.silver) parts.push(`<span class="obelisk-coin obelisk-silver">🥈 ${balance.silver}</span>`);
+    if (balance.bronze) parts.push(`<span class="obelisk-coin obelisk-bronze">🥉 ${balance.bronze}</span>`);
+    if (!parts.length)  parts.push(`<span class="obelisk-coin obelisk-empty">— empty —</span>`);
+    return `<div class="obelisk-balance">${parts.join('')}</div>`;
+}
+
+function obeliskTotal(balance) {
+    if (!balance) return '0.00';
+    const rate = 100;
+    const totalBronze = (balance.gold || 0) * rate * rate + (balance.silver || 0) * rate + (balance.bronze || 0);
+    return (totalBronze / (rate * rate)).toFixed(2);
+}
+
+async function renderTreasury() {
+    showLoading();
+    const typeFilter = state._treasuryFilter || '';
+    const url = typeFilter ? `/api/treasury?type=${encodeURIComponent(typeFilter)}` : '/api/treasury';
+    const data = await api(url);
+
+    const filterOptions = ['', 'council_member', 'character', 'user', 'government']
+        .map(t => `<option value="${t}" ${t === typeFilter ? 'selected' : ''}>${t ? (ACCT_TYPE_LABELS[t]?.label || t) : 'All Types'}</option>`)
+        .join('');
+
+    if (!data.length) {
+        $main().innerHTML = `
+            <div class="view-enter">
+                <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+                    <div>
+                        <h2>🪙 Treasury — Obelisk Accounts</h2>
+                        <p>No treasury accounts found. Initialize to create default accounts.</p>
+                    </div>
+                    <div style="display:flex;gap:var(--space-sm)">
+                        <select class="settings-input" style="min-width:140px" onchange="state._treasuryFilter=this.value;renderTreasury()" id="treasury-filter">${filterOptions}</select>
+                        <button class="btn btn-primary" onclick="initializeTreasury()" id="btn-treasury-init">⚡ Initialize Treasury</button>
+                    </div>
+                </div>
+                <div class="empty-state"><div class="empty-icon">🪙</div><p>Click "Initialize Treasury" to create accounts for all council members, characters, and the government.</p></div>
+            </div>`;
+        return;
+    }
+
+    const cards = data.map(a => {
+        const meta = ACCT_TYPE_LABELS[a.account_type] || { icon: '💰', label: a.account_type, badge: 'default' };
+        const total = obeliskTotal(a.balance);
+        return `
+        <div class="card card-clickable treasury-card" onclick="navigateTo('treasury','${a.account_id}')">
+            <div class="treasury-card-header">
+                <div class="treasury-card-icon">${meta.icon}</div>
+                <div class="treasury-card-info">
+                    <div class="treasury-card-owner">${escapeHtml(a.owner_name)}</div>
+                    <div class="treasury-card-id">${a.account_id}</div>
+                </div>
+                ${badge(meta.label, meta.badge)}
+            </div>
+            ${obeliskBadge(a.balance)}
+            <div class="treasury-card-total">≈ ${total} Gold equivalent</div>
+        </div>`;
+    }).join('');
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+                <div>
+                    <h2>🪙 Treasury — Obelisk Accounts</h2>
+                    <p>${data.length} account${data.length !== 1 ? 's' : ''} across the Jericho economy</p>
+                </div>
+                <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap">
+                    <select class="settings-input" style="min-width:140px" onchange="state._treasuryFilter=this.value;renderTreasury()" id="treasury-filter">${filterOptions}</select>
+                    <button class="btn btn-primary" onclick="initializeTreasury()" id="btn-treasury-init">⚡ Initialize</button>
+                    <button class="btn btn-secondary" onclick="openTransferModal()" id="btn-treasury-transfer">💸 Transfer</button>
+                </div>
+            </div>
+            <div class="treasury-grid">${cards}</div>
+        </div>`;
+}
+
+async function renderTreasuryDetail(accountId) {
+    showLoading();
+    let data;
+    try {
+        data = await api(`/api/treasury/${encodeURIComponent(accountId)}`);
+    } catch (err) {
+        showError(`Account not found: ${accountId}`);
+        return;
+    }
+    const meta = ACCT_TYPE_LABELS[data.account_type] || { icon: '💰', label: data.account_type, badge: 'default' };
+    const total = obeliskTotal(data.balance);
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <button class="back-btn" onclick="navigateTo('treasury')">← Back to Treasury</button>
+            <div class="detail-panel">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-lg)">
+                    <div>
+                        <div style="font-size:0.78rem;font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);margin-bottom:var(--space-xs)">${data.account_id}</div>
+                        <div style="font-size:1.4rem;font-weight:700">${meta.icon} ${escapeHtml(data.owner_name)}</div>
+                        <div style="color:var(--text-secondary);margin-top:var(--space-xs);font-size:0.87rem">
+                            ${badge(meta.label, meta.badge)}
+                            · Created ${formatDate(data.created_at)}
+                            ${data.updated_at ? ` · Updated ${formatDate(data.updated_at)}` : ''}
+                        </div>
+                    </div>
+                    <button class="detail-close" onclick="navigateTo('treasury')">✕</button>
+                </div>
+
+                <!-- Balance Display -->
+                <div class="detail-section treasury-balance-panel">
+                    <h4>💰 Obelisk Balance</h4>
+                    <div class="treasury-balance-grid">
+                        <div class="treasury-tier treasury-tier-gold">
+                            <div class="treasury-tier-icon">🥇</div>
+                            <div class="treasury-tier-value">${data.balance.gold}</div>
+                            <div class="treasury-tier-label">Gold</div>
+                        </div>
+                        <div class="treasury-tier treasury-tier-silver">
+                            <div class="treasury-tier-icon">🥈</div>
+                            <div class="treasury-tier-value">${data.balance.silver}</div>
+                            <div class="treasury-tier-label">Silver</div>
+                        </div>
+                        <div class="treasury-tier treasury-tier-bronze">
+                            <div class="treasury-tier-icon">🥉</div>
+                            <div class="treasury-tier-value">${data.balance.bronze}</div>
+                            <div class="treasury-tier-label">Bronze</div>
+                        </div>
+                    </div>
+                    <div class="treasury-total-display">≈ <strong>${total}</strong> Gold equivalent</div>
+                </div>
+
+                <!-- Credit Form -->
+                <div class="detail-section">
+                    <h4>➕ Credit Funds</h4>
+                    <div class="treasury-action-form" id="credit-form">
+                        <div class="treasury-input-row">
+                            <div class="treasury-input-group">
+                                <label>Gold</label>
+                                <input type="number" id="credit-gold" class="settings-input" value="0" min="0" />
+                            </div>
+                            <div class="treasury-input-group">
+                                <label>Silver</label>
+                                <input type="number" id="credit-silver" class="settings-input" value="0" min="0" />
+                            </div>
+                            <div class="treasury-input-group">
+                                <label>Bronze</label>
+                                <input type="number" id="credit-bronze" class="settings-input" value="0" min="0" />
+                            </div>
+                            <button class="btn btn-primary" onclick="treasuryCredit('${data.account_id}')" id="btn-credit">➕ Credit</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Debit Form -->
+                <div class="detail-section">
+                    <h4>➖ Debit Funds</h4>
+                    <div class="treasury-action-form" id="debit-form">
+                        <div class="treasury-input-row">
+                            <div class="treasury-input-group">
+                                <label>Gold</label>
+                                <input type="number" id="debit-gold" class="settings-input" value="0" min="0" />
+                            </div>
+                            <div class="treasury-input-group">
+                                <label>Silver</label>
+                                <input type="number" id="debit-silver" class="settings-input" value="0" min="0" />
+                            </div>
+                            <div class="treasury-input-group">
+                                <label>Bronze</label>
+                                <input type="number" id="debit-bronze" class="settings-input" value="0" min="0" />
+                            </div>
+                            <button class="btn btn-secondary" onclick="treasuryDebit('${data.account_id}')" id="btn-debit" style="border-color:var(--accent-rose)">➖ Debit</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+}
+
+async function initializeTreasury() {
+    const btn = document.getElementById('btn-treasury-init');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Initializing…'; }
+
+    try {
+        const resp = await fetch('/api/treasury/initialize', { method: 'POST' });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Failed' }));
+            throw new Error(err.detail);
+        }
+        const data = await resp.json();
+        showToast(`Treasury initialized — ${data.created_count} account${data.created_count !== 1 ? 's' : ''} created ✅`);
+        await renderTreasury();
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '⚡ Initialize Treasury'; }
+    }
+}
+
+async function treasuryCredit(accountId) {
+    const gold   = parseInt(document.getElementById('credit-gold').value)   || 0;
+    const silver = parseInt(document.getElementById('credit-silver').value) || 0;
+    const bronze = parseInt(document.getElementById('credit-bronze').value) || 0;
+    if (!gold && !silver && !bronze) { showToast('Enter an amount to credit.', true); return; }
+
+    const btn = document.getElementById('btn-credit');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
+
+    try {
+        const resp = await fetch(`/api/treasury/${encodeURIComponent(accountId)}/credit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gold, silver, bronze }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Credit failed' }));
+            throw new Error(err.detail);
+        }
+        showToast(`Credited ${gold}G ${silver}S ${bronze}B ✅`);
+        await renderTreasuryDetail(accountId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '➕ Credit'; }
+    }
+}
+
+async function treasuryDebit(accountId) {
+    const gold   = parseInt(document.getElementById('debit-gold').value)   || 0;
+    const silver = parseInt(document.getElementById('debit-silver').value) || 0;
+    const bronze = parseInt(document.getElementById('debit-bronze').value) || 0;
+    if (!gold && !silver && !bronze) { showToast('Enter an amount to debit.', true); return; }
+
+    const btn = document.getElementById('btn-debit');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
+
+    try {
+        const resp = await fetch(`/api/treasury/${encodeURIComponent(accountId)}/debit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gold, silver, bronze }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Debit failed' }));
+            throw new Error(err.detail);
+        }
+        showToast(`Debited ${gold}G ${silver}S ${bronze}B ✅`);
+        await renderTreasuryDetail(accountId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '➖ Debit'; }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Taxation View (F-034)
+// ═══════════════════════════════════════════════════════════════
+
+async function renderTaxation() {
+    showLoading();
+    let summary, events;
+    try {
+        [summary, events] = await Promise.all([
+            api('/api/tax/summary'),
+            api('/api/tax/events?limit=50'),
+        ]);
+    } catch (err) {
+        showError('Failed to load taxation data: ' + err.message);
+        return;
+    }
+
+    const policy = summary.policy || {};
+    const total = summary.total_collected || {};
+    const ratePct = Math.round((policy.rate || 0) * 100);
+    const exempt = (policy.exempt_account_types || []).join(', ') || 'none';
+
+    const eventsRows = events.length
+        ? events.map(e => `
+            <tr>
+                <td style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:var(--accent-cyan)">${escapeHtml(e.event_id)}</td>
+                <td>${escapeHtml(e.from_account)}</td>
+                <td>${escapeHtml(e.to_account)}</td>
+                <td>${obeliskBadge({gold: e.transaction_gold, silver: e.transaction_silver, bronze: e.transaction_bronze})}</td>
+                <td>${obeliskBadge({gold: e.tax_gold, silver: e.tax_silver, bronze: e.tax_bronze})}</td>
+                <td>${Math.round(e.tax_rate * 100)}%</td>
+                <td style="font-size:0.8rem;color:var(--text-muted)">${formatDate(e.timestamp)}</td>
+            </tr>`).join('')
+        : '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:var(--space-lg)">No tax events recorded yet. Tax is collected automatically on transfers between non-exempt accounts.</td></tr>';
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <div class="page-header">
+                <h2>🏛️ Taxation — Obelisk Tax System</h2>
+                <p>Government tax policy and collection ledger</p>
+            </div>
+
+            <div class="tax-panels-grid">
+                <!-- Policy Panel -->
+                <div class="card tax-policy-panel">
+                    <h3>📋 Tax Policy</h3>
+                    <div class="tax-policy-fields">
+                        <div class="tax-field">
+                            <label>Status</label>
+                            <div class="tax-toggle-row">
+                                <span class="badge badge-${policy.enabled ? 'active' : 'archived'}">${policy.enabled ? 'Enabled' : 'Disabled'}</span>
+                                <button class="btn btn-sm" onclick="toggleTaxEnabled(${!policy.enabled})" id="btn-tax-toggle">
+                                    ${policy.enabled ? '⏸ Disable' : '▶ Enable'}
+                                </button>
+                            </div>
+                        </div>
+                        <div class="tax-field">
+                            <label for="tax-rate-slider">Tax Rate: <strong id="tax-rate-display">${ratePct}%</strong></label>
+                            <div class="tax-rate-slider-row">
+                                <input type="range" id="tax-rate-slider" class="tax-rate-slider" min="0" max="50" value="${ratePct}"
+                                    oninput="document.getElementById('tax-rate-display').textContent = this.value + '%'" />
+                                <button class="btn btn-sm btn-primary" onclick="updateTaxRate()" id="btn-tax-rate">Save</button>
+                            </div>
+                        </div>
+                        <div class="tax-field">
+                            <label>Exempt Account Types</label>
+                            <div class="tax-exempt-list">
+                                ${(policy.exempt_account_types || ['government']).map(t => `<span class="tax-exempt-badge">${t}</span>`).join('')}
+                            </div>
+                        </div>
+                        <div class="tax-field" style="margin-top:var(--space-xs)">
+                            <span style="font-size:0.78rem;color:var(--text-muted)">Last updated: ${formatDate(policy.updated_at)}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Revenue Summary -->
+                <div class="card tax-revenue-panel">
+                    <h3>💰 Revenue Summary</h3>
+                    <div class="tax-revenue-stats">
+                        <div class="tax-rev-stat">
+                            <div class="tax-rev-value">${summary.event_count || 0}</div>
+                            <div class="tax-rev-label">Total Events</div>
+                        </div>
+                        <div class="tax-rev-stat">
+                            <div class="tax-rev-value">${total.gold || 0}</div>
+                            <div class="tax-rev-label">🥇 Gold Collected</div>
+                        </div>
+                        <div class="tax-rev-stat">
+                            <div class="tax-rev-value">${total.silver || 0}</div>
+                            <div class="tax-rev-label">🥈 Silver Collected</div>
+                        </div>
+                        <div class="tax-rev-stat">
+                            <div class="tax-rev-value">${total.bronze || 0}</div>
+                            <div class="tax-rev-label">🥉 Bronze Collected</div>
+                        </div>
+                    </div>
+                    ${obeliskBadge(total)}
+                    <div class="treasury-total-display" style="margin-top:var(--space-sm)">≈ <strong>${obeliskTotal(total)}</strong> Gold equivalent total tax revenue</div>
+                </div>
+            </div>
+
+            <!-- Tax Events Log -->
+            <div class="card" style="margin-top:var(--space-lg)">
+                <h3>📜 Tax Collection Ledger</h3>
+                <div class="table-container">
+                    <table class="data-table tax-events-table">
+                        <thead>
+                            <tr>
+                                <th>Event ID</th>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Transaction</th>
+                                <th>Tax Collected</th>
+                                <th>Rate</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>${eventsRows}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div>`;
+}
+
+async function toggleTaxEnabled(enabled) {
+    const btn = document.getElementById('btn-tax-toggle');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    try {
+        await fetch('/api/tax/policy', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled }),
+        });
+        showToast(enabled ? 'Tax collection enabled ✅' : 'Tax collection disabled ⏸');
+        await renderTaxation();
+    } catch (err) {
+        showToast('Failed: ' + err.message, true);
+        if (btn) { btn.disabled = false; }
+    }
+}
+
+async function updateTaxRate() {
+    const slider = document.getElementById('tax-rate-slider');
+    const btn = document.getElementById('btn-tax-rate');
+    if (!slider) return;
+    const rate = parseInt(slider.value, 10) / 100;
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    try {
+        const resp = await fetch('/api/tax/policy', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rate }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({detail: 'Failed'}));
+            throw new Error(err.detail);
+        }
+        showToast(`Tax rate updated to ${slider.value}% ✅`);
+        await renderTaxation();
+    } catch (err) {
+        showToast('Failed: ' + err.message, true);
+        if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+    }
+}
+
+// ── Transfer Modal ──────────────────────────────────────────────
+
+async function openTransferModal() {
+    try {
+        const accounts = await api('/api/treasury');
+        if (accounts.length < 2) {
+            showToast('Need at least 2 accounts for a transfer.', true);
+            return;
+        }
+
+        const optionsHtml = accounts.map(a => {
+            const meta = ACCT_TYPE_LABELS[a.account_type] || { label: a.account_type };
+            return `<option value="${a.account_id}">${a.owner_name} (${meta.label}) — ${a.balance.gold}G ${a.balance.silver}S ${a.balance.bronze}B</option>`;
+        }).join('');
+
+        const existing = document.getElementById('transfer-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'transfer-modal';
+        modal.className = 'promote-modal';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="promote-modal-content" style="max-width:520px">
+                <div class="promote-modal-header">
+                    <h3>💸 Transfer Obelisk</h3>
+                    <button class="detail-close" onclick="closeTransferModal()">✕</button>
+                </div>
+                <div class="promote-modal-body">
+                    <div class="promote-form-group">
+                        <label for="xfer-from">From Account</label>
+                        <select id="xfer-from" class="settings-input">${optionsHtml}</select>
+                    </div>
+                    <div class="promote-form-group">
+                        <label for="xfer-to">To Account</label>
+                        <select id="xfer-to" class="settings-input">${optionsHtml}</select>
+                    </div>
+                    <div class="treasury-input-row" style="margin-top:var(--space-sm)">
+                        <div class="treasury-input-group">
+                            <label>Gold</label>
+                            <input type="number" id="xfer-gold" class="settings-input" value="0" min="0" />
+                        </div>
+                        <div class="treasury-input-group">
+                            <label>Silver</label>
+                            <input type="number" id="xfer-silver" class="settings-input" value="0" min="0" />
+                        </div>
+                        <div class="treasury-input-group">
+                            <label>Bronze</label>
+                            <input type="number" id="xfer-bronze" class="settings-input" value="0" min="0" />
+                        </div>
+                    </div>
+                </div>
+                <div class="promote-modal-footer">
+                    <button class="btn" onclick="closeTransferModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="executeTransfer()" id="btn-xfer-submit">💸 Transfer</button>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeTransferModal(); });
+
+        // Auto-select different to-account
+        if (accounts.length >= 2) {
+            document.getElementById('xfer-to').selectedIndex = 1;
+        }
+    } catch (err) {
+        showToast('Failed to load accounts: ' + err.message, true);
+    }
+}
+
+function closeTransferModal() {
+    const modal = document.getElementById('transfer-modal');
+    if (modal) modal.remove();
+}
+
+async function executeTransfer() {
+    const fromId = document.getElementById('xfer-from').value;
+    const toId   = document.getElementById('xfer-to').value;
+    const gold   = parseInt(document.getElementById('xfer-gold').value)   || 0;
+    const silver = parseInt(document.getElementById('xfer-silver').value) || 0;
+    const bronze = parseInt(document.getElementById('xfer-bronze').value) || 0;
+
+    if (fromId === toId) { showToast('Cannot transfer to the same account.', true); return; }
+    if (!gold && !silver && !bronze) { showToast('Enter an amount to transfer.', true); return; }
+
+    const btn = document.getElementById('btn-xfer-submit');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Transferring…'; }
+
+    try {
+        const resp = await fetch('/api/treasury/transfer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ from: fromId, to: toId, gold, silver, bronze }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Transfer failed' }));
+            throw new Error(err.detail);
+        }
+        showToast(`Transferred ${gold}G ${silver}S ${bronze}B ✅`);
+        closeTransferModal();
+        await renderTreasury();
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '💸 Transfer'; }
     }
 }
 
@@ -4128,9 +7224,1277 @@ async function renderEvolutionTimelineDetail(characterId) {
         </div>`;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Council Sessions View
+// ═══════════════════════════════════════════════════════════════
+
+async function renderCouncilSessions() {
+    showLoading();
+    const data = await api('/api/council-sessions');
+
+    // Fetch council members for the author selector
+    let members = [];
+    try { members = await api('/api/council'); } catch { /* empty */ }
+
+    const categoryOptions = ['character', 'governance', 'ethics', 'expansion', 'general', 'evolution', 'law']
+        .map(c => `<option value="${c}" ${c === 'governance' ? 'selected' : ''}>${c.charAt(0).toUpperCase() + c.slice(1)}</option>`)
+        .join('');
+
+    const rows = data.map(s => {
+        const statusClass = s.status === 'closed' ? 'badge-active' : 'badge-open';
+        return `
+        <tr class="proposal-row" onclick="navigateTo('sessions','${s.session_id}')">
+            <td class="col-id">${s.session_id}</td>
+            <td class="col-title">${truncate(s.title, 50)}</td>
+            <td>${truncate(s.topic, 40)}</td>
+            <td>${badge(s.status)}</td>
+            <td>${s.current_round}/${s.round_count}</td>
+            <td>${(s.contributions || []).length}</td>
+            <td>${formatDate(s.created_at)}</td>
+        </tr>`;
+    }).join('');
+
+    const tableHtml = data.length ? `
+        <div class="table-wrapper">
+            <table class="data-table" id="sessions-table">
+                <thead>
+                    <tr>
+                        <th>ID</th><th>Title</th><th>Topic</th>
+                        <th>Status</th><th>Rounds</th><th>Contributions</th><th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>` : '<div class="empty-state"><div class="empty-icon">🏛️</div><p>No council sessions yet. Start one below!</p></div>';
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <div class="page-header">
+                <h2>🏛️ Council Sessions</h2>
+                <p>${data.length} council session${data.length !== 1 ? 's' : ''}</p>
+            </div>
+
+            <div class="proposal-form card">
+                <h3>📋 New Council Session</h3>
+                <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-md)">
+                    Open a new deliberation session for the full council. Sessions can later be handed off as proposals.
+                </p>
+                <div class="proposal-form-grid">
+                    <div class="filter-group" style="flex:2">
+                        <label for="session-title-input">Session Title</label>
+                        <input id="session-title-input" class="settings-input" placeholder="e.g. Ethics Framework Review" />
+                    </div>
+                    <div class="filter-group">
+                        <label for="session-category-select">Proposal Category</label>
+                        <select id="session-category-select" class="settings-input">
+                            ${categoryOptions}
+                        </select>
+                        <span style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">Used if session becomes a proposal</span>
+                    </div>
+                </div>
+                <div class="filter-group" style="margin-top:var(--space-sm)">
+                    <label for="session-topic-input">Topic</label>
+                    <textarea id="session-topic-input" class="settings-input proposal-textarea" rows="2"
+                        placeholder="What should the council discuss? This will frame the deliberation…"></textarea>
+                </div>
+                <div class="filter-group" style="margin-top:var(--space-sm)">
+                    <label for="session-agenda-input">Agenda <span style="font-weight:400;font-size:0.78rem;color:var(--text-muted)">(optional)</span></label>
+                    <textarea id="session-agenda-input" class="settings-input proposal-textarea" rows="2"
+                        placeholder="Key points or questions to address…"></textarea>
+                </div>
+
+                <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
+                    <button class="btn btn-primary" onclick="createNewSession()" id="session-create-btn">
+                        🚀 Start Session
+                    </button>
+                    <span id="session-create-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
+                </div>
+            </div>
+
+            ${tableHtml}
+        </div>`;
+}
+
+async function createNewSession() {
+    const title = document.getElementById('session-title-input').value.trim();
+    const topic = document.getElementById('session-topic-input').value.trim();
+    const agenda = document.getElementById('session-agenda-input').value.trim();
+    const category = document.getElementById('session-category-select').value;
+    const btn = document.getElementById('session-create-btn');
+    const status = document.getElementById('session-create-status');
+
+    if (!title) { document.getElementById('session-title-input').focus(); return; }
+    if (!topic) { document.getElementById('session-topic-input').focus(); return; }
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Creating…';
+    status.textContent = 'Setting up council session…';
+
+    try {
+        const resp = await fetch('/api/council-sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, topic, agenda, category }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Failed to create session' }));
+            throw new Error(err.detail);
+        }
+        const data = await resp.json();
+        showToast(`Session ${data.session_id} created ✅`);
+        navigateTo('sessions', data.session_id);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        status.textContent = '';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🚀 Start Session';
+    }
+}
+
+async function renderCouncilSessionDetail(id) {
+    showLoading();
+    const data = await api(`/api/council-sessions/${encodeURIComponent(id)}`);
+
+    // Fetch council members for avatars
+    let sessionMembers = [];
+    try { sessionMembers = await api('/api/council'); } catch { /* empty */ }
+    const sessionAvatarMap = {};
+    sessionMembers.forEach(m => { if (m.avatar_url) sessionAvatarMap[m.name.toLowerCase()] = m.avatar_url; });
+    state.sessionAvatarMap = sessionAvatarMap;
+
+    const isOpen = data.status === 'open';
+    const isClosed = data.status === 'closed';
+    const roundsLeft = data.round_count - data.current_round;
+
+    // Category options for the handoff form
+    const categoryOptions = ['character', 'governance', 'ethics', 'expansion', 'general', 'evolution', 'law']
+        .map(c => `<option value="${c}" ${c === data.proposed_category ? 'selected' : ''}>${c.charAt(0).toUpperCase() + c.slice(1)}</option>`)
+        .join('');
+
+    // Author options for the handoff form
+    const authorOptions = sessionMembers.map(m =>
+        `<option value="${m.name}" ${data.participants && data.participants[0] === m.name ? 'selected' : ''}>${m.name} — ${m.role}</option>`
+    ).join('');
+
+    // Discussion feed
+    let discussionFeedHtml = '';
+    if (data.contributions && data.contributions.length) {
+        const contribs = data.contributions.map(c => {
+            const memberIdx = (data.participants || []).indexOf(c.speaker);
+            const renderedContent = renderMarkdown(c.content);
+            const displayContent = state.silentpassaEnabled ? wrapPresenceContent(renderedContent, c.speaker) : renderedContent;
+            return `
+            <div class="discussion-message">
+                <div class="discussion-message-header">
+                    ${memberAvatarWithImage(c.speaker, memberIdx >= 0 ? memberIdx : 0, null, sessionAvatarMap[c.speaker.toLowerCase()])}
+                    <div>
+                        <span class="discussion-speaker">${c.speaker}</span>
+                        <span class="discussion-round">Round ${c.round_number}</span>
+                    </div>
+                </div>
+                <div class="discussion-content">${displayContent}</div>
+            </div>`;
+        }).join('');
+        discussionFeedHtml = `
+            <div class="detail-section">
+                <h4>💬 Council Deliberation (${data.contributions.length} contributions, Round ${data.current_round}/${data.round_count})</h4>
+                <div class="discussion-feed" id="session-discussion-feed">${contribs}</div>
+            </div>`;
+    } else {
+        discussionFeedHtml = `
+            <div class="detail-section">
+                <h4>💬 Council Deliberation</h4>
+                <div class="discussion-feed" id="session-discussion-feed">
+                    <div class="empty-state" style="padding:var(--space-lg)"><div class="empty-icon">💬</div><p>No contributions yet. Start a discussion round!</p></div>
+                </div>
+            </div>`;
+    }
+
+    // Summary (when closed)
+    let summaryHtml = '';
+    if (isClosed && data.summary) {
+        summaryHtml = `
+            <div class="detail-section">
+                <h4>📋 Session Summary</h4>
+                <p style="color:var(--text-secondary)">${renderMarkdown(data.summary)}</p>
+            </div>`;
+    }
+
+    // Action buttons
+    let actionsHtml = '';
+    if (isOpen) {
+        const buttons = [];
+        if (roundsLeft > 0) {
+            buttons.push(`<button class="btn btn-primary" onclick="runSessionRound('${id}')" id="session-discuss-btn">▶️ Continue Discussion (${roundsLeft} left)</button>`);
+        }
+        buttons.push(`<button class="btn btn-secondary" onclick="closeSession('${id}')" id="session-close-btn">⏹️ Close Session</button>`);
+        actionsHtml = `<div class="proposal-actions">${buttons.join('')}</div>`;
+    }
+
+    // Handoff panel (shown when session is closed)
+    let handoffHtml = '';
+    if (isClosed) {
+        handoffHtml = `
+            <div class="detail-section session-handoff-panel">
+                <h4>📜 Create Proposal from Session</h4>
+                <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:var(--space-md)">
+                    Hand off this session's deliberation into a formal proposal. Edit the fields below before creating.
+                </p>
+                <div class="proposal-form-grid">
+                    <div class="filter-group">
+                        <label for="handoff-author">Author</label>
+                        <select id="handoff-author" class="settings-input">
+                            ${authorOptions}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="handoff-category">Category</label>
+                        <select id="handoff-category" class="settings-input">
+                            ${categoryOptions}
+                        </select>
+                    </div>
+                    <div class="filter-group" style="flex:2">
+                        <label for="handoff-title">Proposal Title</label>
+                        <input id="handoff-title" class="settings-input" value="${escapeAttr(data.proposed_title || data.title)}" />
+                    </div>
+                </div>
+                <div class="filter-group" style="margin-top:var(--space-sm)">
+                    <label for="handoff-desc">Proposal Description</label>
+                    <textarea id="handoff-desc" class="settings-input proposal-textarea" rows="3">${escapeHtml(data.proposed_description || data.topic)}</textarea>
+                </div>
+                <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
+                    <button class="btn btn-primary" onclick="handoffSessionToProposal('${id}')" id="session-handoff-btn"
+                        style="background:linear-gradient(135deg, hsl(210,70%,50%), hsl(170,60%,45%))">
+                        📜 Create Proposal
+                    </button>
+                    <span id="session-handoff-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
+                </div>
+            </div>`;
+    }
+
+    // Participants
+    const participantsHtml = (data.participants || []).map((name, i) =>
+        `<span class="specialty-tag">${name}</span>`
+    ).join('');
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <button class="back-btn" onclick="navigateTo('sessions')">← Back to Sessions</button>
+            <div class="detail-panel">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-lg)">
+                    <div>
+                        <div style="font-size:0.78rem;font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);margin-bottom:var(--space-xs)">${data.session_id}</div>
+                        <div style="font-size:1.4rem;font-weight:700">${escapeHtml(data.title)}</div>
+                        <div style="color:var(--text-secondary);margin-top:var(--space-xs);font-size:0.87rem">
+                            ${formatDate(data.created_at)}
+                            ${data.closed_at ? ` · Closed ${formatDate(data.closed_at)}` : ''}
+                        </div>
+                        <div style="margin-top:var(--space-sm);display:flex;gap:var(--space-sm)">
+                            ${badge(data.status)}
+                            ${badge(data.proposed_category)}
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:var(--space-sm);align-items:flex-start">
+                        <button class="btn btn-sm silentpassa-toggle ${state.silentpassaEnabled ? 'silentpassa-on' : 'silentpassa-off'}" onclick="toggleSilentPass('sessions','${id}')" title="Toggle [PRESENT]/[SILENCE] wrappers">
+                            ${state.silentpassaEnabled ? '🔔 SilentPass' : '🔕 SilentPass'}
+                        </button>
+                        <button class="detail-close" onclick="navigateTo('sessions')">✕</button>
+                    </div>
+                </div>
+
+                ${actionsHtml}
+
+                <div class="detail-section">
+                    <h4>Topic</h4>
+                    <p>${renderMarkdown(data.topic)}</p>
+                </div>
+
+                ${data.agenda ? `<div class="detail-section"><h4>Agenda</h4><div style="white-space:pre-wrap">${renderMarkdown(data.agenda)}</div></div>` : ''}
+
+                <div class="detail-section">
+                    <h4>Participants (${(data.participants || []).length})</h4>
+                    <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap">${participantsHtml}</div>
+                </div>
+
+                ${discussionFeedHtml}
+                ${summaryHtml}
+                ${handoffHtml}
+            </div>
+        </div>`;
+}
+
+async function runSessionRound(sessionId) {
+    const btn = document.getElementById('session-discuss-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Council is deliberating…'; }
+
+    const feed = document.getElementById('session-discussion-feed');
+    if (feed) {
+        const emptyState = feed.querySelector('.empty-state');
+        if (emptyState) emptyState.remove();
+    }
+
+    try {
+        const resp = await fetch(`/api/council-sessions/${encodeURIComponent(sessionId)}/discuss-stream`, {
+            method: 'POST',
+        });
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            let eventType = 'message';
+            for (const line of lines) {
+                if (line.startsWith('event: ')) {
+                    eventType = line.slice(7).trim();
+                } else if (line.startsWith('data: ')) {
+                    const jsonStr = line.slice(6);
+                    try {
+                        const data = JSON.parse(jsonStr);
+                        if (eventType === 'message' && feed) {
+                            const msgDiv = document.createElement('div');
+                            msgDiv.className = 'discussion-message discussion-message-enter';
+                            msgDiv.innerHTML = `
+                                <div class="discussion-message-header">
+                                    ${memberAvatarWithImage(data.speaker, 0, null, state.sessionAvatarMap && state.sessionAvatarMap[data.speaker.toLowerCase()])}
+                                    <div>
+                                        <span class="discussion-speaker">${data.speaker}</span>
+                                        <span class="discussion-round">Round ${data.round}</span>
+                                    </div>
+                                </div>
+                                <div class="discussion-content">${state.silentpassaEnabled ? wrapPresenceContent(renderMarkdown(data.content), data.speaker) : renderMarkdown(data.content)}</div>`;
+                            feed.appendChild(msgDiv);
+                            feed.scrollTop = feed.scrollHeight;
+                        } else if (eventType === 'error') {
+                            showToast(data.detail || 'Session error', true);
+                        }
+                    } catch { /* invalid JSON line */ }
+                    eventType = 'message';
+                }
+            }
+        }
+
+        showToast('Discussion round complete ✅');
+        setTimeout(() => renderCouncilSessionDetail(sessionId), 500);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '▶️ Continue Discussion'; }
+    }
+}
+
+async function closeSession(sessionId) {
+    if (!confirm('Close this council session? You can create a proposal from it afterwards.')) return;
+    const btn = document.getElementById('session-close-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Closing…'; }
+
+    try {
+        const resp = await fetch(`/api/council-sessions/${encodeURIComponent(sessionId)}/close`, {
+            method: 'POST',
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Failed to close' }));
+            throw new Error(err.detail);
+        }
+        showToast('Session closed ⏹️');
+        await renderCouncilSessionDetail(sessionId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '⏹️ Close Session'; }
+    }
+}
+
+async function handoffSessionToProposal(sessionId) {
+    const btn = document.getElementById('session-handoff-btn');
+    const statusEl = document.getElementById('session-handoff-status');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating proposal…'; }
+
+    const title = (document.getElementById('handoff-title').value || '').trim();
+    const description = (document.getElementById('handoff-desc').value || '').trim();
+    const category = document.getElementById('handoff-category').value;
+    const author = document.getElementById('handoff-author').value;
+
+    if (!title) { document.getElementById('handoff-title').focus(); btn.disabled = false; btn.textContent = '📜 Create Proposal'; return; }
+    if (!description) { document.getElementById('handoff-desc').focus(); btn.disabled = false; btn.textContent = '📜 Create Proposal'; return; }
+
+    try {
+        const resp = await fetch(`/api/council-sessions/${encodeURIComponent(sessionId)}/handoff-proposal`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, description, category, author }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Handoff failed' }));
+            throw new Error(err.detail);
+        }
+        const data = await resp.json();
+        showToast(`Proposal ${data.id} created from session ✅`);
+        navigateTo('proposals', data.id);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (statusEl) statusEl.textContent = '';
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📜 Create Proposal'; }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Laws View
+// ═══════════════════════════════════════════════════════════════
+
+async function renderLaws() {
+    showLoading();
+    const data = await api('/api/laws');
+
+    const createForm = `
+        <div class="card location-create-form">
+            <h3>⚖️ New Law</h3>
+            <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-md)">
+                Draft a new law for the council's governance framework.
+            </p>
+            <div class="proposal-form-grid">
+                <div class="filter-group" style="flex:2">
+                    <label for="law-title-input">Title</label>
+                    <input id="law-title-input" class="settings-input" placeholder="e.g. Trade Regulation Act" />
+                </div>
+                <div class="filter-group">
+                    <label for="law-author-input">Author</label>
+                    <input id="law-author-input" class="settings-input" placeholder="e.g. Council" />
+                </div>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="law-desc-input">Description</label>
+                <textarea id="law-desc-input" class="settings-input proposal-textarea" rows="2"
+                    placeholder="Brief summary of what this law enforces…"></textarea>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="law-body-input">Body</label>
+                <textarea id="law-body-input" class="settings-input proposal-textarea" rows="3"
+                    placeholder="Full text of the law…"></textarea>
+            </div>
+            <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
+                <div class="filter-group" style="flex:2">
+                    <label for="law-tags-input">Tags</label>
+                    <input id="law-tags-input" class="settings-input" placeholder="trade, regulation, economy (comma-separated)" />
+                </div>
+            </div>
+            <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
+                <button class="btn btn-primary" onclick="createLaw()" id="law-create-btn">
+                    ⚖️ Create Law
+                </button>
+                <span id="law-create-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
+            </div>
+        </div>`;
+
+    // Status counts
+    const counts = { draft: 0, active: 0, archived: 0 };
+    data.forEach(l => { counts[l.status] = (counts[l.status] || 0) + 1; });
+
+    const cards = data.map(law => {
+        const tagsHtml = (law.tags || []).map(t => `<span class="tag">#${t}</span>`).join('');
+        return `
+        <div class="card card-clickable location-card" onclick="navigateTo('laws','${law.id}')">
+            <div class="loc-header">
+                <div>
+                    <div class="loc-name">${escapeHtml(law.title)}</div>
+                    <div class="loc-author">by ${escapeHtml(law.author)} · ${formatDate(law.created_at)}</div>
+                </div>
+                ${badge(law.status)}
+            </div>
+            <div class="loc-desc">${truncate(law.description, 120)}</div>
+            ${tagsHtml ? `<div class="tag-list">${tagsHtml}</div>` : ''}
+        </div>`;
+    }).join('');
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <div class="page-header">
+                <h2>⚖️ Laws</h2>
+                <p>${data.length} law${data.length !== 1 ? 's' : ''} —
+                    <span class="badge badge-draft">Draft: ${counts.draft}</span>
+                    <span class="badge badge-active">Active: ${counts.active}</span>
+                    <span class="badge badge-archived">Archived: ${counts.archived}</span>
+                </p>
+            </div>
+            ${createForm}
+            ${data.length ? `<div class="location-grid">${cards}</div>` : ''}
+        </div>`;
+}
+
+async function createLaw() {
+    const btn = document.getElementById('law-create-btn');
+    const status = document.getElementById('law-create-status');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating…'; }
+
+    const title = (document.getElementById('law-title-input')?.value || '').trim();
+    const author = (document.getElementById('law-author-input')?.value || '').trim();
+    const description = (document.getElementById('law-desc-input')?.value || '').trim();
+    const body = (document.getElementById('law-body-input')?.value || '').trim();
+    const tagsRaw = (document.getElementById('law-tags-input')?.value || '').trim();
+    const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+    if (!title || !author || !description) {
+        showToast('Title, Author, and Description are required.', true);
+        if (btn) { btn.disabled = false; btn.textContent = '⚖️ Create Law'; }
+        return;
+    }
+
+    try {
+        const resp = await fetch('/api/laws', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, description, author, body, tags }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Create failed' }));
+            throw new Error(err.detail);
+        }
+        const data = await resp.json();
+        showToast(`Law "${data.title}" created ✅`);
+        navigateTo('laws', data.id);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (status) status.textContent = '';
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '⚖️ Create Law'; }
+    }
+}
+
+async function renderLawDetail(id) {
+    showLoading();
+    const data = await api(`/api/laws/${encodeURIComponent(id)}`);
+
+    const tagsHtml = (data.tags || []).map(t => `<span class="tag">#${t}</span>`).join('');
+
+    // Status action buttons
+    let statusActions = '';
+    if (data.status === 'draft') {
+        statusActions = `<button class="btn btn-primary btn-sm" onclick="updateLawStatus('${data.id}', 'active')">✅ Activate</button>`;
+    } else if (data.status === 'active') {
+        statusActions = `<button class="btn btn-secondary btn-sm" onclick="updateLawStatus('${data.id}', 'archived')">📁 Archive</button>`;
+    } else if (data.status === 'archived') {
+        statusActions = `<button class="btn btn-primary btn-sm" onclick="updateLawStatus('${data.id}', 'active')">♻️ Reactivate</button>`;
+    }
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <button class="back-btn" onclick="navigateTo('laws')">← Back to Laws</button>
+            <div class="detail-panel">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-xl)">
+                    <div>
+                        <div style="font-size:0.78rem;font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);margin-bottom:var(--space-xs)">${data.id}${data.source_proposal_id ? ` · from ${data.source_proposal_id}` : ''}</div>
+                        <div style="font-size:1.4rem;font-weight:700">${escapeHtml(data.title)}</div>
+                        <div style="color:var(--text-secondary);margin-top:var(--space-xs);font-size:0.87rem">
+                            by <strong>${escapeHtml(data.author)}</strong> · ${formatDate(data.created_at)}
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                        ${badge(data.status)}
+                        ${statusActions}
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h4>Description</h4>
+                    <p>${escapeHtml(data.description)}</p>
+                </div>
+
+                ${data.body ? `<div class="detail-section"><h4>Full Text</h4><div style="white-space:pre-wrap">${escapeHtml(data.body)}</div></div>` : ''}
+
+                ${tagsHtml ? `<div class="detail-section"><h4>Tags</h4><div class="tag-list">${tagsHtml}</div></div>` : ''}
+
+                <div class="detail-section" style="font-size:0.82rem;color:var(--text-muted)">
+                    Created: ${formatDate(data.created_at)} · Updated: ${formatDate(data.updated_at)}
+                </div>
+            </div>
+        </div>`;
+}
+
+async function updateLawStatus(lawId, newStatus) {
+    try {
+        const resp = await fetch(`/api/laws/${encodeURIComponent(lawId)}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Update failed' }));
+            throw new Error(err.detail);
+        }
+        showToast(`Law status updated to "${newStatus}" ✅`);
+        await renderLawDetail(lawId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Law Shared Memory View
+// ═══════════════════════════════════════════════════════════════
+
+async function renderLawSharedMemory() {
+    showLoading();
+    const data = await api('/api/memories/law-shared');
+
+    const lawRows = data.active_laws.length ? data.active_laws.map((law, i) => `
+        <div class="event-item">
+            <div class="event-header">
+                <span class="badge badge-active">#${i + 1}</span>
+                <strong>${escapeHtml(law.title || 'Untitled')}</strong>
+                ${law.id ? `<span style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-muted)">${law.id}</span>` : ''}
+            </div>
+            <div class="event-content">${escapeHtml(law.description || '')}</div>
+            ${law.body ? `<div class="event-content" style="margin-top:var(--space-xs);color:var(--text-muted);font-size:0.82rem">${escapeHtml(truncate(law.body, 200))}</div>` : ''}
+        </div>
+    `).join('') : '<div class="empty-state"><div class="empty-icon">⚖️</div><p>No active laws. Activate a law to see it here.</p></div>';
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <button class="back-btn" onclick="navigateTo('memories')">← Back to Memories</button>
+            <div class="page-header">
+                <h2>⚖️ Law Shared Memory</h2>
+                <p>${data.law_count} active law${data.law_count !== 1 ? 's' : ''} accessible to the LLM</p>
+            </div>
+
+            <div class="memory-detail-grid">
+                <div class="memory-panel">
+                    <div class="memory-panel-header">
+                        <h3>⚖️ Active Laws</h3>
+                        <span class="memory-panel-count">${data.law_count}</span>
+                    </div>
+                    <div class="event-list">
+                        ${lawRows}
+                    </div>
+                </div>
+
+                <div class="memory-panel">
+                    <div class="memory-panel-header">
+                        <h3>📄 LLM Context</h3>
+                    </div>
+                    ${data.context ? `<div class="shared-history-content">${escapeHtml(data.context)}</div>` : '<div class="empty-state"><div class="empty-icon">📄</div><p>No active laws — no LLM context generated.</p></div>'}
+                </div>
+            </div>
+        </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Settings View
+// ═══════════════════════════════════════════════════════════════
+
+async function renderSettings() {
+    const currentSkin = state.activeSkin || 'default';
+
+    // Build skin cards
+    const skinCards = Object.entries(SKINS).map(([key, skin]) => {
+        const isActive = key === currentSkin;
+        const swatches = (skin.swatches || []).map(c =>
+            `<div class="swatch" style="background:${c}"></div>`
+        ).join('');
+        return `
+            <div class="skin-card ${isActive ? 'active' : ''}" onclick="selectSkin('${key}')" id="skin-card-${key}">
+                <div class="skin-card-preview">${swatches}</div>
+                <div class="skin-card-body">
+                    <div class="skin-card-icon">${skin.icon}</div>
+                    <div class="skin-card-label">${skin.label}</div>
+                    <div class="skin-card-desc">${skin.desc || ''}</div>
+                </div>
+            </div>`;
+    }).join('');
+
+    // Fetch all settings data in parallel
+    let keysData = [], modelsData = [], mancerModels = [], openrouterModels = [], lmstudioModels = [];
+    let userDesc = '';
+    let userName = '';
+    try {
+        const [keys, models, mm, orm, lmsm, ud, un] = await Promise.all([
+            api('/api/settings/keys'),
+            api('/api/settings/models'),
+            api('/api/settings/mancer-models'),
+            api('/api/settings/openrouter-models'),
+            api('/api/settings/lmstudio-models').catch(() => []),
+            api('/api/settings/user-description'),
+            api('/api/settings/user-name').catch(() => ({ name: '' })),
+        ]);
+        keysData = keys;
+        modelsData = models;
+        mancerModels = mm;
+        openrouterModels = orm;
+        lmstudioModels = lmsm;
+        userDesc = ud.description || '';
+        userName = (un && un.name) || '';
+    } catch { /* endpoints may not be available */ }
+
+    // Build provider sections (OpenRouter + Mancer)
+    const providers = [
+        { id: 'openrouter', label: 'OpenRouter', icon: '🌐', models: openrouterModels },
+        { id: 'mancer', label: 'Mancer', icon: '⚡', models: mancerModels },
+        { id: 'lmstudio', label: 'LM Studio', icon: '🖥️', models: lmstudioModels },
+    ];
+
+    const providerSections = providers.map(prov => {
+        const keyInfo = keysData.find(k => k.provider === prov.id) || {};
+        const modelInfo = modelsData.find(m => m.provider === prov.id) || {};
+        const hasKey = keyInfo.configured || false;
+        const maskedKey = keyInfo.masked || '';
+        const currentModel = modelInfo.model || modelInfo.default_model || '';
+
+        const modelOptions = prov.models.map(m =>
+            `<option value="${m}" ${m === currentModel ? 'selected' : ''}>${m}</option>`
+        ).join('');
+
+        return `
+            <div class="settings-provider-card">
+                <div class="settings-provider-header">
+                    <span class="settings-provider-icon">${prov.icon}</span>
+                    <span class="settings-provider-name">${prov.label}</span>
+                    <span class="badge ${hasKey ? 'badge-active' : 'badge-draft'}">${hasKey ? 'CONFIGURED' : 'NOT SET'}</span>
+                </div>
+
+                <div class="settings-field-group">
+                    <label>API Key</label>
+                    <div class="settings-key-row">
+                        <input type="password" id="settings-key-${prov.id}" class="settings-input"
+                               placeholder="${hasKey ? maskedKey : 'Enter API key…'}"
+                               autocomplete="off" />
+                        <button class="btn btn-primary btn-sm" onclick="saveSettingsKey('${prov.id}')">Save</button>
+                        ${hasKey ? `<button class="btn btn-sm" onclick="deleteSettingsKey('${prov.id}')" title="Remove key">🗑️</button>` : ''}
+                    </div>
+                </div>
+
+                <div class="settings-field-group">
+                    <label>Default Model</label>
+                    <div class="settings-key-row">
+                        <select id="settings-model-${prov.id}" class="settings-input">
+                            ${modelOptions}
+                        </select>
+                        <button class="btn btn-primary btn-sm" onclick="saveSettingsModel('${prov.id}')">Save</button>
+                    </div>
+                    <span class="settings-field-hint">Members set to "Default" will use this model</span>
+                </div>
+            </div>`;
+    }).join('');
+
+    // SilentPass toggle
+    const silentpassOn = state.silentpassaEnabled;
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <div class="page-header">
+                <h2>Settings</h2>
+                <p>Configure your profile, API providers, models, appearance, and preferences</p>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-section-title">👤 About You</div>
+                <div class="settings-provider-card">
+                    <div class="settings-field-group">
+                        <label>Your Name</label>
+                        <div class="settings-key-row">
+                            <input type="text" id="settings-user-name" class="settings-input"
+                                   maxlength="100"
+                                   placeholder="Enter your name…"
+                                   value="${escapeHtml(userName)}" />
+                            <button class="btn btn-primary btn-sm" onclick="saveSettingsUserName()">💾 Save</button>
+                        </div>
+                        <span class="settings-field-hint">How the council members and characters will address you</span>
+                    </div>
+                    <div class="settings-field-group">
+                        <label>User Description</label>
+                        <textarea id="settings-user-desc" class="settings-input settings-textarea"
+                                  rows="4" maxlength="700"
+                                  placeholder="Tell the AI council about yourself — this context is shared in chats…">${escapeHtml(userDesc)}</textarea>
+                        <div class="settings-key-row" style="margin-top:var(--space-sm)">
+                            <span class="settings-field-hint" id="settings-desc-count">${userDesc.length}/700</span>
+                            <button class="btn btn-primary btn-sm" onclick="saveSettingsUserDesc()">💾 Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-section-title">🔑 API Providers & Models</div>
+                <div class="settings-providers-grid">${providerSections}</div>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-section-title">🎨 Appearance — Skin</div>
+                <div class="settings-skin-grid">${skinCards}</div>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-section-title">💬 Chat Features</div>
+                <div class="settings-info-grid">
+                    <div class="settings-info-card settings-toggle-card" onclick="toggleSilentPassSettings()" style="cursor:pointer">
+                        <div class="settings-info-label">SilentPass</div>
+                        <div class="settings-info-value">
+                            <span class="badge ${silentpassOn ? 'badge-active' : 'badge-draft'}">${silentpassOn ? 'ON' : 'OFF'}</span>
+                        </div>
+                        <div class="settings-info-hint">Presence/Silence output wrappers</div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+    // Wire up character counter
+    const descEl = document.getElementById('settings-user-desc');
+    if (descEl) {
+        descEl.addEventListener('input', () => {
+            const cnt = document.getElementById('settings-desc-count');
+            if (cnt) cnt.textContent = `${descEl.value.length}/700`;
+        });
+    }
+}
+
+function selectSkin(name) {
+    applySkin(name);
+    renderSettings();
+}
+
+function toggleSilentPassSettings() {
+    state.silentpassaEnabled = !state.silentpassaEnabled;
+    localStorage.setItem('silentpassa', state.silentpassaEnabled ? 'on' : 'off');
+    renderSettings();
+}
+
+async function saveSettingsKey(provider) {
+    const input = document.getElementById(`settings-key-${provider}`);
+    const key = input?.value?.trim();
+    if (!key) return;
+    try {
+        await fetch('/api/settings/keys', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider, api_key: key }),
+        });
+        input.value = '';
+        renderSettings();
+    } catch (err) {
+        alert('Failed to save key: ' + err.message);
+    }
+}
+
+async function deleteSettingsKey(provider) {
+    if (!confirm(`Remove ${provider} API key?`)) return;
+    try {
+        await fetch(`/api/settings/keys/${provider}`, { method: 'DELETE' });
+        renderSettings();
+    } catch (err) {
+        alert('Failed to remove key: ' + err.message);
+    }
+}
+
+async function saveSettingsModel(provider) {
+    const select = document.getElementById(`settings-model-${provider}`);
+    const model = select?.value;
+    if (!model) return;
+    try {
+        await fetch('/api/settings/models', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider, model }),
+        });
+        renderSettings();
+    } catch (err) {
+        alert('Failed to save model: ' + err.message);
+    }
+}
+
+async function saveSettingsUserDesc() {
+    const el = document.getElementById('settings-user-desc');
+    const description = el?.value || '';
+    try {
+        await fetch('/api/settings/user-description', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description }),
+        });
+        renderSettings();
+    } catch (err) {
+        alert('Failed to save: ' + err.message);
+    }
+}
+
+async function saveSettingsUserName() {
+    const el = document.getElementById('settings-user-name');
+    const name = el?.value?.trim() || '';
+    try {
+        const resp = await fetch('/api/settings/user-name', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
+            throw new Error(err.detail);
+        }
+        renderSettings();
+    } catch (err) {
+        alert('Failed to save name: ' + err.message);
+    }
+}
+
+// ─── Character Form Model Helpers ─────────────────────────────
+
+/** Swap model field in character creation form when provider changes. */
+function updateCharCreateModelField() {
+    const provider = document.getElementById('char-provider-input').value;
+    const container = document.getElementById('char-model-container');
+    if (!container) return;
+    container.innerHTML = renderModelField('char-model-input', provider, '', true);
+}
+
+/** Swap model field in character detail edit form when provider changes. */
+function updateCharEditModelField() {
+    const provider = document.getElementById('char-edit-provider').value;
+    const container = document.getElementById('char-edit-model-container');
+    if (!container) return;
+    container.innerHTML = renderModelField('char-edit-model', provider, '', true);
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// Tasks View
+// ═══════════════════════════════════════════════════════════════
+
+async function renderTasks() {
+    showLoading();
+
+    const [tasks, council, characters] = await Promise.all([
+        api('/api/tasks'),
+        api('/api/council'),
+        api('/api/characters?status=active'),
+    ]);
+
+    const statusOrder = { active: 0, draft: 1, completed: 2 };
+    tasks.sort((a, b) => (statusOrder[a.status] || 9) - (statusOrder[b.status] || 9));
+
+    const assigneeOptions = [
+        ...council.map(m => m.name),
+        ...characters.map(c => c.name),
+    ];
+
+    const activeTasks = tasks.filter(t => t.status === 'active');
+
+    const assigneeChips = assigneeOptions.map(name =>
+        `<label class="task-assignee-chip"><input type="checkbox" value="${escapeAttr(name)}"><span>${escapeHtml(name)}</span></label>`
+    ).join('');
+
+    const doTasksBtn = activeTasks.length > 0
+        ? `<button class="btn btn-primary" id="btn-do-tasks" onclick="doTasks()">▶️ Do Tasks (${activeTasks.length} active)</button>`
+        : '';
+
+    const createForm = `
+        <div class="card character-create-form">
+            <h3>📋 New Task</h3>
+            <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-md)">
+                Create a task and assign it to council members and characters. Active tasks are executed via "Do Tasks".
+            </p>
+            <div class="proposal-form-grid">
+                <div class="filter-group" style="flex:2">
+                    <label for="task-name-input">Task Name</label>
+                    <input id="task-name-input" class="settings-input" placeholder="e.g. Patrol the Northern Gate" />
+                </div>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="task-desc-input">Description</label>
+                <textarea id="task-desc-input" class="settings-input proposal-textarea" rows="3"
+                    placeholder="What needs to be done…"></textarea>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="task-reason-input">Reason</label>
+                <textarea id="task-reason-input" class="settings-input proposal-textarea" rows="2"
+                    placeholder="Why this task is needed…"></textarea>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label>Assignees</label>
+                <div class="task-assignee-grid" id="task-assignee-grid">
+                    ${assigneeChips}
+                </div>
+            </div>
+            <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
+                <button class="btn btn-primary" onclick="createTask()" id="task-create-btn">
+                    📋 Create Task
+                </button>
+                <span id="task-create-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
+            </div>
+        </div>`;
+
+    const rows = tasks.map(t => {
+        const assigneeBadges = t.assignees.map(a => `<span class="badge badge-active">${escapeHtml(a)}</span>`).join(' ');
+        return `
+        <tr class="proposal-row" onclick="navigateTo('tasks','${t.id}')">
+            <td><strong>${escapeHtml(t.name)}</strong></td>
+            <td>${assigneeBadges}</td>
+            <td>${badge(t.status)}</td>
+            <td>${t.current_round} / 5</td>
+            <td>${formatDate(t.created_at)}</td>
+        </tr>`;
+    }).join('');
+
+    const tableHtml = tasks.length ? `
+        <div class="table-wrapper">
+            <table class="data-table" id="tasks-table">
+                <thead>
+                    <tr>
+                        <th>Name</th><th>Assignees</th><th>Status</th>
+                        <th>Round</th><th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>` : '<div class="empty-state"><div class="empty-icon">📋</div><p>No tasks yet. Create one above!</p></div>';
+
+    const executionFeed = `
+        <div id="task-execution-feed" class="card" style="display:none;margin-bottom:var(--space-xl)">
+            <h3 style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-md)">
+                ⚙️ Completing Tasks
+                <div class="loading-spinner" id="task-spinner" style="width:18px;height:18px;"></div>
+            </h3>
+            <div id="task-feed-messages" class="task-feed-messages"></div>
+        </div>`;
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <div class="page-header">
+                <h2>📋 Tasks</h2>
+                <p>${tasks.length} task${tasks.length !== 1 ? 's' : ''}${activeTasks.length > 0 ? ` — <span class="badge badge-active">${activeTasks.length} active</span>` : ''}</p>
+            </div>
+
+            <div style="margin-bottom:var(--space-xl)">
+                ${doTasksBtn}
+            </div>
+
+            ${executionFeed}
+            ${createForm}
+            ${tableHtml}
+        </div>`;
+
+    const countEl = document.getElementById('count-tasks');
+    if (countEl) countEl.textContent = tasks.length;
+}
+
+async function createTask() {
+    const btn = document.getElementById('task-create-btn');
+    const status = document.getElementById('task-create-status');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating…'; }
+
+    const name = (document.getElementById('task-name-input')?.value || '').trim();
+    const description = (document.getElementById('task-desc-input')?.value || '').trim();
+    const reason = (document.getElementById('task-reason-input')?.value || '').trim();
+    const checkboxes = document.querySelectorAll('#task-assignee-grid input[type=checkbox]:checked');
+    const assignees = Array.from(checkboxes).map(cb => cb.value);
+
+    if (!name || !description || !reason || assignees.length === 0) {
+        showToast('Please fill in all fields and select at least one assignee.', true);
+        if (btn) { btn.disabled = false; btn.textContent = '📋 Create Task'; }
+        return;
+    }
+
+    try {
+        const resp = await fetch('/api/tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, description, reason, assignees }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Create failed' }));
+            throw new Error(err.detail);
+        }
+        const data = await resp.json();
+        showToast(`Task "${data.name}" created ✅`);
+        await renderTasks();
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (status) status.textContent = '';
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📋 Create Task'; }
+    }
+}
+
+async function doTasks() {
+    var btn = document.getElementById('btn-do-tasks');
+    if (btn) { btn.disabled = true; btn.textContent = '\u23F3 Running...'; }
+
+    var feedEl = document.getElementById('task-execution-feed');
+    var msgEl = document.getElementById('task-feed-messages');
+    if (feedEl) feedEl.style.display = 'block';
+    if (msgEl) msgEl.innerHTML = '';
+
+    try {
+        var response = await fetch('/api/tasks/do-tasks', { method: 'POST' });
+        var reader = response.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = '';
+
+        while (true) {
+            var result = await reader.read();
+            if (result.done) break;
+
+            buffer += decoder.decode(result.value, { stream: true });
+            var lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                if (line.indexOf('data: ') === 0) {
+                    try {
+                        var data = JSON.parse(line.slice(6));
+                        if (data.type === 'task_start') {
+                            msgEl.innerHTML += '<div class="task-feed-event task-feed-start">' +
+                                '<strong>\uD83D\uDE80 Starting task:</strong> ' + escapeHtml(data.task_name) +
+                                '<span class="text-muted"> \u2014 ' + data.assignees.map(function(a){return escapeHtml(a);}).join(', ') + '</span></div>';
+                        } else if (data.type === 'message') {
+                            msgEl.innerHTML += '<div class="task-feed-msg">' +
+                                '<div class="task-feed-msg-header">' +
+                                '<span class="badge badge-active">' + escapeHtml(data.speaker) + '</span>' +
+                                '<span class="text-muted">Round ' + data.round + '/5</span></div>' +
+                                '<div class="task-feed-msg-body">' + escapeHtml(data.content) + '</div></div>';
+                        } else if (data.type === 'error') {
+                            msgEl.innerHTML += '<div class="task-feed-msg task-feed-error">' +
+                                '<strong>\u26A0\uFE0F ' + escapeHtml(data.speaker || 'Error') + ':</strong> ' +
+                                escapeHtml(data.detail || '') + '</div>';
+                        } else if (data.type === 'task_done') {
+                            msgEl.innerHTML += '<div class="task-feed-event task-feed-done">' +
+                                '<strong>\u2705 Completed:</strong> ' + escapeHtml(data.task_name) +
+                                ' (' + data.total_messages + ' messages)</div>';
+                        } else if (data.type === 'all_done') {
+                            msgEl.innerHTML += '<div class="task-feed-event task-feed-alldone">' +
+                                '<strong>\uD83C\uDF89 All ' + data.tasks_completed + ' task(s) completed!</strong></div>';
+                        }
+                        msgEl.scrollTop = msgEl.scrollHeight;
+                    } catch (e) { /* skip */ }
+                }
+            }
+        }
+    } catch (err) {
+        if (msgEl) msgEl.innerHTML += '<div class="task-feed-error">\u274C Connection error: ' + escapeHtml(err.message) + '</div>';
+    }
+
+    var spinner = document.getElementById('task-spinner');
+    if (spinner) spinner.style.display = 'none';
+    if (btn) { btn.disabled = false; btn.textContent = '\u25B6 Do Tasks'; }
+
+    setTimeout(function() { renderTasks(); }, 1500);
+}
+
+async function renderTaskDetail(taskId) {
+    showLoading();
+
+    let task;
+    try {
+        task = await api(`/api/tasks/${encodeURIComponent(taskId)}`);
+    } catch (err) {
+        showError('Task not found: ' + taskId);
+        return;
+    }
+
+    // Status action buttons
+    let statusActions = '';
+    if (task.status === 'draft') {
+        statusActions = `<button class="btn btn-primary btn-sm" onclick="setTaskStatus('${taskId}','active')">\u25b6\ufe0f Activate</button>`;
+    } else if (task.status === 'active') {
+        statusActions = `<button class="btn btn-secondary btn-sm" onclick="setTaskStatus('${taskId}','draft')">\u23f8\ufe0f Back to Draft</button>`;
+    }
+
+    // Assignees
+    const assigneesHtml = task.assignees.map(a =>
+        `<span class="specialty-tag">${escapeHtml(a)}</span>`
+    ).join('');
+
+    // Messages feed
+    let messagesHtml = '';
+    if (task.messages && task.messages.length > 0) {
+        const msgs = task.messages.map(m => `
+            <div class="task-feed-msg">
+                <div class="task-feed-msg-header">
+                    <span class="badge badge-active">${escapeHtml(m.speaker)}</span>
+                    <span style="font-size:0.78rem;color:var(--text-muted)">Round ${m.round_number}/5</span>
+                </div>
+                <div class="task-feed-msg-body">${escapeHtml(m.content)}</div>
+            </div>`).join('');
+
+        messagesHtml = `
+            <div class="detail-section">
+                <h4>\ud83d\udcac Completion Narration (${task.messages.length} messages)</h4>
+                <div class="task-feed-messages" style="max-height:600px;overflow-y:auto">${msgs}</div>
+            </div>`;
+    }
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <button class="back-btn" onclick="navigateTo('tasks')">\u2190 Back to Tasks</button>
+            <div class="detail-panel">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-lg)">
+                    <div>
+                        <div style="font-size:0.78rem;font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);margin-bottom:var(--space-xs)">${task.id}</div>
+                        <div style="font-size:1.4rem;font-weight:700">${escapeHtml(task.name)}</div>
+                        <div style="color:var(--text-secondary);margin-top:var(--space-xs);font-size:0.87rem">
+                            Round ${task.current_round} / 5 \u00b7 ${formatDate(task.created_at)}
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                        ${badge(task.status)}
+                        ${statusActions}
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h4>\ud83d\udcc4 Description</h4>
+                    <p>${escapeHtml(task.description)}</p>
+                </div>
+
+                <div class="detail-section">
+                    <h4>\ud83d\udca1 Reason</h4>
+                    <p>${escapeHtml(task.reason)}</p>
+                </div>
+
+                <div class="detail-section">
+                    <h4>\ud83d\udc65 Assignees (${task.assignees.length})</h4>
+                    <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap">${assigneesHtml}</div>
+                </div>
+
+                ${messagesHtml}
+
+                <div class="detail-section" style="font-size:0.82rem;color:var(--text-muted)">
+                    Created: ${formatDate(task.created_at)} \u00b7 Updated: ${formatDate(task.updated_at)}
+                </div>
+            </div>
+        </div>`;
+}
+
+async function setTaskStatus(taskId, newStatus) {
+    try {
+        var resp = await fetch('/api/tasks/' + taskId + '/status', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus }),
+        });
+        if (!resp.ok) {
+            var err = await resp.json();
+            throw new Error(err.detail);
+        }
+        await renderTaskDetail(taskId);
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
 // ─── Init ─────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Apply saved skin before anything renders
+    applySkin(state.activeSkin);
+
+    // Eagerly load model options so dropdowns work before Settings is visited
+    loadModelOptions();
+
     initNavigation();
     const hash = window.location.hash.slice(1) || 'dashboard';
     const [view, ...rest] = hash.split('/');

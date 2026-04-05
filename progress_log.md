@@ -1854,3 +1854,286 @@ Added `"evolution"` as a new proposal category with navigational handoff to the 
 1. The handoff is **navigational only** — clicking the button navigates to the Evolution view. No auto-creation of EV-XXXX records from proposals.
 2. The Evolution section already has its own creation flow (`POST /api/evolutions`).
 3. `character_evolution.submit_for_review()` still creates proposals with category `"character"`, not `"evolution"`. The new `"evolution"` category is for user-created proposals that suggest evolutions.
+
+---
+
+## Session: S-FEAT-00000032
+**Timestamp:** 2026-03-21 23:25:00
+**Feature:** Frutiger Aero Skin
+**Status:** completed
+
+### Summary
+Added a "Frutiger Aero" skin option to the Settings page's Appearance section:
+
+- **Modified `core/web_static/app.js`** — added `frutiger_aero` entry to the `SKINS` object with:
+  - Label, icon (🫧), description ("Glossy Y2K optimism"), and 5 representative swatches
+  - CSS variable overrides for all design tokens: light backgrounds, dark-on-light text, sky-blue accents, glossy borders, and soft shadows
+- **Modified `core/web_static/style.css`** — appended ~210 lines of `[data-skin="frutiger_aero"]` CSS rules covering:
+  - Sky/nature gradient `body::before` background
+  - Frosted-glass sidebar and cards (glassmorphism with `backdrop-filter`)
+  - Glossy aqua gradient buttons with inner highlights
+  - Light-mode scrollbars, toasts, tables, chat bubbles, inputs
+  - Smooth skin transition animation via `[data-skin-transitioning]`
+
+No changes to settings HTML structure — the existing `renderSettings()` skin card loop automatically picks up new SKINS entries.
+
+### Test Results
+- **1588 passed**, 1 pre-existing failure (`test_archived_terminal` in `test_characters.py` — unrelated), 0 regressions ✅
+
+### Advice for Next Agent
+1. To add more skins, add entries to the `SKINS` object in `app.js` (top of file) with `vars` mapping CSS custom properties, then add corresponding `[data-skin="your_skin"]` CSS rules
+2. The `applySkin()` function applies overrides via `root.style.setProperty()` and sets `data-skin` attribute on `<html>` — CSS selectors use `[data-skin="..."]` for non-variable overrides
+3. Skin choice persists in `localStorage` key `jericho-skin` and is applied on `DOMContentLoaded`
+4. The `[data-skin-transitioning]` attribute enables smooth cross-skin transitions for 0.5s after switching
+
+---
+
+## Session: S-FEAT-00000033
+**Timestamp:** 2026-03-22 09:59:00
+**Feature:** `F-032` — Obelisk Monetary System — Backend
+**Status:** completed
+
+### Summary
+Implemented the Obelisk monetary system backend — a three-tier currency (Bronze, Silver, Gold) for the Jericho world with 100:1 conversion between tiers.
+
+### Changes Made
+- **Created `config/settings.py`** additions — `TREASURY_DIR`, `OBELISK_TIERS`, `OBELISK_CONVERSION_RATE` (100), `OBELISK_DEFAULT_BALANCE` (200 Gold), `OBELISK_GOVERNMENT_BALANCE` (1000 Gold), `OBELISK_ACCOUNT_TYPES`
+- **Created `core/treasury.py`** (~370 lines) — full filesystem-backed treasury module:
+  - `ObeliskBalance` frozen dataclass with `total_in_bronze()`, `total_in_gold_display()`, `create()` factory
+  - `TreasuryAccount` frozen dataclass with `to_dict()`/`from_dict()` roundtrip
+  - `TreasuryManager` — `get_or_create()`, `credit()`, `debit()`, `transfer()`, `normalize()`, `initialize_defaults()`
+  - `make_account_id()` helper — canonical account IDs like `ACCT-cm-sage`, `ACCT-gov-jericho`
+  - Exception hierarchy: `TreasuryError`, `AccountNotFoundError`, `InsufficientFundsError`, `TreasuryValidationError`
+- **Modified `core/web_api.py`** — added 7 treasury API endpoints:
+  - `GET /api/treasury` (list, optional `?type=` filter)
+  - `GET /api/treasury/{account_id}` (detail)
+  - `POST /api/treasury/initialize` (create defaults for all entities)
+  - `POST /api/treasury/{account_id}/credit` and `/debit`
+  - `POST /api/treasury/transfer`
+  - `GET /api/status` now includes `treasury.total_accounts` and `treasury.government_balance`
+- **Created `tests/test_treasury.py`** (~500 lines, 82 tests) — comprehensive core module tests
+- **Modified `tests/test_web_api.py`** — added `TestApiTreasury` class (11 API endpoint tests)
+- **Updated `features.json`** — added F-032 (completed), F-033 (pending: Frontend UI), F-034 (pending: Taxation)
+
+### Test Results
+- **1681 passed**, 1 pre-existing failure (`test_archived_terminal`), 0 regressions ✅
+- 93 new treasury tests (82 core + 11 API) — all passing
+
+### Advice for Next Agent
+1. **F-033 (Frontend)** is the next task: add Treasury nav/view, Obelisk balance on character/council/user profiles
+2. Account IDs follow the pattern `ACCT-{prefix}-{slug}` — prefixes: `cm` (council), `ch` (character), `user`, `gov` (government)
+3. Use `POST /api/treasury/initialize` to bootstrap accounts for all existing entities before displaying balances
+4. The `normalize()` method auto-converts excess coins upward (e.g. 150 bronze → 1 silver + 50 bronze)
+5. **F-034 (Taxation)** is in the backlog — add tax on transactions collected into government treasury
+6. The pre-existing `test_archived_terminal` failure is still present — `archived` status allows transitions to `active`/`draft` but the test expects it to be terminal
+
+---
+
+## Session — F-033: Obelisk Monetary System — Frontend Web UI
+
+**Date**: 2026-03-22
+**Feature**: F-033
+
+### Summary
+Implemented the Treasury frontend web UI for the Obelisk monetary system. This is a frontend-only feature — all 7 backend API endpoints already existed from F-032.
+
+### Changes Made
+- **`core/web_static/index.html`** — Added `🪙 Treasury` nav item under **World** section with count badge
+- **`core/web_static/app.js`** — ~370 lines added:
+  - Router case for `treasury` view (list + detail)
+  - `renderTreasury()` — list view with type filter, Initialize button, 4-column card grid
+  - `renderTreasuryDetail()` — detail view with Gold/Silver/Bronze tier display, credit/debit forms
+  - `openTransferModal()` / `executeTransfer()` — modal for account-to-account transfers
+  - `initializeTreasury()` / `treasuryCredit()` / `treasuryDebit()` — action handlers
+  - Dashboard stat card showing total accounts + government balance
+  - Nav count updater for treasury account count
+- **`core/web_static/style.css`** — ~240 lines added:
+  - `.treasury-grid`, `.treasury-card`, `.obelisk-balance`, `.obelisk-coin` — card layout
+  - `.treasury-tier-gold/silver/bronze` — tier display with gradient backgrounds
+  - `.treasury-balance-panel`, `.treasury-input-row` — detail view forms
+  - `.badge-council_member/character/user/government` — account type badges
+- **`features.json`** — F-033 status set to `completed`
+
+### Test Results
+- **190 passed** in `test_web_api.py`, 0 regressions ✅
+- No new backend tests needed (frontend-only feature)
+
+### Advice for Next Agent
+1. **F-034 (Obelisk Taxation System)** is the next eligible feature
+2. Treasury nav count now shows in sidebar, updates via `/api/status → treasury.total_accounts`
+3. The transfer modal reuses `.promote-modal` CSS classes for consistency
+4. `obeliskTotal()` in app.js converts balances to gold equivalent using rate=100
+5. The `badge()` function's second parameter controls CSS class — account type badges use e.g. `badge-government`
+
+---
+
+## Session: S-INIT-00000035
+**Timestamp:** 2026-03-22 11:00:00
+**Feature:** `F-035` — World Items System
+**Status:** completed
+
+### Summary
+Implemented a complete World Items system mirroring the Locations pattern across all layers.
+
+### Changes Made
+- **`config/settings.py`** — Added `ITEMS_DIR`, `ITEM_STATUSES`, `ITEM_PROPERTY_TYPES`, `"item"` to `PROPOSAL_CATEGORIES`
+- **`core/items.py`** — **[NEW]** ~420 lines: `ItemProperty`, `Item` frozen dataclasses, `ItemManager` with CRUD, lifecycle (draft→active→archived), property management, atomic writes
+- **`core/web_api.py`** — 6 item REST endpoints (`GET/POST /api/items`, `GET/PUT /api/items/{id}`, `PUT .../status`), item proposal handoff endpoint, items count in `/api/status`
+- **`core/memory_influence.py`** — Added `_load_active_items()`, wired into `build_context()` and `format_for_prompt()` for LLM injection
+- **`core/web_static/index.html`** — Added 📦 Items nav entry under World section
+- **`core/web_static/app.js`** — ~380 lines: `renderItems()`, `renderItemDetail()`, `createItem()`, `saveItemEdit()`, `updateItemStatus()`, `addItemProperty()`, `removeItemProperty()`, `handoffItemProposal()`, dashboard items card, nav count
+- **`tests/test_items.py`** — **[NEW]** 65 unit tests across 12 classes
+- **`tests/test_web_api.py`** — Added `TestApiItemProposalHandoff` (5 tests)
+- **`features.json`** — F-035 added and marked completed
+
+### Test Results
+- **65 passed** in `test_items.py` ✅
+- **1751 passed, 1 pre-existing failure** in full suite (unrelated characters test)
+
+### Advice for Next Agent
+1. Items follow the same pattern as Locations — look at `core/locations.py` as the canonical reference
+2. The frontend property add/remove works by fetching current item, modifying the properties array, and sending via PUT update
+3. `"item"` is now a valid proposal category — council can propose items just like locations
+4. Active items get injected into LLM context in the "World Items (Known Artifacts & Objects)" section
+5. The 1 pre-existing test failure is `test_characters.py::TestStatusLifecycle::test_archived_terminal` — unrelated to items
+
+---
+
+## Session: Dashboard Layout — Move Analytics to Overview
+**Timestamp:** 2026-03-22 19:14:00
+**Feature:** Dashboard sidebar reorganization (not a features.json feature)
+**Status:** completed
+
+### Summary
+Reorganized the sidebar navigation in `index.html` to free up space:
+
+- **Moved Analytics nav item** from the standalone "Insights" section into the "Overview" section, directly below Dashboard
+- **Removed the "Insights" section** entirely — it only contained the single Analytics link
+- No changes to `app.js`, `style.css`, or any backend files — routing and rendering remained unchanged
+
+### Technical Debt
+- None introduced.
+
+### Test Results
+- **1754 passed**, 1 pre-existing failure (`test_archived_terminal` — unrelated characters test)
+
+### Advice for Next Agent
+1. The sidebar sections are now: Overview (Dashboard, Analytics), Governance, Characters, World, Communication, Memory, Configuration
+2. If more space is needed in the future, consider collapsing the Memory section into Configuration, or making the sidebar scrollable/collapsible
+3. The 1 pre-existing test failure is `test_characters.py::TestStatusLifecycle::test_archived_terminal` — caused by bidirectional character transitions added earlier, not by this change
+
+---
+
+## Session: S-NARRATIVE-00000001
+**Timestamp:** 2026-03-23 02:30:00
+**Feature:** Emergent Narrative Engine
+**Status:** completed
+
+### Summary
+Implemented a template-driven narrative engine that generates "news bulletins" from recent in-world events and displays them on the Dashboard homepage.
+
+### Changes
+- **New:** `core/narrative_engine.py` — `NarrativeBulletin` dataclass + `NarrativeEngine` class with template banks for 6 event types (proposals, votes, characters, items, locations, treasury)
+- **New:** `tests/test_narrative_engine.py` — 30 tests covering bulletins, sorting, time window filtering, template variety, and API endpoint
+- **Modified:** `config/settings.py` — Added `NARRATIVE_MAX_BULLETINS=10`, `NARRATIVE_MAX_AGE_DAYS=30`
+- **Modified:** `core/web_api.py` — Added `GET /api/narrative-bulletins` endpoint
+- **Modified:** `core/web_static/app.js` — Added Jericho Times banner to `renderDashboard()` with auto-cycling, prev/next controls, fade animation, click-to-navigate
+- **Modified:** `core/web_static/style.css` — ~220 lines of banner CSS with skin support (default, frutiger_aero, vaporwave)
+
+### Test Results
+- **226 passed** (30 narrative engine + 196 web_api)
+
+### Advice for Next Agent
+1. The narrative engine uses pure templates — no LLM calls. If richer narratives are wanted, consider an LLM-based generation path
+2. Bulletin count and age window are controlled via `NARRATIVE_MAX_BULLETINS` and `NARRATIVE_MAX_AGE_DAYS` in `config/settings.py`
+3. To add new event types, add a template bank and a `_<type>_bulletins()` method to `NarrativeEngine`, then call it from `generate_bulletins()`
+4. The banner auto-cycles every 8 seconds and supports click-to-navigate to the source section
+
+---
+
+## Session: S-STORES-00000001
+**Timestamp:** 2026-03-26 00:00:00
+**Feature:** F-036 World Stores System
+**Status:** completed
+
+### Summary
+Implemented a full commerce system enabling world stores with inventory management, pricing, and treasury-integrated purchasing.
+
+### Changes
+- **New:** `core/stores.py` — `StoreItem` + `Store` frozen dataclasses, `StoreManager` with CRUD, inventory management, lifecycle (draft→active→archived), and purchase flow with `TreasuryManager` integration
+- **New:** `tests/test_stores.py` — 88 comprehensive unit tests covering dataclasses, manager ops, lifecycle, inventory, purchases, edge cases
+- **Modified:** `config/settings.py` — Added `STORES_DIR`, `STORE_STATUSES`, `STORE_TYPES`
+- **Modified:** `core/web_api.py` — Replaced old location-based store stub with 8 StoreManager-backed endpoints (list, detail, create, update, status, inventory add/remove/update, purchase)
+- **Modified:** `core/web_api.py` — Added stores count to `/api/status` endpoint
+- **Modified:** `core/web_static/app.js` — Rewrote `renderStores()` (list with filters + create form) and `renderStoreDetail()` (inventory table, add/remove, status transitions, edit form, purchase form)
+- **Modified:** `core/web_static/style.css` — Added inventory table styles + store type badge variants
+- **Modified:** `core/web_static/index.html` — Nav item already existed (pre-scaffolded)
+- **Modified:** `features.json` — Added F-036 entry
+
+### Architecture
+- StoreManager follows established pattern: atomic filesystem writes, frozen dataclasses, sequential IDs (STORE-0001)
+- Store inventory is a list of `StoreItem` entries (item_id, price in gold/silver/bronze, quantity)
+- Purchase flow: validates stock → resolves seller account → `TreasuryManager.transfer()` → decrements quantity
+- Store types: general, blacksmith, alchemist, enchanter, tavern, custom
+
+### Test Results
+- **2117 passed**, 12 skipped, 0 failures (up from 2029 → +88 new store tests)
+
+### Advice for Next Agent
+1. Store inventory references item IDs but does not validate they exist in the Items system — a future cross-manager validation could be added
+2. The purchase endpoint uses `TreasuryManager.transfer()` which requires both buyer and seller accounts to exist
+3. Store types are defined in `config/settings.py` as `STORE_TYPES` — add new types there if needed
+4. The frontend purchase form uses raw Account IDs — a future enhancement could add a buyer account picker dropdown
+
+---
+
+## Session: S-BUGFIX-STORE-MODAL-00000001
+**Timestamp:** 2026-04-05 00:07:00
+**Focus:** Fix "Add Location as Store" button not progressing to modal (F-036 Store System)
+
+### Problem
+The "Add Location as Store" button in the Stores section appeared non-functional — clicking it produced no visible result.
+
+### Root Cause (Two-Part CSS Bug)
+1. **Missing `.promote-modal-overlay` CSS class** — The `openLocationStoreModal()` function creates an overlay div with `className = 'promote-modal-overlay'`, but this CSS class was never defined in `style.css`. Without CSS, the overlay used default browser styles (position static, zero height), rendering it invisible.
+2. **Conflicting `.promote-modal` class on inner content** — The inner modal content div used `class="promote-modal store-form-card"`. The `.promote-modal` CSS rule includes `display: none` by default, hiding the form content.
+
+### Fix Applied
+- **`core/web_static/style.css`** — Added `.promote-modal-overlay` CSS class with `display: flex; position: fixed; inset: 0; z-index: 2000;` and backdrop styling.
+- **`core/web_static/app.js`** — Changed inner div class from `"promote-modal store-form-card"` to just `"store-form-card"` with inline width constraints.
+
+### Files Modified
+- **Modified:** `core/web_static/style.css` — Added `.promote-modal-overlay` CSS rule
+- **Modified:** `core/web_static/app.js` — Removed conflicting `promote-modal` class from inner modal div
+
+### Test Results
+- **2118 passed**, 12 skipped, 0 failures (no regressions)
+
+### Advice for Next Agent
+1. The `.promote-modal-overlay` class differs from `.promote-modal` in that it uses `display: flex` by default (no JS toggle needed) — use it for dynamically created modals appended to `document.body`
+2. The `openTransferModal()` in Treasury uses `className = 'promote-modal'` with `style.display = 'flex'` — both patterns work, just be consistent
+
+---
+
+## Session: S-UX-STORE-DROPDOWN-00000001
+**Timestamp:** 2026-04-05 14:55:00
+**Focus:** Replace manual Item ID text inputs with dropdown selects in Store detail view
+
+### Summary
+Enhanced the Stores tab UX by replacing free-text Item ID inputs with dropdown menus populated from active items.
+
+### Changes Made
+- **Modified:** `core/web_static/app.js` — `renderStoreDetail()` function:
+  1. **Fetches active items** from `/api/items?status=active` on detail load
+  2. **"Add Inventory Item" form**: Replaced `<input type="text">` with `<select>` dropdown showing all active items as `"ITEM-XXXX — Item Name"`. Items already in the store's inventory are excluded from the dropdown
+  3. **"Purchase an Item" form**: Replaced `<input type="text">` with `<select>` dropdown showing only items currently in the store's inventory, with price and quantity info: `"ITEM-XXXX — Item Name · 10G · Qty: 5"`
+  4. **Inventory table**: Item ID column now also shows the item name alongside the ID for readability
+
+### Test Results
+- **2117 passed**, 12 skipped, 1 pre-existing failure (`test_memory_influence` — unrelated) — 0 regressions ✅
+
+### Advice for Next Agent
+1. The active items fetch uses `try/catch` with empty fallback — if the items API isn't available, the dropdown will show "No active items available" gracefully
+2. The add-inventory dropdown filters out items already in inventory (`existingItemIds` Set) to prevent duplicate adds
+3. The purchase dropdown includes price and quantity in each option label for quick reference
+4. The `addStoreInventory()` and `purchaseFromStore()` functions use `.value` on the select element — no handler changes were needed since `.value` works identically for `<select>` and `<input>`
