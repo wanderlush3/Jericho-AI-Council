@@ -2137,3 +2137,405 @@ Enhanced the Stores tab UX by replacing free-text Item ID inputs with dropdown m
 2. The add-inventory dropdown filters out items already in inventory (`existingItemIds` Set) to prevent duplicate adds
 3. The purchase dropdown includes price and quantity in each option label for quick reference
 4. The `addStoreInventory()` and `purchaseFromStore()` functions use `.value` on the select element — no handler changes were needed since `.value` works identically for `<select>` and `<input>`
+
+---
+
+## Session: S-DOCS-README-00000001
+**Timestamp:** 2026-04-05 19:14:00
+**Focus:** Complete README.md rewrite
+**Status:** completed
+
+### Summary
+Rewrote the entire `README.md` to accurately reflect the current state of the Jericho project after 36 feature implementations.
+
+### Changes Made
+- **Modified:** `README.md` — Full rewrite (~420 lines) covering:
+  - Updated project description from "AI Council" to "AI city" simulation
+  - Council member table with all 9 current members
+  - Comprehensive features list organized into 7 domains: Core Infrastructure, Governance, Character System, World Building, Economy, Intelligence, Communication, plus User Interfaces
+  - Quick Start guide with installation, one-click Windows launcher, and web dashboard launch
+  - Web Dashboard section with navigation overview and key capabilities
+  - Full CLI reference with all available commands
+  - Governance Model section with lifecycle diagrams for proposals, character evolutions, and laws
+  - Economy section covering the Obelisk currency system, account types, taxation, and stores
+  - Updated Project Structure tree showing all ~35 core modules, data directories, and 2,117+ tests
+  - Configuration reference tables (governance, economy, API, memory settings)
+  - Dependencies table
+  - Architecture Principles section documenting the 7 core design patterns
+
+### Test Results
+- **2117 passed**, 1 pre-existing failure (`test_archived_terminal`), 0 regressions ✅
+
+### Advice for Next Agent
+1. The README is now comprehensive — if a new feature is added, update the relevant section (features list, project structure, configuration tables)
+2. The council member table may need updating if the user customizes their YAML profiles
+3. Test count should be updated as new tests are added — currently 2,117+
+4. The pyproject.toml description still says the old "AI characters through democratic governance" — consider updating it to match the broader scope
+
+---
+
+## Session: S-BUGFIX-MEMINFLUENCE-00000001
+**Timestamp:** 2026-04-05 19:21:00
+**Focus:** Fix pre-existing `test_memory_influence::TestBuildContext::test_empty_member_memories` failure
+**Status:** completed
+
+### Problem
+`test_empty_member_memories` asserted that `ctx.formatted_text == ""` for a member with no memories/beliefs. The assertion failed because the formatted text contained active items from the production `data/items/` directory.
+
+### Root Cause
+The test passed `memories_dir` and `locations_dir` overrides to isolate from production data, but did **not** pass `items_dir`. When `items_dir=None`, `_load_active_items()` falls back to the real `ITEMS_DIR` from `config.settings`, which contained active items (e.g., "Liquid Luck" potion). These items were included in the formatted output, breaking the empty-text assertion.
+
+### Fix
+Added an empty `items_dir` override to the test, matching the existing pattern for `memories_dir` and `locations_dir`:
+- **Modified:** `tests/test_memory_influence.py` — `test_empty_member_memories` now creates and passes `items_dir = tmp_path / "items"` to fully isolate from production data.
+
+### Test Results
+- **2118 passed**, 12 skipped, 0 failures — the previously-failing test now passes ✅
+
+### Advice for Next Agent
+1. When testing `build_context()`, always pass **all three** directory overrides (`memories_dir`, `locations_dir`, `items_dir`) to isolate from production data
+2. If a new world-data source is added to `build_context()` (e.g., stores, NPCs), ensure existing tests are updated with the new directory override to prevent similar regressions
+3. Test count is now 2,118 (up from 2,117)
+
+---
+
+## Session: S-F038-00000001
+**Timestamp:** 2026-04-05 19:58:00
+**Feature:** `F-038` — Sidebar Accordion Navigation
+**Status:** completed
+
+### Summary
+Redesigned the sidebar navigation from a flat always-visible list to a collapsible accordion, solving the UI overflow problem caused by 18 nav items exceeding the viewport height.
+
+### Problem
+The sidebar had 18 navigation items across 5 sections (Overview, Governance, Characters, World, Configuration). The bottom items (Stores, Treasury, Taxation, Settings) were cut off below the viewport, with no way to access them without scrolling the entire page. The upcoming ComfyUI integration feature would make this worse.
+
+### Solution — Collapsible Accordion (Option A)
+Three design options were proposed (Accordion, Icon Rail, Scrollable); the user approved Option A for its minimal disruption and scalability.
+
+### Changes Made
+- **Modified:** `core/web_static/index.html` — Section headers now have `onclick="toggleNavSection()"` handlers and chevron indicators (▸/▾). Nav items are wrapped in `.nav-section-items` containers. Settings is pinned to sidebar bottom with `nav-section-pinned`. Cache-busted CSS/JS to `?v=4`.
+- **Modified:** `core/web_static/style.css` — Added `.nav-sections-scroll` (scrollable nav area), `.nav-section-items` (collapsible via `max-height` transition), `.nav-chevron` (rotates 90° on expand), `.nav-section-pinned` (flex `margin-top: auto`). Reduced logo margin. Thin scrollbar for edge cases.
+- **Modified:** `core/web_static/app.js` — Added `VIEW_TO_SECTION` mapping, `toggleNavSection()`, `_expandSectionForView()` (auto-opens on navigation), `_saveAccordionState()` / `_restoreAccordionState()` (localStorage persistence). Section state survives page reloads.
+- **Modified:** `features.json` — Added F-037 (ComfyUI Integration, planned) and F-038 (Sidebar Accordion, completed).
+
+### Skin Compatibility
+Verified across all 3 UI skins:
+- **Default** (dark glassmorphism) — chevrons and transitions integrate seamlessly
+- **Frutiger Aero** (glossy Y2K) — section headers readable on light background
+- **Vaporwave** (neon retro) — neon styling properly applied to accordion elements
+
+### Behavior
+- Default state: Overview + section containing active page are expanded; others collapsed
+- Click section header → toggle open/closed with smooth CSS transition
+- Navigate to any page → its parent section auto-expands
+- Settings always visible (pinned to bottom with border separator)
+- Accordion state persisted in `localStorage('jericho-nav-accordion')`
+
+### Test Results
+- **2118 passed**, 12 skipped, 0 failures — no backend regressions ✅
+- Browser-tested: navigation, toggle, persistence, all 3 skins ✅
+
+### Advice for Next Agent
+1. When adding new nav items, just add them inside the appropriate `.nav-section-items` div and update `VIEW_TO_SECTION` in app.js
+2. `F-037` (ComfyUI Integration) is now in the backlog as `planned` — it depends on F-031 (Task System)
+3. The accordion CSS uses `max-height: 500px` for expanded sections — this will comfortably fit 10+ items per section before needing adjustment
+4. Test count remains at 2,118 (pure frontend change, no new backend tests needed)
+
+---
+
+## Session: S-PLANNING-COMFYUI-00000001
+**Timestamp:** 2026-04-05 20:30:00
+**Feature:** ComfyUI Integration — Architecture & Planning
+**Status:** planning complete — ready for implementation
+
+### Summary
+Researched ComfyUI's API surface, analyzed three integration architectures, and produced a detailed 7-feature implementation plan for integrating image generation into Jericho. All architecture decisions were approved by the user.
+
+### Architecture Decision: Workflow Template System (Option B)
+
+**Chosen approach:** Users design workflows in ComfyUI's visual editor, export as API-format JSON, upload to Jericho. Jericho fills placeholder tokens (`%prompt%`, `%negative%`, `%seed%`, `%width%`, `%height%`, `%entity_name%`, `%entity_type%`) and POSTs the filled JSON to ComfyUI's `POST /prompt` endpoint. Same pattern SillyTavern uses.
+
+**Rejected approaches:**
+- Option A (hardcoded workflow) — too inflexible, locks users into one model/sampler
+- Option C (custom ComfyUI node) — too complex, tight coupling, requires custom node installation
+
+### Key Decisions (User-Approved)
+
+| Decision | Resolution |
+|----------|-----------|
+| Architecture | Workflow Template System (Option B) |
+| ComfyUI Connection | Local only — `127.0.0.1:8188` default, configurable host:port |
+| Prompt Generation | 5 modes: council vote, character/member, standalone system, user+character refinement, raw user input |
+| Per-Entity Templates | Yes but deferred (start with single default template, F-039 later) |
+| Image Storage | `data/images/{entity_type}/{entity_id}/` with `images.json` metadata, multiple images per entity, primary flag |
+| Image Retrieval | Download via ComfyUI's `GET /view` API — don't touch ComfyUI's filesystem |
+| Style Presets | Yes — ship with defaults (Fantasy Art, Anime, Realistic, etc.) |
+| Image Dimensions | User-configurable per entity type in Settings (not hardcoded — different models need different resolutions) |
+| Generation Queue | Yes, capped at 10 jobs |
+
+### Feature Breakdown (7 features from original F-037)
+
+```
+F-037a → ComfyUI Client & Connection Manager     (backend core — HTTP client, templates)
+F-037b → Image Manager & Storage System           (backend core — image files, metadata)
+F-037c → Prompt Generation Engine                 (backend — 5-mode prompt builder, style presets)
+F-037d → ComfyUI Settings & Templates Web UI      (frontend — settings page)
+F-037e → Entity Image Galleries                   (frontend — galleries on detail pages)
+F-037f → Generation Pipeline & Progress UI        (frontend — generate button, SSE progress, queue)
+F-037g → Prompt Style Presets & Queue Polish       (polish — batch gen, queue dashboard, preset editor)
+```
+
+Future features (separate conversations):
+```
+F-039 → Per-Entity-Type Workflow Templates
+F-040 → Exploration Image Galleries
+F-041 → Story Illustration System
+```
+
+### Image Retrieval Flow (Critical Design Detail)
+
+ComfyUI saves images to its own output folder. Jericho retrieves them via API:
+1. `POST /prompt` → get `prompt_id`
+2. Poll `GET /history/{prompt_id}` → get output filename from `outputs.{node_id}.images[0].filename`
+3. `GET /view?filename=X&subfolder=&type=output` → download image bytes
+4. Save to `data/images/{entity_type}/{entity_id}/img_XXX.png`
+5. Update `images.json` metadata
+
+### ComfyUI API Reference (for implementing agents)
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/system_stats` | GET | Connection test — returns system info |
+| `/prompt` | POST | Queue workflow for execution, returns `{"prompt_id": "..."}` |
+| `/history/{prompt_id}` | GET | Execution status/results — includes output filenames |
+| `/view?filename=X&subfolder=Y&type=output` | GET | Download generated image bytes |
+| `/upload/image` | POST | Upload input image (for img2img workflows) |
+
+### Prompt Generation Modes (for F-037c)
+
+1. **Council Vote** — Multiple members each generate a prompt, user picks or votes on the best
+2. **Character/Member** — A specific character generates the prompt in their style
+3. **System (Standalone)** — Generic "image prompt expert" system prompt, no personality
+4. **User + Refinement** — User writes base prompt, character enhances it
+5. **Raw User** — User provides exact prompt, no LLM involvement
+
+### Files Changed in This Planning Session
+
+- **Modified:** `features.json` — replaced monolithic F-037 with F-037a through F-037g, added F-039/F-040/F-041
+- **Created:** Implementation plan artifact with full specifications
+
+### Technical Debt
+- None introduced (planning session only)
+
+### Advice for Next Agent
+
+1. **Start with F-037a** (ComfyUI Client) — it's pure backend with no frontend or prompt logic. Clean, focused scope.
+2. **Follow Jericho patterns exactly:** frozen dataclasses, `to_dict()`/`from_dict()`/`create()` factories, `atomic_write()` from `core.utils`, sequential IDs (TPL-XXXX, IMG-XXXX, GEN-XXXX)
+3. **ComfyUI's API is sync HTTP** — use `httpx` (already a project dependency) for the client. No WebSocket needed; polling `/history/{id}` is sufficient given the 10-job queue cap
+4. **The implementation plan artifact** has detailed pseudocode for all classes and methods — use it as the specification
+5. **Each feature is scoped for a single session** — don't scope-creep into the next feature
+6. **Test everything with mocks** — the ComfyUI server won't be running during tests. Mock all HTTP calls via `httpx` mocking or `unittest.mock.patch`
+7. **app.js is 3500+ lines** — use the section map in `project-reference.md` to navigate. grep_search does NOT work on it
+8. **pytest is garbled on Windows** — use the subprocess→file→view_file pattern from `project-reference.md`
+9. **Per-entity-type resolutions are user-configured** — store defaults in `.env` via the existing `APIKeyManager` pattern or a new config module
+10. **The user explicitly requested diligence and accuracy** — take time to design properly, prioritize correctness over speed
+
+---
+
+## Session: S-F037A-00000001
+**Timestamp:** 2026-04-05 20:50:00
+**Feature:** `F-037a` — ComfyUI Client & Connection Manager
+**Status:** completed
+
+### Summary
+Implemented the backend HTTP client for ComfyUI and the workflow template storage system — the foundation of Jericho's image generation pipeline.
+
+### Changes Made
+- **New:** `core/comfyui_client.py` (~580 lines) — Three major components:
+  1. **Exception hierarchy**: `ComfyUIError` (base), `ComfyUIConnectionError` (with host/port), `ComfyUIWorkflowError` (with prompt_id), `TemplateError` (base), `TemplateNotFoundError` (with template_id), `TemplateValidationError` (with errors list)
+  2. **Data classes**:
+     - `ComfyUIConfig` (frozen) — host, port, base_url property, create() with validation
+     - `WorkflowTemplate` (frozen) — id, name, description, workflow_json, auto-detected placeholders, entity_type, author, timestamps, metadata
+     - `GenerationJob` (frozen) — job_id, prompt_id, template_id, entity linkage, status tracking
+  3. **Placeholder system**: `detect_placeholders()` recursively scans JSON for `%token%` patterns, `fill_placeholders()` deep-copies and replaces tokens. 12 known placeholder types (prompt, negative, seed, width, height, entity_name, entity_type, steps, cfg, sampler, scheduler, batch_size)
+  4. **ComfyUIClient class** — async HTTP client wrapping `httpx.AsyncClient`:
+     - `test_connection()` → `GET /system_stats`
+     - `queue_workflow()` → `POST /prompt`, returns prompt_id
+     - `get_history()` → `GET /history/{prompt_id}`
+     - `poll_until_complete()` — polls with configurable interval and max attempts
+     - `extract_output_images()` — parses history for output filenames
+     - `download_image()` → `GET /view?filename=X&type=output`
+     - `upload_image()` → `POST /upload/image`
+  5. **WorkflowTemplateManager class** — filesystem-backed CRUD for `TPL-XXXX.json`:
+     - `create()` — validates name/workflow, auto-detects placeholders, sequential IDs
+     - `get()` / `list_templates()` / `has_template()` — with entity_type and author filters
+     - `update()` — mutable fields only, re-detects placeholders on workflow change
+     - `delete()` — removes template file
+     - `fill_template()` — loads template, fills placeholders, returns ready-to-submit JSON
+     - `get_unfilled_placeholders()` — reports which placeholders still need values
+
+- **Modified:** `config/settings.py` — Added ComfyUI settings section:
+  - `COMFYUI_DEFAULT_HOST` ("127.0.0.1"), `COMFYUI_DEFAULT_PORT` (8188)
+  - `COMFYUI_TEMPLATES_DIR` (data/comfyui/templates/)
+  - `COMFYUI_IMAGES_DIR` (data/images/) — placeholder for F-037b
+  - `COMFYUI_MAX_QUEUE_SIZE` (10), `COMFYUI_POLL_INTERVAL` (1.0s), `COMFYUI_POLL_TIMEOUT` (300s)
+
+- **New:** `tests/test_comfyui_client.py` (~930 lines) — 118 tests across 22 classes:
+  - `TestComfyUIConfig` (10): fields, defaults, base_url, frozen, roundtrip, create factory, validation
+  - `TestWorkflowTemplate` (7): fields, frozen, roundtrip, create factory, auto-detect, defaults
+  - `TestGenerationJob` (5): fields, frozen, roundtrip, create factory, defaults
+  - `TestDetectPlaceholders` (7): basic, no placeholders, dedup, sorted, nested, empty, non-string
+  - `TestFillPlaceholders` (8): basic, multiple, unfilled, immutable original, non-string, nested, empty, numeric
+  - `TestPlaceholderPattern` (4): matches, no-match, uppercase, frozenset
+  - `TestTemplateManagerInit` (3): dir creation, properties, repr
+  - `TestTemplateCreate` (8): basic, sequential IDs, persistence, all fields, empty name, empty workflow, whitespace, auto-detect
+  - `TestTemplateRead` (8): get, not found, list all, filter entity_type, filter author, has_template, empty, corrupt skip
+  - `TestTemplateUpdate` (8): name, description, workflow redetect, immutable raises, unknown raises, not found, bumps updated_at, multiple
+  - `TestTemplateDelete` (3): delete, not found, preserves others
+  - `TestFillTemplate` (4): fill, not found, unfilled, all satisfied
+  - `TestComfyUIClientInit` (4): defaults, custom config, repr, not-entered raises
+  - `TestComfyUIClientContextManager` (2): enter/exit, close idempotent
+  - `TestComfyUIClientTestConnection` (2): success, connection refused
+  - `TestComfyUIClientQueueWorkflow` (5): success, client_id, reject, missing prompt_id, connection error
+  - `TestComfyUIClientGetHistory` (3): completed, not found, connection error
+  - `TestComfyUIClientPollUntilComplete` (4): immediate, delayed, workflow error, timeout
+  - `TestExtractOutputImages` (5): single, multiple, multiple nodes, no outputs, no images key
+  - `TestComfyUIClientDownloadImage` (3): success, subfolder, error
+  - `TestComfyUIClientUploadImage` (2): success, error
+  - `TestExceptions` (6): hierarchy, connection fields, workflow fields, not found, validation list, validation string
+  - `TestEdgeCases` (7): unicode, large workflow, persistence roundtrip, deeply nested fill, ID gap sequencing, config equality, job roundtrip
+
+### Test Results
+- **2,241 passed**, 12 skipped, 0 failures — zero regressions ✅
+- New tests: 118 (up from 2,123)
+
+### Technical Debt
+- `ComfyUIClient` uses `import httpx` inside `__aenter__` to defer the dependency — this works but is unconventional. Could be moved to module-level if httpx is guaranteed present.
+- `GenerationJob` is defined as a data class but no manager persists it yet — F-037f (Generation Pipeline) will need a `GenerationJobManager` or queue system.
+- The `COMFYUI_IMAGES_DIR` setting is a placeholder for F-037b (Image Manager) — not used in this feature.
+- No API endpoints yet — F-037d (Settings UI) will add the REST API for template management and connection testing.
+
+### Advice for Next Agent
+1. **F-037b (Image Manager & Storage System) is the natural next step** — it depends only on F-037a (now completed). It provides filesystem-backed image storage with metadata tracking.
+2. **F-037c (Prompt Generation Engine) is also unblocked** — it depends only on F-037a. It's independent of F-037b so could be done in parallel.
+3. The module is importable as:
+   ```python
+   from core.comfyui_client import (
+       ComfyUIClient, ComfyUIConfig,
+       WorkflowTemplateManager, WorkflowTemplate,
+       GenerationJob,
+       detect_placeholders, fill_placeholders,
+   )
+   ```
+4. Usage pattern for the client:
+   ```python
+   config = ComfyUIConfig.create(host="127.0.0.1", port=8188)
+   async with ComfyUIClient(config) as client:
+       stats = await client.test_connection()
+       prompt_id = await client.queue_workflow(filled_json)
+       history = await client.poll_until_complete(prompt_id)
+       images = ComfyUIClient.extract_output_images(history)
+       img_bytes = await client.download_image(images[0]["filename"])
+   ```
+5. Usage pattern for template management:
+   ```python
+   mgr = WorkflowTemplateManager()
+   tpl = mgr.create("My Workflow", workflow_json=exported_json)
+   print(tpl.placeholders)  # ['height', 'negative', 'prompt', 'seed', 'width']
+   filled = mgr.fill_template(tpl.id, {"prompt": "a cat", "seed": "42", ...})
+   ```
+6. **Placeholder tokens** use the `%token_name%` format (lowercase only). The 12 known tokens are in `KNOWN_PLACEHOLDERS`. Custom tokens are also detected — only the `%lowercase_with_underscores%` pattern is matched.
+7. **Template IDs** are sequential: `TPL-0001`, `TPL-0002`, etc. Generation job IDs follow `GEN-XXXX`.
+8. The `poll_until_complete()` method defaults to 1-second intervals with 300 attempts (5 minutes). These can be overridden via constructor params.
+9. **All HTTP calls in tests are fully mocked** — no real ComfyUI server needed. Tests use `unittest.mock.MagicMock` and `AsyncMock`.
+10. When adding API endpoints (F-037d), import the managers inside the endpoint function (Jericho pattern to avoid circular imports).
+
+---
+
+## Session: S-F037B-00000001
+**Timestamp:** 2026-04-06 18:59:00
+**Feature:** `F-037b` — Image Manager & Storage System
+**Status:** completed
+
+### Summary
+Implemented the filesystem-backed image storage system — the second layer of Jericho's image generation pipeline. Provides structured storage organized by entity type and entity ID, with metadata tracking, primary image management, and sequential global IDs.
+
+### Changes Made
+- **New:** `core/image_manager.py` (~430 lines) — Three major components:
+  1. **Exception hierarchy**: `ImageError` (base), `ImageNotFoundError` (with `image_id`), `ImageValidationError` (with `errors` list)
+  2. **Data class**: `EntityImage` (frozen) — id, entity_type, entity_id, filename, original_filename, prompt, negative_prompt, is_primary, file_size, width, height, template_id, generation_job_id, created_at, metadata. Full `to_dict()`/`from_dict()`/`create()` factory with validation and auto-timestamp.
+  3. **ImageManager class** — filesystem-backed CRUD organized as `{images_dir}/{entity_type}/{entity_id}/`:
+     - `save_image()` — writes bytes to disk, generates sequential `img_XXXX.ext` filename, detects extension from filename or magic bytes (PNG/JPEG/WebP), creates metadata entry in `images.json`, auto-sets first image as primary
+     - `get()` — global scan to find image by `IMG-XXXX` ID across all entities
+     - `list_images()` — list images for a specific entity with `primary_only` filter
+     - `get_primary_image()` — convenience method returning the primary image or None
+     - `set_primary()` — designate one image as primary, clear flag from all others
+     - `delete()` — removes file and metadata, auto-promotes next image if deleted was primary
+     - `get_image_path()` — resolve filesystem path for serving
+     - `count_images()` — count images for an entity
+     - `delete_entity_images()` — bulk delete all images for an entity
+     - Sequential `IMG-XXXX` global IDs via counter file (`.next_id`) with fallback to metadata scan
+
+- **New:** `tests/test_image_manager.py` (~680 lines) — 82 tests across 15 classes:
+  - `TestEntityImage` (12): fields, defaults, frozen, roundtrip, create factory, validation errors for empty id/entity_type/entity_id/filename, whitespace stripping, missing optionals, metadata
+  - `TestImageManagerInit` (3): dir creation, existing dir, repr
+  - `TestSaveImage` (13): basic, auto-primary, second not primary, explicit primary, sequential IDs, sequential filenames, persistence, file written on disk, all fields, empty entity_type/entity_id/data validation, whitespace entity_type validation
+  - `TestGetImage` (3): get existing, not found, across entities
+  - `TestListImages` (4): empty, all, primary_only, entity isolation
+  - `TestGetPrimaryImage` (3): no images returns None, returns primary, after set_primary
+  - `TestSetPrimary` (4): basic, clears others, not found, idempotent
+  - `TestDeleteImage` (6): removes file, removes metadata, not found, primary promotes next, non-primary no promotion, preserves others
+  - `TestGetImagePath` (2): correct path, not found
+  - `TestCountImages` (2): empty, multiple
+  - `TestDeleteEntityImages` (3): delete all, delete empty, preserves other entities
+  - `TestExtensionDetection` (9): from filename (png/jpg/jpeg/webp), from magic bytes (png/jpeg/webp), unknown defaults to png, unsupported falls back to magic
+  - `TestConstants` (4): valid entity types, supported extensions, both are frozenset
+  - `TestExceptions` (4): hierarchy, not found fields, validation single/list
+  - `TestEdgeCases` (10): unicode, large data, many images per entity, persistence roundtrip, corrupt metadata, multiple entity types, ID continuity after reload, full lifecycle, explicit non-primary first, delete with missing file
+
+### Test Results
+- **2,323 passed**, 12 skipped, 0 failures — zero regressions ✅
+- New tests: 82 (up from 2,241)
+
+### Technical Debt
+- The `get()` method does a full scan of all entity directories to find an image by global ID. This is O(entities × images) and could be slow for large collections. A global index file (or in-memory cache) could be added if performance becomes an issue.
+- No API endpoints yet — F-037d (Settings UI) and F-037e (Entity Image Galleries) will add the REST API for image upload/serve/delete.
+- `VALID_ENTITY_TYPES` is defined as documentation/reference in the module but not currently enforced in `save_image()`. This allows arbitrary entity types, which adds flexibility but could lead to typos. Consider enforcing in a future pass.
+- The `.next_id` counter file is a simple text file. If multiple processes write images simultaneously, there could be a race condition. Acceptable for single-user local usage.
+
+### Advice for Next Agent
+1. **F-037c (Prompt Generation Engine) is the natural next step** — it depends only on F-037a (completed). It's independent of F-037b.
+2. **F-037d (ComfyUI Settings & Templates Web UI) is now unblocked** — depends on F-037a + F-037b (both completed). It will add the REST API endpoints for template and image management.
+3. The module is importable as:
+   ```python
+   from core.image_manager import (
+       ImageManager, EntityImage,
+       ImageError, ImageNotFoundError, ImageValidationError,
+       VALID_ENTITY_TYPES, SUPPORTED_EXTENSIONS,
+   )
+   ```
+4. Usage pattern for saving images:
+   ```python
+   mgr = ImageManager()
+   img = mgr.save_image(
+       image_data=raw_bytes,
+       entity_type="character",
+       entity_id="CH-0001",
+       original_filename="portrait.png",
+       prompt="a noble knight",
+       negative_prompt="blurry",
+       width=512,
+       height=768,
+       template_id="TPL-0001",
+   )
+   print(img.id)             # "IMG-0001"
+   print(img.is_primary)     # True (first image auto-primary)
+   path = mgr.get_image_path(img.id)
+   ```
+5. **Extension detection** works in priority order: original filename → magic bytes → default PNG. Supports `.png`, `.jpg`, `.jpeg`, `.webp`.
+6. **Primary image management**: first image is auto-primary unless `is_primary=False` is explicitly passed. Setting a new primary automatically clears all others. Deleting the primary auto-promotes the next image.
+7. **Image IDs are global** (`IMG-XXXX`) and sequential across all entities. The counter is stored in `{images_dir}/.next_id` and survives restarts.
+8. **File naming** within an entity directory is also sequential: `img_0001.png`, `img_0002.png`, etc. This is per-entity (not global).
+9. When adding API endpoints, use `mgr.get_image_path(image_id)` to resolve the file for serving via FastAPI's `FileResponse`.
+10. The `delete_entity_images()` method uses `shutil.rmtree()` — it's a destructive bulk operation that removes the entire entity image directory.

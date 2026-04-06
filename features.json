@@ -294,5 +294,157 @@
             "F-011",
             "F-021"
         ]
+    },
+    {
+        "id": "F-032",
+        "title": "Obelisk Monetary System — Backend",
+        "description": "Treasury core module with ObeliskBalance, TreasuryAccount, TreasuryManager (credit/debit/transfer/normalize), REST API endpoints, and comprehensive tests",
+        "status": "completed",
+        "dependencies": [
+            "F-003",
+            "F-011",
+            "F-021"
+        ]
+    },
+    {
+        "id": "F-033",
+        "title": "Obelisk Monetary System — Frontend Web UI",
+        "description": "Treasury nav/view in web dashboard, Obelisk balance on character/council/user profiles, Treasury section in Governance",
+        "status": "completed",
+        "dependencies": [
+            "F-032"
+        ]
+    },
+    {
+        "id": "F-034",
+        "title": "Obelisk Taxation System",
+        "description": "Government taxation mechanism — tax rates, collection schedules, tax events on transactions",
+        "status": "completed",
+        "dependencies": [
+            "F-032"
+        ]
+    },
+    {
+        "id": "F-035",
+        "title": "World Items System",
+        "description": "Item creation, proposal handoff, lifecycle management (draft/active/archived), LLM context injection, full frontend UI with property management",
+        "status": "completed",
+        "dependencies": [
+            "F-026"
+        ]
+    },
+    {
+        "id": "F-036",
+        "title": "World Stores System",
+        "description": "Commerce system — StoreManager with inventory CRUD, purchase flow (treasury transfer), lifecycle (draft/active/archived), full CRUD API endpoints, frontend with create/edit/inventory/purchase UI, 88 unit tests",
+        "status": "completed",
+        "dependencies": [
+            "F-035",
+            "F-032"
+        ]
+    },
+    {
+        "id": "F-037a",
+        "title": "ComfyUI Client & Connection Manager",
+        "description": "Backend HTTP client for ComfyUI API (queue workflow, poll status, download images via /view), workflow template storage (filesystem-backed TPL-XXXX JSON files), placeholder detection and filling, connection testing — local only (127.0.0.1:8188 default)",
+        "status": "completed",
+        "dependencies": [
+            "F-021"
+        ]
+    },
+    {
+        "id": "F-037b",
+        "title": "Image Manager & Storage System",
+        "description": "Filesystem-backed image storage organized by entity (data/images/{entity_type}/{entity_id}/), EntityImage frozen dataclass with metadata, primary image flag, save/retrieve/delete/serve operations, images.json metadata per entity",
+        "status": "completed",
+        "dependencies": [
+            "F-037a"
+        ]
+    },
+    {
+        "id": "F-037c",
+        "title": "Prompt Generation Engine",
+        "description": "Multi-mode LLM-driven prompt construction — 5 modes: council vote, character/member, standalone system, user+character refinement, raw user input. Style presets (fantasy art, anime, realistic, etc.), entity context building, positive/negative prompt output",
+        "status": "planned",
+        "dependencies": [
+            "F-037a"
+        ]
+    },
+    {
+        "id": "F-037d",
+        "title": "ComfyUI Settings & Templates Web UI",
+        "description": "Frontend settings page for ComfyUI connection config (host:port, test connection), workflow template upload (drag-and-drop JSON), template list with placeholder preview, per-entity-type resolution settings, default style preset selection",
+        "status": "planned",
+        "dependencies": [
+            "F-037a",
+            "F-037b"
+        ]
+    },
+    {
+        "id": "F-037e",
+        "title": "Entity Image Galleries",
+        "description": "Frontend image gallery panels on character/location/item/store detail pages — thumbnail grid, primary badge, lightbox view, set primary, delete, download, prompt info tooltip. Primary image thumbnails on entity list cards",
+        "status": "planned",
+        "dependencies": [
+            "F-037b",
+            "F-037d"
+        ]
+    },
+    {
+        "id": "F-037f",
+        "title": "Generation Pipeline & Progress UI",
+        "description": "End-to-end generation flow — Generate Image button, prompt mode selector modal, SSE progress events, ComfyUI queue integration, auto-gallery refresh. Queue limit of 10 jobs. Cancel support",
+        "status": "planned",
+        "dependencies": [
+            "F-037c",
+            "F-037e"
+        ]
+    },
+    {
+        "id": "F-037g",
+        "title": "Prompt Style Presets & Generation Queue Polish",
+        "description": "Batch generation for entity lists (up to 10), queue dashboard with status cards, preset editor with preview, import/export presets, generation completion toasts",
+        "status": "planned",
+        "dependencies": [
+            "F-037f"
+        ]
+    },
+    {
+        "id": "F-038",
+        "title": "Sidebar Accordion Navigation",
+        "description": "Collapsible accordion sidebar — section headers toggle child nav items, chevron indicators, CSS max-height transitions, localStorage persistence, Settings pinned to bottom, compatible with all 3 UI skins",
+        "status": "completed",
+        "dependencies": [
+            "F-021"
+        ]
+    },
+    {
+        "id": "F-039",
+        "title": "Per-Entity-Type Workflow Templates",
+        "description": "Advanced workflow template management — assign different ComfyUI workflows per entity type (portrait for characters, landscape for locations, etc.), template selection UI, template testing",
+        "status": "planned",
+        "dependencies": [
+            "F-037g"
+        ]
+    },
+    {
+        "id": "F-040",
+        "title": "Exploration Image Galleries",
+        "description": "Visual location exploration with generated scene images — 'Look Around' generation, location navigation with illustrated transitions, scene gallery per location",
+        "status": "planned",
+        "dependencies": [
+            "F-037f",
+            "F-026"
+        ]
+    },
+    {
+        "id": "F-041",
+        "title": "Story Illustration System",
+        "description": "LLM-narrated story segments with inline generated illustrations — per-scene image generation, chapter/scene management, story viewer with embedded images",
+        "status": "planned",
+        "dependencies": [
+            "F-037f",
+            "F-039"
+        ]
     }
 ]
