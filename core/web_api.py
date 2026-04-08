@@ -25,6 +25,7 @@ from config.settings import (
     COUNCIL_MEMBERS_DIR,
     EVOLUTION_DIR,
     PROPOSALS_DIR,
+    TREASURY_DIR,
     VOTES_DIR,
     WEB_STATIC_DIR,
 )
@@ -131,6 +132,34 @@ def create_app() -> FastAPI:
             data["locations"] = {"count": 0, "by_status": {}}
 
         try:
+            from core.items import ItemManager
+            imgr = ItemManager()
+            items_list = imgr.list_items()
+            item_statuses: dict[str, int] = {}
+            for it in items_list:
+                item_statuses[it.status] = item_statuses.get(it.status, 0) + 1
+            data["items"] = {
+                "count": len(items_list),
+                "by_status": item_statuses,
+            }
+        except Exception:
+            data["items"] = {"count": 0, "by_status": {}}
+
+        try:
+            from core.laws import LawManager
+            lawmgr = LawManager()
+            law_list = lawmgr.list_laws()
+            law_statuses: dict[str, int] = {}
+            for lw in law_list:
+                law_statuses[lw.status] = law_statuses.get(lw.status, 0) + 1
+            data["laws"] = {
+                "count": len(law_list),
+                "by_status": law_statuses,
+            }
+        except Exception:
+            data["laws"] = {"count": 0, "by_status": {}}
+
+        try:
             from core.character_evolution import CharacterEvolution
             from core.characters import CharacterManager
             from core.proposals import ProposalManager
@@ -178,7 +207,49 @@ def create_app() -> FastAPI:
                 "total_decisions": 0,
             }
 
+        try:
+            from core.treasury import TreasuryManager
+            tmgr = TreasuryManager()
+            accounts = tmgr.list_accounts()
+            gov_accounts = [a for a in accounts if a.account_type == "government"]
+            gov_balance = gov_accounts[0].balance.to_dict() if gov_accounts else {"gold": 0, "silver": 0, "bronze": 0}
+            data["treasury"] = {
+                "total_accounts": len(accounts),
+                "government_balance": gov_balance,
+            }
+        except Exception:
+            data["treasury"] = {"total_accounts": 0, "government_balance": {"gold": 0, "silver": 0, "bronze": 0}}
+
+        try:
+            from core.stores import StoreManager
+            smgr = StoreManager()
+            store_list = smgr.list_stores()
+            store_statuses: dict[str, int] = {}
+            for st in store_list:
+                store_statuses[st.status] = store_statuses.get(st.status, 0) + 1
+            data["stores"] = {
+                "count": len(store_list),
+                "by_status": store_statuses,
+            }
+        except Exception:
+            data["stores"] = {"count": 0, "by_status": {}}
+
         return data
+
+    # ── Narrative Bulletins ───────────────────────────────────
+
+    @application.get("/api/narrative-bulletins")
+    def api_narrative_bulletins() -> list[dict[str, Any]]:
+        """Generate emergent narrative bulletins from recent events."""
+        from core.narrative_engine import NarrativeEngine
+        from config.settings import NARRATIVE_MAX_BULLETINS, NARRATIVE_MAX_AGE_DAYS
+
+        engine = NarrativeEngine(
+            max_bulletins=NARRATIVE_MAX_BULLETINS,
+            max_age_days=NARRATIVE_MAX_AGE_DAYS,
+        )
+        bulletins = engine.generate_bulletins()
+        return [b.to_dict() for b in bulletins]
 
     # ── Council ───────────────────────────────────────────────
 
@@ -542,7 +613,8 @@ def create_app() -> FastAPI:
         """Create a new proposal and auto-open it with a discussion.
 
         Body: {"author": "Sage", "title": "...", "description": "...",
-               "category": "ethics", "body": "..."}
+               "category": "ethics", "body": "...",
+               "character_data": {...}}  // optional, for character proposals
         """
         from core.proposals import ProposalManager, ProposalValidationError
 
@@ -558,11 +630,32 @@ def create_app() -> FastAPI:
                 detail="Fields 'author', 'title', 'description', and 'category' are required.",
             )
 
+        # If this is a character proposal, stash character_data in metadata
+        metadata = None
+        character_data = body.get("character_data")
+        if category == "character" and character_data and isinstance(character_data, dict):
+            metadata = {"character_data": character_data}
+
+        # If this is a location proposal, stash location_data in metadata
+        location_data = body.get("location_data")
+        if category == "location" and location_data and isinstance(location_data, dict):
+            metadata = {"location_data": location_data}
+
+        # If this is an item proposal, stash item_data in metadata
+        item_data = body.get("item_data")
+        if category == "item" and item_data and isinstance(item_data, dict):
+            metadata = {"item_data": item_data}
+
+        # If this is a law proposal, stash law_data in metadata
+        law_data = body.get("law_data")
+        if category == "law" and law_data and isinstance(law_data, dict):
+            metadata = {"law_data": law_data}
+
         pmgr = ProposalManager()
         try:
             proposal = pmgr.create(
                 title, description, author=author, category=category,
-                body=proposal_body,
+                body=proposal_body, metadata=metadata,
             )
             # Auto-transition to open
             proposal = pmgr.update_status(proposal.id, "open")
@@ -574,16 +667,9 @@ def create_app() -> FastAPI:
         try:
             from core.discussion import DiscussionManager
             from core.registry import CouncilRegistry
-            from core.api_client import APIClient
 
-            registry = CouncilRegistry().load()
-            client = APIClient()
-            dmgr = DiscussionManager(
-                registry=registry,
-                api_client=client,
-                proposal_manager=pmgr,
-            )
-            participants = registry.list_names()
+            dmgr = _make_discussion_manager(pmgr)
+            participants = CouncilRegistry().load().list_names()
             disc_id = proposal.id  # use proposal ID as discussion ID
             disc = dmgr.create_discussion(
                 disc_id, proposal.id, f"Discussion: {title}",
@@ -605,19 +691,13 @@ def create_app() -> FastAPI:
         from core.discussion import (
             DiscussionManager, DiscussionNotFoundError, DiscussionStateError,
         )
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient, ChatMessage
+        from core.api_client import ChatMessage
+        from core.memory_influence import MemoryInfluence
 
         async def event_generator():
             try:
                 pmgr = ProposalManager()
-                registry = CouncilRegistry().load()
-                client = APIClient()
-                dmgr = DiscussionManager(
-                    registry=registry,
-                    api_client=client,
-                    proposal_manager=pmgr,
-                )
+                dmgr = _make_discussion_manager(pmgr)
 
                 # Load the discussion and proposal
                 record = dmgr.get(proposal_id)
@@ -635,15 +715,57 @@ def create_app() -> FastAPI:
 
                 round_number = record.current_round + 1
                 new_contributions = []
+                mi = MemoryInfluence()
+                keywords = MemoryInfluence.extract_keywords(
+                    f"{proposal.title} {proposal.description}"
+                )
+
+                from core.registry import CouncilRegistry
+                from core.api_client import APIClient
+                registry = CouncilRegistry().load()
+                client = APIClient()
+
+                # Inject scheduled user message if present
+                meta = dict(record.metadata)
+                scheduled_msg = meta.pop("scheduled_message", None)
+                if scheduled_msg and isinstance(scheduled_msg, str) and scheduled_msg.strip():
+                    from core.discussion import DiscussionContribution
+                    user_contribution = DiscussionContribution.create(
+                        speaker="User",
+                        content=scheduled_msg.strip(),
+                        round_number=round_number,
+                        metadata={"type": "scheduled_message"},
+                    )
+                    new_contributions.append(user_contribution)
+
+                    # Stream the user message
+                    user_event = json_module.dumps({
+                        "speaker": "User",
+                        "content": scheduled_msg.strip(),
+                        "round": round_number,
+                        "model": "",
+                        "provider": "user",
+                    })
+                    yield f"event: message\ndata: {user_event}\n\n"
+
+                    import asyncio as _asyncio
+                    await _asyncio.sleep(0.3)
 
                 for name in record.participants:
                     member = registry.get(name)
+
+                    # Build memory context
+                    memory_text = ""
+                    ctx = mi.build_context(member.name, keywords)
+                    if ctx.formatted_text:
+                        memory_text = ctx.formatted_text
 
                     # Build prompt
                     from core.discussion import _build_discussion_prompt
                     all_contribs = list(record.contributions) + new_contributions
                     prompt = _build_discussion_prompt(
                         member, proposal, all_contribs, round_number,
+                        memory_context_text=memory_text,
                     )
                     messages = [ChatMessage(role="user", content=prompt)]
                     response = await client.chat(member, messages)
@@ -689,7 +811,7 @@ def create_app() -> FastAPI:
                     summary=record.summary,
                     created_at=record.created_at,
                     closed_at=record.closed_at,
-                    metadata=dict(record.metadata),
+                    metadata=meta,
                 )
                 dmgr._save(updated_record)
 
@@ -724,17 +846,9 @@ def create_app() -> FastAPI:
         from core.discussion import (
             DiscussionManager, DiscussionNotFoundError, DiscussionStateError,
         )
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient
 
         pmgr = ProposalManager()
-        registry = CouncilRegistry().load()
-        client = APIClient()
-        dmgr = DiscussionManager(
-            registry=registry,
-            api_client=client,
-            proposal_manager=pmgr,
-        )
+        dmgr = _make_discussion_manager(pmgr)
 
         try:
             record = dmgr.close_discussion(proposal_id)
@@ -754,6 +868,173 @@ def create_app() -> FastAPI:
 
         return record.to_dict()
 
+    @application.get("/api/proposals/{proposal_id}/scheduled-message")
+    def api_proposal_scheduled_message_get(proposal_id: str) -> dict[str, Any]:
+        """Get the scheduled user message for the next discussion round."""
+        from core.proposals import ProposalManager
+        from core.discussion import DiscussionNotFoundError
+
+        pmgr = ProposalManager()
+        dmgr = _make_discussion_manager(pmgr)
+
+        try:
+            record = dmgr.get(proposal_id)
+        except DiscussionNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No discussion for proposal '{proposal_id}'.",
+            )
+
+        msg = (record.metadata or {}).get("scheduled_message", None)
+        return {"message": msg}
+
+    @application.post("/api/proposals/{proposal_id}/scheduled-message")
+    def api_proposal_scheduled_message_set(
+        proposal_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Set or clear a user message for the next discussion round.
+
+        Body: {"message": "Your message here..."}
+        Send an empty string to clear.
+        """
+        from core.proposals import ProposalManager
+        from core.discussion import (
+            DiscussionNotFoundError, DiscussionStateError, DiscussionRecord,
+        )
+
+        pmgr = ProposalManager()
+        dmgr = _make_discussion_manager(pmgr)
+
+        try:
+            record = dmgr.get(proposal_id)
+        except DiscussionNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No discussion for proposal '{proposal_id}'.",
+            )
+
+        if record.status != "open":
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot schedule a message on a closed discussion.",
+            )
+
+        message = (body.get("message", "") or "").strip()
+        meta = dict(record.metadata)
+        if message:
+            meta["scheduled_message"] = message
+        else:
+            meta.pop("scheduled_message", None)
+
+        updated = DiscussionRecord(
+            discussion_id=record.discussion_id,
+            proposal_id=record.proposal_id,
+            title=record.title,
+            participants=list(record.participants),
+            contributions=list(record.contributions),
+            round_count=record.round_count,
+            current_round=record.current_round,
+            status=record.status,
+            summary=record.summary,
+            created_at=record.created_at,
+            closed_at=record.closed_at,
+            metadata=meta,
+        )
+        dmgr._save(updated)
+
+        return {
+            "status": "ok",
+            "message": message or None,
+            "scheduled": bool(message),
+        }
+
+    @application.post("/api/proposals/{proposal_id}/send-to-review")
+    def api_proposal_send_to_review(proposal_id: str) -> dict[str, Any]:
+        """Close/pause discussion and transition proposal to open_to_review.
+
+        This is the "Send to Review" action that ends the discussion and
+        lets the user prepare a final proposal before calling a vote.
+        """
+        from core.proposals import (
+            ProposalManager, ProposalNotFoundError,
+            ProposalLifecycleError, ProposalValidationError,
+        )
+        from core.discussion import (
+            DiscussionManager, DiscussionNotFoundError, DiscussionStateError,
+        )
+
+        pmgr = ProposalManager()
+
+        # Close the discussion first
+        try:
+            dmgr = _make_discussion_manager(pmgr)
+            dmgr.close_discussion(proposal_id)
+        except (DiscussionNotFoundError, DiscussionStateError):
+            pass  # may already be closed or not exist
+
+        # Transition proposal to open_to_review
+        try:
+            proposal = pmgr.update_status(proposal_id, "open_to_review")
+        except ProposalNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Proposal '{proposal_id}' not found.",
+            )
+        except (ProposalLifecycleError, ProposalValidationError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return proposal.to_dict()
+
+    @application.put("/api/proposals/{proposal_id}/final-proposal")
+    def api_proposal_final_proposal(
+        proposal_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Save the edited final proposal before calling a vote.
+
+        Only allowed when proposal status is 'open_to_review'.
+        Body may contain: title, description, body, metadata.
+        """
+        from core.proposals import (
+            ProposalManager, ProposalNotFoundError,
+            ProposalValidationError,
+        )
+
+        pmgr = ProposalManager()
+        try:
+            proposal = pmgr.get(proposal_id)
+        except ProposalNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Proposal '{proposal_id}' not found.",
+            )
+
+        if proposal.status != "open_to_review":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Final proposal can only be edited when status is 'open_to_review' (current: '{proposal.status}').",
+            )
+
+        # Build update fields from body
+        update_fields: dict[str, Any] = {}
+        if "title" in body:
+            update_fields["title"] = body["title"]
+        if "description" in body:
+            update_fields["description"] = body["description"]
+        if "body" in body:
+            update_fields["body"] = body["body"]
+        if "metadata" in body:
+            update_fields["metadata"] = body["metadata"]
+
+        if not update_fields:
+            return proposal.to_dict()
+
+        try:
+            updated = pmgr.update(proposal_id, **update_fields)
+        except ProposalValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return updated.to_dict()
+
     @application.post("/api/proposals/{proposal_id}/vote")
     async def api_proposal_vote(proposal_id: str) -> dict[str, Any]:
         """Run a full vote: open voting, have each council member cast
@@ -761,7 +1042,7 @@ def create_app() -> FastAPI:
         """
         from core.proposals import ProposalManager, ProposalNotFoundError
         from core.voting import VotingEngine, Vote, VotingStateError
-        from core.discussion import DiscussionManager, DiscussionNotFoundError
+        from core.discussion import DiscussionNotFoundError
         from core.registry import CouncilRegistry
         from core.api_client import APIClient, ChatMessage
 
@@ -781,11 +1062,7 @@ def create_app() -> FastAPI:
         # Load discussion summary if available
         discussion_context = ""
         try:
-            dmgr = DiscussionManager(
-                registry=registry,
-                api_client=client,
-                proposal_manager=pmgr,
-            )
+            dmgr = _make_discussion_manager(pmgr)
             disc = dmgr.get(proposal_id)
             if disc.summary:
                 discussion_context = f"\n\n## Discussion Summary\n{disc.summary}"
@@ -807,13 +1084,25 @@ def create_app() -> FastAPI:
         vote_results = []
 
         for member in members:
+            # Build memory context for this member
+            from core.memory_influence import MemoryInfluence
+            mi = MemoryInfluence()
+            vote_keywords = MemoryInfluence.extract_keywords(
+                f"{proposal.title} {proposal.description} {proposal.category}"
+            )
+            ctx = mi.build_context(member.name, vote_keywords)
+            memory_block = ""
+            if ctx.formatted_text:
+                memory_block = f"\n\n{ctx.formatted_text}\n"
+
             vote_prompt = (
                 f"## Vote Required: {proposal.title}\n"
                 f"**Proposal ID:** {proposal.id}\n"
                 f"**Category:** {proposal.category}\n"
                 f"**Author:** {proposal.author}\n"
                 f"**Description:** {proposal.description}\n"
-                f"{discussion_context}\n\n"
+                f"{discussion_context}"
+                f"{memory_block}\n\n"
                 f"---\n"
                 f"You are **{member.name}** ({member.role}). "
                 f"You must now vote on this proposal.\n\n"
@@ -904,6 +1193,34 @@ def create_app() -> FastAPI:
                 "message": "Approved evolution proposal — proceed in the Evolution section to create and apply changes.",
             }
 
+        # Character handoff: signal the frontend when a character proposal passes
+        if decided_proposal.category == "character" and tally.approved:
+            result["character_handoff"] = {
+                "status": "ready",
+                "message": "Approved character proposal — create a draft character from the proposal data.",
+            }
+
+        # Location handoff: signal the frontend when a location proposal passes
+        if decided_proposal.category == "location" and tally.approved:
+            result["location_handoff"] = {
+                "status": "ready",
+                "message": "Approved location proposal — create a draft location from the proposal data.",
+            }
+
+        # Item handoff: signal the frontend when an item proposal passes
+        if decided_proposal.category == "item" and tally.approved:
+            result["item_handoff"] = {
+                "status": "ready",
+                "message": "Approved item proposal — create a draft item from the proposal data.",
+            }
+
+        # Law handoff: signal the frontend when a law proposal passes
+        if decided_proposal.category == "law" and tally.approved:
+            result["law_handoff"] = {
+                "status": "ready",
+                "message": "Approved law proposal — create a draft law from the proposal data.",
+            }
+
         return result
 
     @application.post("/api/proposals/{proposal_id}/withdraw")
@@ -937,24 +1254,372 @@ def create_app() -> FastAPI:
 
         return proposal.to_dict()
 
+    @application.post("/api/proposals/{proposal_id}/handoff-character")
+    def api_proposal_handoff_character(proposal_id: str) -> dict[str, Any]:
+        """Create a draft character from an approved character proposal.
+
+        Reads character_data from proposal.metadata and creates a new
+        CharacterTemplate in draft status.  The proposal must be:
+          - category == 'character'
+          - status == 'decided'
+          - vote tally == approved
+        """
+        from core.proposals import ProposalManager, ProposalNotFoundError
+        from core.voting import VotingEngine, VoteNotFoundError
+        from core.characters import (
+            CharacterManager, CharacterValidationError, Trait,
+        )
+
+        pmgr = ProposalManager()
+        try:
+            proposal = pmgr.get(proposal_id)
+        except ProposalNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Proposal '{proposal_id}' not found.",
+            )
+
+        if proposal.category != "character":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Proposal '{proposal_id}' is not a character proposal (category: {proposal.category}).",
+            )
+
+        if proposal.status != "decided":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Proposal '{proposal_id}' has not been decided yet (status: {proposal.status}).",
+            )
+
+        # Verify vote was approved
+        engine = VotingEngine()
+        try:
+            tally = engine.tally(proposal_id)
+        except VoteNotFoundError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No vote record found for proposal '{proposal_id}'.",
+            )
+
+        if not tally.approved:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Proposal '{proposal_id}' was not approved.",
+            )
+
+        # Extract character_data from proposal metadata
+        cd = (proposal.metadata or {}).get("character_data", {})
+        char_name = cd.get("name", "").strip() or proposal.title
+        char_desc = proposal.description  # description = character description
+        char_author = proposal.author
+        backstory = cd.get("backstory", "").strip()
+        system_prompt = cd.get("system_prompt", "").strip()
+        greeting = cd.get("greeting", "").strip()
+        tags = cd.get("tags", [])
+        example_messages = cd.get("example_messages", [])
+        api_provider = cd.get("api_provider", "openrouter").strip()
+        model = cd.get("model", "Default").strip()
+
+        # Parse traits
+        raw_traits = cd.get("traits", [])
+        traits: list[Trait] = []
+        for t in raw_traits:
+            try:
+                traits.append(Trait.create(
+                    trait_type=t.get("trait_type", "personality"),
+                    name=t.get("name", ""),
+                    description=t.get("description", ""),
+                    intensity=float(t.get("intensity", 0.5)),
+                ))
+            except CharacterValidationError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+
+        # Require at least one trait — if none provided, add a default
+        if not traits:
+            traits = [Trait.create("personality", "Undefined", "Awaiting trait definition", 0.5)]
+
+        cmgr = CharacterManager()
+        try:
+            character = cmgr.create(
+                char_name, char_desc, author=char_author,
+                backstory=backstory, traits=traits,
+                system_prompt=system_prompt, greeting=greeting,
+                example_messages=example_messages or None,
+                tags=tags or None,
+                metadata={"source_proposal": proposal_id},
+            )
+        except CharacterValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        result = character.to_dict()
+        result["source_proposal"] = proposal_id
+        return result
+
+    @application.post("/api/proposals/{proposal_id}/handoff-location")
+    def api_proposal_handoff_location(proposal_id: str) -> dict[str, Any]:
+        """Create a draft location from an approved location proposal.
+
+        Reads location_data from proposal.metadata and creates a new
+        Location in draft status.  The proposal must be:
+          - category == 'location'
+          - status == 'decided'
+          - vote tally == approved
+        """
+        from core.proposals import ProposalManager, ProposalNotFoundError
+        from core.voting import VotingEngine, VoteNotFoundError
+        from core.locations import (
+            LocationManager, LocationValidationError, LocationFeature,
+        )
+
+        pmgr = ProposalManager()
+        try:
+            proposal = pmgr.get(proposal_id)
+        except ProposalNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Proposal '{proposal_id}' not found.",
+            )
+
+        if proposal.category != "location":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Proposal '{proposal_id}' is not a location proposal (category: {proposal.category}).",
+            )
+
+        if proposal.status != "decided":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Proposal '{proposal_id}' has not been decided yet (status: {proposal.status}).",
+            )
+
+        # Verify vote was approved
+        engine = VotingEngine()
+        try:
+            tally = engine.tally(proposal_id)
+        except VoteNotFoundError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No vote record found for proposal '{proposal_id}'.",
+            )
+
+        if not tally.approved:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Proposal '{proposal_id}' was not approved.",
+            )
+
+        # Extract location_data from proposal metadata
+        ld = (proposal.metadata or {}).get("location_data", {})
+        loc_name = ld.get("name", "").strip() or proposal.title
+        loc_desc = ld.get("description", "").strip() or proposal.description
+        loc_author = proposal.author
+        lore = ld.get("lore", "").strip()
+        tags = ld.get("tags", [])
+        coordinates = ld.get("coordinates", "").strip()
+
+        # Parse features
+        raw_features = ld.get("features", [])
+        features: list[LocationFeature] = []
+        for f in raw_features:
+            try:
+                features.append(LocationFeature.create(
+                    name=f.get("name", ""),
+                    description=f.get("description", ""),
+                    feature_type=f.get("feature_type", "custom"),
+                ))
+            except LocationValidationError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+
+        lmgr = LocationManager()
+        try:
+            location = lmgr.create(
+                loc_name, loc_desc, author=loc_author,
+                lore=lore, features=features,
+                tags=tags or None, coordinates=coordinates,
+                metadata={"source_proposal": proposal_id},
+            )
+        except LocationValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        result = location.to_dict()
+        result["source_proposal"] = proposal_id
+        return result
+
+    @application.post("/api/proposals/{proposal_id}/handoff-item")
+    def api_proposal_handoff_item(proposal_id: str) -> dict[str, Any]:
+        """Create a draft item from an approved item proposal.
+
+        Reads item_data from proposal.metadata and creates a new
+        Item in draft status.  The proposal must be:
+          - category == 'item'
+          - status == 'decided'
+          - vote tally == approved
+        """
+        from core.proposals import ProposalManager, ProposalNotFoundError
+        from core.voting import VotingEngine, VoteNotFoundError
+        from core.items import (
+            ItemManager, ItemValidationError, ItemProperty,
+        )
+
+        pmgr = ProposalManager()
+        try:
+            proposal = pmgr.get(proposal_id)
+        except ProposalNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Proposal '{proposal_id}' not found.",
+            )
+
+        if proposal.category != "item":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Proposal '{proposal_id}' is not an item proposal (category: {proposal.category}).",
+            )
+
+        if proposal.status != "decided":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Proposal '{proposal_id}' has not been decided yet (status: {proposal.status}).",
+            )
+
+        # Verify vote was approved
+        engine = VotingEngine()
+        try:
+            tally = engine.tally(proposal_id)
+        except VoteNotFoundError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No vote record found for proposal '{proposal_id}'.",
+            )
+
+        if not tally.approved:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Proposal '{proposal_id}' was not approved.",
+            )
+
+        # Extract item_data from proposal metadata
+        idata = (proposal.metadata or {}).get("item_data", {})
+        item_name = idata.get("name", "").strip() or proposal.title
+        item_desc = idata.get("description", "").strip() or proposal.description
+        item_author = proposal.author
+        lore = idata.get("lore", "").strip()
+        tags = idata.get("tags", [])
+        rarity = idata.get("rarity", "").strip()
+        tier = idata.get("tier", "").strip()
+        legality = idata.get("legality", "").strip()
+
+        # Parse properties
+        raw_properties = idata.get("properties", [])
+        properties: list[ItemProperty] = []
+        for p in raw_properties:
+            try:
+                properties.append(ItemProperty.create(
+                    name=p.get("name", ""),
+                    description=p.get("description", ""),
+                    property_type=p.get("property_type", "custom"),
+                ))
+            except ItemValidationError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+
+        imgr = ItemManager()
+        try:
+            item = imgr.create(
+                item_name, item_desc, author=item_author,
+                lore=lore, properties=properties,
+                tags=tags or None, rarity=rarity,
+                tier=tier, legality=legality,
+                metadata={"source_proposal": proposal_id},
+            )
+        except ItemValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        result = item.to_dict()
+        result["source_proposal"] = proposal_id
+        return result
+
+    @application.post("/api/proposals/{proposal_id}/handoff-law")
+    def api_proposal_handoff_law(proposal_id: str) -> dict[str, Any]:
+        """Create a draft law from an approved law proposal.
+
+        Reads law_data from proposal.metadata and creates a new
+        Law in draft status.  The proposal must be:
+          - category == 'law'
+          - status == 'decided'
+          - vote tally == approved
+        """
+        from core.proposals import ProposalManager, ProposalNotFoundError
+        from core.voting import VotingEngine, VoteNotFoundError
+        from core.laws import LawManager, LawValidationError
+
+        pmgr = ProposalManager()
+        try:
+            proposal = pmgr.get(proposal_id)
+        except ProposalNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Proposal '{proposal_id}' not found.",
+            )
+
+        if proposal.category != "law":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Proposal '{proposal_id}' is not a law proposal (category: {proposal.category}).",
+            )
+
+        if proposal.status != "decided":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Proposal '{proposal_id}' has not been decided yet (status: {proposal.status}).",
+            )
+
+        # Verify vote was approved
+        engine = VotingEngine()
+        try:
+            tally = engine.tally(proposal_id)
+        except VoteNotFoundError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No vote record found for proposal '{proposal_id}'.",
+            )
+
+        if not tally.approved:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Proposal '{proposal_id}' was not approved.",
+            )
+
+        # Extract law_data from proposal metadata
+        ld = (proposal.metadata or {}).get("law_data", {})
+        law_title = ld.get("title", "").strip() or proposal.title
+        law_desc = ld.get("description", "").strip() or proposal.description
+        law_author = proposal.author
+        law_body = ld.get("body", "").strip() or proposal.body
+        tags = ld.get("tags", [])
+
+        lmgr = LawManager()
+        try:
+            law = lmgr.create(
+                law_title, law_desc, author=law_author,
+                body=law_body, source_proposal_id=proposal_id,
+                tags=tags or None,
+                metadata={"source_proposal": proposal_id},
+            )
+        except LawValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        result = law.to_dict()
+        result["source_proposal"] = proposal_id
+        return result
+
     # ── Discussion Info ───────────────────────────────────────
 
     @application.get("/api/proposals/{proposal_id}/discussion")
     def api_proposal_discussion(proposal_id: str) -> dict[str, Any]:
         """Get the discussion record for a proposal."""
-        from core.proposals import ProposalManager
-        from core.discussion import DiscussionManager, DiscussionNotFoundError
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient
+        from core.discussion import DiscussionNotFoundError
 
-        pmgr = ProposalManager()
-        registry = CouncilRegistry().load()
-        client = APIClient()
-        dmgr = DiscussionManager(
-            registry=registry,
-            api_client=client,
-            proposal_manager=pmgr,
-        )
+        dmgr = _make_discussion_manager()
 
         try:
             record = dmgr.get(proposal_id)
@@ -1118,6 +1783,8 @@ def create_app() -> FastAPI:
         example_messages = body.get("example_messages", [])
         tags = body.get("tags", [])
         raw_traits = body.get("traits", [])
+        api_provider = body.get("api_provider", "openrouter").strip() or "openrouter"
+        model = body.get("model", "Default").strip() or "Default"
 
         if not name or not description or not author:
             raise HTTPException(
@@ -1145,6 +1812,7 @@ def create_app() -> FastAPI:
                 traits=traits or None, system_prompt=system_prompt,
                 greeting=greeting, example_messages=example_messages or None,
                 tags=tags or None,
+                api_provider=api_provider, model=model,
             )
         except CharacterValidationError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
@@ -1416,6 +2084,360 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc))
         return char.to_dict()
 
+    # ── Tasks ─────────────────────────────────────────────────
+
+    @application.get("/api/tasks")
+    def api_tasks_list(
+        status: str | None = Query(None),
+        assignee: str | None = Query(None),
+    ) -> list[dict[str, Any]]:
+        """List tasks with optional filters."""
+        from core.tasks import TaskManager
+
+        mgr = TaskManager()
+        tasks = mgr.list_tasks(status=status, assignee=assignee)
+        return [t.to_dict() for t in tasks]
+
+    @application.get("/api/tasks/{task_id}")
+    def api_task_detail(task_id: str) -> dict[str, Any]:
+        """Get a single task by ID."""
+        from core.tasks import TaskManager, TaskNotFoundError
+
+        mgr = TaskManager()
+        try:
+            task = mgr.get(task_id)
+        except TaskNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Task '{task_id}' not found.",
+            )
+        return task.to_dict()
+
+    @application.post("/api/tasks")
+    def api_tasks_create(body: dict[str, Any]) -> dict[str, Any]:
+        """Create a new task.
+
+        Body: {name, description, reason, assignees: [...]}
+        """
+        from core.tasks import TaskManager, TaskValidationError
+
+        name = (body.get("name", "") or "").strip()
+        description = (body.get("description", "") or "").strip()
+        reason = (body.get("reason", "") or "").strip()
+        assignees = body.get("assignees", [])
+
+        mgr = TaskManager()
+        try:
+            task = mgr.create(
+                name=name,
+                description=description,
+                reason=reason,
+                assignees=assignees,
+            )
+        except TaskValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return task.to_dict()
+
+    @application.put("/api/tasks/{task_id}")
+    def api_task_update(task_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Update mutable fields of a task."""
+        from core.tasks import (
+            TaskManager, TaskNotFoundError, TaskValidationError,
+        )
+
+        mgr = TaskManager()
+        try:
+            task = mgr.update(task_id, **body)
+        except TaskNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Task '{task_id}' not found.",
+            )
+        except TaskValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return task.to_dict()
+
+    @application.put("/api/tasks/{task_id}/status")
+    def api_task_status(
+        task_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Change task status. Body: {\"status\": \"active\"}."""
+        from core.tasks import (
+            TaskManager, TaskNotFoundError,
+            TaskValidationError, TaskLifecycleError,
+        )
+
+        new_status = (body.get("status", "") or "").strip()
+        if not new_status:
+            raise HTTPException(
+                status_code=400, detail="'status' is required.",
+            )
+
+        mgr = TaskManager()
+        try:
+            task = mgr.update_status(task_id, new_status)
+        except TaskNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Task '{task_id}' not found.",
+            )
+        except (TaskValidationError, TaskLifecycleError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return task.to_dict()
+
+    @application.post("/api/tasks/do-tasks")
+    async def api_tasks_do_tasks() -> StreamingResponse:
+        """Execute all active tasks via SSE.
+
+        For each active task, for each assignee, send a prompt that
+        additively layers the task context on top of existing memory
+        and context injections.  Each assignee narrates completing
+        the task over up to 5 rounds.  After all rounds, the task
+        transitions to 'completed'.
+        """
+        from core.tasks import TaskManager, Task, TaskMessage
+        from core.api_client import APIClient, ChatMessage
+        from core.registry import CouncilRegistry
+        from core.characters import CharacterManager
+        from core.memory_influence import MemoryInfluence
+        from core.memory import AgentMemory, MemoryEntry
+        from config.settings import TASK_MAX_ROUNDS
+        import asyncio
+
+        async def event_generator():
+            try:
+                tmgr = TaskManager()
+                active_tasks = tmgr.list_tasks(status="active")
+
+                if not active_tasks:
+                    err = json_module.dumps({"detail": "No active tasks."})
+                    yield f"event: error\ndata: {err}\n\n"
+                    return
+
+                registry = CouncilRegistry().load()
+                client = APIClient()
+                mi = MemoryInfluence()
+
+                # Pre-load characters for character assignees
+                try:
+                    cmgr = CharacterManager()
+                    all_chars = cmgr.list_characters(status="active")
+                    char_map = {c.name.lower(): c for c in all_chars}
+                except Exception:
+                    char_map = {}
+
+                # Council member names for lookup
+                member_names = {
+                    m.name.lower(): m for m in registry.list_members()
+                }
+
+                for task in active_tasks:
+                    # Signal task start
+                    task_start = json_module.dumps({
+                        "type": "task_start",
+                        "task_id": task.id,
+                        "task_name": task.name,
+                        "assignees": task.assignees,
+                    })
+                    yield f"event: task_start\ndata: {task_start}\n\n"
+
+                    new_messages: list[TaskMessage] = []
+                    keywords = MemoryInfluence.extract_keywords(
+                        f"{task.name} {task.description} {task.reason}"
+                    )
+
+                    for round_num in range(1, TASK_MAX_ROUNDS + 1):
+                        for assignee_name in task.assignees:
+                            assignee_lower = assignee_name.lower()
+
+                            # Determine if this is a council member or character
+                            member = member_names.get(assignee_lower)
+                            character = char_map.get(assignee_lower)
+
+                            if not member and not character:
+                                # Skip unknown assignees
+                                continue
+
+                            # Build additive memory context
+                            memory_text = ""
+                            ctx = mi.build_context(
+                                member.name if member else assignee_name,
+                                keywords,
+                            )
+                            if ctx.formatted_text:
+                                memory_text = ctx.formatted_text
+
+                            # Build task prompt — additive on top of existing
+                            # context (memory + beliefs + world)
+                            prior_narration = ""
+                            all_msgs = list(task.messages) + new_messages
+                            relevant = [
+                                m for m in all_msgs
+                                if m.speaker.lower() == assignee_lower
+                            ]
+                            if relevant:
+                                prior_narration = "\n".join(
+                                    f"[Round {m.round_number}]: {m.content}"
+                                    for m in relevant[-3:]
+                                )
+
+                            task_prompt = (
+                                f"{memory_text}\n\n"
+                                f"---\n\n"
+                                f"## Active Task Assignment\n"
+                                f"**Task:** {task.name}\n"
+                                f"**Description:** {task.description}\n"
+                                f"**Reason:** {task.reason}\n"
+                                f"**Round:** {round_num} of {TASK_MAX_ROUNDS}\n\n"
+                            )
+
+                            if prior_narration:
+                                task_prompt += (
+                                    f"### Your Previous Progress\n"
+                                    f"{prior_narration}\n\n"
+                                )
+
+                            if round_num < TASK_MAX_ROUNDS:
+                                task_prompt += (
+                                    f"You are **{assignee_name}**. "
+                                    f"Narrate yourself working on and making progress towards completing this task. "
+                                    f"Stay in character. Describe your actions, thoughts, and progress. "
+                                    f"This is round {round_num} of {TASK_MAX_ROUNDS}."
+                                )
+                            else:
+                                task_prompt += (
+                                    f"You are **{assignee_name}**. "
+                                    f"This is the FINAL round ({round_num} of {TASK_MAX_ROUNDS}). "
+                                    f"Narrate yourself completing this task. "
+                                    f"Wrap up your work and describe the final outcome. "
+                                    f"Stay in character."
+                                )
+
+                            messages = [ChatMessage(role="user", content=task_prompt)]
+
+                            try:
+                                if member:
+                                    response = await client.chat(member, messages)
+                                elif character:
+                                    # Build a pseudo-member for character
+                                    from core.registry import CouncilMember
+                                    char_member = CouncilMember(
+                                        name=character.name,
+                                        role="Character",
+                                        description=character.description,
+                                        personality={},
+                                        api_provider=character.metadata.get(
+                                            "api_provider", "openrouter"
+                                        ),
+                                        model=character.metadata.get(
+                                            "model", "Default"
+                                        ),
+                                        vote_weight=0.0,
+                                        specialties=[],
+                                        system_prompt=character.system_prompt
+                                        or f"You are {character.name}. {character.description}",
+                                        source_file="",
+                                    )
+                                    response = await client.chat(char_member, messages)
+                                else:
+                                    continue
+
+                                content = response.content or ""
+
+                                msg = TaskMessage.create(
+                                    speaker=assignee_name,
+                                    content=content,
+                                    round_number=round_num,
+                                    model=response.model,
+                                    provider=response.provider,
+                                    task_id=task.id,
+                                )
+                                new_messages.append(msg)
+
+                                # Persist to assignee's individual memory
+                                try:
+                                    mem = AgentMemory(assignee_name)
+                                    mem.append_session_event(
+                                        MemoryEntry.create(
+                                            session_id=f"task-{task.id}",
+                                            event_type="task_narration",
+                                            content=content,
+                                            source=assignee_name,
+                                            metadata={
+                                                "task_id": task.id,
+                                                "task_name": task.name,
+                                                "round": round_num,
+                                                "model": response.model,
+                                                "provider": response.provider,
+                                            },
+                                        )
+                                    )
+                                except Exception:
+                                    pass  # non-fatal
+
+                                # Stream this message
+                                event_data = json_module.dumps({
+                                    "type": "message",
+                                    "task_id": task.id,
+                                    "speaker": assignee_name,
+                                    "content": content,
+                                    "round": round_num,
+                                    "model": response.model,
+                                    "provider": response.provider,
+                                })
+                                yield f"event: message\ndata: {event_data}\n\n"
+
+                            except Exception as exc:
+                                error_data = json_module.dumps({
+                                    "type": "error",
+                                    "task_id": task.id,
+                                    "speaker": assignee_name,
+                                    "detail": str(exc)[:200],
+                                })
+                                yield f"event: message\ndata: {error_data}\n\n"
+
+                            await asyncio.sleep(0.5)
+
+                    # Save messages and mark completed
+                    all_messages = list(task.messages) + new_messages
+                    d = task.to_dict()
+                    d["messages"] = [m.to_dict() for m in all_messages]
+                    d["current_round"] = TASK_MAX_ROUNDS
+                    d["status"] = "completed"
+                    from core.tasks import Task as TaskModel
+                    updated = TaskModel.from_dict(d)
+                    tmgr._save(updated)
+
+                    task_done = json_module.dumps({
+                        "type": "task_done",
+                        "task_id": task.id,
+                        "task_name": task.name,
+                        "status": "completed",
+                        "total_messages": len(new_messages),
+                    })
+                    yield f"event: task_done\ndata: {task_done}\n\n"
+
+                # All tasks done
+                done_data = json_module.dumps({
+                    "type": "all_done",
+                    "tasks_completed": len(active_tasks),
+                })
+                yield f"event: done\ndata: {done_data}\n\n"
+
+            except Exception as exc:
+                err = json_module.dumps({"detail": str(exc)})
+                yield f"event: error\ndata: {err}\n\n"
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
     # ── Locations ─────────────────────────────────────────────
 
     @application.get("/api/locations")
@@ -1548,6 +2570,369 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc))
         return loc.to_dict()
 
+    # ── Items ─────────────────────────────────────────────────
+
+    @application.get("/api/items")
+    def api_items_list(
+        status: str | None = Query(None),
+        author: str | None = Query(None),
+        tag: str | None = Query(None),
+    ) -> list[dict[str, Any]]:
+        """List items with optional filters."""
+        from core.items import ItemManager
+        mgr = ItemManager()
+        results = mgr.list_items(status=status, author=author, tag=tag)
+        return [item.to_dict() for item in results]
+
+    @application.get("/api/items/{item_id}")
+    def api_item_detail(item_id: str) -> dict[str, Any]:
+        """Get a single item."""
+        from core.items import ItemManager, ItemNotFoundError
+        mgr = ItemManager()
+        try:
+            item = mgr.get(item_id)
+        except ItemNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Item '{item_id}' not found.",
+            )
+        return item.to_dict()
+
+    @application.post("/api/items")
+    def api_item_create(body: dict[str, Any]) -> dict[str, Any]:
+        """Create a new item.
+
+        Body: {"name": "...", "description": "...", "author": "...",
+               "lore": "...", "properties": [...], "tags": [...],
+               "rarity": "...", "tier": "..."}
+        """
+        from core.items import (
+            ItemManager, ItemValidationError, ItemProperty,
+        )
+
+        name = body.get("name", "").strip()
+        description = body.get("description", "").strip()
+        author = body.get("author", "").strip()
+        lore = body.get("lore", "").strip()
+        raw_properties = body.get("properties", [])
+        tags = body.get("tags", [])
+        rarity = body.get("rarity", "").strip()
+        tier = body.get("tier", "").strip()
+        legality = body.get("legality", "").strip()
+
+        if not name or not description or not author:
+            raise HTTPException(
+                status_code=400,
+                detail="Fields 'name', 'description', and 'author' are required.",
+            )
+
+        # Parse properties
+        properties = []
+        for p in raw_properties:
+            try:
+                properties.append(ItemProperty.create(
+                    name=p.get("name", ""),
+                    description=p.get("description", ""),
+                    property_type=p.get("property_type", "custom"),
+                ))
+            except ItemValidationError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+
+        mgr = ItemManager()
+        try:
+            item = mgr.create(
+                name, description, author=author, lore=lore,
+                properties=properties, tags=tags, rarity=rarity,
+                tier=tier, legality=legality,
+            )
+        except ItemValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return item.to_dict()
+
+    @application.put("/api/items/{item_id}")
+    def api_item_update(item_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Update mutable fields on an item.
+
+        Body may contain: name, description, lore, tags, metadata, rarity.
+        """
+        from core.items import ItemManager, ItemNotFoundError, ItemValidationError
+        mgr = ItemManager()
+        try:
+            item = mgr.update(item_id, **body)
+        except ItemNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Item '{item_id}' not found.",
+            )
+        except ItemValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return item.to_dict()
+
+    @application.put("/api/items/{item_id}/status")
+    def api_item_status(
+        item_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Transition an item's lifecycle status.
+
+        Body: {"status": "active"}
+        """
+        from core.items import (
+            ItemManager, ItemNotFoundError,
+            ItemValidationError, ItemLifecycleError,
+        )
+
+        new_status = body.get("status", "").strip()
+        if not new_status:
+            raise HTTPException(status_code=400, detail="'status' is required.")
+
+        mgr = ItemManager()
+        try:
+            item = mgr.update_status(item_id, new_status)
+        except ItemNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Item '{item_id}' not found.",
+            )
+        except (ItemValidationError, ItemLifecycleError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return item.to_dict()
+
+    # ── Stores ─────────────────────────────────────────────────
+
+    @application.get("/api/stores")
+    def api_stores_list(
+        status: str | None = Query(None),
+        author: str | None = Query(None),
+        tag: str | None = Query(None),
+        store_type: str | None = Query(None),
+    ) -> list[dict[str, Any]]:
+        """List stores with optional filters."""
+        from core.stores import StoreManager
+        mgr = StoreManager()
+        results = mgr.list_stores(
+            status=status, author=author, tag=tag, store_type=store_type,
+        )
+        return [s.to_dict() for s in results]
+
+    @application.get("/api/stores/{store_id}")
+    def api_store_detail(store_id: str) -> dict[str, Any]:
+        """Get a single store with full inventory."""
+        from core.stores import StoreManager, StoreNotFoundError
+        mgr = StoreManager()
+        try:
+            store = mgr.get(store_id)
+        except StoreNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Store '{store_id}' not found.",
+            )
+        return store.to_dict()
+
+    @application.post("/api/stores")
+    def api_store_create(body: dict[str, Any]) -> dict[str, Any]:
+        """Create a new store.
+
+        Body: {"name": "...", "description": "...", "author": "...",
+               "store_type": "blacksmith", "location_id": "", "owner": "",
+               "tags": [...], "lore": "..."}
+        """
+        from core.stores import StoreManager, StoreValidationError
+
+        name = (body.get("name") or "").strip()
+        description = (body.get("description") or "").strip()
+        author = (body.get("author") or "").strip()
+
+        if not name or not description or not author:
+            raise HTTPException(
+                status_code=400,
+                detail="Fields 'name', 'description', and 'author' are required.",
+            )
+
+        mgr = StoreManager()
+        try:
+            store = mgr.create(
+                name, description,
+                author=author,
+                store_type=(body.get("store_type") or "general").strip(),
+                location_id=(body.get("location_id") or "").strip(),
+                owner=(body.get("owner") or "").strip(),
+                tags=body.get("tags") or [],
+                lore=(body.get("lore") or "").strip(),
+            )
+        except StoreValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return store.to_dict()
+
+    @application.put("/api/stores/{store_id}")
+    def api_store_update(store_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Update mutable fields on a store.
+
+        Body may contain: name, description, lore, tags, metadata,
+        location_id, owner, store_type.
+        """
+        from core.stores import StoreManager, StoreNotFoundError, StoreValidationError
+        mgr = StoreManager()
+        try:
+            store = mgr.update(store_id, **body)
+        except StoreNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Store '{store_id}' not found.",
+            )
+        except StoreValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return store.to_dict()
+
+    @application.post("/api/stores/{store_id}/status")
+    def api_store_status(
+        store_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Transition a store's lifecycle status.
+
+        Body: {"status": "active"}
+        """
+        from core.stores import (
+            StoreManager, StoreNotFoundError,
+            StoreValidationError, StoreLifecycleError,
+        )
+
+        new_status = (body.get("status") or "").strip()
+        if not new_status:
+            raise HTTPException(status_code=400, detail="'status' is required.")
+
+        mgr = StoreManager()
+        try:
+            store = mgr.update_status(store_id, new_status)
+        except StoreNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Store '{store_id}' not found.",
+            )
+        except (StoreValidationError, StoreLifecycleError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return store.to_dict()
+
+    @application.post("/api/stores/{store_id}/inventory")
+    def api_store_add_inventory(
+        store_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Add an item to a store's inventory.
+
+        Body: {"item_id": "ITEM-0001", "price_gold": 10,
+               "price_silver": 0, "price_bronze": 0, "quantity": -1}
+        """
+        from core.stores import (
+            StoreManager, StoreNotFoundError,
+            StoreValidationError, StoreItem,
+        )
+
+        item_id = (body.get("item_id") or "").strip()
+        if not item_id:
+            raise HTTPException(
+                status_code=400, detail="'item_id' is required.",
+            )
+
+        mgr = StoreManager()
+        try:
+            si = StoreItem.create(
+                item_id,
+                price_gold=int(body.get("price_gold", 0)),
+                price_silver=int(body.get("price_silver", 0)),
+                price_bronze=int(body.get("price_bronze", 0)),
+                quantity=int(body.get("quantity", -1)),
+            )
+            store = mgr.add_inventory_item(store_id, si)
+        except StoreNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Store '{store_id}' not found.",
+            )
+        except StoreValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return store.to_dict()
+
+    @application.delete("/api/stores/{store_id}/inventory/{item_id}")
+    def api_store_remove_inventory(
+        store_id: str, item_id: str,
+    ) -> dict[str, Any]:
+        """Remove an item from a store's inventory."""
+        from core.stores import StoreManager, StoreNotFoundError, StoreValidationError
+
+        mgr = StoreManager()
+        try:
+            store = mgr.remove_inventory_item(store_id, item_id)
+        except StoreNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Store '{store_id}' not found.",
+            )
+        except StoreValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return store.to_dict()
+
+    @application.put("/api/stores/{store_id}/inventory/{item_id}")
+    def api_store_update_inventory(
+        store_id: str, item_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Update price/quantity of an inventory entry.
+
+        Body may contain: price_gold, price_silver, price_bronze, quantity.
+        """
+        from core.stores import StoreManager, StoreNotFoundError, StoreValidationError
+
+        mgr = StoreManager()
+        try:
+            store = mgr.update_inventory_item(store_id, item_id, **body)
+        except StoreNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Store '{store_id}' not found.",
+            )
+        except StoreValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return store.to_dict()
+
+    @application.post("/api/stores/{store_id}/purchase")
+    def api_store_purchase(
+        store_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Purchase an item from a store.
+
+        Body: {"item_id": "ITEM-0001", "buyer_account_id": "ACCT-user-human"}
+
+        Debits the buyer's treasury account and credits the store owner.
+        Decrements quantity if not unlimited.
+        """
+        from core.stores import (
+            StoreManager, StoreNotFoundError, StorePurchaseError,
+        )
+        from core.treasury import TreasuryManager
+
+        item_id = (body.get("item_id") or "").strip()
+        buyer_account_id = (body.get("buyer_account_id") or "").strip()
+
+        if not item_id or not buyer_account_id:
+            raise HTTPException(
+                status_code=400,
+                detail="'item_id' and 'buyer_account_id' are required.",
+            )
+
+        mgr = StoreManager()
+        tmgr = TreasuryManager()
+        try:
+            result = mgr.purchase(store_id, item_id, buyer_account_id, tmgr)
+        except StoreNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Store '{store_id}' not found.",
+            )
+        except StorePurchaseError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return result
+
+
     # ── Analytics ─────────────────────────────────────────────
 
     @application.get("/api/analytics")
@@ -1640,6 +3025,84 @@ def create_app() -> FastAPI:
         from config.settings import OPENROUTER_MODEL_OPTIONS
         return list(OPENROUTER_MODEL_OPTIONS)
 
+    @application.get("/api/settings/lmstudio-models")
+    def api_lmstudio_models() -> list[str]:
+        """Return the list of valid LM Studio model options for dropdown menus."""
+        from config.settings import LMSTUDIO_MODEL_OPTIONS
+        return list(LMSTUDIO_MODEL_OPTIONS)
+
+    @application.get("/api/settings/summarization")
+    def api_summarization_config() -> dict[str, Any]:
+        """Return the current summarization LLM configuration."""
+        from config.settings import (
+            DEFAULT_SUMMARIZATION_PROVIDER,
+            DEFAULT_SUMMARIZATION_MODEL,
+            SUMMARIZATION_PROVIDER_ENV,
+            SUMMARIZATION_MODEL_ENV,
+        )
+        import os
+        provider = (
+            os.environ.get(SUMMARIZATION_PROVIDER_ENV, "").strip()
+            or DEFAULT_SUMMARIZATION_PROVIDER
+        )
+        model = (
+            os.environ.get(SUMMARIZATION_MODEL_ENV, "").strip()
+            or DEFAULT_SUMMARIZATION_MODEL
+        )
+        return {"provider": provider, "model": model}
+
+    @application.post("/api/settings/summarization")
+    def api_summarization_save(body: dict[str, Any]) -> dict[str, Any]:
+        """Save summarization provider and model.
+
+        Body: {"provider": "openrouter", "model": "mistralai/mistral-small-2603"}
+        """
+        from core.api_keys import APIKeyManager
+        provider = body.get("provider", "").strip().lower()
+        model = body.get("model", "").strip()
+
+        if not provider or not model:
+            raise HTTPException(
+                status_code=400,
+                detail="Both 'provider' and 'model' are required.",
+            )
+        if provider not in ("openrouter", "mancer", "lmstudio"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid provider '{provider}'. Must be 'openrouter', 'mancer', or 'lmstudio'.",
+            )
+
+        from config.settings import (
+            SUMMARIZATION_PROVIDER_ENV,
+            SUMMARIZATION_MODEL_ENV,
+        )
+        import os
+        os.environ[SUMMARIZATION_PROVIDER_ENV] = provider
+        os.environ[SUMMARIZATION_MODEL_ENV] = model
+
+        # Also persist to .env via APIKeyManager
+        mgr = APIKeyManager()
+        mgr.save_env_value(SUMMARIZATION_PROVIDER_ENV, provider)
+        mgr.save_env_value(SUMMARIZATION_MODEL_ENV, model)
+
+        return {"provider": provider, "model": model, "saved": True}
+
+    @application.get("/api/settings/summarization-models")
+    def api_summarization_models(
+        provider: str = Query("openrouter"),
+    ) -> list[str]:
+        """Return the list of summarization model options for a provider."""
+        from config.settings import (
+            SUMMARIZATION_OPENROUTER_MODELS,
+            SUMMARIZATION_MANCER_MODELS,
+        )
+        if provider == "mancer":
+            return list(SUMMARIZATION_MANCER_MODELS)
+        if provider == "lmstudio":
+            from config.settings import SUMMARIZATION_LMSTUDIO_MODELS
+            return list(SUMMARIZATION_LMSTUDIO_MODELS)
+        return list(SUMMARIZATION_OPENROUTER_MODELS)
+
     # ── Settings / User Description ───────────────────────────
 
     @application.get("/api/settings/user-description")
@@ -1662,6 +3125,570 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc))
         return result
 
+    # ── Settings / User Name ─────────────────────────────────
+
+    @application.get("/api/settings/user-name")
+    def api_user_name_get() -> dict[str, Any]:
+        """Return the user's display name."""
+        from core.api_keys import APIKeyManager
+        mgr = APIKeyManager()
+        return {"name": mgr.get_user_name()}
+
+    @application.post("/api/settings/user-name")
+    def api_user_name_save(body: dict[str, Any]) -> dict[str, Any]:
+        """Save the user's display name.  Body: {"name": "..."}."""
+        from core.api_keys import APIKeyManager
+        name = body.get("name", "")
+
+        mgr = APIKeyManager()
+        try:
+            result = mgr.save_user_name(name)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return result
+
+    # ── Settings / ComfyUI ────────────────────────────────────
+
+    @application.get("/api/settings/comfyui")
+    def api_comfyui_config_get() -> dict[str, Any]:
+        """Return current ComfyUI connection configuration."""
+        from config.settings import (
+            COMFYUI_DEFAULT_HOST,
+            COMFYUI_DEFAULT_PORT,
+            COMFYUI_HOST_ENV,
+            COMFYUI_PORT_ENV,
+        )
+        import os
+        host = os.environ.get(COMFYUI_HOST_ENV, "").strip() or COMFYUI_DEFAULT_HOST
+        port_str = os.environ.get(COMFYUI_PORT_ENV, "").strip()
+        try:
+            port = int(port_str) if port_str else COMFYUI_DEFAULT_PORT
+        except ValueError:
+            port = COMFYUI_DEFAULT_PORT
+        return {"host": host, "port": port}
+
+    @application.post("/api/settings/comfyui")
+    def api_comfyui_config_save(body: dict[str, Any]) -> dict[str, Any]:
+        """Save ComfyUI connection config.
+
+        Body: {"host": "127.0.0.1", "port": 8188}
+        """
+        from config.settings import COMFYUI_HOST_ENV, COMFYUI_PORT_ENV
+        from core.api_keys import APIKeyManager
+        import os
+
+        host = (body.get("host") or "").strip()
+        port_raw = body.get("port", "")
+        if not host:
+            raise HTTPException(status_code=400, detail="'host' is required.")
+        try:
+            port = int(port_raw)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="'port' must be an integer.")
+        if port < 1 or port > 65535:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Port must be between 1 and 65535, got {port}.",
+            )
+
+        os.environ[COMFYUI_HOST_ENV] = host
+        os.environ[COMFYUI_PORT_ENV] = str(port)
+
+        mgr = APIKeyManager()
+        mgr.save_env_value(COMFYUI_HOST_ENV, host)
+        mgr.save_env_value(COMFYUI_PORT_ENV, str(port))
+
+        return {"host": host, "port": port, "saved": True}
+
+    @application.post("/api/settings/comfyui/test")
+    def api_comfyui_test() -> dict[str, Any]:
+        """Test connection to ComfyUI server.
+
+        Uses the currently configured host/port.
+        """
+        import asyncio
+        from config.settings import (
+            COMFYUI_DEFAULT_HOST,
+            COMFYUI_DEFAULT_PORT,
+            COMFYUI_HOST_ENV,
+            COMFYUI_PORT_ENV,
+        )
+        from core.comfyui_client import (
+            ComfyUIClient,
+            ComfyUIConfig,
+            ComfyUIConnectionError,
+        )
+        import os
+
+        host = os.environ.get(COMFYUI_HOST_ENV, "").strip() or COMFYUI_DEFAULT_HOST
+        port_str = os.environ.get(COMFYUI_PORT_ENV, "").strip()
+        try:
+            port = int(port_str) if port_str else COMFYUI_DEFAULT_PORT
+        except ValueError:
+            port = COMFYUI_DEFAULT_PORT
+
+        config = ComfyUIConfig(host=host, port=port)
+
+        async def _test():
+            async with ComfyUIClient(config, timeout=5.0) as client:
+                return await client.test_connection()
+
+        try:
+            stats = asyncio.run(_test())
+            return {
+                "connected": True,
+                "host": host,
+                "port": port,
+                "system_stats": stats,
+            }
+        except ComfyUIConnectionError as exc:
+            return {
+                "connected": False,
+                "host": host,
+                "port": port,
+                "error": str(exc),
+            }
+        except Exception as exc:
+            return {
+                "connected": False,
+                "host": host,
+                "port": port,
+                "error": f"Unexpected error: {exc}",
+            }
+
+    @application.get("/api/settings/comfyui/templates")
+    def api_comfyui_templates_list(
+        entity_type: str | None = Query(None),
+    ) -> list[dict[str, Any]]:
+        """List all workflow templates."""
+        from core.comfyui_client import WorkflowTemplateManager
+        mgr = WorkflowTemplateManager()
+        templates = mgr.list_templates(entity_type=entity_type)
+        # Return summary (omit full workflow_json for list view)
+        return [
+            {
+                "id": t.id,
+                "name": t.name,
+                "description": t.description,
+                "entity_type": t.entity_type,
+                "author": t.author,
+                "placeholders": t.placeholders,
+                "created_at": t.created_at,
+                "updated_at": t.updated_at,
+            }
+            for t in templates
+        ]
+
+    @application.post("/api/settings/comfyui/templates")
+    def api_comfyui_template_create(body: dict[str, Any]) -> dict[str, Any]:
+        """Upload a new workflow template.
+
+        Body: {"name": "...", "workflow_json": {...},
+               "description": "", "entity_type": "", "author": ""}
+        """
+        from core.comfyui_client import (
+            WorkflowTemplateManager,
+            TemplateValidationError,
+        )
+        name = (body.get("name") or "").strip()
+        workflow_json = body.get("workflow_json")
+        description = (body.get("description") or "").strip()
+        entity_type = (body.get("entity_type") or "").strip()
+        author = (body.get("author") or "").strip()
+
+        if not name:
+            raise HTTPException(status_code=400, detail="'name' is required.")
+        if not workflow_json or not isinstance(workflow_json, dict):
+            raise HTTPException(
+                status_code=400,
+                detail="'workflow_json' must be a non-empty JSON object.",
+            )
+
+        mgr = WorkflowTemplateManager()
+        try:
+            tpl = mgr.create(
+                name,
+                description=description,
+                workflow_json=workflow_json,
+                entity_type=entity_type,
+                author=author,
+            )
+        except TemplateValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return tpl.to_dict()
+
+    @application.get("/api/settings/comfyui/templates/{template_id}")
+    def api_comfyui_template_get(template_id: str) -> dict[str, Any]:
+        """Get a single workflow template with full JSON."""
+        from core.comfyui_client import (
+            WorkflowTemplateManager,
+            TemplateNotFoundError,
+        )
+        mgr = WorkflowTemplateManager()
+        try:
+            tpl = mgr.get(template_id)
+        except TemplateNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Template '{template_id}' not found.",
+            )
+        return tpl.to_dict()
+
+    @application.delete("/api/settings/comfyui/templates/{template_id}")
+    def api_comfyui_template_delete(template_id: str) -> dict[str, Any]:
+        """Delete a workflow template."""
+        from core.comfyui_client import (
+            WorkflowTemplateManager,
+            TemplateNotFoundError,
+        )
+        mgr = WorkflowTemplateManager()
+        try:
+            mgr.delete(template_id)
+        except TemplateNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Template '{template_id}' not found.",
+            )
+        return {"deleted": True, "template_id": template_id}
+
+    @application.get("/api/settings/comfyui/style-presets")
+    def api_comfyui_style_presets() -> list[dict[str, Any]]:
+        """List available prompt style presets (builtins + custom).
+
+        Each entry includes: key, name, description, positive_suffix,
+        negative_prefix, is_builtin flag.
+        """
+        from core.prompt_builder import (
+            DEFAULT_STYLE_PRESETS, CustomStylePresetManager,
+        )
+
+        results = []
+
+        # Built-in presets
+        for key in sorted(DEFAULT_STYLE_PRESETS):
+            p = DEFAULT_STYLE_PRESETS[key]
+            results.append({
+                "key": key,
+                "name": p.name,
+                "description": p.description,
+                "positive_suffix": p.positive_suffix,
+                "negative_prefix": p.negative_prefix,
+                "is_builtin": True,
+            })
+
+        # Custom presets
+        try:
+            mgr = CustomStylePresetManager()
+            for rec in mgr.list_presets():
+                results.append({
+                    "id": rec["id"],
+                    "key": rec["key"],
+                    "name": rec["name"],
+                    "description": rec.get("description", ""),
+                    "positive_suffix": rec.get("positive_suffix", ""),
+                    "negative_prefix": rec.get("negative_prefix", ""),
+                    "is_builtin": False,
+                    "created_at": rec.get("created_at", ""),
+                })
+        except Exception:
+            pass
+
+        return results
+
+    @application.get("/api/settings/comfyui/default-style")
+    def api_comfyui_default_style_get() -> dict[str, Any]:
+        """Return the current default style preset key."""
+        from config.settings import COMFYUI_DEFAULT_STYLE_ENV
+        import os
+        key = os.environ.get(COMFYUI_DEFAULT_STYLE_ENV, "").strip()
+        return {"style_key": key or ""}
+
+    @application.post("/api/settings/comfyui/default-style")
+    def api_comfyui_default_style_save(body: dict[str, Any]) -> dict[str, Any]:
+        """Save the default style preset key.
+
+        Body: {"style_key": "fantasy_art"}
+        """
+        from config.settings import COMFYUI_DEFAULT_STYLE_ENV
+        from core.api_keys import APIKeyManager
+        import os
+
+        style_key = (body.get("style_key") or "").strip()
+
+        # Validate if non-empty
+        if style_key:
+            from core.prompt_builder import get_style_preset
+            if get_style_preset(style_key) is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unknown style preset '{style_key}'.",
+                )
+
+        os.environ[COMFYUI_DEFAULT_STYLE_ENV] = style_key
+        mgr = APIKeyManager()
+        mgr.save_env_value(COMFYUI_DEFAULT_STYLE_ENV, style_key)
+
+        return {"style_key": style_key, "saved": True}
+
+    # ── Custom Style Presets CRUD (F-037g) ────────────────────
+
+    @application.get("/api/settings/comfyui/presets")
+    def api_custom_presets_list() -> list[dict[str, Any]]:
+        """List all custom style presets (excludes builtins)."""
+        from core.prompt_builder import CustomStylePresetManager
+        mgr = CustomStylePresetManager()
+        results = []
+        for rec in mgr.list_presets():
+            # Exclude the StylePreset object (not JSON-serializable)
+            entry = {k: v for k, v in rec.items() if k != "preset"}
+            results.append(entry)
+        return results
+
+    @application.post("/api/settings/comfyui/presets")
+    def api_custom_presets_create(body: dict[str, Any]) -> dict[str, Any]:
+        """Create a custom style preset.
+
+        Body: {
+            "key": "cyberpunk",
+            "name": "Cyberpunk",
+            "description": "Neon-lit dystopian cityscapes",
+            "positive_suffix": "cyberpunk, neon, rain",
+            "negative_prefix": "nature, medieval, fantasy"
+        }
+        """
+        from core.prompt_builder import (
+            CustomStylePresetManager, PromptValidationError,
+        )
+        mgr = CustomStylePresetManager()
+        try:
+            record = mgr.create(
+                key=body.get("key", ""),
+                name=body.get("name", ""),
+                description=body.get("description", ""),
+                positive_suffix=body.get("positive_suffix", ""),
+                negative_prefix=body.get("negative_prefix", ""),
+            )
+        except PromptValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return record
+
+    @application.get("/api/settings/comfyui/presets/{preset_id}")
+    def api_custom_presets_get(preset_id: str) -> dict[str, Any]:
+        """Get a custom style preset by ID."""
+        from core.prompt_builder import (
+            CustomStylePresetManager, PromptValidationError,
+        )
+        mgr = CustomStylePresetManager()
+        try:
+            return mgr.get(preset_id)
+        except PromptValidationError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Preset '{preset_id}' not found.",
+            )
+
+    @application.put("/api/settings/comfyui/presets/{preset_id}")
+    def api_custom_presets_update(
+        preset_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Update a custom style preset.
+
+        Body: Any subset of {name, description, positive_suffix, negative_prefix}
+        """
+        from core.prompt_builder import (
+            CustomStylePresetManager, PromptValidationError,
+        )
+        mgr = CustomStylePresetManager()
+        kwargs: dict[str, Any] = {}
+        if "name" in body:
+            kwargs["name"] = body["name"]
+        if "description" in body:
+            kwargs["description"] = body["description"]
+        if "positive_suffix" in body:
+            kwargs["positive_suffix"] = body["positive_suffix"]
+        if "negative_prefix" in body:
+            kwargs["negative_prefix"] = body["negative_prefix"]
+
+        try:
+            return mgr.update(preset_id, **kwargs)
+        except PromptValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+    @application.delete("/api/settings/comfyui/presets/{preset_id}")
+    def api_custom_presets_delete(preset_id: str) -> dict[str, Any]:
+        """Delete a custom style preset."""
+        from core.prompt_builder import (
+            CustomStylePresetManager, PromptValidationError,
+        )
+        mgr = CustomStylePresetManager()
+        try:
+            mgr.delete(preset_id)
+        except PromptValidationError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Preset '{preset_id}' not found.",
+            )
+        return {"deleted": True, "preset_id": preset_id}
+
+    @application.get("/api/settings/comfyui/presets/export")
+    def api_custom_presets_export() -> list[dict[str, Any]]:
+        """Export all custom presets as JSON."""
+        from core.prompt_builder import CustomStylePresetManager
+        mgr = CustomStylePresetManager()
+        return mgr.export_json()
+
+    @application.post("/api/settings/comfyui/presets/import")
+    def api_custom_presets_import(
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Import presets from JSON.
+
+        Body: {"presets": [{key, name, description, positive_suffix, negative_prefix}, ...]}
+        """
+        from core.prompt_builder import CustomStylePresetManager
+        mgr = CustomStylePresetManager()
+        presets_data = body.get("presets", [])
+        if not isinstance(presets_data, list):
+            raise HTTPException(
+                status_code=400,
+                detail="'presets' must be a list.",
+            )
+        created = mgr.import_json(presets_data)
+        return {
+            "imported_count": len(created),
+            "presets": created,
+        }
+
+    # ── Per-Entity-Type Template Assignments (F-039) ──────────
+
+    @application.get("/api/settings/comfyui/template-assignments")
+    def api_template_assignments_get() -> dict[str, str]:
+        """Get all per-entity-type template assignments.
+
+        Returns: {"character": "TPL-0001", "location": "", ...}
+        """
+        from core.template_assignments import TemplateAssignmentManager
+        from core.comfyui_client import WorkflowTemplateManager
+
+        mgr = TemplateAssignmentManager(
+            template_manager=WorkflowTemplateManager(),
+        )
+        return mgr.get_all_assignments()
+
+    @application.post("/api/settings/comfyui/template-assignments")
+    def api_template_assignments_save(
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Save per-entity-type template assignments.
+
+        Body: {"character": "TPL-0001", "location": "TPL-0002", ...}
+
+        Only valid entity types are accepted; others are ignored.
+        """
+        from core.template_assignments import (
+            TemplateAssignmentManager,
+            TemplateAssignmentValidationError,
+        )
+        from core.comfyui_client import WorkflowTemplateManager
+
+        mgr = TemplateAssignmentManager(
+            template_manager=WorkflowTemplateManager(),
+        )
+        try:
+            result = mgr.set_all_assignments(body)
+        except TemplateAssignmentValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return {"assignments": result, "saved": True}
+
+    @application.delete(
+        "/api/settings/comfyui/template-assignments/{entity_type}"
+    )
+    def api_template_assignments_clear(
+        entity_type: str,
+    ) -> dict[str, Any]:
+        """Clear the template assignment for an entity type."""
+        from core.template_assignments import (
+            TemplateAssignmentManager,
+            TemplateAssignmentValidationError,
+        )
+        from core.comfyui_client import WorkflowTemplateManager
+
+        mgr = TemplateAssignmentManager(
+            template_manager=WorkflowTemplateManager(),
+        )
+        try:
+            result = mgr.clear_assignment(entity_type)
+        except TemplateAssignmentValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return {"assignments": result, "cleared": entity_type}
+
+    @application.get(
+        "/api/settings/comfyui/recommended-template/{entity_type}"
+    )
+    def api_recommended_template(entity_type: str) -> dict[str, Any]:
+        """Get the recommended template for an entity type.
+
+        Uses the smart fallback chain:
+        1. Explicit assignment
+        2. First template with matching entity_type field
+        3. First template overall
+
+        Returns: {"entity_type": "...", "template_id": "...", "source": "..."}
+        """
+        from core.template_assignments import TemplateAssignmentManager
+        from core.comfyui_client import WorkflowTemplateManager
+
+        tmgr = WorkflowTemplateManager()
+        mgr = TemplateAssignmentManager(template_manager=tmgr)
+
+        # Determine which fallback was used
+        assigned = mgr.get_all_assignments().get(entity_type, "")
+        recommended = mgr.get_recommended_template(entity_type)
+
+        if assigned and assigned == recommended:
+            source = "assignment"
+        elif recommended:
+            # Check if it came from entity_type match
+            matching = tmgr.list_templates(entity_type=entity_type)
+            if matching and matching[0].id == recommended:
+                source = "entity_type_match"
+            else:
+                source = "fallback"
+        else:
+            source = "none"
+
+        return {
+            "entity_type": entity_type,
+            "template_id": recommended,
+            "source": source,
+        }
+
+    @application.post(
+        "/api/settings/comfyui/template-assignments/test/{template_id}"
+    )
+    def api_template_test(template_id: str) -> dict[str, Any]:
+        """Test a template's validity and placeholder coverage.
+
+        Returns info about which placeholders the template has
+        and whether critical ones (prompt, negative, seed, etc.) are present.
+        """
+        from core.template_assignments import (
+            TemplateAssignmentManager,
+            TemplateAssignmentValidationError,
+        )
+        from core.comfyui_client import WorkflowTemplateManager
+
+        mgr = TemplateAssignmentManager(
+            template_manager=WorkflowTemplateManager(),
+        )
+        try:
+            return mgr.test_template(template_id)
+        except TemplateAssignmentValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
     # ── Chat ─────────────────────────────────────────────────
 
     def _next_chat_id() -> str:
@@ -1677,9 +3704,10 @@ def create_app() -> FastAPI:
     def _make_human_chat(
         conversations_dir: Path | None = None,
     ) -> "HumanChat":
-        """Instantiate HumanChat with a real registry and API client."""
+        """Instantiate HumanChat with a real registry, API client, and memory influence."""
         from core.api_client import APIClient
         from core.human_chat import HumanChat
+        from core.memory_influence import MemoryInfluence
         from core.registry import CouncilRegistry
 
         registry = CouncilRegistry().load()
@@ -1688,6 +3716,27 @@ def create_app() -> FastAPI:
             registry=registry,
             api_client=client,
             conversations_dir=conversations_dir,
+            memory_influence=MemoryInfluence(),
+        )
+
+    def _make_discussion_manager(
+        proposal_manager: "ProposalManager | None" = None,
+    ) -> "DiscussionManager":
+        """Instantiate DiscussionManager with memory influence."""
+        from core.api_client import APIClient
+        from core.discussion import DiscussionManager
+        from core.memory_influence import MemoryInfluence
+        from core.proposals import ProposalManager
+        from core.registry import CouncilRegistry
+
+        registry = CouncilRegistry().load()
+        client = APIClient()
+        pmgr = proposal_manager if proposal_manager is not None else ProposalManager()
+        return DiscussionManager(
+            registry=registry,
+            api_client=client,
+            proposal_manager=pmgr,
+            memory_influence=MemoryInfluence(),
         )
 
     @application.get("/api/chat")
@@ -1696,26 +3745,16 @@ def create_app() -> FastAPI:
         closed: bool | None = Query(None),
     ) -> list[dict[str, Any]]:
         """List human-to-agent chats with optional filters."""
-        from core.human_chat import HumanChat
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient
-
-        registry = CouncilRegistry().load()
-        client = APIClient()
-        hc = HumanChat(registry=registry, api_client=client)
+        hc = _make_human_chat()
         chats = hc.list_chats(member=member, closed=closed)
         return [c.to_dict() for c in chats]
 
     @application.get("/api/chat/{chat_id}")
     def api_chat_detail(chat_id: str) -> dict[str, Any]:
         """Get a single chat record with messages."""
-        from core.human_chat import HumanChat, HumanChatNotFoundError
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient
+        from core.human_chat import HumanChatNotFoundError
 
-        registry = CouncilRegistry().load()
-        client = APIClient()
-        hc = HumanChat(registry=registry, api_client=client)
+        hc = _make_human_chat()
         try:
             rec = hc.get(chat_id)
         except HumanChatNotFoundError:
@@ -1725,9 +3764,7 @@ def create_app() -> FastAPI:
     @application.post("/api/chat")
     def api_chat_create(body: dict[str, Any]) -> dict[str, Any]:
         """Create a new chat. Body: {\"member_name\": \"Sage\", \"title\": \"...\", \"topic\": \"...\", \"character_id\": \"CH-0001\"}."""
-        from core.human_chat import HumanChat, HumanChatValidationError
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient
+        from core.human_chat import HumanChatValidationError
 
         member_name = body.get("member_name", "").strip()
         character_id = body.get("character_id", "").strip()
@@ -1745,9 +3782,7 @@ def create_app() -> FastAPI:
                 detail="Either 'member_name' or 'character_id' is required.",
             )
 
-        registry = CouncilRegistry().load()
-        client = APIClient()
-        hc = HumanChat(registry=registry, api_client=client)
+        hc = _make_human_chat()
 
         chat_id = _next_chat_id()
         try:
@@ -1765,17 +3800,13 @@ def create_app() -> FastAPI:
     @application.post("/api/chat/{chat_id}/send")
     async def api_chat_send(chat_id: str, body: dict[str, Any]) -> dict[str, Any]:
         """Send a human message and get the agent response(s). Body: {\"content\": \"...\"}."""
-        from core.human_chat import HumanChat, HumanChatNotFoundError, HumanChatError
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient
+        from core.human_chat import HumanChatNotFoundError, HumanChatError
 
         content = body.get("content", "").strip()
         if not content:
             raise HTTPException(status_code=400, detail="'content' is required.")
 
-        registry = CouncilRegistry().load()
-        client = APIClient()
-        hc = HumanChat(registry=registry, api_client=client)
+        hc = _make_human_chat()
 
         try:
             # Auto-resume if paused (sending a message implies intent to continue)
@@ -1798,17 +3829,13 @@ def create_app() -> FastAPI:
     @application.post("/api/chat/{chat_id}/add-member")
     def api_chat_add_member(chat_id: str, body: dict[str, Any]) -> dict[str, Any]:
         """Add a council member to the chat. Body: {\"member_name\": \"Sage\"}."""
-        from core.human_chat import HumanChat, HumanChatNotFoundError, HumanChatError, HumanChatValidationError
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient
+        from core.human_chat import HumanChatNotFoundError, HumanChatError, HumanChatValidationError
 
         member_name = body.get("member_name", "").strip()
         if not member_name:
             raise HTTPException(status_code=400, detail="'member_name' is required.")
 
-        registry = CouncilRegistry().load()
-        client = APIClient()
-        hc = HumanChat(registry=registry, api_client=client)
+        hc = _make_human_chat()
 
         try:
             rec = hc.add_council_member(chat_id, member_name)
@@ -1822,17 +3849,13 @@ def create_app() -> FastAPI:
     @application.post("/api/chat/{chat_id}/remove-member")
     def api_chat_remove_member(chat_id: str, body: dict[str, Any]) -> dict[str, Any]:
         """Remove a council member from the chat. Body: {\"member_name\": \"Sage\"}."""
-        from core.human_chat import HumanChat, HumanChatNotFoundError, HumanChatError, HumanChatValidationError
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient
+        from core.human_chat import HumanChatNotFoundError, HumanChatError, HumanChatValidationError
 
         member_name = body.get("member_name", "").strip()
         if not member_name:
             raise HTTPException(status_code=400, detail="'member_name' is required.")
 
-        registry = CouncilRegistry().load()
-        client = APIClient()
-        hc = HumanChat(registry=registry, api_client=client)
+        hc = _make_human_chat()
 
         try:
             rec = hc.remove_council_member(chat_id, member_name)
@@ -1846,17 +3869,13 @@ def create_app() -> FastAPI:
     @application.post("/api/chat/{chat_id}/add-character")
     def api_chat_add_character(chat_id: str, body: dict[str, Any]) -> dict[str, Any]:
         """Add a character to the chat. Body: {\"character_id\": \"CH-0001\"}."""
-        from core.human_chat import HumanChat, HumanChatNotFoundError, HumanChatError, HumanChatValidationError
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient
+        from core.human_chat import HumanChatNotFoundError, HumanChatError, HumanChatValidationError
 
         character_id = body.get("character_id", "").strip()
         if not character_id:
             raise HTTPException(status_code=400, detail="'character_id' is required.")
 
-        registry = CouncilRegistry().load()
-        client = APIClient()
-        hc = HumanChat(registry=registry, api_client=client)
+        hc = _make_human_chat()
 
         try:
             rec = hc.add_character(chat_id, character_id)
@@ -1870,17 +3889,13 @@ def create_app() -> FastAPI:
     @application.post("/api/chat/{chat_id}/remove-character")
     def api_chat_remove_character(chat_id: str, body: dict[str, Any]) -> dict[str, Any]:
         """Remove a character from the chat. Body: {\"character_id\": \"CH-0001\"}."""
-        from core.human_chat import HumanChat, HumanChatNotFoundError, HumanChatError, HumanChatValidationError
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient
+        from core.human_chat import HumanChatNotFoundError, HumanChatError, HumanChatValidationError
 
         character_id = body.get("character_id", "").strip()
         if not character_id:
             raise HTTPException(status_code=400, detail="'character_id' is required.")
 
-        registry = CouncilRegistry().load()
-        client = APIClient()
-        hc = HumanChat(registry=registry, api_client=client)
+        hc = _make_human_chat()
 
         try:
             rec = hc.remove_character(chat_id, character_id)
@@ -1894,13 +3909,9 @@ def create_app() -> FastAPI:
     @application.post("/api/chat/{chat_id}/pause")
     def api_chat_pause(chat_id: str) -> dict[str, Any]:
         """Pause a chat to stop agent responses."""
-        from core.human_chat import HumanChat, HumanChatNotFoundError, HumanChatError
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient
+        from core.human_chat import HumanChatNotFoundError, HumanChatError
 
-        registry = CouncilRegistry().load()
-        client = APIClient()
-        hc = HumanChat(registry=registry, api_client=client)
+        hc = _make_human_chat()
 
         try:
             rec = hc.pause_chat(chat_id)
@@ -1914,13 +3925,9 @@ def create_app() -> FastAPI:
     @application.post("/api/chat/{chat_id}/resume")
     def api_chat_resume(chat_id: str) -> dict[str, Any]:
         """Resume a paused chat."""
-        from core.human_chat import HumanChat, HumanChatNotFoundError, HumanChatError
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient
+        from core.human_chat import HumanChatNotFoundError, HumanChatError
 
-        registry = CouncilRegistry().load()
-        client = APIClient()
-        hc = HumanChat(registry=registry, api_client=client)
+        hc = _make_human_chat()
 
         try:
             rec = hc.resume_chat(chat_id)
@@ -1934,13 +3941,9 @@ def create_app() -> FastAPI:
     @application.post("/api/chat/{chat_id}/continue")
     async def api_chat_continue(chat_id: str) -> dict[str, Any]:
         """Trigger one round of AI-to-AI responses (all members respond in turn)."""
-        from core.human_chat import HumanChat, HumanChatNotFoundError, HumanChatError
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient
+        from core.human_chat import HumanChatNotFoundError, HumanChatError
 
-        registry = CouncilRegistry().load()
-        client = APIClient()
-        hc = HumanChat(registry=registry, api_client=client)
+        hc = _make_human_chat()
 
         try:
             rec, responses = await hc.continue_conversation(chat_id)
@@ -1967,9 +3970,7 @@ def create_app() -> FastAPI:
 
         async def event_generator():
             try:
-                registry = CouncilRegistry().load()
-                client = APIClient()
-                hc = HumanChat(registry=registry, api_client=client)
+                hc = _make_human_chat()
 
                 # Auto-resume if paused
                 rec = hc.get(chat_id)
@@ -2015,15 +4016,11 @@ def create_app() -> FastAPI:
     @application.post("/api/chat/{chat_id}/continue-stream")
     async def api_chat_continue_stream(chat_id: str):
         """Stream one round of AI-to-AI responses via SSE."""
-        from core.human_chat import HumanChat, HumanChatNotFoundError, HumanChatError
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient
+        from core.human_chat import HumanChatNotFoundError, HumanChatError
 
         async def event_generator():
             try:
-                registry = CouncilRegistry().load()
-                client = APIClient()
-                hc = HumanChat(registry=registry, api_client=client)
+                hc = _make_human_chat()
 
                 async for member_name, response, record in hc.continue_conversation_streaming(chat_id):
                     content_text = response.content or ""
@@ -2060,17 +4057,13 @@ def create_app() -> FastAPI:
     @application.post("/api/chat/{chat_id}/close")
     def api_chat_close(chat_id: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
         """Close a chat. Optional body: {\"summary\": \"...\"}."""
-        from core.human_chat import HumanChat, HumanChatNotFoundError, HumanChatError
-        from core.registry import CouncilRegistry
-        from core.api_client import APIClient
+        from core.human_chat import HumanChatNotFoundError, HumanChatError
 
         summary = ""
         if body:
             summary = body.get("summary", "").strip()
 
-        registry = CouncilRegistry().load()
-        client = APIClient()
-        hc = HumanChat(registry=registry, api_client=client)
+        hc = _make_human_chat()
 
         try:
             rec = hc.close_chat(chat_id, summary=summary)
@@ -2121,6 +4114,23 @@ def create_app() -> FastAPI:
             "decisions": decisions,
             "decision_count": len(decisions),
             "history": history,
+        }
+
+    # ── Law Shared Memory ────────────────────────────────────
+
+    @application.get("/api/memories/law-shared")
+    def api_law_shared_memory() -> dict[str, Any]:
+        """Return active laws from the Law Shared Memory."""
+        from core.memory import LawSharedMemory
+
+        lsm = LawSharedMemory()
+        laws = lsm.read_active_laws()
+        context = lsm.get_law_context()
+
+        return {
+            "active_laws": laws,
+            "law_count": len(laws),
+            "context": context,
         }
 
     @application.get("/api/memories/{member}")
@@ -2191,6 +4201,158 @@ def create_app() -> FastAPI:
             "topic": topic,
             "remaining_beliefs": len(beliefs),
         }
+
+    @application.delete("/api/memories/shared/decisions")
+    def api_memory_delete_shared_decision(
+        index: int | None = Query(None),
+    ) -> dict[str, Any]:
+        """Remove a shared council decision by 0-based index."""
+        from core.memory import SharedMemory
+
+        if index is None or index < 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Query parameter 'index' is required and must be >= 0.",
+            )
+
+        shared = SharedMemory()
+        try:
+            removed = shared.remove_decision(index)
+        except IndexError as exc:
+            raise HTTPException(status_code=404, detail=str(exc))
+
+        return {
+            "status": "deleted",
+            "removed": removed,
+            "remaining": len(shared.read_decisions()),
+        }
+
+    # ── Laws ─────────────────────────────────────────────────
+
+    @application.get("/api/laws")
+    def api_laws_list(
+        status: str | None = Query(None),
+        author: str | None = Query(None),
+        tag: str | None = Query(None),
+    ) -> list[dict[str, Any]]:
+        """List laws with optional filters."""
+        from core.laws import LawManager
+        mgr = LawManager()
+        items = mgr.list_laws(status=status, author=author, tag=tag)
+        return [law.to_dict() for law in items]
+
+    @application.get("/api/laws/{law_id}")
+    def api_law_detail(law_id: str) -> dict[str, Any]:
+        """Get a single law."""
+        from core.laws import LawManager, LawNotFoundError
+        mgr = LawManager()
+        try:
+            law = mgr.get(law_id)
+        except LawNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Law '{law_id}' not found.",
+            )
+        return law.to_dict()
+
+    @application.post("/api/laws")
+    def api_law_create(body: dict[str, Any]) -> dict[str, Any]:
+        """Create a new law.
+
+        Body: {"title": "...", "description": "...", "author": "...",
+               "body": "...", "tags": [...]}
+        """
+        from core.laws import LawManager, LawValidationError
+
+        title = body.get("title", "").strip()
+        description = body.get("description", "").strip()
+        author = body.get("author", "").strip()
+        law_body = body.get("body", "").strip()
+        tags = body.get("tags", [])
+
+        if not title or not description or not author:
+            raise HTTPException(
+                status_code=400,
+                detail="Fields 'title', 'description', and 'author' are required.",
+            )
+
+        mgr = LawManager()
+        try:
+            law = mgr.create(
+                title, description, author=author,
+                body=law_body, tags=tags or None,
+            )
+        except LawValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return law.to_dict()
+
+    @application.put("/api/laws/{law_id}")
+    def api_law_update(law_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Update mutable fields on a law.
+
+        Body may contain: title, description, body, tags, metadata.
+        """
+        from core.laws import LawManager, LawNotFoundError, LawValidationError
+
+        mgr = LawManager()
+        try:
+            updated = mgr.update(law_id, **body)
+        except LawNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Law '{law_id}' not found.",
+            )
+        except LawValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return updated.to_dict()
+
+    @application.put("/api/laws/{law_id}/status")
+    def api_law_status(law_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Transition a law to a new status.
+
+        Body: {"status": "active"} or {"status": "archived"}
+        Automatically syncs the Law Shared Memory.
+        """
+        from core.laws import (
+            LawManager, LawNotFoundError,
+            LawLifecycleError, LawValidationError,
+        )
+        from core.memory import LawSharedMemory
+
+        new_status = body.get("status", "").strip()
+        if not new_status:
+            raise HTTPException(
+                status_code=400, detail="'status' is required.",
+            )
+
+        mgr = LawManager()
+        try:
+            updated = mgr.update_status(law_id, new_status)
+        except LawNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Law '{law_id}' not found.",
+            )
+        except (LawLifecycleError, LawValidationError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        # Sync law shared memory whenever status changes
+        _sync_law_shared_memory(mgr)
+
+        return updated.to_dict()
+
+    def _sync_law_shared_memory(mgr=None):
+        """Helper to sync active laws into LawSharedMemory."""
+        from core.laws import LawManager
+        from core.memory import LawSharedMemory
+
+        if mgr is None:
+            mgr = LawManager()
+        active_laws = mgr.list_laws(status="active")
+        lsm = LawSharedMemory()
+        lsm.sync_active_laws([law.to_dict() for law in active_laws])
 
     # ── Evolutions ────────────────────────────────────────────
 
@@ -2486,6 +4648,1158 @@ def create_app() -> FastAPI:
             "evolution": record.to_dict(),
             "new_character": template.to_dict(),
         }
+
+    # ── Council Sessions ──────────────────────────────────────
+
+    @application.get("/api/council-sessions")
+    def api_council_sessions_list(
+        status: str | None = Query(None),
+    ) -> list[dict[str, Any]]:
+        """List council sessions with optional status filter."""
+        from core.council_session import CouncilSessionManager
+        mgr = CouncilSessionManager()
+        sessions = mgr.list_sessions(status=status)
+        return [s.to_dict() for s in sessions]
+
+    @application.get("/api/council-sessions/{session_id}")
+    def api_council_session_detail(session_id: str) -> dict[str, Any]:
+        """Get a single council session."""
+        from core.council_session import (
+            CouncilSessionManager, CouncilSessionNotFoundError,
+        )
+        mgr = CouncilSessionManager()
+        try:
+            session = mgr.get(session_id)
+        except CouncilSessionNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Council session '{session_id}' not found.",
+            )
+        return session.to_dict()
+
+    @application.post("/api/council-sessions")
+    def api_council_session_create(body: dict[str, Any]) -> dict[str, Any]:
+        """Create a new council session.
+
+        Body: {"title": "...", "topic": "...", "agenda": "...",
+               "category": "governance", "round_count": 5}
+        """
+        from core.council_session import (
+            CouncilSessionManager, CouncilSessionValidationError,
+        )
+        from core.registry import CouncilRegistry
+
+        title = body.get("title", "").strip()
+        topic = body.get("topic", "").strip()
+        agenda = body.get("agenda", "").strip()
+        category = body.get("category", "governance").strip()
+        round_count = int(body.get("round_count", 5))
+
+        if not title or not topic:
+            raise HTTPException(
+                status_code=400,
+                detail="Fields 'title' and 'topic' are required.",
+            )
+
+        # Get all council members as default participants
+        registry = CouncilRegistry().load()
+        participants = registry.list_names()
+
+        mgr = CouncilSessionManager()
+        try:
+            session = mgr.create_session(
+                title, topic,
+                agenda=agenda,
+                participants=participants,
+                round_count=round_count,
+                proposed_category=category,
+            )
+        except CouncilSessionValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return session.to_dict()
+
+    @application.post("/api/council-sessions/{session_id}/discuss-stream")
+    async def api_council_session_discuss_stream(session_id: str):
+        """Run one discussion round on a council session via SSE."""
+        from core.council_session import (
+            CouncilSessionManager, CouncilSessionNotFoundError,
+            CouncilSessionStateError, CouncilSessionRecord,
+        )
+        from core.discussion import DiscussionContribution
+        from core.api_client import APIClient, ChatMessage
+        from core.memory_influence import MemoryInfluence
+
+        async def event_generator():
+            try:
+                mgr = CouncilSessionManager()
+                record = mgr.get(session_id)
+
+                if record.status != "open":
+                    err = json_module.dumps({"detail": "Session is closed."})
+                    yield f"event: error\ndata: {err}\n\n"
+                    return
+
+                if record.current_round >= record.round_count:
+                    err = json_module.dumps({"detail": "All discussion rounds complete."})
+                    yield f"event: error\ndata: {err}\n\n"
+                    return
+
+                round_number = record.current_round + 1
+                new_contributions = []
+                mi = MemoryInfluence()
+                keywords = MemoryInfluence.extract_keywords(
+                    f"{record.title} {record.topic}"
+                )
+
+                from core.registry import CouncilRegistry
+                registry = CouncilRegistry().load()
+                client = APIClient()
+
+                # Inject scheduled user message if present
+                meta = dict(record.metadata)
+                scheduled_msg = meta.pop("scheduled_message", None)
+                if scheduled_msg and isinstance(scheduled_msg, str) and scheduled_msg.strip():
+                    user_contribution = DiscussionContribution.create(
+                        speaker="User",
+                        content=scheduled_msg.strip(),
+                        round_number=round_number,
+                        metadata={"type": "scheduled_message"},
+                    )
+                    new_contributions.append(user_contribution)
+
+                    # Stream the user message
+                    user_event = json_module.dumps({
+                        "speaker": "User",
+                        "content": scheduled_msg.strip(),
+                        "round": round_number,
+                        "model": "",
+                        "provider": "user",
+                    })
+                    yield f"event: message\ndata: {user_event}\n\n"
+
+                    import asyncio as _asyncio
+                    await _asyncio.sleep(0.3)
+
+                for name in record.participants:
+                    member = registry.get(name)
+
+                    # Build memory context
+                    memory_text = ""
+                    ctx = mi.build_context(member.name, keywords)
+                    if ctx.formatted_text:
+                        memory_text = ctx.formatted_text
+
+                    # Build session discussion prompt
+                    prompt = _build_session_prompt(
+                        member, record,
+                        list(record.contributions) + new_contributions,
+                        round_number,
+                        memory_context_text=memory_text,
+                    )
+                    messages = [ChatMessage(role="user", content=prompt)]
+                    response = await client.chat(member, messages)
+
+                    contribution = DiscussionContribution.create(
+                        speaker=member.name,
+                        content=response.content,
+                        round_number=round_number,
+                        metadata={
+                            "model": response.model,
+                            "provider": response.provider,
+                        },
+                    )
+                    new_contributions.append(contribution)
+
+                    # Stream this contribution
+                    event_data = json_module.dumps({
+                        "speaker": member.name,
+                        "content": response.content,
+                        "round": round_number,
+                        "model": response.model,
+                        "provider": response.provider,
+                    })
+                    yield f"event: message\ndata: {event_data}\n\n"
+
+                    import asyncio
+                    await asyncio.sleep(0.5)
+
+                # Save the updated record
+                all_contributions = list(record.contributions) + new_contributions
+                updated_record = CouncilSessionRecord(
+                    session_id=record.session_id,
+                    title=record.title,
+                    topic=record.topic,
+                    agenda=record.agenda,
+                    participants=list(record.participants),
+                    contributions=all_contributions,
+                    round_count=record.round_count,
+                    current_round=round_number,
+                    status=record.status,
+                    summary=record.summary,
+                    created_at=record.created_at,
+                    closed_at=record.closed_at,
+                    proposed_category=record.proposed_category,
+                    proposed_title=record.proposed_title,
+                    proposed_description=record.proposed_description,
+                    metadata=meta,
+                )
+                mgr.save(updated_record)
+
+                done_data = json_module.dumps({
+                    "session": updated_record.to_dict(),
+                    "round_completed": round_number,
+                })
+                yield f"event: done\ndata: {done_data}\n\n"
+
+            except CouncilSessionNotFoundError:
+                err = json_module.dumps({"detail": f"Council session '{session_id}' not found."})
+                yield f"event: error\ndata: {err}\n\n"
+            except Exception as exc:
+                err = json_module.dumps({"detail": str(exc)})
+                yield f"event: error\ndata: {err}\n\n"
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    @application.post("/api/council-sessions/{session_id}/close")
+    def api_council_session_close(session_id: str) -> dict[str, Any]:
+        """Close a council session."""
+        from core.council_session import (
+            CouncilSessionManager, CouncilSessionNotFoundError,
+            CouncilSessionStateError,
+        )
+        mgr = CouncilSessionManager()
+        try:
+            record = mgr.close_session(session_id)
+        except CouncilSessionNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Council session '{session_id}' not found.",
+            )
+        except CouncilSessionStateError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return record.to_dict()
+
+    @application.get("/api/council-sessions/{session_id}/scheduled-message")
+    def api_council_session_scheduled_message_get(
+        session_id: str,
+    ) -> dict[str, Any]:
+        """Get the scheduled user message for the next session round."""
+        from core.council_session import (
+            CouncilSessionManager, CouncilSessionNotFoundError,
+        )
+        mgr = CouncilSessionManager()
+        try:
+            record = mgr.get(session_id)
+        except CouncilSessionNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Council session '{session_id}' not found.",
+            )
+        msg = (record.metadata or {}).get("scheduled_message", None)
+        return {"message": msg}
+
+    @application.post("/api/council-sessions/{session_id}/scheduled-message")
+    def api_council_session_scheduled_message_set(
+        session_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Set or clear a user message for the next session round.
+
+        Body: {"message": "Your message here..."}
+        Send an empty string to clear.
+        """
+        from core.council_session import (
+            CouncilSessionManager, CouncilSessionNotFoundError,
+            CouncilSessionRecord,
+        )
+        mgr = CouncilSessionManager()
+        try:
+            record = mgr.get(session_id)
+        except CouncilSessionNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Council session '{session_id}' not found.",
+            )
+
+        if record.status != "open":
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot schedule a message on a closed session.",
+            )
+
+        message = (body.get("message", "") or "").strip()
+        meta = dict(record.metadata)
+        if message:
+            meta["scheduled_message"] = message
+        else:
+            meta.pop("scheduled_message", None)
+
+        updated = CouncilSessionRecord(
+            session_id=record.session_id,
+            title=record.title,
+            topic=record.topic,
+            agenda=record.agenda,
+            participants=list(record.participants),
+            contributions=list(record.contributions),
+            round_count=record.round_count,
+            current_round=record.current_round,
+            status=record.status,
+            summary=record.summary,
+            created_at=record.created_at,
+            closed_at=record.closed_at,
+            proposed_category=record.proposed_category,
+            proposed_title=record.proposed_title,
+            proposed_description=record.proposed_description,
+            metadata=meta,
+        )
+        mgr.save(updated)
+
+        return {
+            "status": "ok",
+            "message": message or None,
+            "scheduled": bool(message),
+        }
+
+    @application.post("/api/council-sessions/{session_id}/handoff-proposal")
+    def api_council_session_handoff(
+        session_id: str, body: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Create a proposal from a closed council session.
+
+        Body (optional overrides):
+            {"title": "...", "description": "...", "category": "...",
+             "author": "Sage"}
+
+        If author is omitted, uses the first participant.
+        """
+        from core.council_session import (
+            CouncilSessionManager, CouncilSessionNotFoundError,
+            CouncilSessionStateError,
+        )
+        from core.proposals import ProposalManager, ProposalValidationError
+
+        mgr = CouncilSessionManager()
+        body = body or {}
+
+        try:
+            session = mgr.get(session_id)
+        except CouncilSessionNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Council session '{session_id}' not found.",
+            )
+
+        if session.status != "closed":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Session must be closed before handoff (status: {session.status}).",
+            )
+
+        # Build proposal data from session
+        try:
+            proposal_data = mgr.build_proposal_data(
+                session_id,
+                title=body.get("title"),
+                description=body.get("description"),
+                category=body.get("category"),
+            )
+        except CouncilSessionStateError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        author = body.get("author", "").strip()
+        if not author:
+            # Use the first participant as default author
+            author = session.participants[0] if session.participants else "Council"
+
+        pmgr = ProposalManager()
+        try:
+            proposal = pmgr.create(
+                proposal_data["title"],
+                proposal_data["description"],
+                author=author,
+                category=proposal_data["category"],
+                body=proposal_data["body"],
+                metadata=proposal_data.get("metadata"),
+            )
+            # Auto-transition to open
+            proposal = pmgr.update_status(proposal.id, "open")
+        except ProposalValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        # Create a discussion for the new proposal
+        discussion_info = None
+        try:
+            from core.registry import CouncilRegistry
+            dmgr = _make_discussion_manager(pmgr)
+            participants = CouncilRegistry().load().list_names()
+            disc = dmgr.create_discussion(
+                proposal.id, proposal.id,
+                f"Discussion: {proposal.title}",
+                participants=participants, round_count=5,
+            )
+            discussion_info = disc.to_dict()
+        except Exception as exc:
+            discussion_info = {"error": str(exc)}
+
+        result = proposal.to_dict()
+        result["discussion"] = discussion_info
+        result["source_session"] = session_id
+        return result
+
+    def _build_session_prompt(
+        member,
+        session,
+        contributions,
+        round_number,
+        memory_context_text="",
+    ):
+        """Build a discussion prompt for a council session."""
+        parts = [
+            f"## Council Session: {session.title}",
+            f"**Topic:** {session.topic}",
+        ]
+        if session.agenda:
+            parts.append(f"**Agenda:** {session.agenda}")
+
+        if contributions:
+            parts.append("\n### Discussion So Far")
+            for c in contributions[-10:]:
+                parts.append(
+                    f"**{c.speaker}** (round {c.round_number}): {c.content}"
+                )
+
+        if memory_context_text:
+            parts.append(f"\n{memory_context_text}")
+
+        parts.append(
+            f"\n---\n"
+            f"You are **{member.name}** ({member.role}). This is round "
+            f"{round_number} of the council session.\n"
+            f"Share your perspective on this topic. Consider how it relates "
+            f"to your area of expertise and the council's mission. "
+            f"Be concise but substantive."
+        )
+        return "\n".join(parts)
+
+    # ── Treasury / Obelisk ────────────────────────────────────
+
+    @application.get("/api/treasury")
+    def api_treasury_list(
+        type: str | None = Query(None, alias="type"),
+    ) -> list[dict[str, Any]]:
+        """List all treasury accounts, optionally filtered by type."""
+        from core.treasury import TreasuryManager
+        tmgr = TreasuryManager()
+        accounts = tmgr.list_accounts(account_type=type)
+        return [a.to_dict() for a in accounts]
+
+    @application.get("/api/treasury/{account_id}")
+    def api_treasury_detail(account_id: str) -> dict[str, Any]:
+        """Get a single treasury account."""
+        from core.treasury import TreasuryManager, AccountNotFoundError
+        tmgr = TreasuryManager()
+        try:
+            acct = tmgr.get(account_id)
+        except AccountNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Treasury account '{account_id}' not found.",
+            )
+        return acct.to_dict()
+
+    @application.post("/api/treasury/initialize")
+    def api_treasury_initialize() -> dict[str, Any]:
+        """Create default accounts for all known entities."""
+        from core.treasury import TreasuryManager
+        from core.registry import CouncilRegistry
+        from core.characters import CharacterManager
+
+        tmgr = TreasuryManager()
+        registry = CouncilRegistry().load()
+        cmgr = CharacterManager()
+        created = tmgr.initialize_defaults(
+            registry=registry, character_manager=cmgr
+        )
+        return {
+            "status": "ok",
+            "created_count": len(created),
+            "accounts": [a.to_dict() for a in created],
+        }
+
+    @application.post("/api/treasury/{account_id}/credit")
+    def api_treasury_credit(
+        account_id: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Add funds to an account.  Body: {gold, silver, bronze}."""
+        from core.treasury import (
+            TreasuryManager, AccountNotFoundError, TreasuryValidationError,
+        )
+        tmgr = TreasuryManager()
+        try:
+            acct = tmgr.credit(
+                account_id,
+                gold=int(body.get("gold", 0)),
+                silver=int(body.get("silver", 0)),
+                bronze=int(body.get("bronze", 0)),
+            )
+        except AccountNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Treasury account '{account_id}' not found.",
+            )
+        except TreasuryValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return acct.to_dict()
+
+    @application.post("/api/treasury/{account_id}/debit")
+    def api_treasury_debit(
+        account_id: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Remove funds from an account.  Body: {gold, silver, bronze}."""
+        from core.treasury import (
+            TreasuryManager, AccountNotFoundError,
+            InsufficientFundsError, TreasuryValidationError,
+        )
+        tmgr = TreasuryManager()
+        try:
+            acct = tmgr.debit(
+                account_id,
+                gold=int(body.get("gold", 0)),
+                silver=int(body.get("silver", 0)),
+                bronze=int(body.get("bronze", 0)),
+            )
+        except AccountNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Treasury account '{account_id}' not found.",
+            )
+        except InsufficientFundsError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        except TreasuryValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return acct.to_dict()
+
+    @application.post("/api/treasury/transfer")
+    def api_treasury_transfer(body: dict[str, Any]) -> dict[str, Any]:
+        """Transfer funds between accounts.
+
+        Body: {from: account_id, to: account_id, gold, silver, bronze}
+
+        Tax is automatically collected on eligible transfers.
+        """
+        from core.treasury import (
+            TreasuryManager, AccountNotFoundError,
+            InsufficientFundsError, TreasuryValidationError,
+        )
+        from core.taxation import TaxationManager
+        from_id = body.get("from", "").strip()
+        to_id = body.get("to", "").strip()
+        if not from_id or not to_id:
+            raise HTTPException(
+                status_code=400,
+                detail="'from' and 'to' account IDs are required.",
+            )
+        tax_mgr = TaxationManager()
+        tmgr = TreasuryManager(taxation_manager=tax_mgr)
+        try:
+            from_acct, to_acct = tmgr.transfer(
+                from_id, to_id,
+                gold=int(body.get("gold", 0)),
+                silver=int(body.get("silver", 0)),
+                bronze=int(body.get("bronze", 0)),
+            )
+        except AccountNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc))
+        except InsufficientFundsError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        except TreasuryValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return {
+            "from": from_acct.to_dict(),
+            "to": to_acct.to_dict(),
+        }
+
+    # ── Taxation ──────────────────────────────────────────────
+
+    @application.get("/api/tax/policy")
+    def api_tax_policy_get() -> dict[str, Any]:
+        """Get the current tax policy."""
+        from core.taxation import TaxationManager
+        mgr = TaxationManager()
+        return mgr.get_policy().to_dict()
+
+    @application.put("/api/tax/policy")
+    def api_tax_policy_update(body: dict[str, Any]) -> dict[str, Any]:
+        """Update the tax policy.
+
+        Body: {rate?: float, enabled?: bool, exempt_account_types?: list}
+        """
+        from core.taxation import TaxationManager, TaxationValidationError
+        mgr = TaxationManager()
+        kwargs: dict[str, Any] = {}
+        if "rate" in body:
+            kwargs["rate"] = float(body["rate"])
+        if "enabled" in body:
+            kwargs["enabled"] = bool(body["enabled"])
+        if "exempt_account_types" in body:
+            kwargs["exempt_account_types"] = list(body["exempt_account_types"])
+        try:
+            policy = mgr.update_policy(**kwargs)
+        except TaxationValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return policy.to_dict()
+
+    @application.get("/api/tax/events")
+    def api_tax_events(
+        limit: int | None = Query(None),
+        from_account: str | None = Query(None),
+        to_account: str | None = Query(None),
+    ) -> list[dict[str, Any]]:
+        """List tax collection events."""
+        from core.taxation import TaxationManager
+        mgr = TaxationManager()
+        events = mgr.list_events(
+            limit=limit, from_account=from_account, to_account=to_account,
+        )
+        return [e.to_dict() for e in events]
+
+    @application.get("/api/tax/summary")
+    def api_tax_summary() -> dict[str, Any]:
+        """Total tax collected across all time."""
+        from core.taxation import TaxationManager
+        mgr = TaxationManager()
+        total = mgr.get_total_collected()
+        policy = mgr.get_policy()
+        return {
+            "total_collected": total,
+            "policy": policy.to_dict(),
+            "event_count": len(mgr.list_events()),
+        }
+
+    # ── Salary Payroll (hidden, runs at startup) ──────────────
+
+    try:
+        from core.salary import SalaryManager
+        SalaryManager().check_and_pay()
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Salary: startup payroll check failed")
+
+    # ── Entity Image Gallery (F-037e) ────────────────────────
+
+    # NOTE: Specific routes (file, set-primary, info) MUST be registered
+    # before the generic {entity_type}/{entity_id} catch-all routes.
+
+    @application.get("/api/images/file/{image_id}")
+    def api_images_serve(image_id: str):
+        """Serve raw image bytes for display in <img> tags."""
+        from core.image_manager import ImageManager, ImageNotFoundError
+
+        mgr = ImageManager()
+        try:
+            path = mgr.get_image_path(image_id)
+        except ImageNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Image '{image_id}' not found.")
+
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="Image file missing from disk.")
+
+        # Determine media type from extension
+        ext = path.suffix.lower()
+        media_types = {
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".webp": "image/webp",
+        }
+        media_type = media_types.get(ext, "image/png")
+        return FileResponse(str(path), media_type=media_type)
+
+    @application.get("/api/images/info/{image_id}")
+    def api_images_info(image_id: str) -> dict[str, Any]:
+        """Get full image metadata including prompt and generation info."""
+        from core.image_manager import ImageManager, ImageNotFoundError
+
+        mgr = ImageManager()
+        try:
+            img = mgr.get(image_id)
+        except ImageNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Image '{image_id}' not found.")
+        d = img.to_dict()
+        d["url"] = f"/api/images/file/{img.id}"
+        return d
+
+    @application.post("/api/images/set-primary/{image_id}")
+    def api_images_set_primary(image_id: str) -> dict[str, Any]:
+        """Set an image as the primary image for its entity."""
+        from core.image_manager import ImageManager, ImageNotFoundError
+
+        mgr = ImageManager()
+        try:
+            img = mgr.set_primary(image_id)
+        except ImageNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Image '{image_id}' not found.")
+        d = img.to_dict()
+        d["url"] = f"/api/images/file/{img.id}"
+        return d
+
+    @application.delete("/api/images/delete/{image_id}")
+    def api_images_delete(image_id: str) -> dict[str, Any]:
+        """Delete an image and its file from disk."""
+        from core.image_manager import ImageManager, ImageNotFoundError
+
+        mgr = ImageManager()
+        try:
+            mgr.delete(image_id)
+        except ImageNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Image '{image_id}' not found.")
+        return {"deleted": True, "image_id": image_id}
+
+    @application.get("/api/images/{entity_type}/{entity_id}")
+    def api_images_list(entity_type: str, entity_id: str) -> list[dict[str, Any]]:
+        """List all images for an entity.
+
+        Returns image metadata records sorted by creation time.
+        Each record includes a ``url`` field for use in <img> tags.
+        """
+        from core.image_manager import ImageManager, VALID_ENTITY_TYPES
+
+        if entity_type not in VALID_ENTITY_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid entity type '{entity_type}'. "
+                       f"Must be one of: {', '.join(sorted(VALID_ENTITY_TYPES))}",
+            )
+
+        mgr = ImageManager()
+        images = mgr.list_images(entity_type, entity_id)
+        result = []
+        for img in images:
+            d = img.to_dict()
+            d["url"] = f"/api/images/file/{img.id}"
+            result.append(d)
+        return result
+
+    @application.post("/api/images/{entity_type}/{entity_id}")
+    def api_images_upload(
+        entity_type: str, entity_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Upload a new image for an entity.
+
+        Body: {
+            "image_data": "data:image/png;base64,...",
+            "original_filename": "portrait.png",   // optional
+            "prompt": "a noble knight",             // optional
+            "negative_prompt": "blurry",            // optional
+            "is_primary": null,                     // optional, null = auto
+            "template_id": "TPL-0001",              // optional
+        }
+        """
+        import base64
+        from core.image_manager import (
+            ImageManager, ImageValidationError, VALID_ENTITY_TYPES,
+        )
+
+        if entity_type not in VALID_ENTITY_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid entity type '{entity_type}'. "
+                       f"Must be one of: {', '.join(sorted(VALID_ENTITY_TYPES))}",
+            )
+
+        image_data_str = body.get("image_data", "")
+        if not image_data_str:
+            raise HTTPException(status_code=400, detail="'image_data' is required.")
+
+        # Parse base64 data URL
+        try:
+            if "," in image_data_str:
+                image_data_str = image_data_str.split(",", 1)[1]
+            raw_bytes = base64.b64decode(image_data_str)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid base64 image data.")
+
+        if not raw_bytes:
+            raise HTTPException(status_code=400, detail="Image data is empty.")
+
+        original_filename = (body.get("original_filename") or "").strip()
+        prompt = body.get("prompt", "")
+        negative_prompt = body.get("negative_prompt", "")
+        is_primary = body.get("is_primary")  # None = auto
+        template_id = (body.get("template_id") or "").strip()
+
+        mgr = ImageManager()
+        try:
+            img = mgr.save_image(
+                raw_bytes,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                original_filename=original_filename,
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                is_primary=is_primary,
+                template_id=template_id,
+            )
+        except ImageValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        d = img.to_dict()
+        d["url"] = f"/api/images/file/{img.id}"
+        return d
+
+
+    # ── Generation Pipeline (F-037f) ─────────────────────────
+
+    # Module-level pipeline singleton — created once, persists across requests
+    _generation_pipeline = None
+
+    def _get_pipeline():
+        """Lazily create the GenerationPipeline singleton."""
+        nonlocal _generation_pipeline
+        if _generation_pipeline is None:
+            from core.generation_pipeline import GenerationPipeline
+            from core.comfyui_client import WorkflowTemplateManager
+            from core.image_manager import ImageManager
+            from core.prompt_builder import PromptBuilder
+            _generation_pipeline = GenerationPipeline(
+                template_manager=WorkflowTemplateManager(),
+                image_manager=ImageManager(),
+                prompt_builder=PromptBuilder(),
+            )
+        return _generation_pipeline
+
+    @application.post("/api/generate/prompts")
+    async def api_generate_prompts(body: dict[str, Any]) -> dict[str, Any]:
+        """Preview prompts for council_vote mode (or any mode).
+
+        This generates prompts WITHOUT queueing to ComfyUI —
+        used by the frontend to show prompt options before generating.
+
+        Body: same as /api/generate/{entity_type}/{entity_id}
+
+        Returns: {"prompts": [{"positive": "...", "negative": "...", "member_name": "..."}, ...]}
+        """
+        from core.prompt_builder import (
+            PromptBuilder, PromptRequest, PromptResult,
+            get_style_preset, PromptValidationError,
+        )
+        from core.registry import CouncilRegistry
+        from core.api_client import APIClient
+
+        prompt_mode = body.get("prompt_mode", "system")
+        member_name = body.get("member_name", "")
+        user_prompt = body.get("user_prompt", "")
+        style_preset_key = body.get("style_preset_key", "")
+        participants = body.get("participants", [])
+        entity_type = body.get("entity_type", "")
+        entity_id = body.get("entity_id", "")
+
+        style_preset = None
+        if style_preset_key:
+            style_preset = get_style_preset(style_preset_key)
+
+        try:
+            prompt_request = PromptRequest.create(
+                prompt_mode,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                member_name=member_name,
+                user_prompt=user_prompt,
+                style_preset=style_preset,
+                participants=participants if participants else None,
+            )
+        except PromptValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        # Build prompt builder with live connections
+        try:
+            from core.character_manager import CharacterManager
+            from core.location_manager import LocationManager
+            from core.items import ItemManager
+            from core.stores import StoreManager
+
+            registry = CouncilRegistry().load()
+            client = APIClient()
+            builder = PromptBuilder(
+                api_client=client,
+                registry=registry,
+                character_manager=CharacterManager(),
+                location_manager=LocationManager(),
+                item_manager=ItemManager(),
+                store_manager=StoreManager(),
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to initialize prompt builder: {exc}",
+            )
+
+        try:
+            result = await builder.generate(prompt_request)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Prompt generation failed: {exc}",
+            )
+
+        if isinstance(result, list):
+            prompts = [
+                {
+                    "positive": r.positive,
+                    "negative": r.negative,
+                    "member_name": r.member_name,
+                    "mode": r.mode,
+                }
+                for r in result
+            ]
+        else:
+            prompts = [{
+                "positive": result.positive,
+                "negative": result.negative,
+                "member_name": result.member_name,
+                "mode": result.mode,
+            }]
+
+        return {"prompts": prompts}
+
+    @application.post("/api/generate/cancel/{job_id}")
+    def api_generate_cancel(job_id: str) -> dict[str, Any]:
+        """Cancel a running generation job."""
+        from core.generation_pipeline import GenerationNotFoundError
+
+        pipeline = _get_pipeline()
+        try:
+            progress = pipeline.cancel_job(job_id)
+        except GenerationNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
+
+        return progress.to_dict()
+
+    @application.get("/api/generate/stream/{job_id}")
+    async def api_generate_stream(job_id: str) -> StreamingResponse:
+        """SSE stream of generation progress for a job.
+
+        Events:
+            - event: progress — {job_id, stage, progress_pct, message, prompt_positive, prompt_negative}
+            - event: done     — {job_id, stage: "completed", image_id, ...}
+            - event: error    — {job_id, stage: "failed", error, ...}
+        """
+        from core.generation_pipeline import GenerationNotFoundError
+
+        pipeline = _get_pipeline()
+
+        async def event_generator():
+            try:
+                async for progress in pipeline.run_job(job_id):
+                    data = json_module.dumps(progress.to_dict())
+                    if progress.stage == "completed":
+                        yield f"event: done\ndata: {data}\n\n"
+                    elif progress.stage in ("failed", "cancelled"):
+                        yield f"event: error\ndata: {data}\n\n"
+                    else:
+                        yield f"event: progress\ndata: {data}\n\n"
+            except GenerationNotFoundError:
+                err = json_module.dumps({"detail": f"Job '{job_id}' not found."})
+                yield f"event: error\ndata: {err}\n\n"
+            except Exception as exc:
+                err = json_module.dumps({"detail": str(exc)})
+                yield f"event: error\ndata: {err}\n\n"
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    @application.get("/api/generate/jobs")
+    def api_generate_jobs(
+        active_only: bool = Query(False),
+    ) -> list[dict[str, Any]]:
+        """List all generation jobs."""
+        pipeline = _get_pipeline()
+        return pipeline.list_jobs(active_only=active_only)
+
+    @application.get("/api/generate/jobs/{job_id}")
+    def api_generate_job_detail(job_id: str) -> dict[str, Any]:
+        """Get details for a single generation job."""
+        from core.generation_pipeline import GenerationNotFoundError
+
+        pipeline = _get_pipeline()
+        try:
+            return pipeline.get_job(job_id)
+        except GenerationNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
+
+    @application.post("/api/generate/batch")
+    async def api_generate_batch(body: dict[str, Any]) -> dict[str, Any]:
+        """Batch generate images for multiple entities of the same type.
+
+        Body: {
+            "entity_type": "character",
+            "entity_ids": ["CH-0001", "CH-0002", ...],
+            "template_id": "TPL-0001",
+            "prompt_mode": "system",
+            "member_name": "",
+            "user_prompt": "",
+            "style_preset_key": "",
+            "participants": [],
+            "selected_prompt_index": 0,
+            "width": 512,
+            "height": 512,
+            "seed": 0
+        }
+
+        Returns: {"job_ids": ["GEN-0001", ...], "count": N}
+        """
+        from core.generation_pipeline import (
+            GenerationRequest, GenerationValidationError,
+            GenerationQueueFullError,
+        )
+        from core.image_manager import VALID_ENTITY_TYPES
+
+        entity_type = (body.get("entity_type") or "").strip()
+        entity_ids = body.get("entity_ids", [])
+        template_id = (body.get("template_id") or "").strip()
+
+        if entity_type not in VALID_ENTITY_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid entity type '{entity_type}'. "
+                       f"Must be one of: {', '.join(sorted(VALID_ENTITY_TYPES))}",
+            )
+
+        if not entity_ids or not isinstance(entity_ids, list):
+            raise HTTPException(
+                status_code=400,
+                detail="'entity_ids' must be a non-empty list.",
+            )
+
+        if len(entity_ids) > 10:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Batch size {len(entity_ids)} exceeds maximum of 10.",
+            )
+
+        if not template_id:
+            raise HTTPException(
+                status_code=400,
+                detail="'template_id' is required.",
+            )
+
+        # Build a GenerationRequest for each entity
+        requests = []
+        for eid in entity_ids:
+            try:
+                req = GenerationRequest.create(
+                    entity_type=entity_type,
+                    entity_id=str(eid).strip(),
+                    template_id=template_id,
+                    prompt_mode=body.get("prompt_mode", "system"),
+                    member_name=body.get("member_name", ""),
+                    user_prompt=body.get("user_prompt", ""),
+                    style_preset_key=body.get("style_preset_key", ""),
+                    participants=body.get("participants", []),
+                    selected_prompt_index=body.get("selected_prompt_index", 0),
+                    width=body.get("width", 512),
+                    height=body.get("height", 512),
+                    seed=body.get("seed", 0),
+                )
+                requests.append(req)
+            except GenerationValidationError as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Validation error for entity '{eid}': {exc}",
+                )
+
+        pipeline = _get_pipeline()
+        try:
+            job_ids = pipeline.start_batch_generation(requests)
+        except GenerationQueueFullError as exc:
+            raise HTTPException(status_code=429, detail=str(exc))
+        except GenerationValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return {"job_ids": job_ids, "count": len(job_ids)}
+
+    # NOTE: This catch-all route MUST come AFTER specific /api/generate/ routes
+    # to avoid route matching conflicts (e.g. "cancel" matching as entity_type).
+    @application.post("/api/generate/{entity_type}/{entity_id}")
+    async def api_generate_start(
+        entity_type: str, entity_id: str, body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Start an image generation job for an entity.
+
+        Body: {
+            "template_id": "TPL-0001",
+            "prompt_mode": "system",       // system|character|raw_user|user_refined|council_vote
+            "member_name": "",             // required for character/user_refined
+            "user_prompt": "",             // required for raw_user/user_refined
+            "style_preset_key": "",        // optional, e.g. "fantasy_art"
+            "participants": [],            // required for council_vote (2+ names)
+            "selected_prompt_index": 0,    // for council_vote: which prompt to use
+            "width": 512,
+            "height": 512,
+            "seed": 0                      // 0 = random
+        }
+
+        Returns: {"job_id": "GEN-0001", "status": "queued"}
+        """
+        from core.generation_pipeline import (
+            GenerationRequest, GenerationValidationError,
+            GenerationQueueFullError,
+        )
+        from core.image_manager import VALID_ENTITY_TYPES
+
+        if entity_type not in VALID_ENTITY_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid entity type '{entity_type}'. "
+                       f"Must be one of: {', '.join(sorted(VALID_ENTITY_TYPES))}",
+            )
+
+        template_id = (body.get("template_id") or "").strip()
+        if not template_id:
+            raise HTTPException(status_code=400, detail="'template_id' is required.")
+
+        try:
+            request = GenerationRequest.create(
+                entity_type=entity_type,
+                entity_id=entity_id,
+                template_id=template_id,
+                prompt_mode=body.get("prompt_mode", "system"),
+                member_name=body.get("member_name", ""),
+                user_prompt=body.get("user_prompt", ""),
+                style_preset_key=body.get("style_preset_key", ""),
+                participants=body.get("participants", []),
+                selected_prompt_index=body.get("selected_prompt_index", 0),
+                width=body.get("width", 512),
+                height=body.get("height", 512),
+                seed=body.get("seed", 0),
+            )
+        except GenerationValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        pipeline = _get_pipeline()
+        try:
+            job_id = pipeline.start_generation(request)
+        except GenerationQueueFullError as exc:
+            raise HTTPException(status_code=429, detail=str(exc))
+        except GenerationValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        return {"job_id": job_id, "status": "queued"}
 
     # ── Static Files ──────────────────────────────────────────
 

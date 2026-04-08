@@ -171,11 +171,75 @@ async function api(path) {
 
 // ─── Navigation ───────────────────────────────────────────────
 
+// Maps each view name to its parent accordion section
+const VIEW_TO_SECTION = {
+    dashboard: 'overview', analytics: 'overview',
+    council: 'governance', proposals: 'governance', votes: 'governance',
+    sessions: 'governance', laws: 'governance',
+    characters: 'characters', memories: 'characters', evolution: 'characters',
+    tasks: 'characters',
+    chat: 'world', locations: 'world', items: 'world', stores: 'world',
+    treasury: 'world', taxation: 'world',
+    settings: 'config',
+};
+
+/** Toggle a sidebar accordion section open/closed. */
+function toggleNavSection(sectionName) {
+    const section = document.querySelector(`.nav-section[data-section="${sectionName}"]`);
+    if (!section) return;
+    section.classList.toggle('open');
+    _saveAccordionState();
+}
+
+/** Ensure the section for the given view is open (without closing others). */
+function _expandSectionForView(view) {
+    const sectionName = VIEW_TO_SECTION[view];
+    if (!sectionName) return;
+    const section = document.querySelector(`.nav-section[data-section="${sectionName}"]`);
+    if (section && !section.classList.contains('open')) {
+        section.classList.add('open');
+        _saveAccordionState();
+    }
+}
+
+/** Save which sections are open to localStorage. */
+function _saveAccordionState() {
+    const openSections = [];
+    document.querySelectorAll('.nav-section.open').forEach(s => {
+        const name = s.dataset.section;
+        if (name) openSections.push(name);
+    });
+    localStorage.setItem('jericho-nav-accordion', JSON.stringify(openSections));
+}
+
+/** Restore accordion state from localStorage, or default to opening the active section. */
+function _restoreAccordionState(activeView) {
+    const saved = localStorage.getItem('jericho-nav-accordion');
+    let openSections;
+    if (saved) {
+        try { openSections = JSON.parse(saved); } catch { openSections = null; }
+    }
+    if (!openSections) {
+        // Default: open only the section containing the active view
+        const activeSec = VIEW_TO_SECTION[activeView] || 'overview';
+        openSections = [activeSec];
+    }
+    document.querySelectorAll('.nav-section[data-section]').forEach(s => {
+        if (openSections.includes(s.dataset.section)) {
+            s.classList.add('open');
+        } else {
+            s.classList.remove('open');
+        }
+    });
+}
+
 function navigateTo(view, detail) {
     state.currentView = view;
     document.querySelectorAll('.nav-item').forEach(el => {
         el.classList.toggle('active', el.dataset.view === view);
     });
+    // Auto-expand the section containing the target view
+    _expandSectionForView(view);
     window.location.hash = detail ? `${view}/${detail}` : view;
     renderView(view, detail);
 }
@@ -194,6 +258,11 @@ function initNavigation() {
         const detail = rest.join('/');
         navigateTo(view, detail || null);
     });
+
+    // Restore accordion state after DOM is ready
+    const hash = window.location.hash.slice(1) || 'dashboard';
+    const activeView = hash.split('/')[0];
+    _restoreAccordionState(activeView);
 }
 
 // ─── Badge Helper ─────────────────────────────────────────────
@@ -303,6 +372,7 @@ async function renderView(view, detail) {
             case 'sessions': detail ? await renderCouncilSessionDetail(detail) : await renderCouncilSessions(); break;
             case 'treasury': detail ? await renderTreasuryDetail(detail) : await renderTreasury(); break;
             case 'taxation': await renderTaxation(); break;
+            case 'generation-queue': await renderGenerationQueue(); break;
             case 'settings': await renderSettings(); break;
             default: await renderDashboard();
         }
@@ -2776,6 +2846,852 @@ async function renderVoteDetail(proposalId) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// Entity Image Gallery (F-037e)
+// ═══════════════════════════════════════════════════════════════
+
+let _galleryImages = [];       // Current gallery image list
+let _galleryEntityType = '';
+let _galleryEntityId = '';
+
+/**
+ * Render an image gallery panel for any entity type.
+ * Returns an HTML string to inject into a detail page.
+ */
+async function renderImageGallery(entityType, entityId) {
+    _galleryEntityType = entityType;
+    _galleryEntityId = entityId;
+
+    try {
+        const images = await api(`/api/images/${entityType}/${encodeURIComponent(entityId)}`);
+        _galleryImages = images;
+    } catch {
+        _galleryImages = [];
+    }
+
+    const thumbs = _galleryImages.map((img, idx) => {
+        const primaryBadge = img.is_primary
+            ? '<div class="gallery-primary-badge">⭐ Primary</div>'
+            : '';
+
+        const promptIndicator = img.prompt
+            ? `<div class="gallery-prompt-indicator" title="View prompt info">ℹ
+                 <div class="gallery-prompt-tooltip">
+                     <strong>Prompt</strong>${escapeHtml(img.prompt)}
+                     ${img.negative_prompt ? `<strong>Negative</strong>${escapeHtml(img.negative_prompt)}` : ''}
+                     ${img.template_id ? `<strong>Template</strong>${escapeHtml(img.template_id)}` : ''}
+                 </div>
+               </div>`
+            : '';
+
+        const actions = `
+            <div class="gallery-actions">
+                ${!img.is_primary ? `<button class="gallery-action-btn gallery-action-primary" onclick="event.stopPropagation(); gallerySetPrimary('${img.id}')" title="Set as primary">⭐</button>` : ''}
+                <button class="gallery-action-btn" onclick="event.stopPropagation(); galleryDownload('${img.id}')" title="Download">⬇</button>
+                <button class="gallery-action-btn gallery-action-delete" onclick="event.stopPropagation(); galleryDelete('${img.id}')" title="Delete">🗑️</button>
+            </div>`;
+
+        return `
+            <div class="gallery-thumb" onclick="openGalleryLightbox(${idx})">
+                ${primaryBadge}
+                ${promptIndicator}
+                <img src="${img.url}" alt="Image ${img.id}" loading="lazy" />
+                ${actions}
+            </div>`;
+    }).join('');
+
+    const uploadZone = `
+        <div class="gallery-upload-zone" id="gallery-upload-zone"
+             onclick="openGalleryUpload('${entityType}', '${escapeAttr(entityId)}')"
+             title="Upload a new image">
+            <div class="gallery-upload-icon">📁</div>
+            <span>Upload</span>
+        </div>`;
+
+    return `
+        <div class="image-gallery detail-section" id="entity-gallery">
+            <div class="gallery-header">
+                <h4>🖼️ Image Gallery (${_galleryImages.length})</h4>
+                <button class="btn btn-sm btn-generate" onclick="openGenerateModal('${entityType}', '${escapeAttr(entityId)}')" title="Generate a new image with AI">
+                    🎨 Generate Image
+                </button>
+            </div>
+            <div class="gallery-grid">
+                ${thumbs}
+                ${uploadZone}
+            </div>
+            <div id="generate-progress-inline"></div>
+        </div>`;
+}
+
+/* ── Lightbox ────────────────────────────────────────────────── */
+
+function openGalleryLightbox(index) {
+    if (!_galleryImages.length) return;
+    if (index < 0) index = _galleryImages.length - 1;
+    if (index >= _galleryImages.length) index = 0;
+
+    const img = _galleryImages[index];
+    const overlay = document.createElement('div');
+    overlay.className = 'gallery-lightbox';
+    overlay.id = 'gallery-lightbox';
+    overlay.innerHTML = `
+        <div class="gallery-lb-content">
+            <button class="gallery-lb-close" onclick="closeGalleryLightbox()" title="Close">✕</button>
+            ${_galleryImages.length > 1
+                ? `<button class="gallery-lb-nav gallery-lb-prev" onclick="navigateGalleryLb(${index - 1})">◀</button>
+                   <button class="gallery-lb-nav gallery-lb-next" onclick="navigateGalleryLb(${index + 1})">▶</button>`
+                : ''}
+            <img src="${img.url}" alt="${img.id}" />
+            <div class="gallery-lb-info">
+                <span>${img.id} · ${index + 1} / ${_galleryImages.length}${img.is_primary ? ' · ⭐ Primary' : ''}</span>
+                <div class="gallery-lb-actions">
+                    ${!img.is_primary ? `<button class="gallery-lb-action-btn" onclick="gallerySetPrimary('${img.id}')">⭐ Set Primary</button>` : ''}
+                    <button class="gallery-lb-action-btn" onclick="galleryDownload('${img.id}')">⬇ Download</button>
+                    <button class="gallery-lb-action-btn" onclick="galleryDelete('${img.id}')">🗑️ Delete</button>
+                </div>
+            </div>
+            ${img.prompt ? `<div style="color:rgba(255,255,255,0.5);font-size:0.75rem;max-width:600px;text-align:center;margin-top:var(--space-xs)">
+                <strong style="color:rgba(255,255,255,0.7)">Prompt:</strong> ${escapeHtml(img.prompt)}
+            </div>` : ''}
+        </div>`;
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeGalleryLightbox();
+    });
+    document.body.appendChild(overlay);
+
+    // Keyboard navigation
+    overlay._keyHandler = (e) => {
+        if (e.key === 'Escape') closeGalleryLightbox();
+        if (e.key === 'ArrowLeft') navigateGalleryLb(index - 1);
+        if (e.key === 'ArrowRight') navigateGalleryLb(index + 1);
+    };
+    document.addEventListener('keydown', overlay._keyHandler);
+}
+
+function closeGalleryLightbox() {
+    const lb = document.getElementById('gallery-lightbox');
+    if (lb) {
+        if (lb._keyHandler) document.removeEventListener('keydown', lb._keyHandler);
+        lb.remove();
+    }
+}
+
+function navigateGalleryLb(index) {
+    closeGalleryLightbox();
+    openGalleryLightbox(index);
+}
+
+/* ── Upload Modal ────────────────────────────────────────────── */
+
+let _galleryUploadData = null;
+
+function openGalleryUpload(entityType, entityId) {
+    _galleryUploadData = null;
+    const modal = document.createElement('div');
+    modal.className = 'gallery-upload-modal';
+    modal.id = 'gallery-upload-modal';
+    modal.innerHTML = `
+        <div class="gallery-upload-modal-content">
+            <h3>📁 Upload Image — ${entityType}/${entityId}</h3>
+            <div class="gallery-upload-drop" id="gallery-upload-drop"
+                 onclick="document.getElementById('gallery-file-input').click()">
+                <input type="file" id="gallery-file-input" accept="image/png,image/jpeg,image/webp"
+                       style="display:none" onchange="handleGalleryFileSelect(event)" />
+                <div class="gallery-upload-icon" style="font-size:2rem;margin-bottom:var(--space-sm)">📁</div>
+                <div style="color:var(--text-secondary);font-size:0.85rem">Click or drag an image here</div>
+                <div style="color:var(--text-muted);font-size:0.72rem;margin-top:var(--space-xs)">PNG, JPEG, or WebP</div>
+                <img id="gallery-upload-preview-img" class="gallery-upload-preview" />
+            </div>
+            <div class="gallery-upload-footer">
+                <button class="btn btn-secondary" onclick="closeGalleryUpload()">Cancel</button>
+                <button class="btn btn-primary" id="gallery-upload-save-btn"
+                        onclick="submitGalleryUpload('${entityType}', '${escapeAttr(entityId)}')" disabled>
+                    📤 Upload
+                </button>
+            </div>
+        </div>`;
+
+    // Drag and drop
+    setTimeout(() => {
+        const drop = document.getElementById('gallery-upload-drop');
+        if (drop) {
+            drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('gallery-drag-over'); };
+            drop.ondragleave = () => drop.classList.remove('gallery-drag-over');
+            drop.ondrop = (e) => {
+                e.preventDefault();
+                drop.classList.remove('gallery-drag-over');
+                const file = e.dataTransfer.files[0];
+                if (file) loadGalleryFile(file);
+            };
+        }
+    }, 50);
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeGalleryUpload();
+    });
+    document.body.appendChild(modal);
+}
+
+function closeGalleryUpload() {
+    const m = document.getElementById('gallery-upload-modal');
+    if (m) m.remove();
+    _galleryUploadData = null;
+}
+
+function handleGalleryFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) loadGalleryFile(file);
+}
+
+function loadGalleryFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        _galleryUploadData = { dataUrl: e.target.result, filename: file.name };
+        const preview = document.getElementById('gallery-upload-preview-img');
+        if (preview) {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+        }
+        const btn = document.getElementById('gallery-upload-save-btn');
+        if (btn) btn.disabled = false;
+    };
+    reader.readAsDataURL(file);
+}
+
+async function submitGalleryUpload(entityType, entityId) {
+    if (!_galleryUploadData) return;
+    const btn = document.getElementById('gallery-upload-save-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Uploading…'; }
+
+    try {
+        const resp = await fetch(`/api/images/${entityType}/${encodeURIComponent(entityId)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                image_data: _galleryUploadData.dataUrl,
+                original_filename: _galleryUploadData.filename || '',
+            }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Upload failed' }));
+            throw new Error(err.detail);
+        }
+        showToast('Image uploaded ✅');
+        closeGalleryUpload();
+        await refreshGallery();
+    } catch (err) {
+        showToast(`Upload error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '📤 Upload'; }
+    }
+}
+
+/* ── Gallery Actions ──────────────────────────────────────────── */
+
+async function gallerySetPrimary(imageId) {
+    try {
+        await fetch(`/api/images/set-primary/${imageId}`, { method: 'POST' });
+        showToast('Primary image updated ⭐');
+        closeGalleryLightbox();
+        await refreshGallery();
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
+
+async function galleryDelete(imageId) {
+    if (!confirm('Delete this image?')) return;
+    try {
+        const resp = await fetch(`/api/images/delete/${imageId}`, { method: 'DELETE' });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Delete failed' }));
+            throw new Error(err.detail);
+        }
+        showToast('Image deleted 🗑️');
+        closeGalleryLightbox();
+        await refreshGallery();
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
+
+function galleryDownload(imageId) {
+    const link = document.createElement('a');
+    link.href = `/api/images/file/${imageId}`;
+    link.download = `${imageId}.png`;
+    link.click();
+}
+
+/**
+ * Re-render just the gallery section without reloading the entire page.
+ */
+async function refreshGallery() {
+    const container = document.getElementById('entity-gallery');
+    if (!container || !_galleryEntityType || !_galleryEntityId) return;
+    const html = await renderImageGallery(_galleryEntityType, _galleryEntityId);
+    container.outerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Generation Pipeline & Progress UI (F-037f)
+// ═══════════════════════════════════════════════════════════════
+
+let _generateEntityType = '';
+let _generateEntityId = '';
+let _generateActiveJobId = null;
+let _generateEventSource = null;
+let _generateMembers = [];
+
+/**
+ * Open the AI image generation modal for any entity.
+ */
+async function openGenerateModal(entityType, entityId) {
+    _generateEntityType = entityType;
+    _generateEntityId = entityId;
+
+    // Fetch available templates, style presets, and recommended template
+    let templates = [];
+    let presets = [];
+    let members = [];
+    let recommendedTemplateId = '';
+    let recommendedSource = '';
+    try {
+        const [tpls, prsts, council, recommended] = await Promise.all([
+            api('/api/settings/comfyui/templates').catch(() => []),
+            api('/api/settings/comfyui/style-presets').catch(() => []),
+            api('/api/council').catch(() => []),
+            api(`/api/settings/comfyui/recommended-template/${encodeURIComponent(entityType)}`).catch(() => ({})),
+        ]);
+        templates = tpls;
+        presets = prsts;
+        members = council.map ? council.map(m => m.name) : [];
+        _generateMembers = members;
+        recommendedTemplateId = recommended.template_id || '';
+        recommendedSource = recommended.source || '';
+    } catch { /* endpoints may not be available */ }
+
+    if (!templates.length) {
+        showToast('No ComfyUI workflow templates found. Add one in Settings → ComfyUI first.', true);
+        return;
+    }
+
+    // Build template options with recommended badge
+    const templateOptions = templates.map(t => {
+        const isRecommended = t.id === recommendedTemplateId;
+        const sel = isRecommended ? 'selected' : '';
+        const badge = isRecommended ? ' 📌 Default' : '';
+        return `<option value="${escapeAttr(t.id)}" ${sel}>${escapeHtml(t.name || t.id)}${badge}</option>`;
+    }).join('');
+
+    const presetOptions = ['<option value="">None (default)</option>'].concat(
+        presets.map(p => `<option value="${escapeAttr(p.key)}">${escapeHtml(p.name || p.key)}</option>`)
+    ).join('');
+
+    const memberOptions = members.map(m =>
+        `<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`
+    ).join('');
+
+    const memberCheckboxes = members.map(m =>
+        `<label class="gen-participant-label">
+            <input type="checkbox" class="gen-participant-cb" value="${escapeAttr(m)}" checked />
+            ${escapeHtml(m)}
+        </label>`
+    ).join('');
+
+    const modal = document.createElement('div');
+    modal.className = 'gen-modal-overlay';
+    modal.id = 'gen-modal-overlay';
+    modal.innerHTML = `
+        <div class="gen-modal">
+            <div class="gen-modal-header">
+                <h3>🎨 Generate Image — ${escapeHtml(entityType)}/${escapeHtml(entityId)}</h3>
+                <button class="detail-close" onclick="closeGenerateModal()">✕</button>
+            </div>
+
+            <div class="gen-modal-body" id="gen-modal-body">
+                <div class="gen-form-grid">
+                    <div class="filter-group">
+                        <label for="gen-template">Workflow Template</label>
+                        <select id="gen-template" class="settings-input">${templateOptions}</select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="gen-style">Style Preset</label>
+                        <select id="gen-style" class="settings-input">${presetOptions}</select>
+                    </div>
+                </div>
+
+                <div class="filter-group" style="margin-top:var(--space-sm)">
+                    <label for="gen-mode">Prompt Mode</label>
+                    <select id="gen-mode" class="settings-input" onchange="updateGenModeFields()">
+                        <option value="system">System — AI generates from entity context</option>
+                        <option value="character">Character — A council member describes</option>
+                        <option value="raw_user">Raw User — Your own prompt text</option>
+                        <option value="user_refined">User Refined — Your prompt, refined by a member</option>
+                        <option value="council_vote">Council Vote — Multiple members propose prompts</option>
+                    </select>
+                </div>
+
+                <!-- Dynamic mode fields -->
+                <div id="gen-mode-fields"></div>
+
+                <div class="gen-form-grid" style="margin-top:var(--space-sm)">
+                    <div class="filter-group">
+                        <label for="gen-width">Width</label>
+                        <input id="gen-width" class="settings-input" type="number" value="512" min="64" max="4096" step="64" />
+                    </div>
+                    <div class="filter-group">
+                        <label for="gen-height">Height</label>
+                        <input id="gen-height" class="settings-input" type="number" value="512" min="64" max="4096" step="64" />
+                    </div>
+                    <div class="filter-group">
+                        <label for="gen-seed">Seed <span style="color:var(--text-muted);font-size:0.72rem">(0 = random)</span></label>
+                        <input id="gen-seed" class="settings-input" type="number" value="0" min="0" />
+                    </div>
+                </div>
+
+                <!-- Council vote prompts preview area -->
+                <div id="gen-prompts-preview" style="display:none"></div>
+
+                <!-- Progress area (shown during generation) -->
+                <div id="gen-progress-area" style="display:none">
+                    <div class="gen-progress-container">
+                        <div class="gen-progress-stage" id="gen-progress-stage">Initializing...</div>
+                        <div class="gen-progress-bar-bg">
+                            <div class="gen-progress-bar-fill" id="gen-progress-bar"></div>
+                        </div>
+                        <div class="gen-progress-pct" id="gen-progress-pct">0%</div>
+                    </div>
+                    <div id="gen-progress-prompts" class="gen-progress-prompts"></div>
+                </div>
+            </div>
+
+            <div class="gen-modal-footer" id="gen-modal-footer">
+                <button class="btn btn-secondary" onclick="closeGenerateModal()">Cancel</button>
+                <button class="btn btn-primary" id="gen-submit-btn" onclick="submitGeneration()">
+                    🎨 Generate
+                </button>
+            </div>
+        </div>`;
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeGenerateModal();
+    });
+    document.body.appendChild(modal);
+    updateGenModeFields();
+}
+
+function closeGenerateModal() {
+    // Cancel any active SSE connection
+    if (_generateEventSource) {
+        _generateEventSource.close();
+        _generateEventSource = null;
+    }
+    const m = document.getElementById('gen-modal-overlay');
+    if (m) m.remove();
+}
+
+/**
+ * Update dynamic fields based on selected prompt mode.
+ */
+function updateGenModeFields() {
+    const mode = document.getElementById('gen-mode')?.value || 'system';
+    const container = document.getElementById('gen-mode-fields');
+    if (!container) return;
+
+    let html = '';
+
+    if (mode === 'character') {
+        html = `
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="gen-member">Council Member</label>
+                <select id="gen-member" class="settings-input">
+                    ${_getGenMemberOptions()}
+                </select>
+            </div>`;
+    } else if (mode === 'raw_user') {
+        html = `
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="gen-user-prompt">Your Prompt</label>
+                <textarea id="gen-user-prompt" class="settings-input proposal-textarea" rows="3"
+                    placeholder="Describe the image you want to generate..."></textarea>
+            </div>`;
+    } else if (mode === 'user_refined') {
+        html = `
+            <div class="gen-form-grid" style="margin-top:var(--space-sm)">
+                <div class="filter-group" style="flex:1">
+                    <label for="gen-member">Refining Member</label>
+                    <select id="gen-member" class="settings-input">
+                        ${_getGenMemberOptions()}
+                    </select>
+                </div>
+            </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="gen-user-prompt">Your Base Prompt</label>
+                <textarea id="gen-user-prompt" class="settings-input proposal-textarea" rows="3"
+                    placeholder="Your prompt text to be refined by the member..."></textarea>
+            </div>`;
+    } else if (mode === 'council_vote') {
+        html = `
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label>Voting Participants <span style="color:var(--text-muted);font-size:0.72rem">(min 2)</span></label>
+                <div class="gen-participants-grid" id="gen-participants">
+                    ${_getGenParticipantCheckboxes()}
+                </div>
+            </div>
+            <div style="margin-top:var(--space-sm)">
+                <button class="btn btn-secondary btn-sm" onclick="previewCouncilPrompts()" id="gen-preview-btn">
+                    👁 Preview Prompts
+                </button>
+            </div>`;
+    }
+    // system mode has no extra fields
+
+    container.innerHTML = html;
+}
+
+function _getGenMemberOptions() {
+    if (!_generateMembers.length) return '<option value="">No members found</option>';
+    return _generateMembers.map(m =>
+        `<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`
+    ).join('');
+}
+
+function _getGenParticipantCheckboxes() {
+    if (!_generateMembers.length) return '<span style="color:var(--text-muted)">No members found</span>';
+    return _generateMembers.map(m =>
+        `<label class="gen-participant-label">
+            <input type="checkbox" class="gen-participant-cb" value="${escapeAttr(m)}" checked />
+            ${escapeHtml(m)}
+        </label>`
+    ).join('');
+}
+
+// On modal open, populate member dropdowns asynchronously
+async function _populateGenMembers() {
+    try {
+        const council = await api('/api/council');
+        const members = council.map(m => m.name);
+
+        // Populate member select dropdowns
+        const memberSelect = document.getElementById('gen-member');
+        if (memberSelect) {
+            memberSelect.innerHTML = members.map(m =>
+                `<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`
+            ).join('');
+        }
+
+        // Populate participant checkboxes
+        const participantsDiv = document.getElementById('gen-participants');
+        if (participantsDiv) {
+            participantsDiv.innerHTML = members.map(m =>
+                `<label class="gen-participant-label">
+                    <input type="checkbox" class="gen-participant-cb" value="${escapeAttr(m)}" checked />
+                    ${escapeHtml(m)}
+                </label>`
+            ).join('');
+        }
+    } catch { /* ignore */ }
+}
+
+/**
+ * Preview prompts for council_vote mode.
+ * Shows all generated prompts and lets the user pick one.
+ */
+async function previewCouncilPrompts() {
+    const previewBtn = document.getElementById('gen-preview-btn');
+    if (previewBtn) { previewBtn.disabled = true; previewBtn.textContent = '⏳ Generating prompts...'; }
+
+    const participants = Array.from(document.querySelectorAll('.gen-participant-cb:checked'))
+        .map(cb => cb.value);
+
+    if (participants.length < 2) {
+        showToast('Select at least 2 participants for council vote.', true);
+        if (previewBtn) { previewBtn.disabled = false; previewBtn.textContent = '👁 Preview Prompts'; }
+        return;
+    }
+
+    try {
+        const body = {
+            entity_type: _generateEntityType,
+            entity_id: _generateEntityId,
+            prompt_mode: 'council_vote',
+            participants: participants,
+            style_preset_key: document.getElementById('gen-style')?.value || '',
+        };
+
+        const result = await fetch('/api/generate/prompts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+
+        if (!result.ok) {
+            const err = await result.json().catch(() => ({ detail: 'Failed' }));
+            throw new Error(err.detail);
+        }
+
+        const data = await result.json();
+        const prompts = data.prompts || [];
+
+        const previewArea = document.getElementById('gen-prompts-preview');
+        if (previewArea && prompts.length) {
+            previewArea.style.display = 'block';
+            previewArea.innerHTML = `
+                <div class="gen-prompts-list">
+                    <h4>Select a Prompt</h4>
+                    ${prompts.map((p, idx) => `
+                        <label class="gen-prompt-option ${idx === 0 ? 'gen-prompt-selected' : ''}" onclick="selectGenPrompt(${idx})">
+                            <input type="radio" name="gen-prompt-choice" value="${idx}" ${idx === 0 ? 'checked' : ''} />
+                            <div class="gen-prompt-content">
+                                <div class="gen-prompt-member">${escapeHtml(p.member_name || p.mode || 'Prompt ' + (idx+1))}</div>
+                                <div class="gen-prompt-text">${escapeHtml(p.positive)}</div>
+                                ${p.negative ? `<div class="gen-prompt-neg">Negative: ${escapeHtml(p.negative)}</div>` : ''}
+                            </div>
+                        </label>
+                    `).join('')}
+                </div>`;
+        }
+    } catch (err) {
+        showToast(`Prompt preview failed: ${err.message}`, true);
+    } finally {
+        if (previewBtn) { previewBtn.disabled = false; previewBtn.textContent = '👁 Preview Prompts'; }
+    }
+}
+
+function selectGenPrompt(index) {
+    document.querySelectorAll('.gen-prompt-option').forEach((el, i) => {
+        el.classList.toggle('gen-prompt-selected', i === index);
+    });
+}
+
+/**
+ * Submit the generation request and connect to SSE progress stream.
+ */
+async function submitGeneration() {
+    const mode = document.getElementById('gen-mode')?.value || 'system';
+    const templateId = document.getElementById('gen-template')?.value;
+    const stylePreset = document.getElementById('gen-style')?.value || '';
+    const width = parseInt(document.getElementById('gen-width')?.value || '512');
+    const height = parseInt(document.getElementById('gen-height')?.value || '512');
+    const seed = parseInt(document.getElementById('gen-seed')?.value || '0');
+    const memberName = document.getElementById('gen-member')?.value || '';
+    const userPrompt = document.getElementById('gen-user-prompt')?.value || '';
+
+    // For council_vote, get selected prompt index
+    let selectedPromptIndex = 0;
+    if (mode === 'council_vote') {
+        const checked = document.querySelector('input[name="gen-prompt-choice"]:checked');
+        if (checked) selectedPromptIndex = parseInt(checked.value);
+    }
+
+    // Get participants for council_vote
+    let participants = [];
+    if (mode === 'council_vote') {
+        participants = Array.from(document.querySelectorAll('.gen-participant-cb:checked'))
+            .map(cb => cb.value);
+        if (participants.length < 2) {
+            showToast('Select at least 2 participants.', true);
+            return;
+        }
+    }
+
+    const body = {
+        template_id: templateId,
+        prompt_mode: mode,
+        member_name: memberName,
+        user_prompt: userPrompt,
+        style_preset_key: stylePreset,
+        participants: participants,
+        selected_prompt_index: selectedPromptIndex,
+        width: width,
+        height: height,
+        seed: seed,
+    };
+
+    const submitBtn = document.getElementById('gen-submit-btn');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '⏳ Starting...'; }
+
+    try {
+        const resp = await fetch(`/api/generate/${_generateEntityType}/${encodeURIComponent(_generateEntityId)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Generation failed' }));
+            throw new Error(err.detail);
+        }
+
+        const data = await resp.json();
+        _generateActiveJobId = data.job_id;
+
+        // Switch to progress view
+        showGenerateProgress();
+
+        // Connect to SSE stream
+        connectGenerateSSE(data.job_id);
+
+    } catch (err) {
+        showToast(`Generation error: ${err.message}`, true);
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '🎨 Generate'; }
+    }
+}
+
+/**
+ * Switch modal to progress view.
+ */
+function showGenerateProgress() {
+    const body = document.getElementById('gen-modal-body');
+    const formElements = body?.querySelectorAll('.gen-form-grid, .filter-group, #gen-mode-fields, #gen-prompts-preview');
+    if (formElements) formElements.forEach(el => el.style.display = 'none');
+
+    const progressArea = document.getElementById('gen-progress-area');
+    if (progressArea) progressArea.style.display = 'block';
+
+    const footer = document.getElementById('gen-modal-footer');
+    if (footer) {
+        footer.innerHTML = `
+            <button class="btn btn-secondary" onclick="cancelGeneration()" id="gen-cancel-btn">Cancel Generation</button>
+        `;
+    }
+}
+
+/**
+ * Connect to the SSE progress stream for a generation job.
+ */
+function connectGenerateSSE(jobId) {
+    if (_generateEventSource) {
+        _generateEventSource.close();
+    }
+
+    const es = new EventSource(`/api/generate/stream/${encodeURIComponent(jobId)}`);
+    _generateEventSource = es;
+
+    es.addEventListener('progress', (e) => {
+        const data = JSON.parse(e.data);
+        updateGenerateProgress(data);
+    });
+
+    es.addEventListener('done', (e) => {
+        const data = JSON.parse(e.data);
+        updateGenerateProgress(data);
+        es.close();
+        _generateEventSource = null;
+        onGenerationComplete(data);
+    });
+
+    es.addEventListener('error', (e) => {
+        try {
+            const data = JSON.parse(e.data);
+            updateGenerateProgress(data);
+        } catch {
+            // SSE connection error
+        }
+        es.close();
+        _generateEventSource = null;
+        onGenerationError();
+    });
+}
+
+/**
+ * Update progress UI from SSE event data.
+ */
+function updateGenerateProgress(data) {
+    const stageEl = document.getElementById('gen-progress-stage');
+    const barEl = document.getElementById('gen-progress-bar');
+    const pctEl = document.getElementById('gen-progress-pct');
+    const promptsEl = document.getElementById('gen-progress-prompts');
+
+    const stageLabels = {
+        'prompt_generating': '🧠 Generating prompt...',
+        'template_filling': '📋 Preparing workflow...',
+        'queued': '📤 Submitting to ComfyUI...',
+        'running': '⚡ ComfyUI is generating...',
+        'downloading': '📥 Downloading image...',
+        'saving': '💾 Saving image...',
+        'completed': '✅ Complete!',
+        'failed': '❌ Failed',
+        'cancelled': '🚫 Cancelled',
+    };
+
+    if (stageEl) stageEl.textContent = stageLabels[data.stage] || data.stage;
+    if (barEl) barEl.style.width = `${data.progress_pct || 0}%`;
+    if (pctEl) pctEl.textContent = `${data.progress_pct || 0}%`;
+
+    // Show prompts once available
+    if (promptsEl && data.prompt_positive && data.stage !== 'prompt_generating') {
+        promptsEl.innerHTML = `
+            <div class="gen-progress-prompt-text">
+                <strong>Prompt:</strong> ${escapeHtml(data.prompt_positive)}
+            </div>
+            ${data.prompt_negative ? `<div class="gen-progress-prompt-neg">
+                <strong>Negative:</strong> ${escapeHtml(data.prompt_negative)}
+            </div>` : ''}`;
+    }
+
+    if (data.error) {
+        if (stageEl) stageEl.textContent = `❌ ${data.error}`;
+    }
+}
+
+/**
+ * Handle successful generation completion.
+ */
+function onGenerationComplete(data) {
+    showToast('Image generated successfully! 🎨');
+
+    const footer = document.getElementById('gen-modal-footer');
+    if (footer) {
+        footer.innerHTML = `
+            <button class="btn btn-primary" onclick="closeGenerateModal(); refreshGallery();">Close & View Gallery</button>
+        `;
+    }
+
+    // Auto-refresh gallery in the background
+    refreshGallery();
+}
+
+/**
+ * Handle generation error.
+ */
+function onGenerationError() {
+    const footer = document.getElementById('gen-modal-footer');
+    if (footer) {
+        footer.innerHTML = `
+            <button class="btn btn-secondary" onclick="closeGenerateModal()">Close</button>
+            <button class="btn btn-primary" onclick="retryGeneration()">🔄 Retry</button>
+        `;
+    }
+}
+
+/**
+ * Cancel an active generation job.
+ */
+async function cancelGeneration() {
+    if (!_generateActiveJobId) return;
+    const btn = document.getElementById('gen-cancel-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Cancelling...'; }
+
+    try {
+        await fetch(`/api/generate/cancel/${encodeURIComponent(_generateActiveJobId)}`, {
+            method: 'POST',
+        });
+        showToast('Generation cancelled.');
+    } catch (err) {
+        showToast(`Cancel error: ${err.message}`, true);
+    }
+}
+
+/**
+ * Retry generation by reopening the modal.
+ */
+function retryGeneration() {
+    closeGenerateModal();
+    openGenerateModal(_generateEntityType, _generateEntityId);
+}
+
+
+// ═══════════════════════════════════════════════════════════════
 // Characters View
 // ═══════════════════════════════════════════════════════════════
 
@@ -2930,9 +3846,10 @@ async function renderCharacters() {
 
     $main().innerHTML = `
         <div class="view-enter">
-            <div class="page-header">
-                <h2>🎭 Characters</h2>
-                <p>${data.length} AI character template${data.length !== 1 ? 's' : ''}</p>
+            <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+                <div><h2>🎭 Characters</h2>
+                <p>${data.length} AI character template${data.length !== 1 ? 's' : ''}</p></div>
+                <button class="btn btn-secondary btn-sm" onclick="openBatchGenerateModal('character')" title="Generate images for multiple characters">🎨 Batch Generate</button>
             </div>
             ${createForm}
             <div class="character-grid">${cards}</div>
@@ -2982,6 +3899,8 @@ async function renderCharacterDetail(id) {
             <button class="btn btn-primary btn-sm" onclick="updateCharacterStatus('${data.id}', 'active')">✅ Reactivate</button>
             <button class="btn btn-secondary btn-sm" onclick="updateCharacterStatus('${data.id}', 'draft')">📝 Revert to Draft</button>`;
     }
+
+    const galleryHtml = await renderImageGallery('character', data.id);
 
     $main().innerHTML = `
         <div class="view-enter">
@@ -3060,6 +3979,8 @@ async function renderCharacterDetail(id) {
                         <h4>💬 Example Messages</h4>
                         ${data.example_messages.map(m => `<p style="color:var(--text-secondary);margin-bottom:var(--space-xs)">💬 ${escapeHtml(m)}</p>`).join('')}
                     </div>` : ''}
+
+                ${galleryHtml}
 
                 <div class="detail-section" style="margin-top:var(--space-xl);border-top:1px solid var(--border-subtle);padding-top:var(--space-lg)">
                     <h4>✏️ Edit Character</h4>
@@ -3673,9 +4594,10 @@ async function renderLocations() {
 
     $main().innerHTML = `
         <div class="view-enter">
-            <div class="page-header">
-                <h2>🗺️ Locations</h2>
-                <p>${data.length} world location${data.length !== 1 ? 's' : ''}</p>
+            <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+                <div><h2>🗺️ Locations</h2>
+                <p>${data.length} world location${data.length !== 1 ? 's' : ''}</p></div>
+                <button class="btn btn-secondary btn-sm" onclick="openBatchGenerateModal('location')" title="Generate images for multiple locations">🎨 Batch Generate</button>
             </div>
             ${createForm}
             <div class="location-grid">${cards}</div>
@@ -3727,6 +4649,9 @@ async function renderLocationDetail(id) {
             <button class="btn btn-secondary btn-sm" onclick="updateLocationStatus('${data.id}', 'archived')">📦 Archive</button>`;
     }
 
+
+    const galleryHtml = await renderImageGallery('location', data.id);
+
     $main().innerHTML = `
         <div class="view-enter">
             <button class="back-btn" onclick="navigateTo('locations')">← Back to Locations</button>
@@ -3762,6 +4687,8 @@ async function renderLocationDetail(id) {
                 ${data.parent_location_id ? `<div class="detail-section"><h4>🔗 Parent Location</h4><a class="location-parent-link" onclick="navigateTo('locations','${data.parent_location_id}')">${data.parent_location_id}</a></div>` : ''}
 
                 ${childrenHtml}
+
+                ${galleryHtml}
 
                 <div class="detail-section" style="margin-top:var(--space-xl);border-top:1px solid var(--border-subtle);padding-top:var(--space-lg)">
                     <h4>✏️ Edit Location</h4>
@@ -4012,9 +4939,10 @@ async function renderItems() {
 
     $main().innerHTML = `
         <div class="view-enter">
-            <div class="page-header">
-                <h2>📦 Items</h2>
-                <p>${data.length} item${data.length !== 1 ? 's' : ''} · ${active.length} active · ${drafts.length} draft · ${archived.length} archived</p>
+            <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+                <div><h2>📦 Items</h2>
+                <p>${data.length} item${data.length !== 1 ? 's' : ''} · ${active.length} active · ${drafts.length} draft · ${archived.length} archived</p></div>
+                <button class="btn btn-secondary btn-sm" onclick="openBatchGenerateModal('item')" title="Generate images for multiple items">🎨 Batch Generate</button>
             </div>
             ${createForm}
             ${active.length ? `<h3 style="margin:var(--space-lg) 0 var(--space-sm)">✨ Active Items</h3>` : ''}
@@ -4048,6 +4976,9 @@ async function renderItemDetail(id) {
             <button class="btn" style="margin-left:auto;padding:2px 8px;font-size:0.75rem" onclick="removeItemProperty('${id}','${p.name.replace(/'/g,"\\'")}')">✕</button>
         </div>`).join('');
 
+
+    const galleryHtml = await renderImageGallery('item', data.id);
+
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
@@ -4060,6 +4991,8 @@ async function renderItemDetail(id) {
                     ${statusActions[data.status] || ''}
                 </div>
             </div>
+
+            ${galleryHtml}
 
             <div class="detail-section">
                 <h3>📝 Edit Item</h3>
@@ -4401,6 +5334,7 @@ async function renderStores() {
             <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
                 <div><h2>🏪 Stores</h2><p>${data.length} store${data.length !== 1 ? 's' : ''}</p></div>
                 <div style="display:flex;gap:var(--space-sm)">
+                    <button class="btn btn-secondary btn-sm" onclick="openBatchGenerateModal('store')" title="Generate images for multiple stores">🎨 Batch Generate</button>
                     <button class="btn btn-secondary" onclick="openLocationStoreModal()" id="btn-add-loc-store">📍 Add Location as Store</button>
                     <button class="btn btn-primary" onclick="document.getElementById('store-create-form').style.display='block'" id="btn-create-store">➕ Create Store</button>
                 </div>
@@ -4704,6 +5638,9 @@ async function renderStoreDetail(storeId) {
     // Edit form fields
     const tagsStr = (data.tags || []).join(', ');
 
+
+    const galleryHtml = await renderImageGallery('store', data.id);
+
     $main().innerHTML = `
         <div class="view-enter">
             <button class="back-btn" onclick="navigateTo('stores')">← Back to Stores</button>
@@ -4767,6 +5704,8 @@ async function renderStoreDetail(storeId) {
                         <button class="btn btn-primary" onclick="purchaseFromStore('${storeId}')" id="btn-purchase">💰 Purchase</button>
                     </div>
                 </div>` : ''}
+
+                ${galleryHtml}
 
                 <div class="detail-section">
                     <h4>✏️ Edit Store</h4>
@@ -7432,6 +8371,37 @@ async function renderCouncilSessionDetail(id) {
         actionsHtml = `<div class="proposal-actions">${buttons.join('')}</div>`;
     }
 
+    // Scheduled message section (only when session is open)
+    let scheduledMsgHtml = '';
+    if (isOpen) {
+        let existingMsg = '';
+        try {
+            const smResp = await api(`/api/council-sessions/${encodeURIComponent(id)}/scheduled-message`);
+            if (smResp && smResp.message) existingMsg = smResp.message;
+        } catch { /* no scheduled message */ }
+
+        scheduledMsgHtml = `
+            <div class="detail-section scheduled-message-section">
+                <h4>📨 Schedule Message for Next Round</h4>
+                <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-sm)">
+                    This message will be injected into the session at the start of the next round, before the council members speak.
+                </p>
+                <textarea id="session-scheduled-msg-input" class="settings-input scheduled-message-textarea"
+                    rows="3" placeholder="Type your message for the council to consider…">${existingMsg ? escapeHtml(existingMsg) : ''}</textarea>
+                <div style="display:flex;gap:var(--space-sm);align-items:center;margin-top:var(--space-sm)">
+                    <button class="btn btn-primary btn-sm" onclick="scheduleSessionMessage('${id}')" id="session-schedule-msg-btn">
+                        📨 Schedule Message
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="clearSessionScheduledMessage('${id}')" id="session-clear-msg-btn">
+                        🗑️ Clear
+                    </button>
+                    <span id="session-scheduled-msg-status" style="font-size:0.78rem;color:var(--text-muted)">
+                        ${existingMsg ? '✅ Message scheduled' : ''}
+                    </span>
+                </div>
+            </div>`;
+    }
+
     // Handoff panel (shown when session is closed)
     let handoffHtml = '';
     if (isClosed) {
@@ -7504,6 +8474,7 @@ async function renderCouncilSessionDetail(id) {
                 </div>
 
                 ${actionsHtml}
+                ${scheduledMsgHtml}
 
                 <div class="detail-section">
                     <h4>Topic</h4>
@@ -7560,11 +8531,14 @@ async function runSessionRound(sessionId) {
                     try {
                         const data = JSON.parse(jsonStr);
                         if (eventType === 'message' && feed) {
+                            const isUser = data.speaker === 'User';
                             const msgDiv = document.createElement('div');
-                            msgDiv.className = 'discussion-message discussion-message-enter';
+                            msgDiv.className = `discussion-message discussion-message-enter${isUser ? ' discussion-message-user' : ''}`;
                             msgDiv.innerHTML = `
                                 <div class="discussion-message-header">
-                                    ${memberAvatarWithImage(data.speaker, 0, null, state.sessionAvatarMap && state.sessionAvatarMap[data.speaker.toLowerCase()])}
+                                    ${isUser
+                                        ? `<div class="member-avatar" style="background:linear-gradient(135deg, hsl(45,80%,55%), hsl(35,90%,50%))">👤</div>`
+                                        : memberAvatarWithImage(data.speaker, 0, null, state.sessionAvatarMap && state.sessionAvatarMap[data.speaker.toLowerCase()])}
                                     <div>
                                         <span class="discussion-speaker">${data.speaker}</span>
                                         <span class="discussion-round">Round ${data.round}</span>
@@ -7573,6 +8547,14 @@ async function runSessionRound(sessionId) {
                                 <div class="discussion-content">${state.silentpassaEnabled ? wrapPresenceContent(renderMarkdown(data.content), data.speaker) : renderMarkdown(data.content)}</div>`;
                             feed.appendChild(msgDiv);
                             feed.scrollTop = feed.scrollHeight;
+
+                            // Clear scheduled message status after it's been consumed
+                            if (isUser) {
+                                const statusEl = document.getElementById('session-scheduled-msg-status');
+                                if (statusEl) statusEl.textContent = '✅ Delivered this round';
+                                const inputEl = document.getElementById('session-scheduled-msg-input');
+                                if (inputEl) inputEl.value = '';
+                            }
                         } else if (eventType === 'error') {
                             showToast(data.detail || 'Session error', true);
                         }
@@ -7587,6 +8569,60 @@ async function runSessionRound(sessionId) {
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
         if (btn) { btn.disabled = false; btn.textContent = '▶️ Continue Discussion'; }
+    }
+}
+
+async function scheduleSessionMessage(sessionId) {
+    const input = document.getElementById('session-scheduled-msg-input');
+    const message = (input && input.value || '').trim();
+    if (!message) { if (input) input.focus(); return; }
+
+    const btn = document.getElementById('session-schedule-msg-btn');
+    const status = document.getElementById('session-scheduled-msg-status');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+
+    try {
+        const resp = await fetch(`/api/council-sessions/${encodeURIComponent(sessionId)}/scheduled-message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Failed to schedule' }));
+            throw new Error(err.detail);
+        }
+        showToast('Message scheduled for next round 📨');
+        if (status) status.textContent = '✅ Message scheduled';
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📨 Schedule Message'; }
+    }
+}
+
+async function clearSessionScheduledMessage(sessionId) {
+    const btn = document.getElementById('session-clear-msg-btn');
+    const status = document.getElementById('session-scheduled-msg-status');
+    const input = document.getElementById('session-scheduled-msg-input');
+    if (btn) { btn.disabled = true; }
+
+    try {
+        const resp = await fetch(`/api/council-sessions/${encodeURIComponent(sessionId)}/scheduled-message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: '' }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Failed to clear' }));
+            throw new Error(err.detail);
+        }
+        if (input) input.value = '';
+        if (status) status.textContent = '';
+        showToast('Scheduled message cleared 🗑️');
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    } finally {
+        if (btn) { btn.disabled = false; }
     }
 }
 
@@ -8040,6 +9076,11 @@ async function renderSettings() {
                     </div>
                 </div>
             </div>
+
+            <div class="settings-section">
+                <div class="settings-section-title">🎨 ComfyUI — Image Generation</div>
+                <div id="comfyui-settings-container"></div>
+            </div>
         </div>`;
 
     // Wire up character counter
@@ -8050,6 +9091,9 @@ async function renderSettings() {
             if (cnt) cnt.textContent = `${descEl.value.length}/700`;
         });
     }
+
+    // Lazy-load ComfyUI settings section
+    loadComfyUISettings();
 }
 
 function selectSkin(name) {
@@ -8137,6 +9181,548 @@ async function saveSettingsUserName() {
         renderSettings();
     } catch (err) {
         alert('Failed to save name: ' + err.message);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ComfyUI Settings Helpers (F-037d)
+// ═══════════════════════════════════════════════════════════════
+
+let _comfyuiPendingWorkflowJson = null;
+let _comfyuiPendingFilename = '';
+let _comfyuiExpandedTemplate = null;
+
+async function loadComfyUISettings() {
+    const container = document.getElementById('comfyui-settings-container');
+    if (!container) return;
+
+    let configData = { host: '127.0.0.1', port: 8188 };
+    let templates = [];
+    let presets = [];
+    let defaultStyle = '';
+    let templateAssignments = { character: '', location: '', item: '', store: '' };
+
+    try {
+        const [cfg, tpls, prsts, ds, assigns] = await Promise.all([
+            api('/api/settings/comfyui').catch(() => ({ host: '127.0.0.1', port: 8188 })),
+            api('/api/settings/comfyui/templates').catch(() => []),
+            api('/api/settings/comfyui/style-presets').catch(() => []),
+            api('/api/settings/comfyui/default-style').catch(() => ({ style_key: '' })),
+            api('/api/settings/comfyui/template-assignments').catch(() => ({ character: '', location: '', item: '', store: '' })),
+        ]);
+        configData = cfg;
+        templates = tpls;
+        presets = prsts;
+        defaultStyle = ds.style_key || '';
+        templateAssignments = assigns;
+    } catch { /* endpoints may not be available */ }
+
+    // ── Connection Config ─────────────
+    const presetOptions = presets.map(p =>
+        `<option value="${escapeAttr(p.name)}" ${p.name === defaultStyle || p.name.toLowerCase().replace(/ /g, '_') === defaultStyle ? 'selected' : ''}>${escapeHtml(p.name)}</option>`
+    ).join('');
+
+    // ── Template List ─────────────────
+    let templateListHtml;
+    if (templates.length === 0) {
+        templateListHtml = `
+            <div class="comfyui-empty">
+                <div class="comfyui-empty-icon">📄</div>
+                <p>No workflow templates uploaded yet.</p>
+            </div>`;
+    } else {
+        templateListHtml = templates.map(t => {
+            const placeholderTags = (t.placeholders || []).map(p =>
+                `<span class="comfyui-placeholder-tag">${escapeHtml(p)}</span>`
+            ).join(' ');
+            const entityBadge = t.entity_type
+                ? `<span class="badge badge-active" style="font-size:0.68rem">${escapeHtml(t.entity_type)}</span>`
+                : '';
+            const isExpanded = _comfyuiExpandedTemplate === t.id;
+            return `
+                <div class="comfyui-template-card" onclick="toggleComfyUITemplateDetail('${t.id}')">
+                    <span class="comfyui-template-id">${t.id}</span>
+                    <div class="comfyui-template-info">
+                        <div class="comfyui-template-name">${escapeHtml(t.name)}</div>
+                        <div class="comfyui-template-meta">
+                            ${entityBadge}
+                            ${placeholderTags || '<span style="color:var(--text-muted)">no placeholders</span>'}
+                            ${t.author ? `<span>by ${escapeHtml(t.author)}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="comfyui-template-actions">
+                        <button class="btn btn-sm" onclick="event.stopPropagation(); deleteComfyUITemplate('${t.id}', '${escapeAttr(t.name)}')" title="Delete template">🗑️</button>
+                    </div>
+                </div>
+                ${isExpanded ? `<div class="comfyui-template-detail" id="comfyui-detail-${t.id}"><em>Loading…</em></div>` : ''}`;
+        }).join('');
+    }
+
+    container.innerHTML = `
+        <div class="settings-provider-card">
+            <div class="settings-provider-header">
+                <span class="settings-provider-icon">🖥️</span>
+                <span class="settings-provider-name">Connection</span>
+            </div>
+            <div class="comfyui-config-row">
+                <div class="settings-field-group">
+                    <label>Host</label>
+                    <input type="text" id="comfyui-host" class="settings-input" value="${escapeAttr(configData.host)}" placeholder="127.0.0.1" />
+                </div>
+                <div class="settings-field-group">
+                    <label>Port</label>
+                    <input type="number" id="comfyui-port" class="settings-input" value="${configData.port}" min="1" max="65535" />
+                </div>
+                <div class="settings-field-group" style="flex:0;min-width:auto">
+                    <label>&nbsp;</label>
+                    <div style="display:flex;gap:var(--space-xs)">
+                        <button class="btn btn-primary btn-sm" onclick="saveComfyUIConfig()" id="comfyui-save-btn">💾 Save</button>
+                        <button class="btn btn-sm" onclick="testComfyUIConnection()" id="comfyui-test-btn">🔌 Test</button>
+                    </div>
+                </div>
+            </div>
+            <div id="comfyui-status"></div>
+        </div>
+
+        <div class="settings-provider-card" style="margin-top:var(--space-lg)">
+            <div class="settings-provider-header">
+                <span class="settings-provider-icon">📄</span>
+                <span class="settings-provider-name">Workflow Templates</span>
+                <span class="badge badge-draft" style="font-size:0.72rem">${templates.length} template${templates.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div class="comfyui-drop-zone" id="comfyui-drop-zone"
+                 onclick="document.getElementById('comfyui-file-input').click()">
+                <input type="file" id="comfyui-file-input" accept=".json,application/json" style="display:none" onchange="handleComfyUIFile(event)" />
+                <div class="comfyui-drop-zone-icon">📁</div>
+                <div class="comfyui-drop-zone-text">Click to select or drag & drop a workflow JSON file</div>
+                <div class="comfyui-drop-zone-hint">ComfyUI API format (.json)</div>
+                <div class="comfyui-drop-zone-filename" id="comfyui-filename"></div>
+            </div>
+            <div class="comfyui-upload-form" id="comfyui-upload-form" style="${_comfyuiPendingWorkflowJson ? '' : 'display:none'}">
+                <div class="settings-field-group">
+                    <label>Template Name *</label>
+                    <input type="text" id="comfyui-tpl-name" class="settings-input" placeholder="e.g. SDXL Character Portrait" />
+                </div>
+                <div class="settings-field-group">
+                    <label>Entity Type</label>
+                    <select id="comfyui-tpl-entity" class="settings-input">
+                        <option value="">General (any)</option>
+                        <option value="character">Character</option>
+                        <option value="location">Location</option>
+                        <option value="item">Item</option>
+                        <option value="store">Store</option>
+                        <option value="council_member">Council Member</option>
+                    </select>
+                </div>
+                <div class="settings-field-group">
+                    <label>Description</label>
+                    <input type="text" id="comfyui-tpl-desc" class="settings-input" placeholder="Optional description…" />
+                </div>
+                <div class="settings-field-group">
+                    <label>Author</label>
+                    <input type="text" id="comfyui-tpl-author" class="settings-input" placeholder="Optional author name" />
+                </div>
+                <div class="settings-field-group" style="grid-column: 1 / -1">
+                    <button class="btn btn-primary" onclick="uploadComfyUITemplate()" id="comfyui-upload-btn">📤 Upload Template</button>
+                </div>
+            </div>
+            <div class="comfyui-template-list">
+                ${templateListHtml}
+            </div>
+        </div>
+
+        <div class="settings-provider-card" style="margin-top:var(--space-lg)">
+            <div class="settings-provider-header">
+                <span class="settings-provider-icon">✨</span>
+                <span class="settings-provider-name">Default Style Preset</span>
+            </div>
+            <div class="settings-field-group">
+                <label>Preset</label>
+                <div class="settings-key-row">
+                    <select id="comfyui-style-preset" class="settings-input" onchange="previewComfyUIPreset()">
+                        <option value="">None (no style applied)</option>
+                        ${presetOptions}
+                    </select>
+                    <button class="btn btn-primary btn-sm" onclick="saveComfyUIDefaultStyle()">💾 Save</button>
+                </div>
+                <span class="settings-field-hint">Applied automatically when generating prompts without an explicit style</span>
+            </div>
+        <div id="comfyui-preset-preview"></div>
+        </div>
+
+        <div class="settings-provider-card" style="margin-top:var(--space-lg)">
+            <div class="settings-provider-header">
+                <span class="settings-provider-icon">📌</span>
+                <span class="settings-provider-name">Default Templates per Entity Type</span>
+                <span class="badge badge-draft" style="font-size:0.72rem">F-039</span>
+            </div>
+            <div class="settings-field-hint" style="margin-bottom:var(--space-sm)">
+                Assign a default workflow template for each entity type. When generating images, the assigned template will be pre-selected automatically.
+            </div>
+            <div class="tpl-assign-grid" id="tpl-assign-grid">
+                ${_renderAssignmentCards(templates, templateAssignments)}
+            </div>
+            <div style="margin-top:var(--space-sm);display:flex;gap:var(--space-sm)">
+                <button class="btn btn-primary btn-sm" onclick="saveTemplateAssignments()" id="tpl-assign-save-btn">💾 Save Assignments</button>
+                <span id="tpl-assign-status" style="font-size:0.78rem;color:var(--text-muted)"></span>
+            </div>
+        </div>
+
+        <div id="comfyui-preset-editor-container"></div>`;
+
+    // Wire up drag-and-drop
+    const dropZone = document.getElementById('comfyui-drop-zone');
+    if (dropZone) {
+        dropZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) processComfyUIFile(file);
+        });
+    }
+
+    // Load expanded template detail if any
+    if (_comfyuiExpandedTemplate) {
+        loadComfyUITemplateDetail(_comfyuiExpandedTemplate);
+    }
+
+    // Show preset preview for current selection
+    previewComfyUIPreset();
+
+    // Lazy-load the preset editor
+    try {
+        const editorHtml = await renderPresetEditor();
+        const editorContainer = document.getElementById('comfyui-preset-editor-container');
+        if (editorContainer) editorContainer.innerHTML = editorHtml;
+    } catch { /* preset editor optional */ }
+}
+
+/**
+ * Render the template assignment cards for each entity type.
+ */
+function _renderAssignmentCards(templates, assignments) {
+    const entityTypes = [
+        { key: 'character', label: 'Character', icon: '🎭' },
+        { key: 'location', label: 'Location', icon: '🏰' },
+        { key: 'item', label: 'Item', icon: '⚔️' },
+        { key: 'store', label: 'Store', icon: '🏪' },
+    ];
+
+    return entityTypes.map(et => {
+        const assigned = assignments[et.key] || '';
+        const tplOptions = ['<option value="">None (auto-select)</option>'].concat(
+            templates.map(t => {
+                const sel = t.id === assigned ? 'selected' : '';
+                const etBadge = t.entity_type ? ` [${t.entity_type}]` : '';
+                return `<option value="${escapeAttr(t.id)}" ${sel}>${escapeHtml(t.name || t.id)}${etBadge}</option>`;
+            })
+        ).join('');
+
+        const assignedTpl = assigned ? templates.find(t => t.id === assigned) : null;
+        const statusHtml = assigned
+            ? `<span class="tpl-assign-status-set">📌 ${escapeHtml(assignedTpl?.name || assigned)}</span>`
+            : '<span class="tpl-assign-status-auto">⚡ Auto</span>';
+
+        return `
+            <div class="tpl-assign-card ${assigned ? 'tpl-assign-active' : ''}">
+                <div class="tpl-assign-header">
+                    <span class="tpl-assign-icon">${et.icon}</span>
+                    <span class="tpl-assign-label">${et.label}</span>
+                    ${statusHtml}
+                </div>
+                <select class="settings-input tpl-assign-select" data-entity-type="${et.key}">
+                    ${tplOptions}
+                </select>
+            </div>`;
+    }).join('');
+}
+
+/**
+ * Save all template assignments from the UI dropdowns.
+ */
+async function saveTemplateAssignments() {
+    const btn = document.getElementById('tpl-assign-save-btn');
+    const status = document.getElementById('tpl-assign-status');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+
+    const selects = document.querySelectorAll('.tpl-assign-select');
+    const assignments = {};
+    selects.forEach(sel => {
+        const et = sel.getAttribute('data-entity-type');
+        if (et) assignments[et] = sel.value;
+    });
+
+    try {
+        await fetch('/api/settings/comfyui/template-assignments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(assignments),
+        }).then(r => { if (!r.ok) throw new Error('Save failed'); return r.json(); });
+        showToast('Template assignments saved 📌');
+        if (status) status.textContent = '✅ Saved';
+        setTimeout(() => { if (status) status.textContent = ''; }, 2000);
+        // Refresh to update status badges
+        loadComfyUISettings();
+    } catch (err) {
+        showToast(`Save error: ${err.message}`, true);
+        if (status) status.textContent = '❌ Error';
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '💾 Save Assignments'; }
+    }
+}
+
+function handleComfyUIFile(event) {
+    const file = event.target.files[0];
+    if (file) processComfyUIFile(file);
+}
+
+function processComfyUIFile(file) {
+    if (!file.name.endsWith('.json')) {
+        showToast('Please select a JSON file', true);
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const json = JSON.parse(e.target.result);
+            if (typeof json !== 'object' || Array.isArray(json)) {
+                showToast('Invalid workflow JSON: must be an object', true);
+                return;
+            }
+            _comfyuiPendingWorkflowJson = json;
+            _comfyuiPendingFilename = file.name;
+            const filenameEl = document.getElementById('comfyui-filename');
+            if (filenameEl) filenameEl.textContent = `✅ ${file.name}`;
+            const form = document.getElementById('comfyui-upload-form');
+            if (form) form.style.display = '';
+            // Auto-fill name from filename
+            const nameInput = document.getElementById('comfyui-tpl-name');
+            if (nameInput && !nameInput.value) {
+                nameInput.value = file.name.replace(/\.json$/i, '').replace(/[_-]/g, ' ');
+            }
+            showToast(`Loaded ${file.name} ✅`);
+        } catch (err) {
+            showToast('Failed to parse JSON: ' + err.message, true);
+        }
+    };
+    reader.readAsText(file);
+}
+
+async function saveComfyUIConfig() {
+    const host = document.getElementById('comfyui-host')?.value?.trim();
+    const port = parseInt(document.getElementById('comfyui-port')?.value, 10);
+    if (!host) return;
+    const btn = document.getElementById('comfyui-save-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+    try {
+        const resp = await fetch('/api/settings/comfyui', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ host, port }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
+            throw new Error(err.detail);
+        }
+        showToast('ComfyUI config saved ✅');
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '💾 Save'; }
+    }
+}
+
+async function testComfyUIConnection() {
+    const btn = document.getElementById('comfyui-test-btn');
+    const statusEl = document.getElementById('comfyui-status');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Testing…'; }
+    if (statusEl) statusEl.innerHTML = '';
+
+    try {
+        const resp = await fetch('/api/settings/comfyui/test', { method: 'POST' });
+        const data = await resp.json();
+        if (data.connected) {
+            const stats = data.system_stats || {};
+            const gpuInfo = stats.system?.gpus?.[0] || {};
+            statusEl.innerHTML = `
+                <div class="comfyui-status-result comfyui-status-success">
+                    ✅ <strong>Connected</strong> to ComfyUI at ${escapeHtml(data.host)}:${data.port}
+                    ${gpuInfo.name ? `<br>GPU: ${escapeHtml(gpuInfo.name)} (${Math.round((gpuInfo.vram_total || 0) / 1073741824)}GB VRAM)` : ''}
+                </div>`;
+            showToast('ComfyUI connection successful ✅');
+        } else {
+            statusEl.innerHTML = `
+                <div class="comfyui-status-result comfyui-status-error">
+                    ❌ <strong>Cannot connect</strong> to ${escapeHtml(data.host)}:${data.port}
+                    <br><span style="font-size:0.78rem">${escapeHtml(data.error || 'Unknown error')}</span>
+                </div>`;
+            showToast('ComfyUI connection failed', true);
+        }
+    } catch (err) {
+        if (statusEl) statusEl.innerHTML = `
+            <div class="comfyui-status-result comfyui-status-error">
+                ❌ <strong>Request failed</strong>: ${escapeHtml(err.message)}
+            </div>`;
+        showToast(`Error: ${err.message}`, true);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔌 Test'; }
+    }
+}
+
+async function uploadComfyUITemplate() {
+    if (!_comfyuiPendingWorkflowJson) {
+        showToast('Please load a workflow JSON file first', true);
+        return;
+    }
+    const name = document.getElementById('comfyui-tpl-name')?.value?.trim();
+    if (!name) {
+        document.getElementById('comfyui-tpl-name')?.focus();
+        showToast('Template name is required', true);
+        return;
+    }
+    const btn = document.getElementById('comfyui-upload-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Uploading…'; }
+
+    try {
+        const resp = await fetch('/api/settings/comfyui/templates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                workflow_json: _comfyuiPendingWorkflowJson,
+                description: document.getElementById('comfyui-tpl-desc')?.value?.trim() || '',
+                entity_type: document.getElementById('comfyui-tpl-entity')?.value || '',
+                author: document.getElementById('comfyui-tpl-author')?.value?.trim() || '',
+            }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Upload failed' }));
+            throw new Error(err.detail);
+        }
+        const data = await resp.json();
+        _comfyuiPendingWorkflowJson = null;
+        _comfyuiPendingFilename = '';
+        showToast(`Template ${data.id} created ✅`);
+        loadComfyUISettings();
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📤 Upload Template'; }
+    }
+}
+
+async function deleteComfyUITemplate(templateId, templateName) {
+    if (!confirm(`Delete template "${templateName}"?`)) return;
+    try {
+        const resp = await fetch(`/api/settings/comfyui/templates/${encodeURIComponent(templateId)}`, {
+            method: 'DELETE',
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Delete failed' }));
+            throw new Error(err.detail);
+        }
+        showToast(`Template ${templateId} deleted ✅`);
+        if (_comfyuiExpandedTemplate === templateId) _comfyuiExpandedTemplate = null;
+        loadComfyUISettings();
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
+
+async function toggleComfyUITemplateDetail(templateId) {
+    if (_comfyuiExpandedTemplate === templateId) {
+        _comfyuiExpandedTemplate = null;
+        loadComfyUISettings();
+        return;
+    }
+    _comfyuiExpandedTemplate = templateId;
+    loadComfyUISettings();
+}
+
+async function loadComfyUITemplateDetail(templateId) {
+    const container = document.getElementById(`comfyui-detail-${templateId}`);
+    if (!container) return;
+    try {
+        const data = await api(`/api/settings/comfyui/templates/${encodeURIComponent(templateId)}`);
+        const placeholderTags = (data.placeholders || []).map(p =>
+            `<span class="comfyui-placeholder-tag">${escapeHtml(p)}</span>`
+        ).join(' ');
+        const jsonStr = JSON.stringify(data.workflow_json, null, 2);
+        const truncJson = jsonStr.length > 5000 ? jsonStr.slice(0, 5000) + '\n… (truncated)' : jsonStr;
+
+        container.innerHTML = `
+            <div style="margin-bottom:var(--space-sm)">
+                ${data.description ? `<p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:var(--space-sm)">${escapeHtml(data.description)}</p>` : ''}
+                <div style="font-size:0.78rem;color:var(--text-muted)">Created: ${formatDate(data.created_at)}</div>
+            </div>
+            <div style="margin-bottom:var(--space-sm)">
+                <strong style="font-size:0.78rem;color:var(--text-secondary)">Placeholders (${data.placeholders.length}):</strong><br>
+                ${placeholderTags || '<span style="color:var(--text-muted);font-size:0.78rem">None detected</span>'}
+            </div>
+            <div>
+                <strong style="font-size:0.78rem;color:var(--text-secondary)">Workflow JSON:</strong>
+                <div class="comfyui-json-preview"><pre>${escapeHtml(truncJson)}</pre></div>
+            </div>`;
+    } catch (err) {
+        container.innerHTML = `<p style="color:var(--accent-rose)">Failed to load: ${escapeHtml(err.message)}</p>`;
+    }
+}
+
+function previewComfyUIPreset() {
+    const select = document.getElementById('comfyui-style-preset');
+    const container = document.getElementById('comfyui-preset-preview');
+    if (!select || !container) return;
+    const key = select.value;
+    if (!key) {
+        container.innerHTML = '';
+        return;
+    }
+    // Find preset in the select's options
+    const name = select.options[select.selectedIndex]?.text || key;
+    // Fetch presets to get details (they should be cached, small list)
+    api('/api/settings/comfyui/style-presets').then(presets => {
+        const preset = presets.find(p => p.name === key || p.name === name);
+        if (!preset) { container.innerHTML = ''; return; }
+        container.innerHTML = `
+            <div class="comfyui-preset-preview">
+                <div style="margin-bottom:var(--space-sm);font-size:0.85rem;font-weight:600">${escapeHtml(preset.name)}</div>
+                ${preset.description ? `<p style="color:var(--text-secondary);font-size:0.8rem;margin-bottom:var(--space-sm)">${escapeHtml(preset.description)}</p>` : ''}
+                <div class="comfyui-preset-label">Positive suffix</div>
+                <div class="comfyui-preset-value">${escapeHtml(preset.positive_suffix || '(none)')}</div>
+                <div class="comfyui-preset-label" style="margin-top:var(--space-sm)">Negative prefix</div>
+                <div class="comfyui-preset-value">${escapeHtml(preset.negative_prefix || '(none)')}</div>
+            </div>`;
+    }).catch(() => { container.innerHTML = ''; });
+}
+
+async function saveComfyUIDefaultStyle() {
+    const select = document.getElementById('comfyui-style-preset');
+    const key = select?.value || '';
+    try {
+        // Use the name as the key since presets are looked up by name
+        const resp = await fetch('/api/settings/comfyui/default-style', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ style_key: key }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
+            throw new Error(err.detail);
+        }
+        showToast('Default style preset saved ✅');
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
     }
 }
 
@@ -8486,6 +10072,578 @@ async function setTaskStatus(taskId, newStatus) {
     }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Generation Queue Dashboard (F-037g)
+// ═══════════════════════════════════════════════════════════════
+
+let _queuePollTimer = null;
+
+async function renderGenerationQueue() {
+    showLoading();
+
+    let jobs = [];
+    try {
+        jobs = await api('/api/generate/jobs');
+    } catch { /* pipeline not initialized yet */ }
+
+    // Sort: active first, then by newest
+    const stageOrder = { 'queued': 0, 'prompt_generating': 1, 'template_filling': 2, 'running': 3, 'downloading': 4, 'saving': 5, 'completed': 6, 'failed': 7, 'cancelled': 8 };
+    jobs.sort((a, b) => {
+        const aActive = !['completed', 'failed', 'cancelled'].includes(a.stage);
+        const bActive = !['completed', 'failed', 'cancelled'].includes(b.stage);
+        if (aActive !== bActive) return bActive ? 1 : -1;
+        return (stageOrder[a.stage] || 99) - (stageOrder[b.stage] || 99);
+    });
+
+    const stageLabels = {
+        'queued': '📤 Queued',
+        'prompt_generating': '🧠 Generating Prompt',
+        'template_filling': '📋 Preparing Workflow',
+        'running': '⚡ Generating',
+        'downloading': '📥 Downloading',
+        'saving': '💾 Saving',
+        'completed': '✅ Completed',
+        'failed': '❌ Failed',
+        'cancelled': '🚫 Cancelled',
+    };
+
+    const jobCards = jobs.length ? jobs.map(job => {
+        const isActive = !['completed', 'failed', 'cancelled'].includes(job.stage);
+        const stageClass = isActive ? 'queue-card-active' : job.stage === 'completed' ? 'queue-card-done' : 'queue-card-error';
+        const pct = job.progress_pct || 0;
+
+        return `
+            <div class="queue-card ${stageClass}" id="queue-card-${escapeAttr(job.job_id)}">
+                <div class="queue-card-header">
+                    <div class="queue-card-id">${escapeHtml(job.job_id)}</div>
+                    <div class="queue-card-stage">${stageLabels[job.stage] || job.stage}</div>
+                </div>
+                <div class="queue-card-entity">
+                    ${escapeHtml(job.entity_type || '')} / ${escapeHtml(job.entity_id || '')}
+                </div>
+                ${job.prompt_mode ? `<div class="queue-card-mode">Mode: ${escapeHtml(job.prompt_mode)}</div>` : ''}
+                ${isActive ? `
+                    <div class="queue-card-progress">
+                        <div class="gen-progress-bar-bg">
+                            <div class="gen-progress-bar-fill" style="width:${pct}%"></div>
+                        </div>
+                        <span class="queue-card-pct">${pct}%</span>
+                    </div>
+                ` : ''}
+                ${job.prompt_positive ? `<div class="queue-card-prompt" title="${escapeAttr(job.prompt_positive)}">${escapeHtml(job.prompt_positive.substring(0, 120))}${job.prompt_positive.length > 120 ? '…' : ''}</div>` : ''}
+                ${job.image_id && job.stage === 'completed' ? `<img class="queue-card-thumb" src="/api/images/file/${escapeAttr(job.image_id)}" loading="lazy" />` : ''}
+                ${job.error ? `<div class="queue-card-error-msg">${escapeHtml(job.error)}</div>` : ''}
+                <div class="queue-card-actions">
+                    ${isActive ? `<button class="btn btn-secondary btn-sm" onclick="cancelQueueJob('${escapeAttr(job.job_id)}')">Cancel</button>` : ''}
+                    ${job.stage === 'failed' ? `<button class="btn btn-primary btn-sm" onclick="retryQueueJob('${escapeAttr(job.job_id)}', '${escapeAttr(job.entity_type)}', '${escapeAttr(job.entity_id)}')">🔄 Retry</button>` : ''}
+                    ${job.stage === 'completed' && job.entity_type && job.entity_id ? `<button class="btn btn-secondary btn-sm" onclick="navigateTo('${escapeAttr(job.entity_type === 'council_member' ? 'council' : job.entity_type + 's')}', '${escapeAttr(job.entity_id)}')">View Entity</button>` : ''}
+                </div>
+            </div>`;
+    }).join('') : '<p style="color:var(--text-muted);text-align:center;padding:var(--space-xl)">No generation jobs yet. Generate an image from any entity\'s detail page.</p>';
+
+    $main().innerHTML = `
+        <div class="view-enter">
+            <div class="page-header">
+                <h2>🎨 Generation Queue</h2>
+                <p>Monitor and manage image generation jobs</p>
+            </div>
+            <div class="queue-grid" id="queue-grid">
+                ${jobCards}
+            </div>
+        </div>`;
+
+    // Start polling if there are active jobs
+    startQueuePolling();
+}
+
+function startQueuePolling() {
+    stopQueuePolling();
+    _queuePollTimer = setInterval(async () => {
+        // Only poll if we're on the queue view
+        if (state.currentView !== 'generation-queue') {
+            stopQueuePolling();
+            return;
+        }
+        try {
+            const jobs = await api('/api/generate/jobs');
+            const hasActive = jobs.some(j => !['completed', 'failed', 'cancelled'].includes(j.stage));
+            if (!hasActive) {
+                stopQueuePolling();
+            }
+            // Re-render the queue with fresh data
+            await renderGenerationQueue();
+        } catch { /* ignore */ }
+    }, 3000);
+}
+
+function stopQueuePolling() {
+    if (_queuePollTimer) {
+        clearInterval(_queuePollTimer);
+        _queuePollTimer = null;
+    }
+}
+
+async function cancelQueueJob(jobId) {
+    try {
+        await fetch(`/api/generate/cancel/${encodeURIComponent(jobId)}`, { method: 'POST' });
+        showToast('Job cancelled.');
+        await renderGenerationQueue();
+    } catch (err) {
+        showToast(`Cancel error: ${err.message}`, true);
+    }
+}
+
+function retryQueueJob(jobId, entityType, entityId) {
+    if (entityType && entityId) {
+        openGenerateModal(entityType, entityId);
+    }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// Custom Style Preset Editor (F-037g)
+// ═══════════════════════════════════════════════════════════════
+
+async function renderPresetEditor() {
+    let builtins = [];
+    let customs = [];
+    try {
+        const all = await api('/api/settings/comfyui/style-presets');
+        builtins = all.filter(p => p.is_builtin);
+        customs = all.filter(p => !p.is_builtin);
+    } catch { /* no presets */ }
+
+    const builtinCards = builtins.map(p => `
+        <div class="preset-card preset-card-builtin">
+            <div class="preset-card-header">
+                <strong>${escapeHtml(p.name)}</strong>
+                <span class="preset-badge preset-badge-builtin">Built-in</span>
+            </div>
+            <div class="preset-card-desc">${escapeHtml(p.description || 'No description')}</div>
+            <div class="preset-card-detail"><strong>Positive:</strong> ${escapeHtml(p.positive_suffix || '—')}</div>
+            <div class="preset-card-detail"><strong>Negative:</strong> ${escapeHtml(p.negative_prefix || '—')}</div>
+            <div class="preset-card-key">Key: <code>${escapeHtml(p.key)}</code></div>
+        </div>
+    `).join('');
+
+    const customCards = customs.length ? customs.map(p => `
+        <div class="preset-card preset-card-custom">
+            <div class="preset-card-header">
+                <strong>${escapeHtml(p.name)}</strong>
+                <span class="preset-badge preset-badge-custom">Custom</span>
+            </div>
+            <div class="preset-card-desc">${escapeHtml(p.description || 'No description')}</div>
+            <div class="preset-card-detail"><strong>Positive:</strong> ${escapeHtml(p.positive_suffix || '—')}</div>
+            <div class="preset-card-detail"><strong>Negative:</strong> ${escapeHtml(p.negative_prefix || '—')}</div>
+            <div class="preset-card-key">Key: <code>${escapeHtml(p.key)}</code> | ID: <code>${escapeHtml(p.id)}</code></div>
+            <div class="preset-card-actions">
+                <button class="btn btn-secondary btn-sm" onclick="editCustomPreset('${escapeAttr(p.id)}')">✏️ Edit</button>
+                <button class="btn btn-secondary btn-sm" onclick="deleteCustomPreset('${escapeAttr(p.id)}', '${escapeAttr(p.name)}')">🗑️ Delete</button>
+            </div>
+        </div>
+    `).join('') : '<p style="color:var(--text-muted)">No custom presets yet.</p>';
+
+    return `
+        <div class="card" style="margin-top:var(--space-lg)">
+            <h3>🎨 Style Preset Editor</h3>
+            <p style="color:var(--text-muted);margin-bottom:var(--space-md)">
+                Create custom style presets that modify how AI generates image prompts.
+            </p>
+
+            <div class="preset-editor-actions" style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-md);flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" onclick="openCreatePresetModal()">➕ Create Preset</button>
+                <button class="btn btn-secondary btn-sm" onclick="exportPresets()">📤 Export All</button>
+                <button class="btn btn-secondary btn-sm" onclick="importPresetsDialog()">📥 Import</button>
+            </div>
+
+            <h4 style="margin-bottom:var(--space-sm)">Custom Presets</h4>
+            <div class="preset-grid" id="custom-presets-grid">
+                ${customCards}
+            </div>
+
+            <h4 style="margin-top:var(--space-lg);margin-bottom:var(--space-sm)">Built-in Presets <span style="color:var(--text-muted);font-size:0.78rem">(read-only)</span></h4>
+            <div class="preset-grid" id="builtin-presets-grid">
+                ${builtinCards}
+            </div>
+        </div>`;
+}
+
+function openCreatePresetModal() {
+    const modal = document.createElement('div');
+    modal.className = 'gen-modal-overlay';
+    modal.id = 'preset-modal-overlay';
+    modal.innerHTML = `
+        <div class="gen-modal" style="max-width:560px">
+            <div class="gen-modal-header">
+                <h3>➕ Create Custom Preset</h3>
+                <button class="detail-close" onclick="closePresetModal()">✕</button>
+            </div>
+            <div class="gen-modal-body">
+                <div class="gen-form-grid">
+                    <div class="filter-group">
+                        <label for="preset-key">Key <span style="color:var(--text-muted);font-size:0.72rem">(unique, lowercase)</span></label>
+                        <input id="preset-key" class="settings-input" placeholder="e.g. cyberpunk" oninput="updatePresetPreview()" />
+                    </div>
+                    <div class="filter-group">
+                        <label for="preset-name">Display Name</label>
+                        <input id="preset-name" class="settings-input" placeholder="e.g. Cyberpunk" oninput="updatePresetPreview()" />
+                    </div>
+                </div>
+                <div class="filter-group" style="margin-top:var(--space-sm)">
+                    <label for="preset-desc">Description</label>
+                    <input id="preset-desc" class="settings-input" placeholder="Brief description of the style" />
+                </div>
+                <div class="filter-group" style="margin-top:var(--space-sm)">
+                    <label for="preset-positive">Positive Suffix <span style="color:var(--text-muted);font-size:0.72rem">(appended to positive prompts)</span></label>
+                    <textarea id="preset-positive" class="settings-input proposal-textarea" rows="2" placeholder="e.g. cyberpunk, neon lights, rain, futuristic" oninput="updatePresetPreview()"></textarea>
+                </div>
+                <div class="filter-group" style="margin-top:var(--space-sm)">
+                    <label for="preset-negative">Negative Prefix <span style="color:var(--text-muted);font-size:0.72rem">(prepended to negative prompts)</span></label>
+                    <textarea id="preset-negative" class="settings-input proposal-textarea" rows="2" placeholder="e.g. nature, medieval, fantasy, bright daylight" oninput="updatePresetPreview()"></textarea>
+                </div>
+
+                <div class="preset-preview" id="preset-preview" style="margin-top:var(--space-md)">
+                    <h4>Live Preview</h4>
+                    <div class="preset-preview-box">
+                        <div id="preset-preview-positive"><strong>Positive:</strong> <em style="color:var(--text-muted)">Enter suffix above…</em></div>
+                        <div id="preset-preview-negative"><strong>Negative:</strong> <em style="color:var(--text-muted)">Enter prefix above…</em></div>
+                    </div>
+                </div>
+            </div>
+            <div class="gen-modal-footer">
+                <button class="btn btn-secondary" onclick="closePresetModal()">Cancel</button>
+                <button class="btn btn-primary" id="preset-save-btn" onclick="saveCustomPreset()">💾 Save Preset</button>
+            </div>
+        </div>`;
+    modal.addEventListener('click', (e) => { if (e.target === modal) closePresetModal(); });
+    document.body.appendChild(modal);
+}
+
+function closePresetModal() {
+    const m = document.getElementById('preset-modal-overlay');
+    if (m) m.remove();
+}
+
+function updatePresetPreview() {
+    const positive = document.getElementById('preset-positive')?.value || '';
+    const negative = document.getElementById('preset-negative')?.value || '';
+
+    const samplePrompt = 'a noble knight standing in a castle courtyard';
+    const previewPos = positive ? `${samplePrompt}, <strong style="color:var(--accent)">${escapeHtml(positive)}</strong>` : `${samplePrompt}`;
+    const previewNeg = negative ? `<strong style="color:var(--accent)">${escapeHtml(negative)}</strong>, blurry, low quality` : 'blurry, low quality';
+
+    const posEl = document.getElementById('preset-preview-positive');
+    const negEl = document.getElementById('preset-preview-negative');
+    if (posEl) posEl.innerHTML = `<strong>Positive:</strong> ${previewPos}`;
+    if (negEl) negEl.innerHTML = `<strong>Negative:</strong> ${previewNeg}`;
+}
+
+async function saveCustomPreset(presetId) {
+    const key = document.getElementById('preset-key')?.value || '';
+    const name = document.getElementById('preset-name')?.value || '';
+    const description = document.getElementById('preset-desc')?.value || '';
+    const positive_suffix = document.getElementById('preset-positive')?.value || '';
+    const negative_prefix = document.getElementById('preset-negative')?.value || '';
+
+    if (!key.trim() || !name.trim()) {
+        showToast('Key and name are required.', true);
+        return;
+    }
+
+    const btn = document.getElementById('preset-save-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+
+    try {
+        const url = presetId
+            ? `/api/settings/comfyui/presets/${encodeURIComponent(presetId)}`
+            : '/api/settings/comfyui/presets';
+        const method = presetId ? 'PUT' : 'POST';
+
+        const resp = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key, name, description, positive_suffix, negative_prefix }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
+            throw new Error(err.detail);
+        }
+        showToast(`Preset "${name}" saved ✅`);
+        closePresetModal();
+        // Refresh the settings page to show the new preset
+        await renderSettings();
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '💾 Save Preset'; }
+    }
+}
+
+async function editCustomPreset(presetId) {
+    let preset;
+    try {
+        preset = await api(`/api/settings/comfyui/presets/${encodeURIComponent(presetId)}`);
+    } catch {
+        showToast('Failed to load preset.', true);
+        return;
+    }
+
+    openCreatePresetModal();
+    // Wait for DOM then populate
+    setTimeout(() => {
+        const keyEl = document.getElementById('preset-key');
+        const nameEl = document.getElementById('preset-name');
+        const descEl = document.getElementById('preset-desc');
+        const posEl = document.getElementById('preset-positive');
+        const negEl = document.getElementById('preset-negative');
+        const saveBtn = document.getElementById('preset-save-btn');
+        const header = document.querySelector('#preset-modal-overlay .gen-modal-header h3');
+
+        if (keyEl) { keyEl.value = preset.key || ''; keyEl.disabled = true; }
+        if (nameEl) nameEl.value = preset.name || '';
+        if (descEl) descEl.value = preset.description || '';
+        if (posEl) posEl.value = preset.positive_suffix || '';
+        if (negEl) negEl.value = preset.negative_prefix || '';
+        if (header) header.textContent = `✏️ Edit Preset — ${preset.name}`;
+        if (saveBtn) {
+            saveBtn.onclick = () => saveCustomPreset(presetId);
+            saveBtn.textContent = '💾 Update Preset';
+        }
+        updatePresetPreview();
+    }, 50);
+}
+
+async function deleteCustomPreset(presetId, presetName) {
+    if (!confirm(`Delete custom preset "${presetName}"?`)) return;
+    try {
+        const resp = await fetch(`/api/settings/comfyui/presets/${encodeURIComponent(presetId)}`, { method: 'DELETE' });
+        if (!resp.ok) throw new Error('Delete failed');
+        showToast(`Preset "${presetName}" deleted 🗑️`);
+        await renderSettings();
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
+
+async function exportPresets() {
+    try {
+        const data = await api('/api/settings/comfyui/presets/export');
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'jericho_style_presets.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Presets exported 📤');
+    } catch (err) {
+        showToast(`Export error: ${err.message}`, true);
+    }
+}
+
+function importPresetsDialog() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const presetsData = JSON.parse(text);
+            const payload = Array.isArray(presetsData) ? presetsData : [presetsData];
+            const resp = await fetch('/api/settings/comfyui/presets/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ presets: payload }),
+            });
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({ detail: 'Import failed' }));
+                throw new Error(err.detail);
+            }
+            const result = await resp.json();
+            showToast(`Imported ${result.imported_count} preset(s) 📥`);
+            await renderSettings();
+        } catch (err) {
+            showToast(`Import error: ${err.message}`, true);
+        }
+    };
+    input.click();
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// Batch Generation Modal (F-037g)
+// ═══════════════════════════════════════════════════════════════
+
+async function openBatchGenerateModal(entityType) {
+    let entities = [];
+    try {
+        if (entityType === 'character') entities = await api('/api/characters');
+        else if (entityType === 'location') entities = await api('/api/locations');
+        else if (entityType === 'item') entities = await api('/api/items');
+        else if (entityType === 'store') entities = await api('/api/stores');
+    } catch { /* no entities */ }
+
+    if (!entities.length) {
+        showToast(`No ${entityType}s found.`, true);
+        return;
+    }
+
+    let templates = [];
+    let presets = [];
+    try { templates = await api('/api/settings/comfyui/templates'); } catch {}
+    try { presets = await api('/api/settings/comfyui/style-presets'); } catch {}
+
+    if (!templates.length) {
+        showToast('No ComfyUI workflow templates found. Add one in Settings → ComfyUI first.', true);
+        return;
+    }
+
+    const templateOptions = templates.map(t =>
+        `<option value="${escapeAttr(t.id)}">${escapeHtml(t.name || t.id)}</option>`
+    ).join('');
+
+    const presetOptions = ['<option value="">None (default)</option>'].concat(
+        presets.map(p => `<option value="${escapeAttr(p.key)}">${escapeHtml(p.name || p.key)}</option>`)
+    ).join('');
+
+    const entityIdKey = entityType === 'council_member' ? 'name' : 'id';
+    const entityCheckboxes = entities.slice(0, 20).map(e => `
+        <label class="gen-participant-label">
+            <input type="checkbox" class="batch-entity-cb" value="${escapeAttr(e[entityIdKey])}" />
+            ${escapeHtml(e.name || e[entityIdKey])}
+        </label>
+    `).join('');
+
+    const modal = document.createElement('div');
+    modal.className = 'gen-modal-overlay';
+    modal.id = 'batch-modal-overlay';
+    modal.innerHTML = `
+        <div class="gen-modal" style="max-width:600px">
+            <div class="gen-modal-header">
+                <h3>🎨 Batch Generate — ${escapeHtml(entityType)}s</h3>
+                <button class="detail-close" onclick="closeBatchModal()">✕</button>
+            </div>
+            <div class="gen-modal-body">
+                <div class="filter-group">
+                    <label>Select Entities <span style="color:var(--text-muted);font-size:0.72rem">(max 10)</span></label>
+                    <div class="gen-participants-grid" id="batch-entities">
+                        ${entityCheckboxes}
+                    </div>
+                </div>
+                <div class="gen-form-grid" style="margin-top:var(--space-sm)">
+                    <div class="filter-group">
+                        <label for="batch-template">Workflow Template</label>
+                        <select id="batch-template" class="settings-input">${templateOptions}</select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="batch-style">Style Preset</label>
+                        <select id="batch-style" class="settings-input">${presetOptions}</select>
+                    </div>
+                </div>
+                <div class="gen-form-grid" style="margin-top:var(--space-sm)">
+                    <div class="filter-group">
+                        <label for="batch-width">Width</label>
+                        <input id="batch-width" class="settings-input" type="number" value="512" min="64" max="4096" step="64" />
+                    </div>
+                    <div class="filter-group">
+                        <label for="batch-height">Height</label>
+                        <input id="batch-height" class="settings-input" type="number" value="512" min="64" max="4096" step="64" />
+                    </div>
+                </div>
+            </div>
+            <div class="gen-modal-footer">
+                <button class="btn btn-secondary" onclick="closeBatchModal()">Cancel</button>
+                <button class="btn btn-primary" id="batch-submit-btn" onclick="submitBatchGeneration('${escapeAttr(entityType)}')">
+                    🎨 Generate Batch
+                </button>
+            </div>
+        </div>`;
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeBatchModal(); });
+    document.body.appendChild(modal);
+}
+
+function closeBatchModal() {
+    const m = document.getElementById('batch-modal-overlay');
+    if (m) m.remove();
+}
+
+async function submitBatchGeneration(entityType) {
+    const selected = Array.from(document.querySelectorAll('.batch-entity-cb:checked')).map(cb => cb.value);
+
+    if (!selected.length) {
+        showToast('Select at least one entity.', true);
+        return;
+    }
+    if (selected.length > 10) {
+        showToast('Maximum 10 entities per batch.', true);
+        return;
+    }
+
+    const btn = document.getElementById('batch-submit-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Queuing…'; }
+
+    const body = {
+        entity_type: entityType,
+        entity_ids: selected,
+        template_id: document.getElementById('batch-template')?.value || '',
+        prompt_mode: 'system',
+        style_preset_key: document.getElementById('batch-style')?.value || '',
+        width: parseInt(document.getElementById('batch-width')?.value || '512'),
+        height: parseInt(document.getElementById('batch-height')?.value || '512'),
+        seed: 0,
+    };
+
+    try {
+        const resp = await fetch('/api/generate/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Batch failed' }));
+            throw new Error(err.detail);
+        }
+        const data = await resp.json();
+        showToast(`Queued ${data.count} generation job(s) 🎨`);
+        closeBatchModal();
+        navigateTo('generation-queue');
+    } catch (err) {
+        showToast(`Batch error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '🎨 Generate Batch'; }
+    }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// Generation Completion Toast Poller (F-037g)
+// ═══════════════════════════════════════════════════════════════
+
+let _genToastPollTimer = null;
+let _genToastKnownJobs = new Set();
+
+function startGenToastPoller() {
+    if (_genToastPollTimer) return;
+    _genToastPollTimer = setInterval(async () => {
+        try {
+            const jobs = await api('/api/generate/jobs');
+            for (const job of jobs) {
+                if (_genToastKnownJobs.has(job.job_id)) continue;
+                if (job.stage === 'completed') {
+                    _genToastKnownJobs.add(job.job_id);
+                    showToast(`🎨 Image generated for ${job.entity_type}/${job.entity_id}!`);
+                } else if (job.stage === 'failed') {
+                    _genToastKnownJobs.add(job.job_id);
+                    showToast(`❌ Generation failed for ${job.entity_type}/${job.entity_id}`, true);
+                } else if (['cancelled', 'queued', 'prompt_generating', 'template_filling', 'running', 'downloading', 'saving'].includes(job.stage)) {
+                    // Track active jobs so we can detect transitions
+                }
+            }
+        } catch { /* ignore */ }
+    }, 5000);
+}
+
+
 // ─── Init ─────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -8494,6 +10652,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Eagerly load model options so dropdowns work before Settings is visited
     loadModelOptions();
+
+    // Start global generation toast poller (F-037g)
+    startGenToastPoller();
 
     initNavigation();
     const hash = window.location.hash.slice(1) || 'dashboard';

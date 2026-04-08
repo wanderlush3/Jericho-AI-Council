@@ -2539,3 +2539,381 @@ Implemented the filesystem-backed image storage system — the second layer of J
 8. **File naming** within an entity directory is also sequential: `img_0001.png`, `img_0002.png`, etc. This is per-entity (not global).
 9. When adding API endpoints, use `mgr.get_image_path(image_id)` to resolve the file for serving via FastAPI's `FileResponse`.
 10. The `delete_entity_images()` method uses `shutil.rmtree()` — it's a destructive bulk operation that removes the entire entity image directory.
+
+---
+
+## Session — F-037c: Prompt Generation Engine
+
+**Date:** 2026-04-07
+**Feature:** F-037c — Prompt Generation Engine
+**Status:** ✅ Complete
+**Agent:** Antigravity (Gemini)
+**Baseline Tests:** 2,323 passed, 12 skipped
+**Final Tests:** 2,415 passed, 12 skipped (+92 new)
+
+### What Was Built
+
+The Prompt Generation Engine — a multi-mode LLM-driven prompt construction system for AI image generation. This is the core intelligence layer that translates entity data into high-quality image prompts via 5 distinct generation modes.
+
+### Files Changed
+
+- **Created:** `core/prompt_builder.py` — Main module (~650 lines)
+- **Created:** `tests/test_prompt_builder.py` — Comprehensive test suite (92 tests)
+- **Modified:** `config/settings.py` — Added prompt generation settings (provider, model, tokens, temperature)
+- **Modified:** `features.json` — Marked F-037c as `done`
+
+### Architecture & Key Decisions
+
+1. **Five Generation Modes:**
+   - `raw_user` — User provides exact prompt text, no LLM. Works without API client.
+   - `system` — Generic "image prompt expert" system prompt, no personality injection. Uses a temporary CouncilMember with the expert prompt.
+   - `character` — Uses a specific council member's personality and system prompt to generate the prompt.
+   - `user_refined` — User writes a base prompt; a member enhances/refines it.
+   - `council_vote` — Multiple members each generate a prompt; returns a list for operator to choose from.
+
+2. **Data Classes (frozen dataclasses, Jericho pattern):**
+   - `StylePreset` — Named style with positive_suffix/negative_prefix fragments
+   - `PromptRequest` — Input with mode, entity context, member name, user prompt, style
+   - `PromptResult` — Output with positive/negative prompts, metadata, raw LLM response
+
+3. **Built-in Style Presets (8):** fantasy_art, anime, realistic, oil_painting, watercolor, pixel_art, concept_art, dark_fantasy. Each has positive_suffix and negative_prefix fragments.
+
+4. **Entity Context Building:** `build_entity_context()` reads character, location, item, store, or council_member data from their respective managers and formats it as structured text for LLM injection.
+
+5. **Response Parsing:** `parse_prompt_response()` extracts `POSITIVE:` / `NEGATIVE:` lines from LLM output. Falls back to using full text as positive prompt if format isn't followed.
+
+6. **Style Application:** `apply_style_preset()` appends positive_suffix and prepends negative_prefix from the selected style preset.
+
+7. **LLM Integration:** Uses the existing `APIClient.chat()` method with `ChatMessage` objects. For `system` mode, creates a temporary `CouncilMember` with the image-expert system prompt. For `character`/`user_refined`/`council_vote`, uses the real member from the registry.
+
+### Settings Added (config/settings.py)
+
+```python
+PROMPT_GENERATION_PROVIDER_ENV = "JERICHO_PROMPT_GENERATION_PROVIDER"
+PROMPT_GENERATION_MODEL_ENV = "JERICHO_PROMPT_GENERATION_MODEL"
+DEFAULT_PROMPT_GENERATION_PROVIDER = "openrouter"
+DEFAULT_PROMPT_GENERATION_MODEL = "mistralai/mistral-small-2603"
+PROMPT_GENERATION_MAX_TOKENS = 512
+PROMPT_GENERATION_TEMPERATURE = 0.8
+```
+
+### Usage Examples
+
+```python
+from core.prompt_builder import PromptBuilder, PromptRequest, StylePreset, get_style_preset
+
+# Raw user mode (no API needed)
+builder = PromptBuilder()
+req = PromptRequest.create("raw_user", user_prompt="a majestic castle")
+result = await builder.generate(req)
+
+# Character mode with style preset
+builder = PromptBuilder(api_client=client, registry=registry)
+preset = get_style_preset("fantasy_art")
+req = PromptRequest.create(
+    "character",
+    member_name="Spark",
+    entity_type="character",
+    entity_id="CH-0001",
+    style_preset=preset,
+)
+result = await builder.generate(req)
+
+# Council vote mode (returns list)
+req = PromptRequest.create(
+    "council_vote",
+    participants=["Spark", "Sage", "Forge"],
+    entity_type="location",
+    entity_id="LOC-0001",
+)
+results = await builder.generate(req)  # list[PromptResult]
+```
+
+### Technical Debt
+
+- None introduced. Clean implementation following all existing patterns.
+- The `build_entity_context()` function uses `hasattr()` checks for location/item/store fields because those managers have slightly varying attribute names. This is intentional defensive coding.
+
+### Advice for Next Agent
+
+1. **F-037d (Settings & Templates Web UI) is next** — it needs REST API endpoints for ComfyUI settings and template management. The prompt builder will be exposed via the generation pipeline (F-037f), not directly via web API yet.
+2. **The PromptBuilder accepts managers via constructor injection** — the web_api.py layer should instantiate it with all relevant managers.
+3. **All LLM calls in prompt_builder are mocked in tests** — no real API calls. The mock pattern uses `AsyncMock` for `client.chat()`.
+4. **Style presets are hardcoded** — a future enhancement could support user-defined presets stored on disk (like workflow templates), but the current built-in set covers the most common use cases.
+5. **The `parse_prompt_response()` function is lenient** — it handles various casing and whitespace. If the LLM doesn't follow the `POSITIVE:` / `NEGATIVE:` format, the entire response becomes the positive prompt.
+6. **Council vote mode is sequential** (not concurrent) — each participant's LLM call awaits before the next. This respects API rate limits. Could be parallelized later if needed.
+
+---
+
+## Session: F-037e — Entity Image Galleries (2026-04-07)
+
+### What Was Done
+
+Implemented the Entity Image Gallery feature (F-037e), adding visual image management to all four entity detail pages (character, location, item, store). The feature provides:
+
+1. **Backend API** — 6 REST endpoints in `web_api.py` wrapping the existing `ImageManager` from F-037b:
+   - `GET /api/images/file/{image_id}` — serve raw bytes for `<img>` src
+   - `GET /api/images/info/{image_id}` — full metadata + prompt info
+   - `POST /api/images/set-primary/{image_id}` — set primary flag
+   - `DELETE /api/images/delete/{image_id}` — delete image + file
+   - `GET /api/images/{entity_type}/{entity_id}` — list gallery
+   - `POST /api/images/{entity_type}/{entity_id}` — upload (base64 JSON)
+
+2. **Frontend Gallery Module** (~280 lines in `app.js`):
+   - `renderImageGallery(entityType, entityId)` — reusable async function returning HTML
+   - Thumbnail grid with primary badges (⭐), prompt info tooltips
+   - Lightbox viewer with prev/next navigation + keyboard support (←/→/Esc)
+   - Upload modal with drag-and-drop + file picker
+   - Action handlers: set primary, delete, download
+   - In-place `refreshGallery()` without full page reload
+
+3. **Gallery CSS** (~435 lines in `style.css`):
+   - Responsive grid, hover lifts, primary badges, action overlays
+   - Lightbox with blur backdrop + image entrance animation
+   - Upload modal with drag-over states
+   - Responsive breakpoint at 768px
+
+4. **Gallery injected into 4 detail pages**:
+   - `renderCharacterDetail` — after Example Messages
+   - `renderLocationDetail` — after Children
+   - `renderItemDetail` — after page header
+   - `renderStoreDetail` — after Purchase section
+
+### Test Results
+
+- **39 new tests** in `test_web_api_gallery.py` (7 test classes)
+- **Full suite: 2,476 passed, 12 skipped, 0 failures** (63.8s)
+
+### Key Technical Decision
+
+**Route ordering matters in FastAPI.** Specific routes (`/api/images/file/{id}`, `/api/images/info/{id}`, etc.) must be registered BEFORE the parameterized catch-all route (`/api/images/{entity_type}/{entity_id}`). Without this, paths like `file` or `info` would be matched as entity types, returning 400 errors. This was the main bug during initial implementation and required restructuring the routes with disambiguated prefixes (`/api/images/set-primary/{id}` instead of `/api/images/{id}/set-primary`).
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `core/web_api.py` | +165 lines — 6 image gallery API endpoints |
+| `core/web_static/app.js` | +290 lines — gallery module + 4 detail page injections |
+| `core/web_static/style.css` | +435 lines — gallery CSS |
+| `tests/test_web_api_gallery.py` | NEW — 39 tests |
+| `features.json` | F-037e status → `done` |
+
+### Technical Debt
+
+- None introduced. All endpoints follow established patterns.
+- Upload uses base64 JSON (matching existing avatar upload pattern), not multipart form.
+
+### Advice for Next Agent
+
+1. **F-037f (Generation Pipeline) is next** — it connects the PromptBuilder (F-037c) to ComfyUI (F-037a) and saves results via ImageManager (F-037b). The gallery (this feature) will display those generated images.
+2. **Route ordering in web_api.py is critical** — always register specific image routes BEFORE the `{entity_type}/{entity_id}` catch-all. New single-image routes should use the `/api/images/<action>/{image_id}` pattern.
+3. **The gallery module uses module-level state** (`_galleryImages`, `_galleryEntityType`, `_galleryEntityId`) — this works because only one gallery is visible at a time. If multiple galleries are needed simultaneously, refactor to pass state through function parameters.
+4. **The `refreshGallery()` function re-renders in-place** by replacing the `#entity-gallery` element's `outerHTML`. This avoids full page navigation.
+5. **Test fixture pattern**: `test_web_api_gallery.py` monkeypatches both `config.settings.COMFYUI_IMAGES_DIR` and `core.image_manager.COMFYUI_IMAGES_DIR` — both are needed because the module-level import caches the value.
+
+---
+
+## Session: S-037f-00000001
+**Timestamp:** 2026-04-08 03:11:00
+**Feature:** `F-037f` — Generation Pipeline & Progress UI
+**Status:** completed
+
+### Summary
+Verified and finalized the F-037f Generation Pipeline & Progress UI feature. All components were fully implemented across two prior sessions and this session confirmed everything is working correctly:
+
+- **Backend — `core/generation_pipeline.py`** (792 lines):
+  - `GenerationRequest` frozen dataclass with factory validation for all 5 prompt modes
+  - `GenerationProgress` frozen dataclass for SSE-compatible progress updates
+  - `GenerationPipeline` orchestrator with in-memory job queue (configurable max, default 10)
+  - 7-stage async pipeline: `prompt_generating → template_filling → queued → running → downloading → saving → completed`
+  - Exception hierarchy: `GenerationError`, `GenerationNotFoundError`, `GenerationValidationError`, `GenerationQueueFullError`
+  - Council vote mode with multi-prompt selection
+  - Completed job pruning (max 100 retained)
+  - Cancel support with inter-stage checking
+
+- **Web API — `core/web_api.py`** (endpoints at lines 5163–5417):
+  - `POST /api/generate/{entity_type}/{entity_id}` — start a generation job
+  - `GET /api/generate/stream/{job_id}` — SSE stream (events: progress/done/error)
+  - `POST /api/generate/cancel/{job_id}` — cancel a running job
+  - `GET /api/generate/jobs` — list all jobs (with `?active_only` filter)
+  - `GET /api/generate/jobs/{job_id}` — job detail
+  - `POST /api/generate/prompts` — preview prompts without queuing
+  - Lazy singleton pipeline initialization with `_get_pipeline()`
+
+- **Frontend — `core/web_static/app.js`** (lines 3133–3681):
+  - `openGenerateModal()` — full form with template/style/mode selectors
+  - 5 prompt mode fields: system (no extra), character (member select), raw_user (textarea), user_refined (member + textarea), council_vote (participant checkboxes + preview)
+  - `previewCouncilPrompts()` — fetches prompt previews from `/api/generate/prompts`
+  - `submitGeneration()` — POSTs to start endpoint, connects SSE
+  - `connectGenerateSSE()` — EventSource with progress/done/error handlers
+  - `updateGenerateProgress()` — live progress bar + stage labels + prompt display
+  - `cancelGeneration()` / `retryGeneration()` — cancel and retry flows
+  - `onGenerationComplete()` — auto-refreshes gallery, shows success toast
+  - "🎨 Generate Image" button integrated into gallery header
+
+- **Frontend — `core/web_static/style.css`** (lines 6394–6714):
+  - Full modal styling with glassmorphism and gradient header
+  - Animated progress bar with shimmer effect
+  - Participant checkbox pills with `:has(input:checked)` styling
+  - Council vote prompt selection cards
+  - Responsive breakpoints for mobile
+
+- **Tests** — 91 tests across 2 files:
+  - `tests/test_generation_pipeline.py` — 70 tests covering all data classes, stages, modes, edge cases
+  - `tests/test_web_api_generation.py` — 21 tests covering endpoint validation and error handling
+
+### Baseline
+- **Before:** 2,567 passed, 12 skipped
+- **After:** 2,567 passed, 12 skipped (no regressions; generation tests already counted in baseline)
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `core/generation_pipeline.py` | 792 lines — full pipeline module (prior session) |
+| `core/web_api.py` | +255 lines — 7 generation API endpoints + singleton (prior session) |
+| `core/web_static/app.js` | +550 lines — generation modal, SSE progress, all modes (prior session) |
+| `core/web_static/style.css` | +320 lines — generation modal & progress CSS (prior session) |
+| `tests/test_generation_pipeline.py` | NEW — 70 tests (prior session) |
+| `tests/test_web_api_generation.py` | NEW — 21 tests (prior session) |
+| `features.json` | F-037f status → `done` |
+
+### Technical Debt
+
+- None introduced. All endpoints follow established route patterns.
+- The pipeline singleton (`_generation_pipeline`) is module-level within the `create_app()` closure — safe for single-process uvicorn but would need refactoring for multi-process deployment.
+
+### Advice for Next Agent
+
+1. **F-037g (Prompt Style Presets & Generation Queue Polish) is next** — batch generation for entity lists, queue dashboard with status cards, preset editor with preview.
+2. **The SSE stream is a single-consumer design** — if the user opens multiple tabs, each tab gets its own EventSource. The pipeline stage transitions are not broadcast via WebSocket; each SSE stream runs its own `pipeline.run_job()`, so only one tab should trigger generation for a given job.
+3. **Route ordering matters** — the catch-all `POST /api/generate/{entity_type}/{entity_id}` MUST remain after all specific `/api/generate/...` routes (cancel, stream, jobs, prompts) to avoid matching "cancel" as an entity_type.
+4. **Gallery auto-refresh** — `onGenerationComplete()` calls `refreshGallery()` which re-renders the `#entity-gallery` element in-place. This works because the gallery module-level state (`_galleryEntityType`, `_galleryEntityId`) is still set from the page load.
+5. **Pipeline is in-memory** — job state is not persisted to disk. If the server restarts, all job state is lost. This is acceptable for the current single-user deployment model.
+
+---
+
+## Session: S-037G-00000001
+**Timestamp:** 2026-04-08 22:00:00
+**Feature:** `F-037g` — Prompt Style Presets & Generation Queue Polish
+**Status:** completed
+
+### Summary
+Finalized the ComfyUI image generation pipeline polish features — custom style preset management, batch generation, queue dashboard, and global toast notifications.
+
+#### Component 1: Custom Style Preset Manager (Backend)
+- `CustomStylePresetManager` class in `core/prompt_builder.py` — filesystem-backed CRUD for user-defined style presets stored as JSON in `data/comfyui/presets/`
+- Sequential IDs (`PST-XXXX`), key normalization, duplicate detection
+- Import/export support for preset sharing
+- `get_style_preset()` and `list_style_presets()` updated to check custom presets first (allowing override of builtins)
+- **Critical bug fix**: Added missing `from pathlib import Path` import that was blocking all 28 preset tests
+
+#### Component 2: Batch Generation (Backend)
+- `start_batch_generation()` method on `GenerationPipeline` — all-or-nothing queue validation for up to 10 requests
+- `POST /api/generate/batch` endpoint in `web_api.py`
+- Full custom presets CRUD API: GET/POST/PUT/DELETE `/api/settings/comfyui/presets/{id}`
+- Import/export endpoints: GET `/api/settings/comfyui/presets/export`, POST `/api/settings/comfyui/presets/import`
+
+#### Component 3: Frontend
+- **Queue Dashboard** (`renderGenerationQueue()`) — sortable status cards with progress bars, cancel/retry actions, entity navigation, auto-polling (3s) for active jobs
+- **Custom Preset Editor** — rendered inside Settings/ComfyUI tab via `renderPresetEditor()`. Create/edit/delete modals, live prompt preview, JSON import/export
+- **Batch Generation Modal** (`openBatchGenerateModal()`) — entity checkbox selection (max 10), template/style/size config. Accessible via "🎨 Batch Generate" buttons on Characters, Locations, Items, and Stores list pages
+- **Completion Toast Poller** (`startGenToastPoller()`) — global 5s interval polling that shows toast notifications when generation jobs complete or fail, regardless of which view the user is on
+- **Sidebar nav item** for Generation Queue
+- **CSS** for queue cards, preset cards, preview boxes (~200 lines)
+
+#### Component 4: Tests
+- `tests/test_style_preset_manager.py` — 28 tests covering CRUD, import/export, roundtrip, builtin merge, validation
+- Batch generation and preset API tests in existing test suites
+
+### Baseline
+- **Before:** 2,595 passed, 12 skipped
+- **After:** 2,595 passed, 12 skipped (no regressions)
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `core/prompt_builder.py` | +1 line import fix (`from pathlib import Path`); `CustomStylePresetManager` class (prior session) |
+| `core/generation_pipeline.py` | `start_batch_generation()` method (prior session) |
+| `core/web_api.py` | +180 lines — 8 preset CRUD/import/export endpoints + batch endpoint (prior session) |
+| `core/web_static/app.js` | +600 lines — queue dashboard, preset editor, batch modal, toast poller; +4 batch buttons on entity list pages |
+| `core/web_static/style.css` | +200 lines — queue cards, preset cards, preview CSS (prior session) |
+| `core/web_static/index.html` | +1 nav item for Generation Queue |
+| `config/settings.py` | `COMFYUI_PRESETS_DIR` constant (prior session) |
+| `tests/test_style_preset_manager.py` | NEW — 28 tests (prior session) |
+| `features.json` | F-037g status → `completed` |
+
+### Technical Debt
+
+- `_atomic_write` is duplicated across ~10 modules. A shared `core/utils.py` should consolidate this.
+- Temp test files (`test_out.txt`, `test_results.txt`) accumulate in the project root — should be gitignored.
+
+### Advice for Next Agent
+
+1. **F-039 (Per-Entity-Type Workflow Templates) is next** — advanced template management assigning different ComfyUI workflows per entity type.
+2. **Preset override semantics** — custom presets with the same key as builtins take precedence. This is by design so users can customize built-in styles.
+3. **Toast poller is global** — `startGenToastPoller()` runs on `DOMContentLoaded` and polls every 5s forever. This is lightweight (single GET) but should be gated behind a "has ComfyUI configured" check if the user doesn't use image generation.
+4. **Queue polling stops automatically** — `startQueuePolling()` (3s interval) auto-stops when there are no active jobs or when navigating away from the queue view.
+5. **Batch generation route ordering** — `POST /api/generate/batch` is registered BEFORE the catch-all `POST /api/generate/{entity_type}/{entity_id}` to prevent "batch" from being matched as an entity_type.
+
+---
+
+## Session — F-039: Per-Entity-Type Workflow Templates (2026-04-08)
+
+### What Was Done
+
+Implemented **F-039: Per-Entity-Type Workflow Templates** — a system for assigning default ComfyUI workflow templates to each entity type (character, location, item, store).
+
+### Files Created
+
+- `core/template_assignments.py` — TemplateAssignmentManager with JSON-backed storage, CRUD operations, smart fallback chain, and template validation
+- `tests/test_template_assignments.py` — 50 unit tests for the manager
+- `tests/test_web_api_template_assignments.py` — 16 API integration tests
+
+### Files Modified
+
+- `config/settings.py` — Added `COMFYUI_TEMPLATE_ASSIGNMENTS_FILE` and `COMFYUI_ASSIGNABLE_ENTITY_TYPES` constants
+- `core/web_api.py` — 5 new endpoints: GET/POST/DELETE template-assignments, GET recommended-template, POST template test
+- `core/web_static/app.js` — Template assignment panel in Settings → ComfyUI, smart template pre-selection in Generate modal with 📌 Default badge, assignment save function
+- `core/web_static/style.css` — Template assignment card styles (grid, cards, status badges, active states)
+- `features.json` — F-039 marked completed
+- `progress_log.md` — Session entry added
+
+### Architecture
+
+```
+TemplateAssignmentManager
+├── Storage: data/comfyui/template_assignments.json
+├── CRUD: get/set/clear/set_all assignments
+├── Fallback chain: explicit assignment → entity_type match → first template
+└── Validation: entity type checking, template existence verification
+
+API Endpoints:
+├── GET  /api/settings/comfyui/template-assignments
+├── POST /api/settings/comfyui/template-assignments
+├── DELETE /api/settings/comfyui/template-assignments/{entity_type}
+├── GET  /api/settings/comfyui/recommended-template/{entity_type}
+└── POST /api/settings/comfyui/template-assignments/test/{template_id}
+```
+
+### Design Decisions
+
+1. **Any template can be assigned to any entity type** — no enforcement that the template's `entity_type` field must match. Users may want a general-purpose template for specific entities.
+2. **Smart fallback chain** — three levels: explicit assignment → matching entity_type field → first available template. This ensures the Generate modal always pre-selects something useful.
+3. **Stale assignment detection** — if an assigned template is deleted, the fallback chain gracefully skips it and moves to the next level.
+
+### Test Results
+
+- **66 new tests** (50 unit + 16 API integration)
+- **Full suite: 2661 passed, 12 skipped, 0 failed** (up from 2595 baseline)
+
+### Technical Debt
+
+- The `monkeypatch` for API tests needs to patch both `config.settings` AND the already-imported module-level constants (`core.comfyui_client.COMFYUI_TEMPLATES_DIR`, `core.template_assignments.COMFYUI_TEMPLATE_ASSIGNMENTS_FILE`) due to Python's import-time binding. This is a common pattern but creates test fragility.
+
+### Advice for Next Agent
+
+1. **F-040 (Referenda System) is next** — direct democracy voting system with proposal handoff.
+2. **Template assignments are independent per entity type** — clearing one does not affect others. The JSON file stores only 4 keys.
+3. **Recommended template endpoint returns source** — `"assignment"`, `"entity_type_match"`, or `"fallback"`. The frontend uses this for display purposes only.

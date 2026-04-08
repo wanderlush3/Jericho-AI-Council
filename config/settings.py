@@ -28,6 +28,7 @@ MEMORIES_DIR = DATA_DIR / "memories"
 SHARED_MEMORIES_DIR = MEMORIES_DIR / "shared"
 CONVERSATIONS_DIR = DATA_DIR / "conversations"
 DISCUSSIONS_DIR = DATA_DIR / "discussions"
+COUNCIL_SESSIONS_DIR = DATA_DIR / "council_sessions"
 TESTS_DIR = PROJECT_ROOT / "tests"
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 LOGS_DIR = PROJECT_ROOT / "logs"
@@ -45,18 +46,23 @@ load_dotenv(ENV_FILE, override=False)
 # ─── API Configuration ────────────────────────────────────────
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 MANCER_BASE_URL = "https://neuro.mancer.tech/oai/v1"
+LMSTUDIO_DEFAULT_BASE_URL = "http://localhost:1234/v1"
+LMSTUDIO_BASE_URL_ENV = "JERICHO_LMSTUDIO_BASE_URL"
 
 # Environment variable names for API keys
 OPENROUTER_API_KEY_ENV = "JERICHO_OPENROUTER_API_KEY"
 MANCER_API_KEY_ENV = "JERICHO_MANCER_API_KEY"
+LMSTUDIO_API_KEY_ENV = "JERICHO_LMSTUDIO_API_KEY"
 
 # Environment variable names for model selection
 OPENROUTER_MODEL_ENV = "JERICHO_OPENROUTER_MODEL"
 MANCER_MODEL_ENV = "JERICHO_MANCER_MODEL"
+LMSTUDIO_MODEL_ENV = "JERICHO_LMSTUDIO_MODEL"
 
 # Default models (can be overridden per council member)
 DEFAULT_OPENROUTER_MODEL = "anthropic/claude-3.5-sonnet"
 DEFAULT_MANCER_MODEL = "nothingiisreal/MN-12B-Celeste-V1.9"
+DEFAULT_LMSTUDIO_MODEL = "Default"
 
 # Valid Mancer model options (shown in dropdown menus)
 MANCER_MODEL_OPTIONS = (
@@ -85,7 +91,16 @@ OPENROUTER_MODEL_OPTIONS = (
     "moonshotai/kimi-k2.5",
 )
 
-# User description (injected into AI chat context)
+# Valid LM Studio model options (shown in dropdown menus)
+# These are labels — actual model is whatever the user has loaded in LM Studio.
+LMSTUDIO_MODEL_OPTIONS = (
+    "Default",
+    "Loaded Model",
+)
+
+# User profile (injected into AI chat context)
+USER_NAME_ENV = "JERICHO_USER_NAME"
+USER_NAME_MAX_LENGTH = 100
 USER_DESCRIPTION_ENV = "JERICHO_USER_DESCRIPTION"
 USER_DESCRIPTION_MAX_LENGTH = 700
 
@@ -116,9 +131,53 @@ MEMORY_INFLUENCE_MAX_BELIEFS = 5       # Max core beliefs to inject
 MEMORY_INFLUENCE_MIN_RELEVANCE = 0.1   # Minimum relevance score threshold
 MEMORY_INFLUENCE_BELIEF_BOOST = 1.5    # Multiplier for belief scores
 
+# ─── Embedding Settings ───────────────────────────────────────
+EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"          # Sentence-transformer model
+EMBEDDING_SIMILARITY_WEIGHT = 0.7                   # Weight for embedding score in hybrid mode
+EMBEDDING_JACCARD_WEIGHT = 0.3                      # Weight for Jaccard fallback in hybrid mode
+
+# ─── Memory Decay Settings ───────────────────────────────────
+MEMORY_DECAY_HALF_LIFE_DAYS = 30       # Days until memory freshness decays to 50%
+MEMORY_DECAY_MIN_FACTOR = 0.1          # Floor — memories never decay below 10% weight
+MEMORY_DECAY_ENABLED = True            # Global toggle for time decay
+
+# ─── Memory Summarization Settings ────────────────────────────
+MEMORY_SUMMARIZATION_SESSION_THRESHOLD = 6   # Summarize after this many unique sessions
+MEMORY_SUMMARIZATION_KEEP_RECENT = 3         # Always keep this many recent sessions intact
+MEMORY_SUMMARIZATION_ENABLED = True          # Global toggle
+
+# Summarization LLM: provider & model (user picks in Settings UI)
+# Environment variable names for summarization model selection
+SUMMARIZATION_PROVIDER_ENV = "JERICHO_SUMMARIZATION_PROVIDER"
+SUMMARIZATION_MODEL_ENV = "JERICHO_SUMMARIZATION_MODEL"
+DEFAULT_SUMMARIZATION_PROVIDER = "openrouter"
+DEFAULT_SUMMARIZATION_MODEL = "mistralai/mistral-small-2603"
+
+# Model options for summarization (separate from chat models)
+SUMMARIZATION_OPENROUTER_MODELS = (
+    "mistralai/mistral-small-2603",
+    "mistralai/mistral-small-creative",
+    "deepseek/deepseek-v3.2-exp",
+    "arcee-ai/trinity-large-preview:free",
+    "anthropic/claude-sonnet-4.6",
+)
+SUMMARIZATION_MANCER_MODELS = (
+    "dans-pe-1.3-12b",
+    "dans-pe-1.3-24b",
+    "mythomax",
+    "magnum-72b-v4",
+)
+SUMMARIZATION_LMSTUDIO_MODELS = (
+    "Loaded Model",
+)
+
+# ─── Contested Memory Settings ────────────────────────────────
+CONTESTED_MEMORY_ENABLED = True        # Allow agents to record divergent recollections
+CONTESTED_MEMORY_PROBABILITY = 0.05    # 5% chance — rare but possible
+
 # ─── Proposal Settings ─────────────────────────────────────────
-PROPOSAL_STATUSES = ("draft", "open", "under_review", "decided", "withdrawn")
-PROPOSAL_CATEGORIES = ("character", "governance", "ethics", "expansion", "general", "evolution")
+PROPOSAL_STATUSES = ("draft", "open", "open_to_review", "under_review", "decided", "withdrawn")
+PROPOSAL_CATEGORIES = ("character", "governance", "ethics", "expansion", "general", "evolution", "location", "item", "law")
 REVIEW_STANCES = ("support", "oppose", "neutral")
 
 # ─── Discussion Settings ──────────────────────────────────────
@@ -140,15 +199,60 @@ EVOLUTION_TYPES = ("trait_add", "trait_remove", "trait_modify", "field_update", 
 EVOLUTION_STATUSES = ("draft", "proposed", "voting", "decided", "applied", "rejected")
 MAX_EVOLUTION_CHANGES = 10              # Max changes per evolution proposal
 
+# ─── Task Settings ────────────────────────────────────────────
+TASKS_DIR = DATA_DIR / "tasks"
+TASK_STATUSES = ("draft", "active", "completed")
+TASK_MAX_ROUNDS = 5                     # Max narration rounds per task execution
+
 # ─── Location Settings ────────────────────────────────────────
 LOCATIONS_DIR = DATA_DIR / "locations"
 LOCATION_STATUSES = ("draft", "active", "archived")
 LOCATION_FEATURE_TYPES = ("landmark", "district", "building", "natural", "infrastructure", "custom")
 
+# ─── Law Settings ─────────────────────────────────────────────
+LAWS_DIR = DATA_DIR / "laws"
+LAW_STATUSES = ("draft", "active", "archived")
+LAW_SHARED_MEMORIES_DIR = MEMORIES_DIR / "law_shared"
+
+# ─── Item Settings ────────────────────────────────────────────
+ITEMS_DIR = DATA_DIR / "items"
+ITEM_STATUSES = ("draft", "active", "archived")
+ITEM_PROPERTY_TYPES = ("magical", "physical", "consumable", "equipment", "material", "custom")
+ITEM_TIERS = ("permanent", "consumable", "degradable")
+ITEM_LEGALITY_STATUSES = ("contraband", "legal")
+
+# ─── Store Settings ──────────────────────────────────────────
+STORES_DIR = DATA_DIR / "stores"
+STORE_STATUSES = ("draft", "active", "archived")
+STORE_TYPES = ("general", "blacksmith", "alchemist", "enchanter", "tavern", "custom")
+
 # ─── Council Expansion Settings ───────────────────────────────
 EXPANSION_DIR = DATA_DIR / "council_expansions"
 EXPANSION_STATUSES = ("draft", "proposed", "voting", "decided", "applied", "rejected")
 EXPANSION_REQUIRED_FIELDS = ("name", "role", "description", "api_provider", "model", "system_prompt")
+
+# ─── ComfyUI Integration Settings ────────────────────────────
+COMFYUI_DEFAULT_HOST = "127.0.0.1"
+COMFYUI_DEFAULT_PORT = 8188
+COMFYUI_TEMPLATES_DIR = DATA_DIR / "comfyui" / "templates"
+COMFYUI_IMAGES_DIR = DATA_DIR / "images"           # For F-037b
+COMFYUI_PRESETS_DIR = DATA_DIR / "comfyui" / "presets"  # Custom style presets (F-037g)
+COMFYUI_TEMPLATE_ASSIGNMENTS_FILE = DATA_DIR / "comfyui" / "template_assignments.json"  # F-039
+COMFYUI_ASSIGNABLE_ENTITY_TYPES = ("character", "location", "item", "store")  # F-039
+COMFYUI_MAX_QUEUE_SIZE = 10                         # Max concurrent generation jobs
+COMFYUI_POLL_INTERVAL = 1.0                         # Seconds between status polls
+COMFYUI_POLL_TIMEOUT = 300                          # Max seconds to wait for generation
+COMFYUI_HOST_ENV = "JERICHO_COMFYUI_HOST"
+COMFYUI_PORT_ENV = "JERICHO_COMFYUI_PORT"
+COMFYUI_DEFAULT_STYLE_ENV = "JERICHO_COMFYUI_DEFAULT_STYLE"
+
+# ─── Prompt Generation Settings (F-037c) ─────────────────────
+PROMPT_GENERATION_PROVIDER_ENV = "JERICHO_PROMPT_GENERATION_PROVIDER"
+PROMPT_GENERATION_MODEL_ENV = "JERICHO_PROMPT_GENERATION_MODEL"
+DEFAULT_PROMPT_GENERATION_PROVIDER = "openrouter"
+DEFAULT_PROMPT_GENERATION_MODEL = "mistralai/mistral-small-2603"
+PROMPT_GENERATION_MAX_TOKENS = 512          # Prompts are short
+PROMPT_GENERATION_TEMPERATURE = 0.8         # Creative but focused
 
 # ─── Web Dashboard Settings ──────────────────────────────────
 WEB_HOST = "127.0.0.1"
@@ -158,3 +262,27 @@ WEB_STATIC_DIR = CORE_DIR / "web_static"
 # ─── Report Generator Settings ───────────────────────────────
 REPORTS_DIR = DATA_DIR / "reports"
 REPORT_SECTIONS = ("council", "proposals", "votes", "characters", "analytics")
+
+# ─── Treasury / Obelisk Settings ─────────────────────────────
+TREASURY_DIR = DATA_DIR / "treasury"
+OBELISK_TIERS = ("bronze", "silver", "gold")
+OBELISK_CONVERSION_RATE = 100              # 100 bronze = 1 silver, 100 silver = 1 gold
+OBELISK_DEFAULT_BALANCE = {"gold": 200, "silver": 0, "bronze": 0}
+OBELISK_GOVERNMENT_BALANCE = {"gold": 1000, "silver": 0, "bronze": 0}
+OBELISK_ACCOUNT_TYPES = ("council_member", "character", "user", "government")
+
+# ─── Taxation Settings ───────────────────────────────────────
+TAX_POLICY_FILE = DATA_DIR / "treasury" / "tax_policy.json"
+TAX_LEDGER_FILE = DATA_DIR / "treasury" / "tax_ledger.jsonl"
+TAX_DEFAULT_RATE = 0.05                    # 5% tax on transfers
+TAX_GOVERNMENT_ACCOUNT_ID = "ACCT-gov-jericho"
+
+# ─── Salary / Payroll Settings ────────────────────────────────
+SALARY_LEDGER_FILE = DATA_DIR / "salary_ledger.json"
+SALARY_INTERVAL_DAYS = 7               # Days between payroll runs
+SALARY_COUNCIL_USER_AMOUNT = 200       # Gold Obelisk per council member / user
+SALARY_CHARACTER_AMOUNT = 100          # Gold Obelisk per character
+
+# ─── Narrative Engine Settings ───────────────────────────────
+NARRATIVE_MAX_BULLETINS = 10               # Max bulletins returned per request
+NARRATIVE_MAX_AGE_DAYS = 30                # Only consider events within this window
