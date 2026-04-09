@@ -5476,6 +5476,21 @@ def create_app() -> FastAPI:
             )
         return _generation_pipeline
 
+    def _explore_primary_image(imgr: Any, entity_type: str, entity_id: str) -> str:
+        """Get primary image URL for an entity, or empty string."""
+        try:
+            images = imgr.list_images(entity_type, entity_id)
+            primary = next(
+                (img for img in images if img.is_primary), None,
+            )
+            if primary:
+                return f"/api/images/file/{primary.id}"
+            elif images:
+                return f"/api/images/file/{images[0].id}"
+        except Exception:
+            pass
+        return ""
+
     @application.post("/api/generate/prompts")
     async def api_generate_prompts(body: dict[str, Any]) -> dict[str, Any]:
         """Preview prompts for council_vote mode (or any mode).
@@ -5800,6 +5815,309 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc))
 
         return {"job_id": job_id, "status": "queued"}
+
+    # ── Exploration (F-040) ───────────────────────────────────
+
+    @application.get("/api/explore")
+    def api_explore_list() -> list[dict[str, Any]]:
+        """List all active locations with exploration data.
+
+        Returns location info, scene counts, and primary image URLs.
+        """
+        from core.locations import LocationManager
+        from core.exploration import ExplorationManager
+        from core.image_manager import ImageManager
+
+        lmgr = LocationManager()
+        emgr = ExplorationManager()
+        imgr = ImageManager()
+
+        locations = lmgr.list_locations(status="active")
+        result = []
+        for loc in locations:
+            # Get primary image
+            primary_url = ""
+            try:
+                images = imgr.list_images("location", loc.id)
+                primary = next(
+                    (img for img in images if img.is_primary), None,
+                )
+                if primary:
+                    primary_url = f"/api/images/file/{primary.id}"
+                elif images:
+                    primary_url = f"/api/images/file/{images[0].id}"
+            except Exception:
+                pass
+
+            result.append({
+                "id": loc.id,
+                "name": loc.name,
+                "description": loc.description,
+                "tags": loc.tags,
+                "status": loc.status,
+                "parent_location_id": loc.parent_location_id,
+                "primary_image_url": primary_url,
+                "scene_count": emgr.count_scenes(loc.id),
+            })
+        return result
+
+    @application.get("/api/explore/{location_id}")
+    def api_explore_detail(location_id: str) -> dict[str, Any]:
+        """Get full exploration data for a location.
+
+        Returns location info, all scenes, navigation targets, and images.
+        """
+        from core.locations import LocationManager, LocationNotFoundError
+        from core.exploration import ExplorationManager
+        from core.image_manager import ImageManager
+
+        lmgr = LocationManager()
+        emgr = ExplorationManager()
+        imgr = ImageManager()
+
+        try:
+            loc = lmgr.get(location_id)
+        except LocationNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Location '{location_id}' not found.",
+            )
+
+        # Scenes
+        scenes = emgr.list_scenes(location_id)
+        scene_dicts = []
+        for s in scenes:
+            sd = s.to_dict()
+            sd["image_url"] = f"/api/images/file/{s.image_id}"
+            scene_dicts.append(sd)
+
+        # Navigation targets
+        nav = ExplorationManager.get_navigation_targets(
+            location_id, lmgr,
+        )
+        nav_data: dict[str, Any] = {"parent": None, "children": [], "siblings": []}
+        if nav["parent"]:
+            p = nav["parent"]
+            p_img = _explore_primary_image(imgr, "location", p.id)
+            nav_data["parent"] = {
+                "id": p.id, "name": p.name,
+                "description": p.description,
+                "primary_image_url": p_img,
+            }
+        for child in nav["children"]:
+            c_img = _explore_primary_image(imgr, "location", child.id)
+            nav_data["children"].append({
+                "id": child.id, "name": child.name,
+                "description": child.description,
+                "primary_image_url": c_img,
+            })
+        for sib in nav["siblings"]:
+            s_img = _explore_primary_image(imgr, "location", sib.id)
+            nav_data["siblings"].append({
+                "id": sib.id, "name": sib.name,
+                "description": sib.description,
+                "primary_image_url": s_img,
+            })
+
+        # Primary image
+        primary_url = _explore_primary_image(imgr, "location", location_id)
+
+        # Location features
+        features = []
+        for f in (loc.features or []):
+            features.append({
+                "name": f.name,
+                "description": f.description,
+                "feature_type": getattr(f, "feature_type", "custom"),
+            })
+
+        return {
+            "id": loc.id,
+            "name": loc.name,
+            "description": loc.description,
+            "lore": loc.lore,
+            "tags": loc.tags,
+            "status": loc.status,
+            "coordinates": loc.coordinates,
+            "parent_location_id": loc.parent_location_id,
+            "features": features,
+            "primary_image_url": primary_url,
+            "scenes": scene_dicts,
+            "navigation": nav_data,
+        }
+
+    @application.post("/api/explore/{location_id}/look-around")
+    def api_explore_look_around(
+        location_id: str,
+        body: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Trigger 'Look Around' scene generation for a location.
+
+        Uses the generation pipeline to create a scene image based on
+        the location's description, lore, and features.
+
+        Optional body: {
+            "scene_type": "overview",      // scene type to record
+            "template_id": "TPL-XXXX",     // override template
+            "style_preset_key": "",        // style preset
+            "width": 512, "height": 512
+        }
+
+        Returns: {"job_id": "GEN-XXXX", "status": "queued",
+                  "location_id": "LOC-XXXX"}
+        """
+        from core.locations import LocationManager, LocationNotFoundError
+        from core.exploration import ExplorationManager
+        from core.generation_pipeline import (
+            GenerationRequest, GenerationValidationError,
+            GenerationQueueFullError,
+        )
+
+        body = body or {}
+
+        lmgr = LocationManager()
+        try:
+            loc = lmgr.get(location_id)
+        except LocationNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Location '{location_id}' not found.",
+            )
+
+        # Build look-around description for the prompt
+        context = ExplorationManager.build_look_around_description(loc)
+
+        # Get template — prefer body override, then recommended,
+        # then fall back to error
+        template_id = (body.get("template_id") or "").strip()
+        if not template_id:
+            try:
+                from core.template_assignments import TemplateAssignmentManager
+                tam = TemplateAssignmentManager()
+                rec = tam.get_recommended_template("location")
+                template_id = rec.get("template_id", "")
+            except Exception:
+                pass
+        if not template_id:
+            raise HTTPException(
+                status_code=400,
+                detail="No template specified and no default template "
+                       "assigned for locations. Set one in Settings → "
+                       "ComfyUI → Template Assignments.",
+            )
+
+        scene_type = body.get("scene_type", "overview")
+        width = body.get("width", 512)
+        height = body.get("height", 512)
+
+        try:
+            request = GenerationRequest.create(
+                entity_type="location",
+                entity_id=location_id,
+                template_id=template_id,
+                prompt_mode="system",
+                user_prompt=context,
+                style_preset_key=body.get("style_preset_key", ""),
+                width=width,
+                height=height,
+                seed=body.get("seed", 0),
+                metadata={
+                    "exploration": True,
+                    "scene_type": scene_type,
+                },
+            )
+        except GenerationValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        pipeline = _get_pipeline()
+        try:
+            job_id = pipeline.start_generation(request)
+        except GenerationQueueFullError as exc:
+            raise HTTPException(status_code=429, detail=str(exc))
+
+        return {
+            "job_id": job_id,
+            "status": "queued",
+            "location_id": location_id,
+        }
+
+    @application.get("/api/explore/{location_id}/scenes")
+    def api_explore_scenes(
+        location_id: str,
+        scene_type: str | None = Query(None),
+    ) -> list[dict[str, Any]]:
+        """List exploration scenes for a location."""
+        from core.exploration import ExplorationManager
+
+        emgr = ExplorationManager()
+        scenes = emgr.list_scenes(location_id, scene_type=scene_type)
+        result = []
+        for s in scenes:
+            sd = s.to_dict()
+            sd["image_url"] = f"/api/images/file/{s.image_id}"
+            result.append(sd)
+        return result
+
+    @application.delete("/api/explore/{location_id}/scenes/{scene_id}")
+    def api_explore_delete_scene(
+        location_id: str,
+        scene_id: str,
+    ) -> dict[str, Any]:
+        """Delete an exploration scene."""
+        from core.exploration import ExplorationManager, SceneNotFoundError
+
+        emgr = ExplorationManager()
+        try:
+            scene = emgr.get_scene(scene_id)
+        except SceneNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Scene '{scene_id}' not found.",
+            )
+        if scene.location_id != location_id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Scene '{scene_id}' does not belong to "
+                       f"location '{location_id}'.",
+            )
+        emgr.delete_scene(scene_id)
+        return {"status": "ok", "deleted": scene_id}
+
+    @application.post("/api/explore/{location_id}/scenes")
+    def api_explore_add_scene(
+        location_id: str,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Manually add a scene for a location.
+
+        Body: {"image_id": "IMG-XXXX", "scene_type": "overview",
+               "description": "..."}
+        """
+        from core.exploration import (
+            ExplorationManager, ExplorationValidationError,
+        )
+
+        emgr = ExplorationManager()
+        image_id = (body.get("image_id") or "").strip()
+        if not image_id:
+            raise HTTPException(
+                status_code=400, detail="'image_id' is required.",
+            )
+
+        try:
+            scene = emgr.add_scene(
+                location_id=location_id,
+                image_id=image_id,
+                scene_type=body.get("scene_type", "overview"),
+                description=body.get("description", ""),
+                metadata=body.get("metadata", {}),
+            )
+        except ExplorationValidationError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        result = scene.to_dict()
+        result["image_url"] = f"/api/images/file/{scene.image_id}"
+        return result
 
     # ── Static Files ──────────────────────────────────────────
 

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Jericho AI Council — Web dashboard for collaborative AI character design through democratic governance">
     <title>Jericho AI Council</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=4">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
 </head>
 <body>
@@ -17,83 +17,144 @@
                 <p>AI Council Dashboard</p>
             </div>
 
-            <div class="nav-section">
-                <div class="nav-section-title">Overview</div>
-                <a class="nav-item active" data-view="dashboard" id="nav-dashboard">
-                    <span class="nav-icon">📊</span>
-                    <span>Dashboard</span>
-                </a>
+            <div class="nav-sections-scroll">
+                <div class="nav-section" data-section="overview">
+                    <div class="nav-section-title" onclick="toggleNavSection('overview')">
+                        <span>Overview</span>
+                        <span class="nav-chevron">▸</span>
+                    </div>
+                    <div class="nav-section-items">
+                        <a class="nav-item active" data-view="dashboard" id="nav-dashboard">
+                            <span class="nav-icon">📊</span>
+                            <span>Dashboard</span>
+                        </a>
+                        <a class="nav-item" data-view="analytics" id="nav-analytics">
+                            <span class="nav-icon">📈</span>
+                            <span>Analytics</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="nav-section" data-section="governance">
+                    <div class="nav-section-title" onclick="toggleNavSection('governance')">
+                        <span>Governance</span>
+                        <span class="nav-chevron">▸</span>
+                    </div>
+                    <div class="nav-section-items">
+                        <a class="nav-item" data-view="council" id="nav-council">
+                            <span class="nav-icon">👥</span>
+                            <span>Council</span>
+                            <span class="nav-count" id="count-council">—</span>
+                        </a>
+                        <a class="nav-item" data-view="proposals" id="nav-proposals">
+                            <span class="nav-icon">📜</span>
+                            <span>Proposals</span>
+                            <span class="nav-count" id="count-proposals">—</span>
+                        </a>
+                        <a class="nav-item" data-view="votes" id="nav-votes">
+                            <span class="nav-icon">🗳️</span>
+                            <span>Votes</span>
+                            <span class="nav-count" id="count-votes">—</span>
+                        </a>
+                        <a class="nav-item" data-view="sessions" id="nav-sessions">
+                            <span class="nav-icon">🏛️</span>
+                            <span>Council Sessions</span>
+                            <span class="nav-count" id="count-sessions">—</span>
+                        </a>
+                        <a class="nav-item" data-view="laws" id="nav-laws">
+                            <span class="nav-icon">⚖️</span>
+                            <span>Laws</span>
+                            <span class="nav-count" id="count-laws">—</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="nav-section" data-section="characters">
+                    <div class="nav-section-title" onclick="toggleNavSection('characters')">
+                        <span>Characters</span>
+                        <span class="nav-chevron">▸</span>
+                    </div>
+                    <div class="nav-section-items">
+                        <a class="nav-item" data-view="characters" id="nav-characters">
+                            <span class="nav-icon">🎭</span>
+                            <span>Characters</span>
+                            <span class="nav-count" id="count-characters">—</span>
+                        </a>
+                        <a class="nav-item" data-view="memories" id="nav-memories">
+                            <span class="nav-icon">🧠</span>
+                            <span>Memories</span>
+                            <span class="nav-count" id="count-memories">—</span>
+                        </a>
+                        <a class="nav-item" data-view="evolution" id="nav-evolution">
+                            <span class="nav-icon">🧬</span>
+                            <span>Evolution</span>
+                            <span class="nav-count" id="count-evolutions">—</span>
+                        </a>
+                        <a class="nav-item" data-view="tasks" id="nav-tasks">
+                            <span class="nav-icon">📋</span>
+                            <span>Tasks</span>
+                            <span class="nav-count" id="count-tasks">—</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="nav-section" data-section="world">
+                    <div class="nav-section-title" onclick="toggleNavSection('world')">
+                        <span>World</span>
+                        <span class="nav-chevron">▸</span>
+                    </div>
+                    <div class="nav-section-items">
+                        <a class="nav-item" data-view="chat" id="nav-chat">
+                            <span class="nav-icon">💬</span>
+                            <span>Chat</span>
+                        </a>
+                        <a class="nav-item" data-view="explore" id="nav-explore">
+                            <span class="nav-icon">🧭</span>
+                            <span>Explore</span>
+                        </a>
+                        <a class="nav-item" data-view="locations" id="nav-locations">
+                            <span class="nav-icon">🗺️</span>
+                            <span>Locations</span>
+                            <span class="nav-count" id="count-locations">—</span>
+                        </a>
+                        <a class="nav-item" data-view="items" id="nav-items">
+                            <span class="nav-icon">📦</span>
+                            <span>Items</span>
+                            <span class="nav-count" id="count-items">—</span>
+                        </a>
+                        <a class="nav-item" data-view="stores" id="nav-stores">
+                            <span class="nav-icon">🏪</span>
+                            <span>Stores</span>
+                            <span class="nav-count" id="count-stores">—</span>
+                        </a>
+                        <a class="nav-item" data-view="treasury" id="nav-treasury">
+                            <span class="nav-icon">🪙</span>
+                            <span>Treasury</span>
+                            <span class="nav-count" id="count-treasury">—</span>
+                        </a>
+                        <a class="nav-item" data-view="taxation" id="nav-taxation">
+                            <span class="nav-icon">🏛️</span>
+                            <span>Taxation</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="nav-section" data-section="ai-image">
+                    <div class="nav-section-title" onclick="toggleNavSection('ai-image')">
+                        <span>AI Image</span>
+                        <span class="nav-chevron">▸</span>
+                    </div>
+                    <div class="nav-section-items">
+                        <a class="nav-item" data-view="generation-queue" id="nav-generation-queue">
+                            <span class="nav-icon">🎨</span>
+                            <span>Generation Queue</span>
+                        </a>
+                    </div>
+                </div>
             </div>
 
-            <div class="nav-section">
-                <div class="nav-section-title">Governance</div>
-                <a class="nav-item" data-view="council" id="nav-council">
-                    <span class="nav-icon">👥</span>
-                    <span>Council</span>
-                    <span class="nav-count" id="count-council">—</span>
-                </a>
-                <a class="nav-item" data-view="proposals" id="nav-proposals">
-                    <span class="nav-icon">📜</span>
-                    <span>Proposals</span>
-                    <span class="nav-count" id="count-proposals">—</span>
-                </a>
-                <a class="nav-item" data-view="votes" id="nav-votes">
-                    <span class="nav-icon">🗳️</span>
-                    <span>Votes</span>
-                    <span class="nav-count" id="count-votes">—</span>
-                </a>
-            </div>
-
-            <div class="nav-section">
-                <div class="nav-section-title">Characters</div>
-                <a class="nav-item" data-view="characters" id="nav-characters">
-                    <span class="nav-icon">🎭</span>
-                    <span>Characters</span>
-                    <span class="nav-count" id="count-characters">—</span>
-                </a>
-                <a class="nav-item" data-view="evolution" id="nav-evolution">
-                    <span class="nav-icon">🧬</span>
-                    <span>Evolution</span>
-                    <span class="nav-count" id="count-evolutions">—</span>
-                </a>
-            </div>
-
-            <div class="nav-section">
-                <div class="nav-section-title">World</div>
-                <a class="nav-item" data-view="locations" id="nav-locations">
-                    <span class="nav-icon">🗺️</span>
-                    <span>Locations</span>
-                    <span class="nav-count" id="count-locations">—</span>
-                </a>
-            </div>
-
-            <div class="nav-section">
-                <div class="nav-section-title">Communication</div>
-                <a class="nav-item" data-view="chat" id="nav-chat">
-                    <span class="nav-icon">💬</span>
-                    <span>Chat</span>
-                </a>
-            </div>
-
-            <div class="nav-section">
-                <div class="nav-section-title">Insights</div>
-                <a class="nav-item" data-view="analytics" id="nav-analytics">
-                    <span class="nav-icon">📈</span>
-                    <span>Analytics</span>
-                </a>
-            </div>
-
-            <div class="nav-section">
-                <div class="nav-section-title">Memory</div>
-                <a class="nav-item" data-view="memories" id="nav-memories">
-                    <span class="nav-icon">🧠</span>
-                    <span>Memories</span>
-                    <span class="nav-count" id="count-memories">—</span>
-                </a>
-            </div>
-
-            <div class="nav-section">
-                <div class="nav-section-title">Configuration</div>
+            <!-- Settings pinned to bottom -->
+            <div class="nav-section nav-section-pinned" data-section="config">
                 <a class="nav-item" data-view="settings" id="nav-settings">
                     <span class="nav-icon">⚙️</span>
                     <span>Settings</span>
@@ -110,6 +171,6 @@
         </main>
     </div>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=5"></script>
 </body>
 </html>

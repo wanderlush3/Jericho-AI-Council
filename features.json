@@ -430,8 +430,8 @@
     {
         "id": "F-040",
         "title": "Exploration Image Galleries",
-        "description": "Visual location exploration with generated scene images \u2014 'Look Around' generation, location navigation with illustrated transitions, scene gallery per location",
-        "status": "planned",
+        "description": "Visual location exploration system \u2014 ExplorationManager with scene metadata (overview/feature/transition types), 'Look Around' generation via existing pipeline, location navigation (parent/children/siblings), 7 API endpoints, immersive Explore view with hero image overlay, scene gallery strip, navigation cards, lightbox viewer, generation progress polling, 66 tests",
+        "status": "completed",
         "dependencies": [
             "F-037f",
             "F-026"

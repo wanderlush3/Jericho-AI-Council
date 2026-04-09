@@ -2914,6 +2914,68 @@ API Endpoints:
 
 ### Advice for Next Agent
 
-1. **F-040 (Referenda System) is next** — direct democracy voting system with proposal handoff.
+1. **F-041 (Story Illustration System) is next** — LLM-narrated story segments with inline illustrations.
 2. **Template assignments are independent per entity type** — clearing one does not affect others. The JSON file stores only 4 keys.
 3. **Recommended template endpoint returns source** — `"assignment"`, `"entity_type_match"`, or `"fallback"`. The frontend uses this for display purposes only.
+
+---
+
+## Session: S-F040-20260409
+**Timestamp:** 2026-04-09 00:57:00
+**Feature:** `F-040` — Exploration Image Galleries
+**Status:** completed
+
+### Summary
+Implemented a visual location exploration system with generated scene images, "Look Around" generation, and illustrated location navigation.
+
+### Changes Made
+
+**Backend:**
+- **`config/settings.py`** — Added `EXPLORATION_DIR` and `EXPLORATION_SCENES_FILE` constants
+- **`core/exploration.py`** [NEW] — Complete ExplorationManager with:
+  - `ExplorationScene` frozen dataclass (scene_id, location_id, image_id, scene_type, description, metadata)
+  - Scene types: `overview`, `feature`, `transition`
+  - CRUD operations: `add_scene()`, `get_scene()`, `list_scenes()`, `delete_scene()`, `delete_scenes_for_location()`
+  - `get_navigation_targets()` static method — resolves parent, children, siblings via LocationManager
+  - `build_look_around_description()` — builds contextual prompts from location data
+  - JSON file persistence via `atomic_write`
+- **`core/web_api.py`** — 7 new `/api/explore` endpoints:
+  - `GET /api/explore` — List all active locations with scene counts and primary images
+  - `GET /api/explore/{id}` — Full exploration data (location, scenes, nav targets, features)
+  - `POST /api/explore/{id}/look-around` — Trigger scene generation via existing pipeline
+  - `GET /api/explore/{id}/scenes` — List scenes for location
+  - `POST /api/explore/{id}/scenes` — Add scene manually
+  - `DELETE /api/explore/{id}/scenes/{scene_id}` — Delete scene
+  - Helper: `_explore_primary_image()` for nav card thumbnails
+
+**Frontend:**
+- **`index.html`** — Added 🧭 Explore nav item in World section
+- **`app.js`** — ~380 lines of new code:
+  - `renderExplore()` — Location grid with primary images and scene count badges
+  - `renderExploreLocation(id)` — Immersive detail view with hero image, gradient overlay, location info
+  - "Look Around" button with generation progress polling and auto-scene-add on completion
+  - Scene gallery strip with horizontal scroll, lightbox viewer, delete buttons
+  - Navigation panel showing parent/children/siblings with thumbnail cards
+  - Full keyboard support in lightbox (Escape, arrows)
+- **`style.css`** — 470+ lines of exploration CSS:
+  - Hero image with gradient overlay, scene strip, nav cards, progress bar
+  - Responsive breakpoints, hover micro-animations, scroll snapping
+
+### Design Decisions
+
+1. **Scenes reference existing images** — Scenes are metadata linking to ImageManager images via `image_id`. No storage duplication.
+2. **Navigation uses parent/child relationships** — The existing `parent_location_id` field defines the world graph. Siblings = locations sharing the same parent.
+3. **Dedicated Explore view** — Separate from Location detail to provide an immersive, visual-first experience.
+4. **"Look Around" uses system prompt mode** — Auto-builds context from location description, lore, features, and tags.
+
+### Test Results
+
+- **66 new tests** (56 unit + 10 API integration)
+- **Full suite: 2727 passed, 12 skipped, 0 failed** (up from 2661 baseline)
+
+### Advice for Next Agent
+
+1. **F-041 (Story Illustration System) is next** — unblocked by F-037f and F-039.
+2. **`grep_search` does not work on `app.js`** — use `view_file` with specific line ranges. The Explore view is ~lines 3694–4074.
+3. **ExplorationManager is stateless** — scenes persist to `data/exploration/scenes.json`. Safe to instantiate in each endpoint.
+4. **Look Around currently stores all scenes as "overview"** — future work could auto-classify based on features.
