@@ -76,6 +76,7 @@ tests/test_memory.py
 tests/test_memory_decay.py
 tests/test_memory_influence.py
 tests/test_narrative_engine.py
+tests/test_participants.py
 tests/test_png_embed.py
 tests/test_prompt_builder.py
 tests/test_proposals.py

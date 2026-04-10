@@ -3198,6 +3198,10 @@ def create_app() -> FastAPI:
         mgr.save_env_value(COMFYUI_HOST_ENV, host)
         mgr.save_env_value(COMFYUI_PORT_ENV, str(port))
 
+        # Invalidate the pipeline singleton so it picks up the new address
+        nonlocal _generation_pipeline
+        _generation_pipeline = None
+
         return {"host": host, "port": port, "saved": True}
 
     @application.post("/api/settings/comfyui/test")
@@ -5465,14 +5469,51 @@ def create_app() -> FastAPI:
         """Lazily create the GenerationPipeline singleton."""
         nonlocal _generation_pipeline
         if _generation_pipeline is None:
+            import os
             from core.generation_pipeline import GenerationPipeline
-            from core.comfyui_client import WorkflowTemplateManager
+            from core.comfyui_client import (
+                ComfyUIClient, ComfyUIConfig, WorkflowTemplateManager,
+            )
             from core.image_manager import ImageManager
             from core.prompt_builder import PromptBuilder
+            from core.registry import CouncilRegistry
+            from core.api_client import APIClient
+            from core.characters import CharacterManager
+            from core.locations import LocationManager
+            from config.settings import (
+                COMFYUI_DEFAULT_HOST, COMFYUI_DEFAULT_PORT,
+                COMFYUI_HOST_ENV, COMFYUI_PORT_ENV,
+            )
+
+            # Read user-configured ComfyUI address from env vars
+            host = os.environ.get(COMFYUI_HOST_ENV, "").strip() or COMFYUI_DEFAULT_HOST
+            port_str = os.environ.get(COMFYUI_PORT_ENV, "").strip()
+            try:
+                port = int(port_str) if port_str else COMFYUI_DEFAULT_PORT
+            except ValueError:
+                port = COMFYUI_DEFAULT_PORT
+            comfyui_config = ComfyUIConfig(host=host, port=port)
+
+            # Build a fully-wired PromptBuilder so all prompt modes work
+            try:
+                registry = CouncilRegistry().load()
+            except Exception:
+                registry = None
+            try:
+                api_client = APIClient()
+            except Exception:
+                api_client = None
+
             _generation_pipeline = GenerationPipeline(
+                comfyui_client=ComfyUIClient(comfyui_config),
                 template_manager=WorkflowTemplateManager(),
                 image_manager=ImageManager(),
-                prompt_builder=PromptBuilder(),
+                prompt_builder=PromptBuilder(
+                    api_client=api_client,
+                    registry=registry,
+                    character_manager=CharacterManager(),
+                    location_manager=LocationManager(),
+                ),
             )
         return _generation_pipeline
 

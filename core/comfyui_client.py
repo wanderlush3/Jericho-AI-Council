@@ -323,6 +323,280 @@ def _fill_value(value: Any, values: dict[str, str]) -> Any:
         return value
 
 
+# ─── Web → API Format Conversion ─────────────────────────────
+
+
+def is_web_format(workflow_json: dict[str, Any]) -> bool:
+    """Detect whether a workflow dict is in ComfyUI's *web/graph* format.
+
+    Web format has a ``nodes`` array and ``links`` array.  API format is
+    a flat dict keyed by string node IDs, each with ``class_type``.
+    """
+    return isinstance(workflow_json.get("nodes"), list)
+
+
+def convert_web_to_api_format(
+    workflow_json: dict[str, Any],
+) -> dict[str, Any]:
+    """Convert a ComfyUI **web-format** workflow to **API format**.
+
+    The web format stores a ``nodes`` list and a ``links`` list.
+    The API format ComfyUI's ``POST /prompt`` expects is a flat dict::
+
+        {
+          "3": {"class_type": "KSampler", "inputs": {...}},
+          "4": {"class_type": "EmptyLatentImage", "inputs": {...}},
+          ...
+        }
+
+    This conversion resolves links into direct ``[node_id_str, slot]``
+    input references and maps widget values to their named inputs.
+
+    If the workflow contains **subgraph / component nodes** (identified
+    by UUID-style ``type`` fields), those are expanded into top-level
+    nodes with namespaced IDs.
+
+    Raises:
+        ComfyUIWorkflowError: If the workflow structure is malformed.
+    """
+    nodes = workflow_json.get("nodes", [])
+    links = workflow_json.get("links", [])
+    definitions = workflow_json.get("definitions", {})
+
+    if not nodes:
+        raise ComfyUIWorkflowError("Web-format workflow has no nodes.")
+
+    # ── Build link lookup: link_id → (source_node_id, source_slot) ──
+    link_map: dict[int, tuple[int, int]] = {}
+    for link in links:
+        # link format: [link_id, source_node, source_slot,
+        #               target_node, target_slot, type_name]
+        if isinstance(link, list) and len(link) >= 6:
+            link_id, src_node, src_slot = int(link[0]), int(link[1]), int(link[2])
+            link_map[link_id] = (src_node, src_slot)
+
+    # ── Resolve subgraph definitions ──
+    subgraph_defs: dict[str, dict[str, Any]] = {}
+    for sg in definitions.get("subgraphs", []):
+        sg_id = sg.get("id", "")
+        if sg_id:
+            subgraph_defs[sg_id] = sg
+
+    # ── Convert each node ──
+    api_format: dict[str, Any] = {}
+    # Track subgraph nodes that need expansion
+    subgraph_nodes: list[dict[str, Any]] = []
+
+    for node in nodes:
+        node_id = str(node.get("id", ""))
+        node_type = node.get("type", "")
+
+        if not node_id or not node_type:
+            continue
+
+        # Check if this is a subgraph/component node (UUID-style type)
+        if node_type in subgraph_defs:
+            subgraph_nodes.append(node)
+            continue
+
+        api_node = _convert_single_node(node, link_map)
+        api_format[node_id] = api_node
+
+    # ── Expand subgraph nodes ──
+    for sg_node in subgraph_nodes:
+        sg_type = sg_node["type"]
+        sg_def = subgraph_defs[sg_type]
+        expanded = _expand_subgraph(sg_node, sg_def, link_map)
+        api_format.update(expanded)
+
+    return api_format
+
+
+_CONTROL_AFTER_GENERATE_VALUES = frozenset({
+    "fixed", "increment", "decrement", "randomize", "last",
+})
+"""Values used by the hidden ``control_after_generate`` widget.
+
+ComfyUI's frontend inserts a control widget after every ``INT`` seed
+input (and similar RNG inputs).  This widget appears in
+``widgets_values`` but is **not** listed in the node's ``inputs``
+array, so we must skip it during conversion to avoid misaligning the
+rest of the widget values.
+"""
+
+
+def _convert_single_node(
+    node: dict[str, Any],
+    link_map: dict[int, tuple[int, int]],
+) -> dict[str, Any]:
+    """Convert a single web-format node to API format.
+
+    Resolves linked inputs to ``[source_node_str, source_slot]`` and
+    maps ``widgets_values`` to their corresponding named widget inputs.
+
+    **Hidden control widgets** — The ComfyUI frontend inserts invisible
+    control widgets (e.g. ``control_after_generate`` with values like
+    ``"randomize"``, ``"fixed"``, ``"increment"``, ``"decrement"``) into
+    the ``widgets_values`` array after seed-type INT inputs.  These
+    entries do NOT have a corresponding item in the ``inputs`` list.
+    This function detects and skips them so that subsequent widget values
+    are correctly aligned with their named inputs.
+
+    **Connected widget inputs** — When a widget input is connected via a
+    link, its value in ``widgets_values`` still occupies a slot (the
+    default/last-used value), but the API format should use the link
+    reference instead.  We must consume the slot to keep alignment but
+    not set it in the output.
+    """
+    node_type = node.get("type", "")
+    inputs_list = node.get("inputs", [])
+    widget_values = list(node.get("widgets_values", []))
+
+    api_inputs: dict[str, Any] = {}
+
+    # ── Pass 1: Resolve connection inputs and collect widget inputs ──
+    # ALL widget-type inputs are tracked in order (even those connected
+    # via links) because they each consume a slot in widgets_values.
+    all_widget_input_names: list[str] = []
+    connected_via_link: set[str] = set()
+
+    for inp in inputs_list:
+        name = inp.get("name", "")
+        if not name:
+            continue
+
+        link_id = inp.get("link")
+        is_widget = "widget" in inp
+
+        if link_id is not None and link_id in link_map:
+            # Connected via a link — resolve to [node_id_str, slot]
+            src_node, src_slot = link_map[link_id]
+            api_inputs[name] = [str(src_node), src_slot]
+            connected_via_link.add(name)
+            # If this is also a widget input, it still occupies a
+            # slot in widgets_values that we must consume.
+            if is_widget:
+                all_widget_input_names.append(name)
+        elif is_widget:
+            all_widget_input_names.append(name)
+        # Else: unconnected non-widget input — skip (ComfyUI default)
+
+    # ── Pass 2: Map widgets_values → widget input names ──
+    # Walk through widgets_values, assigning each value to the next
+    # expected widget input.  When we see a control_after_generate
+    # string where we expected the next named widget input, skip it.
+    widget_name_idx = 0
+    for wv_idx in range(len(widget_values)):
+        if widget_name_idx >= len(all_widget_input_names):
+            break  # All widget inputs satisfied
+
+        value = widget_values[wv_idx]
+
+        # Check if this value is a control_after_generate entry.
+        # These are string values like "randomize", "fixed", etc.
+        # that appear after seed/INT widgets but have no corresponding
+        # named input in the inputs list.
+        if (
+            isinstance(value, str)
+            and value.lower() in _CONTROL_AFTER_GENERATE_VALUES
+        ):
+            # Peek at the expected input name — if it doesn't match
+            # a seed-control name, this is a hidden control widget.
+            expected_name = all_widget_input_names[widget_name_idx]
+            # Only skip if the expected widget is NOT one that would
+            # legitimately accept control values.
+            if expected_name not in (
+                "control_after_generate", "control_mode",
+            ):
+                continue  # Skip this hidden control widget value
+
+        input_name = all_widget_input_names[widget_name_idx]
+        widget_name_idx += 1
+
+        # Only set the value if this input is NOT connected via a link
+        # (connected inputs already have a [node_id, slot] reference).
+        if input_name not in connected_via_link:
+            api_inputs[input_name] = value
+
+    return {
+        "class_type": node_type,
+        "inputs": api_inputs,
+        "_meta": {"title": node.get("title", node_type)},
+    }
+
+
+def _expand_subgraph(
+    sg_node: dict[str, Any],
+    sg_def: dict[str, Any],
+    parent_link_map: dict[int, tuple[int, int]],
+) -> dict[str, Any]:
+    """Expand a subgraph/component node into top-level API-format nodes.
+
+    Internal nodes get IDs namespaced as ``{parent_id}:{internal_id}``.
+    The input/output boundary nodes (``-10`` / ``-20``) are NOT emitted;
+    instead their connections are threaded through to the internal nodes.
+    """
+    parent_id = str(sg_node.get("id", ""))
+    parent_inputs = sg_node.get("inputs", [])
+    sg_inputs_def = sg_def.get("inputs", [])
+    sg_nodes = sg_def.get("nodes", [])
+    sg_links = sg_def.get("links", [])
+
+    if not sg_nodes:
+        return {}
+
+    # ── Map parent input slot index → source from parent links ──
+    # Parent inputs are connected via the parent link map
+    parent_input_sources: dict[int, tuple[str, int]] = {}
+    for slot_idx, inp in enumerate(parent_inputs):
+        link_id = inp.get("link")
+        if link_id is not None and link_id in parent_link_map:
+            src_node, src_slot = parent_link_map[link_id]
+            parent_input_sources[slot_idx] = (str(src_node), src_slot)
+
+    # ── Map subgraph input definitions to their slot on -10 ──
+    # sg_inputs_def maps positional index to subgraph boundary
+    input_node_outputs: dict[int, tuple[str, int]] = {}
+    for slot_idx, sg_inp in enumerate(sg_inputs_def):
+        if slot_idx in parent_input_sources:
+            input_node_outputs[slot_idx] = parent_input_sources[slot_idx]
+
+    # ── Build internal link map ──
+    # Internal links use object format: {id, origin_id, origin_slot,
+    #                                     target_id, target_slot, type}
+    internal_link_map: dict[int, tuple[str, int]] = {}
+    for link in sg_links:
+        if isinstance(link, dict):
+            link_id = link.get("id", 0)
+            origin_id = link.get("origin_id", 0)
+            origin_slot = link.get("origin_slot", 0)
+
+            if origin_id == -10:
+                # This comes from the subgraph input node — resolve
+                # to the parent's source
+                if origin_slot in input_node_outputs:
+                    src = input_node_outputs[origin_slot]
+                    internal_link_map[link_id] = src
+                # else: drop — unconnected subgraph input
+            else:
+                # Regular internal link — namespace the origin ID
+                namespaced = f"{parent_id}:{origin_id}"
+                internal_link_map[link_id] = (namespaced, origin_slot)
+
+    # ── Convert internal nodes ──
+    result: dict[str, Any] = {}
+    for node in sg_nodes:
+        node_id = node.get("id")
+        if node_id is None or node_id < 0:
+            continue  # Skip boundary nodes
+
+        namespaced_id = f"{parent_id}:{node_id}"
+        api_node = _convert_single_node(node, internal_link_map)
+        result[namespaced_id] = api_node
+
+    return result
+
+
 # ─── ComfyUI Client ──────────────────────────────────────────
 
 
@@ -427,6 +701,11 @@ class ComfyUIClient:
             ComfyUIWorkflowError: If the server rejects the workflow.
         """
         self._ensure_client()
+
+        # Auto-convert web-format workflows to API format
+        if is_web_format(workflow_json):
+            workflow_json = convert_web_to_api_format(workflow_json)
+
         payload: dict[str, Any] = {"prompt": workflow_json}
         if client_id:
             payload["client_id"] = client_id
@@ -533,18 +812,39 @@ class ComfyUIClient:
     def extract_output_images(history: dict[str, Any]) -> list[dict[str, str]]:
         """Extract output image metadata from a completed history entry.
 
+        Searches for ``images``, ``gifs``, and ``videos`` keys in each
+        node's output — different ComfyUI nodes use different keys.
+
         Returns:
             List of dicts with ``filename``, ``subfolder``, and ``type`` keys.
         """
+        import logging as _logging
+        _log = _logging.getLogger(__name__)
+
         outputs = history.get("outputs", {})
         images: list[dict[str, str]] = []
-        for _node_id, node_output in outputs.items():
-            for img in node_output.get("images", []):
-                images.append({
-                    "filename": img.get("filename", ""),
-                    "subfolder": img.get("subfolder", ""),
-                    "type": img.get("type", "output"),
-                })
+
+        _log.debug(
+            "extract_output_images: %d output nodes, node IDs: %s",
+            len(outputs), list(outputs.keys()),
+        )
+
+        # ComfyUI nodes may output under different keys
+        _IMAGE_OUTPUT_KEYS = ("images", "gifs", "videos")
+
+        for node_id, node_output in outputs.items():
+            _log.debug(
+                "  node %s output keys: %s",
+                node_id, list(node_output.keys()),
+            )
+            for output_key in _IMAGE_OUTPUT_KEYS:
+                for img in node_output.get(output_key, []):
+                    images.append({
+                        "filename": img.get("filename", ""),
+                        "subfolder": img.get("subfolder", ""),
+                        "type": img.get("type", "output"),
+                    })
+
         return images
 
     # ── Download Image ───────────────────────────────────────
