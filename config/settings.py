@@ -233,7 +233,7 @@ EXPANSION_REQUIRED_FIELDS = ("name", "role", "description", "api_provider", "mod
 
 # ─── ComfyUI Integration Settings ────────────────────────────
 COMFYUI_DEFAULT_HOST = "127.0.0.1"
-COMFYUI_DEFAULT_PORT = 8188
+COMFYUI_DEFAULT_PORT = 8007
 COMFYUI_TEMPLATES_DIR = DATA_DIR / "comfyui" / "templates"
 COMFYUI_IMAGES_DIR = DATA_DIR / "images"           # For F-037b
 COMFYUI_PRESETS_DIR = DATA_DIR / "comfyui" / "presets"  # Custom style presets (F-037g)

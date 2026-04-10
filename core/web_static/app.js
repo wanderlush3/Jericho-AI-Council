@@ -3238,11 +3238,11 @@ async function openGenerateModal(entityType, entityId) {
                 <div class="gen-form-grid" style="margin-top:var(--space-sm)">
                     <div class="filter-group">
                         <label for="gen-width">Width</label>
-                        <input id="gen-width" class="settings-input" type="number" value="512" min="64" max="4096" step="64" />
+                        <input id="gen-width" class="settings-input" type="number" value="1024" min="64" max="4096" step="64" />
                     </div>
                     <div class="filter-group">
                         <label for="gen-height">Height</label>
-                        <input id="gen-height" class="settings-input" type="number" value="512" min="64" max="4096" step="64" />
+                        <input id="gen-height" class="settings-input" type="number" value="1024" min="64" max="4096" step="64" />
                     </div>
                     <div class="filter-group">
                         <label for="gen-seed">Seed <span style="color:var(--text-muted);font-size:0.72rem">(0 = random)</span></label>
@@ -3472,8 +3472,8 @@ async function submitGeneration() {
     const mode = document.getElementById('gen-mode')?.value || 'system';
     const templateId = document.getElementById('gen-template')?.value;
     const stylePreset = document.getElementById('gen-style')?.value || '';
-    const width = parseInt(document.getElementById('gen-width')?.value || '512');
-    const height = parseInt(document.getElementById('gen-height')?.value || '512');
+    const width = parseInt(document.getElementById('gen-width')?.value || '1024');
+    const height = parseInt(document.getElementById('gen-height')?.value || '1024');
     const seed = parseInt(document.getElementById('gen-seed')?.value || '0');
     const memberName = document.getElementById('gen-member')?.value || '';
     const userPrompt = document.getElementById('gen-user-prompt')?.value || '';
@@ -11044,11 +11044,11 @@ async function openBatchGenerateModal(entityType) {
                 <div class="gen-form-grid" style="margin-top:var(--space-sm)">
                     <div class="filter-group">
                         <label for="batch-width">Width</label>
-                        <input id="batch-width" class="settings-input" type="number" value="512" min="64" max="4096" step="64" />
+                        <input id="batch-width" class="settings-input" type="number" value="1024" min="64" max="4096" step="64" />
                     </div>
                     <div class="filter-group">
                         <label for="batch-height">Height</label>
-                        <input id="batch-height" class="settings-input" type="number" value="512" min="64" max="4096" step="64" />
+                        <input id="batch-height" class="settings-input" type="number" value="1024" min="64" max="4096" step="64" />
                     </div>
                 </div>
             </div>
@@ -11089,8 +11089,8 @@ async function submitBatchGeneration(entityType) {
         template_id: document.getElementById('batch-template')?.value || '',
         prompt_mode: 'system',
         style_preset_key: document.getElementById('batch-style')?.value || '',
-        width: parseInt(document.getElementById('batch-width')?.value || '512'),
-        height: parseInt(document.getElementById('batch-height')?.value || '512'),
+        width: parseInt(document.getElementById('batch-width')?.value || '1024'),
+        height: parseInt(document.getElementById('batch-height')?.value || '1024'),
         seed: 0,
     };
 
