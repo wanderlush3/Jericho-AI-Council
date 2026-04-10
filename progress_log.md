@@ -3074,3 +3074,48 @@ Added council member and character participant support to the Explore section. U
 3. _build_participant_context() is defined inside create_app() in web_api.py as a closure-scoped helper.
 4. Council member IDs are lowercase names; character IDs use CH-XXXX format.
 5. Participant context truncates system prompts to 500 chars to manage prompt size.
+
+---
+
+## Session: S-DEBT-20260410
+**Timestamp:** 2026-04-10 11:55:00
+**Feature:** Technical Debt Cleanup
+**Status:** completed
+
+### Summary
+Performed project-wide technical debt cleanup and metadata hygiene pass. All 43 features are complete; the project is entering bug-fix/optimization phase ahead of beta release.
+
+### Changes Made
+
+1. **Committed pending F-042/F-043 work** — Story & Explore participant system changes were uncommitted. Staged and committed as `feat(participants): Story & Explore participant system [F-042, F-043]`.
+
+2. **Normalized `features.json` statuses** — Three features (F-037c, F-037e, F-037f) used `"done"` instead of `"completed"`. All 43 features now consistently use `"completed"`.
+
+3. **Added missing `title` fields** — Features F-001 through F-020 lacked a `title` field (unlike F-021+ which all had one). Added human-readable titles to all 20 early features. Key ordering also standardized to `id → title → description → status → dependencies`.
+
+4. **Updated `.gitignore`** — Added `*.egg-info/`, `dist/`, `build/` patterns for Python build artifacts. The `jericho.egg-info/` directory was present in the repo root.
+
+5. **Bumped version to 0.9.0** — `pyproject.toml` version updated from `0.1.0` to `0.9.0` to reflect project maturity (43 features, 2841 tests, full web dashboard).
+
+### Technical Debt — Resolved Items
+- ✅ `_atomic_write` duplication (noted since S-FEAT-00000005) — was already consolidated into `core/utils.py` in a prior session
+- ✅ Inconsistent feature statuses (`done` vs `completed`) — normalized
+- ✅ Missing `title` fields on early features — added
+- ✅ Build artifact gitignore gaps — fixed
+- ✅ Stale temp files (`test_out.txt`, etc.) — already cleaned up and gitignored
+
+### Technical Debt — Remaining
+- `web_api.py` is 274KB (~7000+ lines) and growing. Consider splitting into route modules (e.g., `routes/council.py`, `routes/stories.py`) for maintainability.
+- `app.js` is ~165KB (~3500+ lines). Consider splitting into ES modules or a lightweight bundler setup.
+- `style.css` is ~74KB (~3050+ lines). Could benefit from CSS custom property consolidation or splitting by section.
+- The `data/` directory contains runtime user content that isn't gitignored. Consider whether seed data should be separated from user-generated content.
+
+### Test Results
+- **2841 passed, 12 skipped, 0 failed** — zero regressions (no functional changes)
+
+### Advice for Next Agent
+1. **All 43 features are complete.** The backlog is empty. Next work should be bug fixing, optimization, or new feature planning for beta.
+2. **Version is now 0.9.0** — the user plans bug fixing and optimization before a 1.0 beta release.
+3. **`features.json` is now fully consistent** — every entry has `id`, `title`, `description`, `status`, `dependencies` in that order. All statuses are `"completed"`.
+4. **The biggest remaining debt is file size** — `web_api.py` (274KB), `app.js` (165KB), and `style.css` (74KB) are all single monolithic files. Splitting these would improve maintainability but is a significant refactoring effort.
+5. **`grep_search` still does not work on `app.js` or `style.css`** — use `view_file` with the section map from `.agents/workflows/project-reference.md`.

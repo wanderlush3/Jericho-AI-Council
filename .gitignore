@@ -17,6 +17,11 @@ config/.env
 *.swp
 *.swo
 
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
 # OS
 Thumbs.db
 .DS_Store

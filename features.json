@@ -1,13 +1,15 @@
 [
     {
         "id": "F-001",
-        "description": "Project scaffolding \u2014 directory structure, settings, pyproject.toml, content migration from jericho01, 9 council member profiles",
+        "title": "Project Scaffolding",
+        "description": "Project scaffolding — directory structure, settings, pyproject.toml, content migration from jericho01, 9 council member profiles",
         "status": "completed",
         "dependencies": []
     },
     {
         "id": "F-002",
-        "description": "API client \u2014 unified OpenRouter + Mancer client with retry, rate limiting, structured response parsing",
+        "title": "API Client",
+        "description": "API client — unified OpenRouter + Mancer client with retry, rate limiting, structured response parsing",
         "status": "completed",
         "dependencies": [
             "F-001"
@@ -15,7 +17,8 @@
     },
     {
         "id": "F-003",
-        "description": "Council member registry \u2014 load/list/validate YAML profiles, get member by name, list all members",
+        "title": "Council Member Registry",
+        "description": "Council member registry — load/list/validate YAML profiles, get member by name, list all members",
         "status": "completed",
         "dependencies": [
             "F-001"
@@ -23,7 +26,8 @@
     },
     {
         "id": "F-004",
-        "description": "Memory system \u2014 per-agent read/write, core beliefs, session log (JSONL), shared council memory",
+        "title": "Memory System",
+        "description": "Memory system — per-agent read/write, core beliefs, session log (JSONL), shared council memory",
         "status": "completed",
         "dependencies": [
             "F-001"
@@ -31,7 +35,8 @@
     },
     {
         "id": "F-005",
-        "description": "Proposal system \u2014 create, list, review proposals with structured markdown format and lifecycle tracking",
+        "title": "Proposal System",
+        "description": "Proposal system — create, list, review proposals with structured markdown format and lifecycle tracking",
         "status": "completed",
         "dependencies": [
             "F-003"
@@ -39,7 +44,8 @@
     },
     {
         "id": "F-006",
-        "description": "Voting engine \u2014 cast votes, tally, quorum check, approval threshold, human veto power",
+        "title": "Voting Engine",
+        "description": "Voting engine — cast votes, tally, quorum check, approval threshold, human veto power",
         "status": "completed",
         "dependencies": [
             "F-005"
@@ -47,7 +53,8 @@
     },
     {
         "id": "F-007",
-        "description": "Council session orchestrator \u2014 full session lifecycle: context load, briefing, activity phase, record, summary",
+        "title": "Council Session Orchestrator",
+        "description": "Council session orchestrator — full session lifecycle: context load, briefing, activity phase, record, summary",
         "status": "completed",
         "dependencies": [
             "F-002",
@@ -57,7 +64,8 @@
     },
     {
         "id": "F-008",
-        "description": "Agent-to-agent chat \u2014 orchestrator-mediated conversations between council members with memory recording",
+        "title": "Agent-to-Agent Chat",
+        "description": "Agent-to-agent chat — orchestrator-mediated conversations between council members with memory recording",
         "status": "completed",
         "dependencies": [
             "F-002",
@@ -66,7 +74,8 @@
     },
     {
         "id": "F-009",
-        "description": "Human-to-agent chat \u2014 direct conversation with individual council members, memories updated",
+        "title": "Human-to-Agent Chat",
+        "description": "Human-to-agent chat — direct conversation with individual council members, memories updated",
         "status": "completed",
         "dependencies": [
             "F-002",
@@ -75,7 +84,8 @@
     },
     {
         "id": "F-010",
-        "description": "Discussion rounds \u2014 structured multi-agent discussion on a proposal before voting",
+        "title": "Discussion Rounds",
+        "description": "Discussion rounds — structured multi-agent discussion on a proposal before voting",
         "status": "completed",
         "dependencies": [
             "F-008",
@@ -84,7 +94,8 @@
     },
     {
         "id": "F-011",
-        "description": "Character template system \u2014 structured YAML format for AI character definitions with traits, backstory, prompt",
+        "title": "Character Template System",
+        "description": "Character template system — structured YAML format for AI character definitions with traits, backstory, prompt",
         "status": "completed",
         "dependencies": [
             "F-001"
@@ -92,7 +103,8 @@
     },
     {
         "id": "F-012",
-        "description": "Collaborative character design \u2014 council members contribute to character creation via structured prompts",
+        "title": "Collaborative Character Design",
+        "description": "Collaborative character design — council members contribute to character creation via structured prompts",
         "status": "completed",
         "dependencies": [
             "F-007",
@@ -101,7 +113,8 @@
     },
     {
         "id": "F-013",
-        "description": "Character evolution \u2014 propose and vote on modifications to existing characters via governance system",
+        "title": "Character Evolution",
+        "description": "Character evolution — propose and vote on modifications to existing characters via governance system",
         "status": "completed",
         "dependencies": [
             "F-012",
@@ -110,7 +123,8 @@
     },
     {
         "id": "F-014",
-        "description": "CLI interface \u2014 Click-based 'jericho' command with subcommands for council, chat, vote, characters, status",
+        "title": "CLI Interface",
+        "description": "CLI interface — Click-based 'jericho' command with subcommands for council, chat, vote, characters, status",
         "status": "completed",
         "dependencies": [
             "F-007"
@@ -118,7 +132,8 @@
     },
     {
         "id": "F-015",
-        "description": "Rich terminal dashboard \u2014 council status display, vote tallies, session activity, member overview",
+        "title": "Rich Terminal Dashboard",
+        "description": "Rich terminal dashboard — council status display, vote tallies, session activity, member overview",
         "status": "completed",
         "dependencies": [
             "F-014"
@@ -126,7 +141,8 @@
     },
     {
         "id": "F-016",
-        "description": "Session analytics \u2014 track participation rates, voting patterns, proposal success rates, member activity",
+        "title": "Session Analytics",
+        "description": "Session analytics — track participation rates, voting patterns, proposal success rates, member activity",
         "status": "completed",
         "dependencies": [
             "F-006",
@@ -135,7 +151,8 @@
     },
     {
         "id": "F-017",
-        "description": "Test suite \u2014 comprehensive tests for API client, council registry, memory, governance, and orchestrator",
+        "title": "Test Suite",
+        "description": "Test suite — comprehensive tests for API client, council registry, memory, governance, and orchestrator",
         "status": "completed",
         "dependencies": [
             "F-002",
@@ -147,7 +164,8 @@
     },
     {
         "id": "F-018",
-        "description": "Memory influence \u2014 memories affect agent responses via context injection with relevance scoring",
+        "title": "Memory Influence",
+        "description": "Memory influence — memories affect agent responses via context injection with relevance scoring",
         "status": "completed",
         "dependencies": [
             "F-004",
@@ -156,7 +174,8 @@
     },
     {
         "id": "F-019",
-        "description": "Council expansion \u2014 agents can propose adding new council members via governance system",
+        "title": "Council Expansion",
+        "description": "Council expansion — agents can propose adding new council members via governance system",
         "status": "completed",
         "dependencies": [
             "F-006",
@@ -165,7 +184,8 @@
     },
     {
         "id": "F-020",
-        "description": "Prompt evolution history \u2014 visual timeline of how prompts and characters changed over council decisions",
+        "title": "Prompt Evolution History",
+        "description": "Prompt evolution history — visual timeline of how prompts and characters changed over council decisions",
         "status": "completed",
         "dependencies": [
             "F-013",
@@ -222,7 +242,7 @@
     {
         "id": "F-025",
         "title": "Proposal System Web UI",
-        "description": "Interactive proposal lifecycle in the web dashboard \u2014 create proposals, AI-driven council discussion with SSE streaming, pause/resume controls, AI-driven voting, and vote results display",
+        "description": "Interactive proposal lifecycle in the web dashboard — create proposals, AI-driven council discussion with SSE streaming, pause/resume controls, AI-driven voting, and vote results display",
         "status": "completed",
         "dependencies": [
             "F-005",
@@ -267,7 +287,7 @@
     {
         "id": "F-029",
         "title": "Evolution Web UI",
-        "description": "Web dashboard section for character evolutions \u2014 list, detail, create, lifecycle actions (submit/vote/resolve/apply), timelines, and version diff views with evolution counts in dashboard and nav",
+        "description": "Web dashboard section for character evolutions — list, detail, create, lifecycle actions (submit/vote/resolve/apply), timelines, and version diff views with evolution counts in dashboard and nav",
         "status": "completed",
         "dependencies": [
             "F-013",
@@ -278,7 +298,7 @@
     {
         "id": "F-030",
         "title": "Presence Wrapper System",
-        "description": "SilentPassa \u2014 [PRESENT]/[SILENCE] wrappers for agent messages in chat, with toggle button and localStorage persistence",
+        "description": "SilentPassa — [PRESENT]/[SILENCE] wrappers for agent messages in chat, with toggle button and localStorage persistence",
         "status": "completed",
         "dependencies": [
             "F-024"
@@ -287,7 +307,7 @@
     {
         "id": "F-031",
         "title": "Council Promotion UI",
-        "description": "Add Council Member button in the Council view \u2014 lists eligible active characters, lets user assign a council role name and description, creates YAML profile in council/members/",
+        "description": "Add Council Member button in the Council view — lists eligible active characters, lets user assign a council role name and description, creates YAML profile in council/members/",
         "status": "completed",
         "dependencies": [
             "F-003",
@@ -297,7 +317,7 @@
     },
     {
         "id": "F-032",
-        "title": "Obelisk Monetary System \u2014 Backend",
+        "title": "Obelisk Monetary System — Backend",
         "description": "Treasury core module with ObeliskBalance, TreasuryAccount, TreasuryManager (credit/debit/transfer/normalize), REST API endpoints, and comprehensive tests",
         "status": "completed",
         "dependencies": [
@@ -308,7 +328,7 @@
     },
     {
         "id": "F-033",
-        "title": "Obelisk Monetary System \u2014 Frontend Web UI",
+        "title": "Obelisk Monetary System — Frontend Web UI",
         "description": "Treasury nav/view in web dashboard, Obelisk balance on character/council/user profiles, Treasury section in Governance",
         "status": "completed",
         "dependencies": [
@@ -318,7 +338,7 @@
     {
         "id": "F-034",
         "title": "Obelisk Taxation System",
-        "description": "Government taxation mechanism \u2014 tax rates, collection schedules, tax events on transactions",
+        "description": "Government taxation mechanism — tax rates, collection schedules, tax events on transactions",
         "status": "completed",
         "dependencies": [
             "F-032"
@@ -336,7 +356,7 @@
     {
         "id": "F-036",
         "title": "World Stores System",
-        "description": "Commerce system \u2014 StoreManager with inventory CRUD, purchase flow (treasury transfer), lifecycle (draft/active/archived), full CRUD API endpoints, frontend with create/edit/inventory/purchase UI, 88 unit tests",
+        "description": "Commerce system — StoreManager with inventory CRUD, purchase flow (treasury transfer), lifecycle (draft/active/archived), full CRUD API endpoints, frontend with create/edit/inventory/purchase UI, 88 unit tests",
         "status": "completed",
         "dependencies": [
             "F-035",
@@ -346,7 +366,7 @@
     {
         "id": "F-037a",
         "title": "ComfyUI Client & Connection Manager",
-        "description": "Backend HTTP client for ComfyUI API (queue workflow, poll status, download images via /view), workflow template storage (filesystem-backed TPL-XXXX JSON files), placeholder detection and filling, connection testing \u2014 local only (127.0.0.1:8188 default)",
+        "description": "Backend HTTP client for ComfyUI API (queue workflow, poll status, download images via /view), workflow template storage (filesystem-backed TPL-XXXX JSON files), placeholder detection and filling, connection testing — local only (127.0.0.1:8188 default)",
         "status": "completed",
         "dependencies": [
             "F-021"
@@ -364,8 +384,8 @@
     {
         "id": "F-037c",
         "title": "Prompt Generation Engine",
-        "description": "Multi-mode LLM-driven prompt construction \u2014 5 modes: council vote, character/member, standalone system, user+character refinement, raw user input. Style presets (fantasy art, anime, realistic, etc.), entity context building, positive/negative prompt output",
-        "status": "done",
+        "description": "Multi-mode LLM-driven prompt construction — 5 modes: council vote, character/member, standalone system, user+character refinement, raw user input. Style presets (fantasy art, anime, realistic, etc.), entity context building, positive/negative prompt output",
+        "status": "completed",
         "dependencies": [
             "F-037a"
         ]
@@ -383,8 +403,8 @@
     {
         "id": "F-037e",
         "title": "Entity Image Galleries",
-        "description": "Frontend image gallery panels on character/location/item/store detail pages \u2014 thumbnail grid, primary badge, lightbox view, set primary, delete, download, prompt info tooltip. Primary image thumbnails on entity list cards",
-        "status": "done",
+        "description": "Frontend image gallery panels on character/location/item/store detail pages — thumbnail grid, primary badge, lightbox view, set primary, delete, download, prompt info tooltip. Primary image thumbnails on entity list cards",
+        "status": "completed",
         "dependencies": [
             "F-037b",
             "F-037d"
@@ -393,8 +413,8 @@
     {
         "id": "F-037f",
         "title": "Generation Pipeline & Progress UI",
-        "description": "End-to-end generation flow \u2014 Generate Image button, prompt mode selector modal, SSE progress events, ComfyUI queue integration, auto-gallery refresh. Queue limit of 10 jobs. Cancel support",
-        "status": "done",
+        "description": "End-to-end generation flow — Generate Image button, prompt mode selector modal, SSE progress events, ComfyUI queue integration, auto-gallery refresh. Queue limit of 10 jobs. Cancel support",
+        "status": "completed",
         "dependencies": [
             "F-037c",
             "F-037e"
@@ -412,7 +432,7 @@
     {
         "id": "F-038",
         "title": "Sidebar Accordion Navigation",
-        "description": "Collapsible accordion sidebar \u2014 section headers toggle child nav items, chevron indicators, CSS max-height transitions, localStorage persistence, Settings pinned to bottom, compatible with all 3 UI skins",
+        "description": "Collapsible accordion sidebar — section headers toggle child nav items, chevron indicators, CSS max-height transitions, localStorage persistence, Settings pinned to bottom, compatible with all 3 UI skins",
         "status": "completed",
         "dependencies": [
             "F-021"
@@ -421,7 +441,7 @@
     {
         "id": "F-039",
         "title": "Per-Entity-Type Workflow Templates",
-        "description": "Per-entity-type template assignment manager \u2014 assign default ComfyUI workflows per entity type (character/location/item/store), smart fallback chain (explicit \u2192 entity_type match \u2192 first available), settings UI with assignment cards, Generate modal smart pre-selection with Default badge, template test endpoint, 66 tests",
+        "description": "Per-entity-type template assignment manager — assign default ComfyUI workflows per entity type (character/location/item/store), smart fallback chain (explicit → entity_type match → first available), settings UI with assignment cards, Generate modal smart pre-selection with Default badge, template test endpoint, 66 tests",
         "status": "completed",
         "dependencies": [
             "F-037g"
@@ -430,7 +450,7 @@
     {
         "id": "F-040",
         "title": "Exploration Image Galleries",
-        "description": "Visual location exploration system \u2014 ExplorationManager with scene metadata (overview/feature/transition types), 'Look Around' generation via existing pipeline, location navigation (parent/children/siblings), 7 API endpoints, immersive Explore view with hero image overlay, scene gallery strip, navigation cards, lightbox viewer, generation progress polling, 66 tests",
+        "description": "Visual location exploration system — ExplorationManager with scene metadata (overview/feature/transition types), 'Look Around' generation via existing pipeline, location navigation (parent/children/siblings), 7 API endpoints, immersive Explore view with hero image overlay, scene gallery strip, navigation cards, lightbox viewer, generation progress polling, 66 tests",
         "status": "completed",
         "dependencies": [
             "F-037f",
@@ -440,7 +460,7 @@
     {
         "id": "F-041",
         "title": "Story Illustration System",
-        "description": "LLM-narrated story segments with inline generated illustrations \u2014 per-scene image generation, chapter/scene management, story viewer with embedded images",
+        "description": "LLM-narrated story segments with inline generated illustrations — per-scene image generation, chapter/scene management, story viewer with embedded images",
         "status": "completed",
         "dependencies": [
             "F-037f",
@@ -450,7 +470,7 @@
     {
         "id": "F-042",
         "title": "Explore Participant System",
-        "description": "Add up to 10 council members and/or characters to Explore experiences \u2014 merged participant API, collapsible selector UI with avatars/type badges/search/counter, full context injection (persona, beliefs, memories, traits, laws, locations, items) into Look Around generation, max 10 validation, backward compatible, 18 tests",
+        "description": "Add up to 10 council members and/or characters to Explore experiences — merged participant API, collapsible selector UI with avatars/type badges/search/counter, full context injection (persona, beliefs, memories, traits, laws, locations, items) into Look Around generation, max 10 validation, backward compatible, 18 tests",
         "status": "completed",
         "dependencies": [
             "F-040",
