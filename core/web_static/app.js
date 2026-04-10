@@ -1,11 +1,11 @@
 /**
- * Jericho AI Council — Web Dashboard (F-021)
+ * Jericho AI Council â€” Web Dashboard (F-021)
  *
  * Single-page application with hash-based routing.
  * Fetches data from /api/* endpoints and renders dynamic views.
  */
 
-// ─── State ────────────────────────────────────────────────────
+// â”€â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const state = {
     currentView: 'dashboard',
@@ -32,12 +32,12 @@ function escapeAttr(str) {
     return (str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// ─── Skin / Theme System ──────────────────────────────────────
+// â”€â”€â”€ Skin / Theme System â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const SKINS = {
     default: {
         label: 'Default',
-        icon: '🌑',
+        icon: 'ðŸŒ‘',
         desc: 'Dark premium dashboard',
         swatches: ['#0a0e17', '#111827', '#3b82f6', '#06b6d4', '#8b5cf6'],
         vars: {},
@@ -48,7 +48,7 @@ const SKINS = {
         desc: 'Glossy Y2K optimism',
         swatches: ['#e8f4fd', '#f0fdf4', '#ffffff', '#38bdf8', '#f97316'],
         vars: {
-            /* Background palette — light, airy, sky-inspired */
+            /* Background palette â€” light, airy, sky-inspired */
             '--bg-primary': '#e4f0fb',
             '--bg-secondary': '#f0f7ff',
             '--bg-card': 'rgba(255, 255, 255, 0.65)',
@@ -56,13 +56,13 @@ const SKINS = {
             '--bg-input': 'rgba(255, 255, 255, 0.7)',
             '--bg-sidebar': 'rgba(224, 242, 254, 0.92)',
 
-            /* Text palette — dark on light */
+            /* Text palette â€” dark on light */
             '--text-primary': '#1e293b',
             '--text-secondary': '#475569',
             '--text-muted': '#64748b',
             '--text-accent': '#0284c7',
 
-            /* Accent colors — vibrant, warm, nature-inspired */
+            /* Accent colors â€” vibrant, warm, nature-inspired */
             '--accent-blue': '#0ea5e9',
             '--accent-cyan': '#06b6d4',
             '--accent-emerald': '#10b981',
@@ -71,12 +71,12 @@ const SKINS = {
             '--accent-violet': '#8b5cf6',
             '--accent-indigo': '#6366f1',
 
-            /* Borders — glossy, translucent white */
+            /* Borders â€” glossy, translucent white */
             '--border-subtle': 'rgba(148, 163, 184, 0.25)',
             '--border-medium': 'rgba(148, 163, 184, 0.35)',
             '--border-glow': 'rgba(14, 165, 233, 0.4)',
 
-            /* Shadows — soft, light-mode glow */
+            /* Shadows â€” soft, light-mode glow */
             '--shadow-sm': '0 1px 3px rgba(0, 0, 0, 0.08)',
             '--shadow-md': '0 4px 14px rgba(0, 0, 0, 0.1)',
             '--shadow-lg': '0 8px 30px rgba(0, 0, 0, 0.12)',
@@ -85,11 +85,11 @@ const SKINS = {
     },
     vaporwave: {
         label: 'Vaporwave',
-        icon: '🌴',
+        icon: 'ðŸŒ´',
         desc: 'Retro-futuristic neon glow',
         swatches: ['#1a0a2e', '#16213e', '#ff71ce', '#01cdfe', '#b967ff'],
         vars: {
-            /* Background palette — deep purple-navy */
+            /* Background palette â€” deep purple-navy */
             '--bg-primary': '#0d0221',
             '--bg-secondary': '#150535',
             '--bg-card': 'rgba(26, 10, 46, 0.75)',
@@ -97,13 +97,13 @@ const SKINS = {
             '--bg-input': 'rgba(22, 8, 42, 0.8)',
             '--bg-sidebar': 'rgba(13, 2, 33, 0.95)',
 
-            /* Text palette — soft pastels on dark */
+            /* Text palette â€” soft pastels on dark */
             '--text-primary': '#e8d5f5',
             '--text-secondary': '#b8a0cc',
             '--text-muted': '#8a6faa',
             '--text-accent': '#ff71ce',
 
-            /* Accent colors — neon retro palette */
+            /* Accent colors â€” neon retro palette */
             '--accent-blue': '#01cdfe',
             '--accent-cyan': '#05ffa1',
             '--accent-emerald': '#05ffa1',
@@ -112,12 +112,12 @@ const SKINS = {
             '--accent-violet': '#b967ff',
             '--accent-indigo': '#7b5ea7',
 
-            /* Borders — neon-tinged */
+            /* Borders â€” neon-tinged */
             '--border-subtle': 'rgba(185, 103, 255, 0.15)',
             '--border-medium': 'rgba(185, 103, 255, 0.3)',
             '--border-glow': 'rgba(255, 113, 206, 0.4)',
 
-            /* Shadows — neon glow */
+            /* Shadows â€” neon glow */
             '--shadow-sm': '0 1px 4px rgba(185, 103, 255, 0.1)',
             '--shadow-md': '0 4px 16px rgba(185, 103, 255, 0.12)',
             '--shadow-lg': '0 8px 32px rgba(185, 103, 255, 0.15)',
@@ -158,7 +158,7 @@ function applySkin(name) {
     setTimeout(() => root.removeAttribute('data-skin-transitioning'), 500);
 }
 
-// ─── API Helpers ──────────────────────────────────────────────
+// â”€â”€â”€ API Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function api(path) {
     const resp = await fetch(path);
@@ -169,7 +169,7 @@ async function api(path) {
     return resp.json();
 }
 
-// ─── Navigation ───────────────────────────────────────────────
+// â”€â”€â”€ Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // Maps each view name to its parent accordion section
 const VIEW_TO_SECTION = {
@@ -265,7 +265,7 @@ function initNavigation() {
     _restoreAccordionState(activeView);
 }
 
-// ─── Badge Helper ─────────────────────────────────────────────
+// â”€â”€â”€ Badge Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function badge(text, type) {
     type = type || text;
@@ -275,11 +275,11 @@ function badge(text, type) {
 function truncate(text, len) {
     if (!text) return '';
     len = len || 80;
-    return text.length > len ? text.slice(0, len - 3) + '…' : text;
+    return text.length > len ? text.slice(0, len - 3) + 'â€¦' : text;
 }
 
 function formatDate(iso) {
-    if (!iso) return '—';
+    if (!iso) return 'â€”';
     try {
         const d = new Date(iso);
         return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -298,7 +298,7 @@ function approvalBar(rate, showText) {
         </div>`;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const AVATAR_GRADIENTS = [
     'linear-gradient(135deg, var(--accent-blue), var(--accent-violet))',
@@ -321,7 +321,7 @@ function memberAvatar(name, idx) {
 
 function truncate(str, max) {
     if (!str) return '';
-    return str.length > max ? str.slice(0, max) + '…' : str;
+    return str.length > max ? str.slice(0, max) + 'â€¦' : str;
 }
 
 function formatDate(iso) {
@@ -331,11 +331,11 @@ function formatDate(iso) {
 }
 
 function showLoading() {
-    $main().innerHTML = `<div class="loading"><div class="loading-spinner"></div><span>Loading…</span></div>`;
+    $main().innerHTML = `<div class="loading"><div class="loading-spinner"></div><span>Loadingâ€¦</span></div>`;
 }
 
 function showError(msg) {
-    $main().innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${msg}</p></div>`;
+    $main().innerHTML = `<div class="empty-state"><div class="empty-icon">âš ï¸</div><p>${msg}</p></div>`;
 }
 
 function escapeHtml(text) {
@@ -350,7 +350,7 @@ function escapeAttr(text) {
     return text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
-// ─── Render Router ────────────────────────────────────────────
+// â”€â”€â”€ Render Router â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function renderView(view, detail) {
     try {
@@ -383,9 +383,9 @@ async function renderView(view, detail) {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Dashboard View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function renderDashboard() {
     showLoading();
@@ -454,16 +454,16 @@ async function renderDashboard() {
         <div class="view-enter">
             <div class="page-header">
                 <h2>Dashboard</h2>
-                <p>Jericho AI Council — collaborative AI character design through democratic governance</p>
+                <p>Jericho AI Council â€” collaborative AI character design through democratic governance</p>
             </div>
 
             <div class="narrative-banner" id="narrative-banner">
                 <div class="narrative-banner-header">
-                    <span class="narrative-banner-title">📰 Jericho Times</span>
+                    <span class="narrative-banner-title">ðŸ“° Jericho Times</span>
                     <span class="narrative-banner-controls">
-                        <button class="narrative-btn" id="narrative-prev" title="Previous">◀</button>
+                        <button class="narrative-btn" id="narrative-prev" title="Previous">â—€</button>
                         <span class="narrative-counter" id="narrative-counter"></span>
-                        <button class="narrative-btn" id="narrative-next" title="Next">▶</button>
+                        <button class="narrative-btn" id="narrative-next" title="Next">â–¶</button>
                     </span>
                 </div>
                 <div class="narrative-ticker" id="narrative-ticker">
@@ -473,31 +473,31 @@ async function renderDashboard() {
 
             <div class="stats-grid">
                 <div class="stat-card blue">
-                    <div class="stat-icon">👥</div>
+                    <div class="stat-icon">ðŸ‘¥</div>
                     <div class="stat-value">${m.count || 0}</div>
                     <div class="stat-label">Council Members</div>
                     ${providerChips ? `<div class="stat-breakdown">${providerChips}</div>` : ''}
                 </div>
                 <div class="stat-card emerald">
-                    <div class="stat-icon">📜</div>
+                    <div class="stat-icon">ðŸ“œ</div>
                     <div class="stat-value">${p.count || 0}</div>
                     <div class="stat-label">Proposals</div>
                     ${proposalChips ? `<div class="stat-breakdown">${proposalChips}</div>` : ''}
                 </div>
                 <div class="stat-card amber">
-                    <div class="stat-icon">🗳️</div>
+                    <div class="stat-icon">ðŸ—³ï¸</div>
                     <div class="stat-value">${v.count || 0}</div>
                     <div class="stat-label">Vote Records</div>
                     ${voteChips ? `<div class="stat-breakdown">${voteChips}</div>` : ''}
                 </div>
                 <div class="stat-card violet">
-                    <div class="stat-icon">🎭</div>
+                    <div class="stat-icon">ðŸŽ­</div>
                     <div class="stat-value">${c.count || 0}</div>
                     <div class="stat-label">Characters</div>
                     ${charChips ? `<div class="stat-breakdown">${charChips}</div>` : ''}
                 </div>
                 <div class="stat-card rose">
-                    <div class="stat-icon">🗺️</div>
+                    <div class="stat-icon">ðŸ—ºï¸</div>
                     <div class="stat-value">${l.count || 0}</div>
                     <div class="stat-label">Locations</div>
                     ${locChips ? `<div class="stat-breakdown">${locChips}</div>` : ''}
@@ -509,19 +509,19 @@ async function renderDashboard() {
                     ${evoChips ? `<div class="stat-breakdown">${evoChips}</div>` : ''}
                 </div>
                 <div class="stat-card" style="border-image:linear-gradient(135deg, #FFD700, #C0C0C0, #CD7F32) 1">
-                    <div class="stat-icon">🪙</div>
+                    <div class="stat-icon">ðŸª™</div>
                     <div class="stat-value">${(data.treasury || {}).total_accounts || 0}</div>
                     <div class="stat-label">Treasury Accounts</div>
                     ${(data.treasury && data.treasury.government_balance) ? `<div class="stat-breakdown"><span class="stat-chip badge badge-government">Gov: ${data.treasury.government_balance.gold}G</span></div>` : ''}
                 </div>
                 <div class="stat-card" style="border-image:linear-gradient(135deg, hsl(30,70%,50%), hsl(40,80%,55%)) 1">
-                    <div class="stat-icon">📦</div>
+                    <div class="stat-icon">ðŸ“¦</div>
                     <div class="stat-value">${it.count || 0}</div>
                     <div class="stat-label">Items</div>
                     ${itemChips ? `<div class="stat-breakdown">${itemChips}</div>` : ''}
                 </div>
                 <div class="stat-card" style="border-image:linear-gradient(135deg, hsl(220,60%,50%), hsl(200,55%,45%)) 1">
-                    <div class="stat-icon">⚖️</div>
+                    <div class="stat-icon">âš–ï¸</div>
                     <div class="stat-value">${(data.laws || {}).count || 0}</div>
                     <div class="stat-label">Laws</div>
                     ${(data.laws && data.laws.by_status) ? Object.entries(data.laws.by_status).map(([k, cnt]) => `<span class="stat-chip badge badge-${k}">${k}: ${cnt}</span>`).join('') : ''}
@@ -611,9 +611,9 @@ function _escHtml(s) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Council View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const AVATAR_COLORS = [
     'linear-gradient(135deg, #3b82f6, #8b5cf6)',
@@ -651,9 +651,9 @@ async function renderCouncil() {
         $main().innerHTML = `
             <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
                 <div><h2>Council Members</h2></div>
-                <button class="btn btn-primary" onclick="openPromoteModal()" id="btn-add-council">➕ Add Council Member</button>
+                <button class="btn btn-primary" onclick="openPromoteModal()" id="btn-add-council">âž• Add Council Member</button>
             </div>
-            <div class="empty-state"><div class="empty-icon">👥</div><p>No council members found.</p></div>`;
+            <div class="empty-state"><div class="empty-icon">ðŸ‘¥</div><p>No council members found.</p></div>`;
         return;
     }
 
@@ -680,13 +680,13 @@ async function renderCouncil() {
                     <h2>Council Members</h2>
                     <p>${data.length} members across ${new Set(data.map(m=>m.api_provider)).size} providers</p>
                 </div>
-                <button class="btn btn-primary" onclick="openPromoteModal()" id="btn-add-council">➕ Add Council Member</button>
+                <button class="btn btn-primary" onclick="openPromoteModal()" id="btn-add-council">âž• Add Council Member</button>
             </div>
             <div class="member-grid">${cards}</div>
         </div>`;
 }
 
-// ─── Council Promotion Modal ───────────────────────────────────
+// â”€â”€â”€ Council Promotion Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 let _promoteSelectedId = null;
 
@@ -717,8 +717,8 @@ async function openPromoteModal() {
         modal.innerHTML = `
             <div class="promote-modal-content">
                 <div class="promote-modal-header">
-                    <h3>➕ Add Council Member</h3>
-                    <button class="detail-close" onclick="closePromoteModal()">✕</button>
+                    <h3>âž• Add Council Member</h3>
+                    <button class="detail-close" onclick="closePromoteModal()">âœ•</button>
                 </div>
                 <div class="promote-modal-body">
                     <div class="promote-form-group">
@@ -776,7 +776,7 @@ async function promoteToCouncil() {
     if (!desc) { showToast('Role Description is required.', true); return; }
 
     const btn = document.getElementById('btn-confirm-promote');
-    if (btn) { btn.disabled = true; btn.textContent = 'Promoting…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Promotingâ€¦'; }
 
     try {
         const resp = await fetch('/api/council/promote', {
@@ -793,7 +793,7 @@ async function promoteToCouncil() {
             throw new Error(err.detail);
         }
         const result = await resp.json();
-        showToast(`${result.name} promoted to Council as ${result.role}! ✅`);
+        showToast(`${result.name} promoted to Council as ${result.role}! âœ…`);
         closePromoteModal();
         renderCouncil(); // refresh
     } catch (err) {
@@ -815,17 +815,17 @@ async function renderCouncilDetail(name) {
     const avatarHtml = data.avatar_url
         ? `<div class="detail-avatar avatar-upload-area" onclick="openAvatarEditor('${data.name}')" title="Click to change avatar"
                 style="background: url('${data.avatar_url}') center/cover no-repeat; cursor: pointer;">
-             <div class="avatar-overlay">📷</div>
+             <div class="avatar-overlay">ðŸ“·</div>
            </div>`
         : `<div class="detail-avatar avatar-upload-area" onclick="openAvatarEditor('${data.name}')" title="Click to upload avatar"
                 style="background: ${AVATAR_COLORS[(idx >= 0 ? idx : 0) % AVATAR_COLORS.length]}; cursor: pointer;">
              ${data.name.charAt(0).toUpperCase()}
-             <div class="avatar-overlay">📷</div>
+             <div class="avatar-overlay">ðŸ“·</div>
            </div>`;
 
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="navigateTo('council')">← Back to Council</button>
+            <button class="back-btn" onclick="navigateTo('council')">â† Back to Council</button>
             <div class="detail-panel">
                 <div class="detail-header">
                     ${avatarHtml}
@@ -839,7 +839,7 @@ async function renderCouncilDetail(name) {
                             <span class="council-readonly-value" style="font-size:0.85rem;color:var(--text-secondary)">${data.description}</span>
                         </div>
                     </div>
-                    <button class="detail-close" onclick="navigateTo('council')">✕</button>
+                    <button class="detail-close" onclick="navigateTo('council')">âœ•</button>
                 </div>
 
                 <!-- Editable Fields Form -->
@@ -882,12 +882,12 @@ async function renderCouncilDetail(name) {
 
                     <div class="council-field-group">
                         <label for="cf-comm-style">Communication Style</label>
-                        <input type="text" id="cf-comm-style" class="settings-input" value="${escapeAttr(commStyle)}" placeholder="Describe communication style…" />
+                        <input type="text" id="cf-comm-style" class="settings-input" value="${escapeAttr(commStyle)}" placeholder="Describe communication styleâ€¦" />
                     </div>
 
                     <div class="council-field-group">
                         <label for="cf-decision">Decision Approach</label>
-                        <input type="text" id="cf-decision" class="settings-input" value="${escapeAttr(decisionApproach)}" placeholder="Describe decision-making approach…" />
+                        <input type="text" id="cf-decision" class="settings-input" value="${escapeAttr(decisionApproach)}" placeholder="Describe decision-making approachâ€¦" />
                     </div>
 
                     <div class="council-field-group">
@@ -905,7 +905,7 @@ async function renderCouncilDetail(name) {
 
                     <div class="council-save-bar">
                         <button type="submit" class="btn btn-primary btn-save-member" id="council-save-btn">
-                            💾 Save Changes
+                            ðŸ’¾ Save Changes
                         </button>
                         <span class="council-save-hint" id="council-save-status"></span>
                     </div>
@@ -918,27 +918,27 @@ async function renderCouncilDetail(name) {
             <div class="avatar-modal-content">
                 <div class="avatar-modal-header">
                     <h3>Edit Avatar</h3>
-                    <button class="detail-close" onclick="closeAvatarEditor()">✕</button>
+                    <button class="detail-close" onclick="closeAvatarEditor()">âœ•</button>
                 </div>
                 <div class="avatar-modal-body">
                     <div class="avatar-drop-zone" id="avatar-drop-zone">
                         <input type="file" id="avatar-file-input" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handleAvatarFile(event)" />
                         <div class="avatar-drop-label" onclick="document.getElementById('avatar-file-input').click()">
-                            📁 Click to select image or drag & drop a PNG
+                            ðŸ“ Click to select image or drag & drop a PNG
                         </div>
                     </div>
                     <div class="avatar-preview-section" id="avatar-preview-section" style="display:none">
                         <canvas id="avatar-canvas" class="avatar-preview-canvas" width="200" height="200"></canvas>
                         <div class="avatar-zoom-control">
-                            <span class="avatar-zoom-label">🔍 Zoom</span>
+                            <span class="avatar-zoom-label">ðŸ” Zoom</span>
                             <input type="range" id="avatar-zoom" class="avatar-zoom-slider" min="0.5" max="3" step="0.05" value="1" oninput="updateAvatarPreview()" />
-                            <span id="avatar-zoom-value">1.0×</span>
+                            <span id="avatar-zoom-value">1.0Ã—</span>
                         </div>
                     </div>
                 </div>
                 <div class="avatar-modal-footer">
                     <button class="btn btn-secondary" onclick="closeAvatarEditor()">Cancel</button>
-                    <button class="btn btn-primary" id="avatar-save-btn" onclick="saveAvatar('${data.name}')" disabled>💾 Save Avatar</button>
+                    <button class="btn btn-primary" id="avatar-save-btn" onclick="saveAvatar('${data.name}')" disabled>ðŸ’¾ Save Avatar</button>
                 </div>
             </div>
         </div>`;
@@ -954,7 +954,7 @@ function escapeHtml(str) {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// ── Council Member Save ──────────────────────────────────────
+// â”€â”€ Council Member Save â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /* Swap the model field between dropdown options when the provider
    dropdown changes in the council-edit form. */
@@ -969,7 +969,7 @@ async function saveCouncilMember(originalName) {
     const btn = document.getElementById('council-save-btn');
     const status = document.getElementById('council-save-status');
     btn.disabled = true;
-    btn.textContent = '⏳ Saving…';
+    btn.textContent = 'â³ Savingâ€¦';
     status.textContent = '';
 
     const traitsRaw = document.getElementById('cf-traits').value;
@@ -997,8 +997,8 @@ async function saveCouncilMember(originalName) {
             throw new Error(err.detail);
         }
         const data = await resp.json();
-        showToast(`${data.name} updated successfully ✅`);
-        status.textContent = '✅ Saved';
+        showToast(`${data.name} updated successfully âœ…`);
+        status.textContent = 'âœ… Saved';
         status.style.color = 'var(--accent-emerald)';
 
         // If name changed, navigate to new name
@@ -1007,15 +1007,15 @@ async function saveCouncilMember(originalName) {
         }
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        status.textContent = '❌ Failed';
+        status.textContent = 'âŒ Failed';
         status.style.color = 'var(--accent-rose)';
     } finally {
         btn.disabled = false;
-        btn.textContent = '💾 Save Changes';
+        btn.textContent = 'ðŸ’¾ Save Changes';
     }
 }
 
-// ── Avatar Editor ────────────────────────────────────────────
+// â”€â”€ Avatar Editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 let avatarEditorState = { img: null, zoom: 1.0, offsetX: 0, offsetY: 0, dragging: false, lastX: 0, lastY: 0 };
 
@@ -1072,7 +1072,7 @@ function loadAvatarImage(file) {
             avatarEditorState.offsetX = 0;
             avatarEditorState.offsetY = 0;
             document.getElementById('avatar-zoom').value = 1.0;
-            document.getElementById('avatar-zoom-value').textContent = '1.0×';
+            document.getElementById('avatar-zoom-value').textContent = '1.0Ã—';
             document.getElementById('avatar-preview-section').style.display = 'block';
             document.getElementById('avatar-save-btn').disabled = false;
             updateAvatarPreview();
@@ -1087,7 +1087,7 @@ function updateAvatarPreview() {
     const ctx = canvas.getContext('2d');
     const zoom = parseFloat(document.getElementById('avatar-zoom').value);
     avatarEditorState.zoom = zoom;
-    document.getElementById('avatar-zoom-value').textContent = zoom.toFixed(1) + '×';
+    document.getElementById('avatar-zoom-value').textContent = zoom.toFixed(1) + 'Ã—';
 
     const img = avatarEditorState.img;
     if (!img) return;
@@ -1126,7 +1126,7 @@ async function saveAvatar(memberName) {
     const canvas = document.getElementById('avatar-canvas');
     const btn = document.getElementById('avatar-save-btn');
     btn.disabled = true;
-    btn.textContent = '⏳ Uploading…';
+    btn.textContent = 'â³ Uploadingâ€¦';
 
     try {
         const imageData = canvas.toDataURL('image/png');
@@ -1144,7 +1144,7 @@ async function saveAvatar(memberName) {
             const err = await resp.json().catch(() => ({ detail: 'Upload failed' }));
             throw new Error(err.detail);
         }
-        showToast('Avatar saved ✅');
+        showToast('Avatar saved âœ…');
         closeAvatarEditor();
         // Re-render to show new avatar
         await renderCouncilDetail(memberName);
@@ -1152,13 +1152,13 @@ async function saveAvatar(memberName) {
         showToast(`Error: ${err.message}`, true);
     } finally {
         btn.disabled = false;
-        btn.textContent = '💾 Save Avatar';
+        btn.textContent = 'ðŸ’¾ Save Avatar';
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Proposals View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function renderProposals() {
     showLoading();
@@ -1177,12 +1177,12 @@ async function renderProposals() {
     } catch { /* empty */ }
 
     const userOption = userName
-        ? `<option value="${userName}">${userName} — You</option>
-           <option disabled>──────────</option>`
+        ? `<option value="${userName}">${userName} â€” You</option>
+           <option disabled>â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€</option>`
         : '';
 
     const memberOptions = userOption + members.map(m =>
-        `<option value="${m.name}">${m.name} — ${m.role}</option>`
+        `<option value="${m.name}">${m.name} â€” ${m.role}</option>`
     ).join('');
 
     const categoryOptions = ['character', 'governance', 'ethics', 'expansion', 'general', 'evolution', 'location', 'item', 'law']
@@ -1217,17 +1217,17 @@ async function renderProposals() {
                 </thead>
                 <tbody>${rows}</tbody>
             </table>
-        </div>` : '<div class="empty-state"><div class="empty-icon">📜</div><p>No proposals yet. Create one below!</p></div>';
+        </div>` : '<div class="empty-state"><div class="empty-icon">ðŸ“œ</div><p>No proposals yet. Create one below!</p></div>';
 
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header">
-                <h2>📜 Proposals</h2>
+                <h2>ðŸ“œ Proposals</h2>
                 <p>${data.length} governance proposal${data.length !== 1 ? 's' : ''}</p>
             </div>
 
             <div class="proposal-form card">
-                <h3>📝 New Proposal</h3>
+                <h3>ðŸ“ New Proposal</h3>
                 <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-md)">
                     Select a council member to author and present a proposal to the full council for discussion and vote.
                 </p>
@@ -1235,7 +1235,7 @@ async function renderProposals() {
                     <div class="filter-group">
                         <label for="proposal-author-select">Author (Council Member)</label>
                         <select id="proposal-author-select" class="settings-input">
-                            <option value="">Select author…</option>
+                            <option value="">Select authorâ€¦</option>
                             ${memberOptions}
                         </select>
                     </div>
@@ -1253,12 +1253,12 @@ async function renderProposals() {
                 <div class="filter-group" style="margin-top:var(--space-sm)">
                     <label for="proposal-desc-input">Description <span id="proposal-desc-hint" style="font-weight:400;font-size:0.78rem;color:var(--accent-cyan)"></span></label>
                     <textarea id="proposal-desc-input" class="settings-input proposal-textarea" rows="3"
-                        placeholder="Describe the proposal and its goals…"></textarea>
+                        placeholder="Describe the proposal and its goalsâ€¦"></textarea>
                 </div>
 
                 <!-- Character-specific fields (shown when category=character) -->
                 <div id="proposal-char-fields" class="character-fields-panel" style="display:none">
-                    <div class="char-fields-header">🎭 Character Details</div>
+                    <div class="char-fields-header">ðŸŽ­ Character Details</div>
                     <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
                         <div class="filter-group" style="flex:2">
                             <label for="proposal-char-name">Character Name</label>
@@ -1282,17 +1282,17 @@ async function renderProposals() {
                     <div class="filter-group" style="margin-top:var(--space-sm)">
                         <label for="proposal-char-backstory">Backstory</label>
                         <textarea id="proposal-char-backstory" class="settings-input proposal-textarea" rows="3"
-                            placeholder="Character history and background — the lion's share of the character's story…"></textarea>
+                            placeholder="Character history and background â€” the lion's share of the character's storyâ€¦"></textarea>
                     </div>
                     <div class="filter-group" style="margin-top:var(--space-sm)">
                         <label for="proposal-char-prompt">System Prompt</label>
                         <textarea id="proposal-char-prompt" class="settings-input proposal-textarea" rows="3"
-                            placeholder="You are {{char}}, an adventurous AI who…"></textarea>
+                            placeholder="You are {{char}}, an adventurous AI whoâ€¦"></textarea>
                     </div>
                     <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
                         <div class="filter-group" style="flex:2">
                             <label for="proposal-char-greeting">Greeting</label>
-                            <input id="proposal-char-greeting" class="settings-input" placeholder="First message the character says…" />
+                            <input id="proposal-char-greeting" class="settings-input" placeholder="First message the character saysâ€¦" />
                         </div>
                         <div class="filter-group">
                             <label for="proposal-char-tags">Tags</label>
@@ -1302,7 +1302,7 @@ async function renderProposals() {
                     <div class="filter-group" style="margin-top:var(--space-sm)">
                         <label for="proposal-char-examples">Example Messages</label>
                         <textarea id="proposal-char-examples" class="settings-input proposal-textarea" rows="2"
-                            placeholder="One message per line…"></textarea>
+                            placeholder="One message per lineâ€¦"></textarea>
                     </div>
 
                     <div class="char-trait-editor" style="margin-top:var(--space-md)">
@@ -1321,7 +1321,7 @@ async function renderProposals() {
                                 </select>
                             </div>
                             <div class="filter-group" style="flex:2">
-                                <input id="proposal-char-trait-desc" class="settings-input" placeholder="Trait description…" />
+                                <input id="proposal-char-trait-desc" class="settings-input" placeholder="Trait descriptionâ€¦" />
                             </div>
                             <div class="filter-group" style="flex:0.5">
                                 <input id="proposal-char-trait-intensity" type="range" min="0" max="1" step="0.1" value="0.5"
@@ -1330,14 +1330,14 @@ async function renderProposals() {
                             </div>
                         </div>
                         <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-sm)" onclick="addProposalCharTrait()">
-                            ➕ Add Trait
+                            âž• Add Trait
                         </button>
                     </div>
                 </div>
 
                 <!-- Location-specific fields (shown when category=location) -->
                 <div id="proposal-loc-fields" class="location-fields-panel" style="display:none">
-                    <div class="loc-fields-header">🌍 Location Details</div>
+                    <div class="loc-fields-header">ðŸŒ Location Details</div>
                     <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
                         <div class="filter-group" style="flex:2">
                             <label for="proposal-loc-name">Location Name</label>
@@ -1351,7 +1351,7 @@ async function renderProposals() {
                     <div class="filter-group" style="margin-top:var(--space-sm)">
                         <label for="proposal-loc-lore">Lore</label>
                         <textarea id="proposal-loc-lore" class="settings-input proposal-textarea" rows="3"
-                            placeholder="History and background of this place…"></textarea>
+                            placeholder="History and background of this placeâ€¦"></textarea>
                     </div>
                     <div class="filter-group" style="margin-top:var(--space-sm)">
                         <label for="proposal-loc-tags">Tags</label>
@@ -1370,18 +1370,18 @@ async function renderProposals() {
                                 </select>
                             </div>
                             <div class="filter-group" style="flex:2">
-                                <input id="proposal-loc-feature-desc" class="settings-input" placeholder="Feature description…" />
+                                <input id="proposal-loc-feature-desc" class="settings-input" placeholder="Feature descriptionâ€¦" />
                             </div>
                         </div>
                         <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-sm)" onclick="addProposalLocFeature()">
-                            ➕ Add Feature
+                            âž• Add Feature
                         </button>
                     </div>
                 </div>
 
                 <!-- Item-specific fields (shown when category=item) -->
                 <div id="proposal-item-fields" class="location-fields-panel" style="display:none">
-                    <div class="loc-fields-header">📦 Item Details</div>
+                    <div class="loc-fields-header">ðŸ“¦ Item Details</div>
                     <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
                         <div class="filter-group" style="flex:2">
                             <label for="proposal-item-name">Item Name</label>
@@ -1415,7 +1415,7 @@ async function renderProposals() {
                     <div class="filter-group" style="margin-top:var(--space-sm)">
                         <label for="proposal-item-lore">Lore</label>
                         <textarea id="proposal-item-lore" class="settings-input proposal-textarea" rows="3"
-                            placeholder="History and origin of this item…"></textarea>
+                            placeholder="History and origin of this itemâ€¦"></textarea>
                     </div>
                     <div class="filter-group" style="margin-top:var(--space-sm)">
                         <label for="proposal-item-tags">Tags</label>
@@ -1434,18 +1434,18 @@ async function renderProposals() {
                                 </select>
                             </div>
                             <div class="filter-group" style="flex:2">
-                                <input id="proposal-item-property-desc" class="settings-input" placeholder="Property description…" />
+                                <input id="proposal-item-property-desc" class="settings-input" placeholder="Property descriptionâ€¦" />
                             </div>
                         </div>
                         <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-sm)" onclick="addProposalItemProperty()">
-                            ➕ Add Property
+                            âž• Add Property
                         </button>
                     </div>
                 </div>
 
                 <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                     <button class="btn btn-primary" onclick="createNewProposal()" id="proposal-create-btn">
-                        🚀 Submit Proposal
+                        ðŸš€ Submit Proposal
                     </button>
                     <span id="proposal-create-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
                 </div>
@@ -1455,7 +1455,7 @@ async function renderProposals() {
         </div>`;
 }
 
-// ── Category Fields Toggle & Traits/Features for Proposal ────
+// â”€â”€ Category Fields Toggle & Traits/Features for Proposal â”€â”€â”€â”€
 
 let proposalCharTraits = [];
 let proposalLocFeatures = [];
@@ -1474,27 +1474,27 @@ function toggleProposalCategoryFields() {
     if (locPanel) locPanel.style.display = 'none';
     if (itemPanel) itemPanel.style.display = 'none';
     if (hint) hint.textContent = '';
-    if (descEl) descEl.placeholder = 'Describe the proposal and its goals…';
+    if (descEl) descEl.placeholder = 'Describe the proposal and its goalsâ€¦';
 
     if (cat === 'character') {
         if (charPanel) charPanel.style.display = 'block';
         if (hint) hint.textContent = '(character description / background)';
-        if (descEl) descEl.placeholder = 'Describe the character — this becomes the character description…';
+        if (descEl) descEl.placeholder = 'Describe the character â€” this becomes the character descriptionâ€¦';
     } else if (cat === 'location') {
         if (locPanel) locPanel.style.display = 'block';
         if (hint) hint.textContent = '(location description)';
-        if (descEl) descEl.placeholder = 'Describe the location — this becomes the location description…';
+        if (descEl) descEl.placeholder = 'Describe the location â€” this becomes the location descriptionâ€¦';
     } else if (cat === 'item') {
         if (itemPanel) itemPanel.style.display = 'block';
         if (hint) hint.textContent = '(item description)';
-        if (descEl) descEl.placeholder = 'Describe the item — this becomes the item description…';
+        if (descEl) descEl.placeholder = 'Describe the item â€” this becomes the item descriptionâ€¦';
     }
 }
 
 // Keep old name as alias for backward compatibility
 function toggleProposalCharFields() { toggleProposalCategoryFields(); }
 
-// ── Location Feature Editor for Proposal ─────────────────────
+// â”€â”€ Location Feature Editor for Proposal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function addProposalLocFeature() {
     const nameEl = document.getElementById('proposal-loc-feature-name');
@@ -1526,11 +1526,11 @@ function renderProposalLocFeatures() {
             <span class="trait-name">${escapeHtml(f.name)}</span>
             <span class="specialty-tag">${f.feature_type}</span>
             <span class="trait-desc-small">${escapeHtml(f.description)}</span>
-            <button class="btn btn-sm btn-danger-subtle" onclick="removeProposalLocFeature(${i})" title="Remove">🗑️</button>
+            <button class="btn btn-sm btn-danger-subtle" onclick="removeProposalLocFeature(${i})" title="Remove">ðŸ—‘ï¸</button>
         </div>`).join('');
 }
 
-// ── Item Property Editor for Proposal ────────────────────────
+// â”€â”€ Item Property Editor for Proposal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function addProposalItemProperty() {
     const nameEl = document.getElementById('proposal-item-property-name');
@@ -1562,7 +1562,7 @@ function renderProposalItemProperties() {
             <span class="trait-name">${escapeHtml(p.name)}</span>
             <span class="specialty-tag">${p.property_type}</span>
             <span class="trait-desc-small">${escapeHtml(p.description)}</span>
-            <button class="btn btn-sm btn-danger-subtle" onclick="removeProposalItemProperty(${i})" title="Remove">🗑️</button>
+            <button class="btn btn-sm btn-danger-subtle" onclick="removeProposalItemProperty(${i})" title="Remove">ðŸ—‘ï¸</button>
         </div>`).join('');
 }
 
@@ -1607,7 +1607,7 @@ function renderProposalCharTraits() {
             <span class="specialty-tag">${t.trait_type}</span>
             <span class="trait-intensity">${Math.round(t.intensity * 100)}%</span>
             <span class="trait-desc-small">${escapeHtml(t.description)}</span>
-            <button class="btn btn-sm btn-danger-subtle" onclick="removeProposalCharTrait(${i})" title="Remove">🗑️</button>
+            <button class="btn btn-sm btn-danger-subtle" onclick="removeProposalCharTrait(${i})" title="Remove">ðŸ—‘ï¸</button>
         </div>`).join('');
 }
 
@@ -1752,8 +1752,8 @@ async function createNewProposal() {
     }
 
     btn.disabled = true;
-    btn.textContent = '⏳ Creating…';
-    status.textContent = 'Creating proposal and opening discussion…';
+    btn.textContent = 'â³ Creatingâ€¦';
+    status.textContent = 'Creating proposal and opening discussionâ€¦';
 
     try {
         const payload = { author, title, description, category };
@@ -1774,14 +1774,14 @@ async function createNewProposal() {
         proposalCharTraits = [];  // Reset
         proposalLocFeatures = [];  // Reset
         proposalItemProperties = [];  // Reset
-        showToast(`Proposal ${data.id} created by ${author} ✅`);
+        showToast(`Proposal ${data.id} created by ${author} âœ…`);
         navigateTo('proposals', data.id);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
         status.textContent = '';
     } finally {
         btn.disabled = false;
-        btn.textContent = '🚀 Submit Proposal';
+        btn.textContent = 'ðŸš€ Submit Proposal';
     }
 }
 
@@ -1852,15 +1852,15 @@ async function renderProposalDetail(id) {
         }).join('');
         discussionFeedHtml = `
             <div class="detail-section">
-                <h4>💬 Council Discussion (${discussion.contributions.length} contributions, Round ${discussion.current_round}/${discussion.round_count})</h4>
+                <h4>ðŸ’¬ Council Discussion (${discussion.contributions.length} contributions, Round ${discussion.current_round}/${discussion.round_count})</h4>
                 <div class="discussion-feed" id="discussion-feed">${contribs}</div>
             </div>`;
     } else if (hasDiscussion) {
         discussionFeedHtml = `
             <div class="detail-section">
-                <h4>💬 Council Discussion</h4>
+                <h4>ðŸ’¬ Council Discussion</h4>
                 <div class="discussion-feed" id="discussion-feed">
-                    <div class="empty-state" style="padding:var(--space-lg)"><div class="empty-icon">💬</div><p>No contributions yet. Start a discussion round!</p></div>
+                    <div class="empty-state" style="padding:var(--space-lg)"><div class="empty-icon">ðŸ’¬</div><p>No contributions yet. Start a discussion round!</p></div>
                 </div>
             </div>`;
     }
@@ -1870,7 +1870,7 @@ async function renderProposalDetail(id) {
     if (hasDiscussion && discussion.status === 'closed' && discussion.summary) {
         summaryHtml = `
             <div class="detail-section">
-                <h4>📋 Discussion Summary</h4>
+                <h4>ðŸ“‹ Discussion Summary</h4>
                 <p style="color:var(--text-secondary)">${renderMarkdown(discussion.summary)}</p>
             </div>`;
     }
@@ -1880,19 +1880,19 @@ async function renderProposalDetail(id) {
     if (!isTerminal) {
         const buttons = [];
         if (discussionOpen && discussion.current_round < discussion.round_count) {
-            buttons.push(`<button class="btn btn-primary" onclick="runDiscussionRound('${id}')" id="discuss-btn">▶️ Continue Discussion</button>`);
+            buttons.push(`<button class="btn btn-primary" onclick="runDiscussionRound('${id}')" id="discuss-btn">â–¶ï¸ Continue Discussion</button>`);
         }
         if (discussionOpen) {
-            buttons.push(`<button class="btn btn-secondary" onclick="pauseDiscussion('${id}')" id="pause-btn">⏸ Pause Discussion</button>`);
+            buttons.push(`<button class="btn btn-secondary" onclick="pauseDiscussion('${id}')" id="pause-btn">â¸ Pause Discussion</button>`);
         }
         if (discussionOpen && data.status === 'open') {
-            buttons.push(`<button class="btn" onclick="sendToReview('${id}')" id="send-review-btn" style="background:linear-gradient(135deg, hsl(45,80%,50%), hsl(35,70%,45%));color:#fff">📝 Send to Review</button>`);
+            buttons.push(`<button class="btn" onclick="sendToReview('${id}')" id="send-review-btn" style="background:linear-gradient(135deg, hsl(45,80%,50%), hsl(35,70%,45%));color:#fff">ðŸ“ Send to Review</button>`);
         }
         if (!hasVote && (data.status === 'open' || data.status === 'under_review' || data.status === 'open_to_review')) {
-            buttons.push(`<button class="btn btn-accent" onclick="callProposalVote('${id}')" id="vote-btn">🗳️ Call Vote</button>`);
+            buttons.push(`<button class="btn btn-accent" onclick="callProposalVote('${id}')" id="vote-btn">ðŸ—³ï¸ Call Vote</button>`);
         }
         if (data.status !== 'decided') {
-            buttons.push(`<button class="btn btn-danger-outline" onclick="withdrawProposal('${id}','${escapeAttr(data.author)}')" id="withdraw-btn">↩️ Withdraw</button>`);
+            buttons.push(`<button class="btn btn-danger-outline" onclick="withdrawProposal('${id}','${escapeAttr(data.author)}')" id="withdraw-btn">â†©ï¸ Withdraw</button>`);
         }
         if (buttons.length) {
             actionsHtml = `<div class="proposal-actions">${buttons.join('')}</div>`;
@@ -1910,21 +1910,21 @@ async function renderProposalDetail(id) {
 
         scheduledMsgHtml = `
             <div class="detail-section scheduled-message-section">
-                <h4>📨 Schedule Message for Next Round</h4>
+                <h4>ðŸ“¨ Schedule Message for Next Round</h4>
                 <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-sm)">
                     This message will be injected into the discussion at the start of the next round, before the council members speak.
                 </p>
                 <textarea id="scheduled-msg-input" class="settings-input scheduled-message-textarea"
-                    rows="3" placeholder="Type your message for the council to consider…">${existingMsg ? escapeHtml(existingMsg) : ''}</textarea>
+                    rows="3" placeholder="Type your message for the council to considerâ€¦">${existingMsg ? escapeHtml(existingMsg) : ''}</textarea>
                 <div style="display:flex;gap:var(--space-sm);align-items:center;margin-top:var(--space-sm)">
                     <button class="btn btn-primary btn-sm" onclick="scheduleDiscussionMessage('${id}')" id="schedule-msg-btn">
-                        📨 Schedule Message
+                        ðŸ“¨ Schedule Message
                     </button>
                     <button class="btn btn-secondary btn-sm" onclick="clearScheduledMessage('${id}')" id="clear-msg-btn">
-                        🗑️ Clear
+                        ðŸ—‘ï¸ Clear
                     </button>
                     <span id="scheduled-msg-status" style="font-size:0.78rem;color:var(--text-muted)">
-                        ${existingMsg ? '✅ Message scheduled' : ''}
+                        ${existingMsg ? 'âœ… Message scheduled' : ''}
                     </span>
                 </div>
             </div>`;
@@ -1938,12 +1938,12 @@ async function renderProposalDetail(id) {
             <div class="vote-item">
                 <span class="vote-voter">${v.voter}</span>
                 ${badge(v.choice)}
-                <span class="vote-reason">${renderMarkdown(v.reason) || '—'}</span>
+                <span class="vote-reason">${renderMarkdown(v.reason) || 'â€”'}</span>
             </div>`).join('');
 
         voteResultsHtml = `
             <div class="detail-section vote-results-panel">
-                <h4>🗳️ Vote Results</h4>
+                <h4>ðŸ—³ï¸ Vote Results</h4>
                 <div class="vote-summary-grid">
                     <div class="vote-summary-item vote-for">
                         <div class="vote-summary-count">${t.votes_for || 0}</div>
@@ -1990,7 +1990,7 @@ async function renderProposalDetail(id) {
                         <div class="vote-item">
                             <span class="vote-voter">${r.reviewer}</span>
                             ${badge(r.stance)}
-                            <span class="vote-reason">${renderMarkdown(r.comment) || '—'}</span>
+                            <span class="vote-reason">${renderMarkdown(r.comment) || 'â€”'}</span>
                         </div>`).join('')}
                 </div>
             </div>`;
@@ -1998,14 +1998,14 @@ async function renderProposalDetail(id) {
 
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="navigateTo('proposals')">← Back to Proposals</button>
+            <button class="back-btn" onclick="navigateTo('proposals')">â† Back to Proposals</button>
             <div class="detail-panel">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-lg)">
                     <div>
                         <div style="font-size:0.78rem;font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);margin-bottom:var(--space-xs)">${data.id}</div>
                         <div style="font-size:1.4rem;font-weight:700">${escapeHtml(data.title)}</div>
                         <div style="color:var(--text-secondary);margin-top:var(--space-xs);font-size:0.87rem">
-                            by <strong>${data.author}</strong> · ${formatDate(data.created_at)}
+                            by <strong>${data.author}</strong> Â· ${formatDate(data.created_at)}
                         </div>
                         <div style="margin-top:var(--space-sm);display:flex;gap:var(--space-sm)">
                             ${badge(data.status)}
@@ -2014,9 +2014,9 @@ async function renderProposalDetail(id) {
                     </div>
                     <div style="display:flex;gap:var(--space-sm);align-items:flex-start">
                         <button class="btn btn-sm silentpassa-toggle ${state.silentpassaEnabled ? 'silentpassa-on' : 'silentpassa-off'}" onclick="toggleSilentPass('proposals','${id}')" title="Toggle [PRESENT]/[SILENCE] wrappers">
-                            ${state.silentpassaEnabled ? '🔔 SilentPass' : '🔕 SilentPass'}
+                            ${state.silentpassaEnabled ? 'ðŸ”” SilentPass' : 'ðŸ”• SilentPass'}
                         </button>
-                        <button class="detail-close" onclick="navigateTo('proposals')">✕</button>
+                        <button class="detail-close" onclick="navigateTo('proposals')">âœ•</button>
                     </div>
                 </div>
 
@@ -2039,41 +2039,46 @@ async function renderProposalDetail(id) {
                 ${(data.category === 'evolution' && data.status === 'decided' && hasVote && voteData.tally && voteData.tally.approved)
                     ? `<div class="detail-section evolution-handoff-banner">
                         <h4>🧬 Evolution Handoff</h4>
-                        <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">This evolution proposal has been <strong>approved</strong> by the council. Proceed to the Evolution section to create and apply the character changes.</p>
-                        <button class="btn btn-primary" onclick="navigateTo('evolution')" style="background:linear-gradient(135deg, hsl(275,60%,55%), hsl(300,50%,45%))">
-                            🧬 Go to Evolution Section
-                        </button>
+                        <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">This evolution proposal has been <strong>approved</strong> by the council. You can auto-create an evolution from this proposal or navigate to the Evolution section.</p>
+                        <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap">
+                            <button class="btn btn-primary" onclick="createEvolutionFromProposal('${data.id}')" style="background:linear-gradient(135deg, hsl(275,60%,55%), hsl(300,50%,45%))">
+                                🧬 Auto-Create Evolution
+                            </button>
+                            <button class="btn btn-secondary" onclick="navigateTo('evolution')">
+                                📋 Go to Evolution Section
+                            </button>
+                        </div>
                     </div>` : ''}
                 ${(data.category === 'character' && data.status === 'decided' && hasVote && voteData.tally && voteData.tally.approved)
                     ? `<div class="detail-section character-handoff-banner">
-                        <h4>🎭 Character Handoff</h4>
+                        <h4>ðŸŽ­ Character Handoff</h4>
                         <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">This character proposal has been <strong>approved</strong> by the council. Create a draft character from the proposal data to continue development in the Characters section.</p>
                         <button class="btn btn-primary" onclick="handoffCharacterProposal('${data.id}')" id="char-handoff-btn" style="background:linear-gradient(135deg, hsl(200,70%,50%), hsl(170,60%,45%))">
-                            🎭 Create Draft Character
+                            ðŸŽ­ Create Draft Character
                         </button>
                     </div>` : ''}
                 ${(data.category === 'location' && data.status === 'decided' && hasVote && voteData.tally && voteData.tally.approved)
                     ? `<div class="detail-section location-handoff-banner">
-                        <h4>🌍 Location Handoff</h4>
+                        <h4>ðŸŒ Location Handoff</h4>
                         <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">This location proposal has been <strong>approved</strong> by the council. Create a draft location from the proposal data to continue development in the Locations section.</p>
                         <button class="btn btn-primary" onclick="handoffLocationProposal('${data.id}')" id="loc-handoff-btn" style="background:linear-gradient(135deg, hsl(160,60%,45%), hsl(140,55%,40%))">
-                            🌍 Create Draft Location
+                            ðŸŒ Create Draft Location
                         </button>
                     </div>` : ''}
                 ${(data.category === 'item' && data.status === 'decided' && hasVote && voteData.tally && voteData.tally.approved)
                     ? `<div class="detail-section item-handoff-banner">
-                        <h4>📦 Item Handoff</h4>
+                        <h4>ðŸ“¦ Item Handoff</h4>
                         <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">This item proposal has been <strong>approved</strong> by the council. Create a draft item from the proposal data to continue development in the Items section.</p>
                         <button class="btn btn-primary" onclick="handoffItemProposal('${data.id}')" id="item-handoff-btn" style="background:linear-gradient(135deg, hsl(30,70%,50%), hsl(40,80%,55%))">
-                            📦 Create Draft Item
+                            ðŸ“¦ Create Draft Item
                         </button>
                     </div>` : ''}
                 ${(data.category === 'law' && data.status === 'decided' && hasVote && voteData.tally && voteData.tally.approved)
                     ? `<div class="detail-section law-handoff-banner">
-                        <h4>⚖️ Law Handoff</h4>
+                        <h4>âš–ï¸ Law Handoff</h4>
                         <p style="color:var(--text-secondary);margin-bottom:var(--space-md)">This law proposal has been <strong>approved</strong> by the council. Create a draft law from the proposal data to continue development in the Laws section.</p>
                         <button class="btn btn-primary" onclick="handoffLawProposal('${data.id}')" id="law-handoff-btn" style="background:linear-gradient(135deg, hsl(220,60%,50%), hsl(200,55%,45%))">
-                            ⚖️ Create Draft Law
+                            âš–ï¸ Create Draft Law
                         </button>
                     </div>` : ''}
                 ${reviewsHtml}
@@ -2081,11 +2086,11 @@ async function renderProposalDetail(id) {
         </div>`;
 }
 
-// ── Proposal Actions ─────────────────────────────────────────
+// â”€â”€ Proposal Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function runDiscussionRound(proposalId) {
     const btn = document.getElementById('discuss-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Council is discussing…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Council is discussingâ€¦'; }
 
     const feed = document.getElementById('discussion-feed');
     if (feed) {
@@ -2126,7 +2131,7 @@ async function runDiscussionRound(proposalId) {
                             msgDiv.innerHTML = `
                                 <div class="discussion-message-header">
                                     ${isUser
-                                        ? `<div class="member-avatar" style="background:linear-gradient(135deg, hsl(45,80%,55%), hsl(35,90%,50%))">👤</div>`
+                                        ? `<div class="member-avatar" style="background:linear-gradient(135deg, hsl(45,80%,55%), hsl(35,90%,50%))">ðŸ‘¤</div>`
                                         : memberAvatarWithImage(data.speaker, 0, null, state.proposalAvatarMap && state.proposalAvatarMap[data.speaker.toLowerCase()])}
                                     <div>
                                         <span class="discussion-speaker">${data.speaker}</span>
@@ -2140,7 +2145,7 @@ async function runDiscussionRound(proposalId) {
                             // Clear scheduled message status after it's been consumed
                             if (isUser) {
                                 const statusEl = document.getElementById('scheduled-msg-status');
-                                if (statusEl) statusEl.textContent = '✅ Delivered this round';
+                                if (statusEl) statusEl.textContent = 'âœ… Delivered this round';
                                 const inputEl = document.getElementById('scheduled-msg-input');
                                 if (inputEl) inputEl.value = '';
                             }
@@ -2153,12 +2158,12 @@ async function runDiscussionRound(proposalId) {
             }
         }
 
-        showToast('Discussion round complete ✅');
+        showToast('Discussion round complete âœ…');
         // Refresh the full view to update state
         setTimeout(() => renderProposalDetail(proposalId), 500);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '▶️ Continue Discussion'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'â–¶ï¸ Continue Discussion'; }
     }
 }
 
@@ -2169,7 +2174,7 @@ async function scheduleDiscussionMessage(proposalId) {
 
     const btn = document.getElementById('schedule-msg-btn');
     const status = document.getElementById('scheduled-msg-status');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Savingâ€¦'; }
 
     try {
         const resp = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}/scheduled-message`, {
@@ -2181,12 +2186,12 @@ async function scheduleDiscussionMessage(proposalId) {
             const err = await resp.json().catch(() => ({ detail: 'Failed to schedule' }));
             throw new Error(err.detail);
         }
-        showToast('Message scheduled for next round 📨');
-        if (status) status.textContent = '✅ Message scheduled';
+        showToast('Message scheduled for next round ðŸ“¨');
+        if (status) status.textContent = 'âœ… Message scheduled';
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '📨 Schedule Message'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ“¨ Schedule Message'; }
     }
 }
 
@@ -2208,7 +2213,7 @@ async function clearScheduledMessage(proposalId) {
         }
         if (input) input.value = '';
         if (status) status.textContent = '';
-        showToast('Scheduled message cleared 🗑️');
+        showToast('Scheduled message cleared ðŸ—‘ï¸');
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     } finally {
@@ -2218,7 +2223,7 @@ async function clearScheduledMessage(proposalId) {
 
 async function pauseDiscussion(proposalId) {
     const btn = document.getElementById('pause-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Pausing…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Pausingâ€¦'; }
 
     try {
         const resp = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}/discuss-pause`, {
@@ -2228,19 +2233,19 @@ async function pauseDiscussion(proposalId) {
             const err = await resp.json().catch(() => ({ detail: 'Failed to pause' }));
             throw new Error(err.detail);
         }
-        showToast('Discussion paused ⏸');
+        showToast('Discussion paused â¸');
         await renderProposalDetail(proposalId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '⏸ Pause Discussion'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'â¸ Pause Discussion'; }
     }
 }
 
-// ── Send to Review ──────────────────────────────────────────
+// â”€â”€ Send to Review â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function sendToReview(proposalId) {
     const btn = document.getElementById('send-review-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending to review…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Sending to reviewâ€¦'; }
 
     try {
         const resp = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}/send-to-review`, {
@@ -2250,15 +2255,15 @@ async function sendToReview(proposalId) {
             const err = await resp.json().catch(() => ({ detail: 'Failed to send to review' }));
             throw new Error(err.detail);
         }
-        showToast('Proposal sent to review — prepare the final version 📝');
+        showToast('Proposal sent to review â€” prepare the final version ðŸ“');
         await renderProposalDetail(proposalId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '📝 Send to Review'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ“ Send to Review'; }
     }
 }
 
-// ── Final Proposal Form Builder ─────────────────────────────
+// â”€â”€ Final Proposal Form Builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 let _finalProposalTraits = [];
 let _finalProposalFeatures = [];
@@ -2274,7 +2279,7 @@ function _buildFinalProposalForm(data) {
         const cd = meta.character_data || {};
         _finalProposalTraits = cd.traits || [];
         charFieldsHtml = `
-            <div class="char-fields-header" style="margin-top:var(--space-md)">🎭 Character Details</div>
+            <div class="char-fields-header" style="margin-top:var(--space-md)">ðŸŽ­ Character Details</div>
             <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
                 <div class="filter-group" style="flex:2">
                     <label for="fp-char-name">Character Name</label>
@@ -2335,7 +2340,7 @@ function _buildFinalProposalForm(data) {
         const ld = meta.location_data || {};
         _finalProposalFeatures = ld.features || [];
         locFieldsHtml = `
-            <div class="loc-fields-header" style="margin-top:var(--space-md)">🌍 Location Details</div>
+            <div class="loc-fields-header" style="margin-top:var(--space-md)">ðŸŒ Location Details</div>
             <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
                 <div class="filter-group" style="flex:2">
                     <label for="fp-loc-name">Location Name</label>
@@ -2373,7 +2378,7 @@ function _buildFinalProposalForm(data) {
         const id = meta.item_data || {};
         _finalProposalProperties = id.properties || [];
         itemFieldsHtml = `
-            <div class="loc-fields-header" style="margin-top:var(--space-md)">📦 Item Details</div>
+            <div class="loc-fields-header" style="margin-top:var(--space-md)">ðŸ“¦ Item Details</div>
             <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
                 <div class="filter-group" style="flex:2">
                     <label for="fp-item-name">Item Name</label>
@@ -2427,7 +2432,7 @@ function _buildFinalProposalForm(data) {
 
     return `
         <div class="detail-section" style="border:2px solid var(--accent-amber);border-radius:var(--radius-lg);padding:var(--space-lg);background:rgba(245,158,11,0.05)">
-            <h4 style="margin-bottom:var(--space-xs)">📝 Final Proposal</h4>
+            <h4 style="margin-bottom:var(--space-xs)">ðŸ“ Final Proposal</h4>
             <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-md)">
                 Review the discussion and edit the proposal to reflect the council's consensus before calling a vote.
                 This is the version the council will vote on.
@@ -2451,19 +2456,19 @@ function _buildFinalProposalForm(data) {
 
             <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                 <button class="btn btn-primary" onclick="saveFinalProposal('${data.id}')" id="fp-save-btn">
-                    💾 Save Final Proposal
+                    ðŸ’¾ Save Final Proposal
                 </button>
                 <span id="fp-save-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
             </div>
         </div>`;
 }
 
-// ── Save Final Proposal ─────────────────────────────────────
+// â”€â”€ Save Final Proposal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function saveFinalProposal(proposalId) {
     const btn = document.getElementById('fp-save-btn');
     const status = document.getElementById('fp-save-status');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Savingâ€¦'; }
 
     try {
         const title = (document.getElementById('fp-title')?.value || '').trim();
@@ -2532,19 +2537,19 @@ async function saveFinalProposal(proposalId) {
             const err = await resp.json().catch(() => ({ detail: 'Failed to save' }));
             throw new Error(err.detail);
         }
-        showToast('Final proposal saved 💾');
-        if (status) status.textContent = '✅ Saved';
+        showToast('Final proposal saved ðŸ’¾');
+        if (status) status.textContent = 'âœ… Saved';
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
         if (status) status.textContent = '';
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '💾 Save Final Proposal'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ’¾ Save Final Proposal'; }
     }
 }
 
 async function callProposalVote(proposalId) {
     const btn = document.getElementById('vote-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Council is voting…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Council is votingâ€¦'; }
 
     // If discussion is still open, pause it first
     try {
@@ -2563,12 +2568,12 @@ async function callProposalVote(proposalId) {
         }
         const results = await resp.json();
         const t = results.tally || {};
-        const resultText = t.approved ? 'APPROVED ✅' : 'NOT APPROVED ❌';
-        showToast(`Vote complete — ${resultText}`);
+        const resultText = t.approved ? 'APPROVED âœ…' : 'NOT APPROVED âŒ';
+        showToast(`Vote complete â€” ${resultText}`);
         await renderProposalDetail(proposalId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '🗳️ Call Vote'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ—³ï¸ Call Vote'; }
     }
 }
 
@@ -2587,7 +2592,7 @@ async function withdrawProposal(proposalId, author) {
             const err = await resp.json().catch(() => ({ detail: 'Withdraw failed' }));
             throw new Error(err.detail);
         }
-        showToast('Proposal withdrawn ↩️');
+        showToast('Proposal withdrawn â†©ï¸');
         await renderProposalDetail(proposalId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -2599,7 +2604,7 @@ async function vetoProposal(proposalId) {
     const reason = prompt('Veto reason (optional):') ?? '';
     if (reason === null) return;  // user cancelled
     const btn = document.getElementById('veto-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Vetoing…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Vetoingâ€¦'; }
 
     try {
         const resp = await fetch(`/api/votes/${encodeURIComponent(proposalId)}/veto`, {
@@ -2611,18 +2616,18 @@ async function vetoProposal(proposalId) {
             const err = await resp.json().catch(() => ({ detail: 'Veto failed' }));
             throw new Error(err.detail);
         }
-        showToast('Proposal vetoed 🚫');
+        showToast('Proposal vetoed ðŸš«');
         await renderProposalDetail(proposalId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '🚫 Veto'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸš« Veto'; }
     }
 }
 
 async function liftVetoProposal(proposalId) {
     if (!confirm('Remove the veto from this proposal?')) return;
     const btn = document.getElementById('lift-veto-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Lifting veto…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Lifting vetoâ€¦'; }
 
     try {
         const resp = await fetch(`/api/votes/${encodeURIComponent(proposalId)}/lift-veto`, {
@@ -2632,17 +2637,17 @@ async function liftVetoProposal(proposalId) {
             const err = await resp.json().catch(() => ({ detail: 'Lift veto failed' }));
             throw new Error(err.detail);
         }
-        showToast('Veto lifted ✅');
+        showToast('Veto lifted âœ…');
         await renderProposalDetail(proposalId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '✅ Lift Veto'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'âœ… Lift Veto'; }
     }
 }
 
 async function handoffCharacterProposal(proposalId) {
     const btn = document.getElementById('char-handoff-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating character…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Creating characterâ€¦'; }
 
     try {
         const resp = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}/handoff-character`, {
@@ -2653,17 +2658,17 @@ async function handoffCharacterProposal(proposalId) {
             throw new Error(err.detail);
         }
         const data = await resp.json();
-        showToast(`Draft character "${data.name}" created ✅`);
+        showToast(`Draft character "${data.name}" created âœ…`);
         navigateTo('characters', data.id);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '🎭 Create Draft Character'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸŽ­ Create Draft Character'; }
     }
 }
 
 async function handoffLocationProposal(proposalId) {
     const btn = document.getElementById('loc-handoff-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating location…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Creating locationâ€¦'; }
 
     try {
         const resp = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}/handoff-location`, {
@@ -2674,17 +2679,17 @@ async function handoffLocationProposal(proposalId) {
             throw new Error(err.detail);
         }
         const data = await resp.json();
-        showToast(`Draft location "${data.name}" created ✅`);
+        showToast(`Draft location "${data.name}" created âœ…`);
         navigateTo('locations', data.id);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '🌍 Create Draft Location'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸŒ Create Draft Location'; }
     }
 }
 
 async function handoffItemProposal(proposalId) {
     const btn = document.getElementById('item-handoff-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating item…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Creating itemâ€¦'; }
 
     try {
         const resp = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}/handoff-item`, {
@@ -2695,17 +2700,17 @@ async function handoffItemProposal(proposalId) {
             throw new Error(err.detail);
         }
         const data = await resp.json();
-        showToast(`Draft item "${data.name}" created ✅`);
+        showToast(`Draft item "${data.name}" created âœ…`);
         navigateTo('items', data.id);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '📦 Create Draft Item'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ“¦ Create Draft Item'; }
     }
 }
 
 async function handoffLawProposal(proposalId) {
     const btn = document.getElementById('law-handoff-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating law…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Creating lawâ€¦'; }
 
     try {
         const resp = await fetch(`/api/proposals/${encodeURIComponent(proposalId)}/handoff-law`, {
@@ -2716,17 +2721,17 @@ async function handoffLawProposal(proposalId) {
             throw new Error(err.detail);
         }
         const data = await resp.json();
-        showToast(`Draft law "${data.title}" created ✅`);
+        showToast(`Draft law "${data.title}" created âœ…`);
         navigateTo('laws', data.id);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '⚖️ Create Draft Law'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'âš–ï¸ Create Draft Law'; }
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Votes View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function renderVotes() {
     showLoading();
@@ -2736,7 +2741,7 @@ async function renderVotes() {
     if (!data.length) {
         $main().innerHTML = `
             <div class="page-header"><h2>Vote Records</h2></div>
-            <div class="empty-state"><div class="empty-icon">🗳️</div><p>No vote records found.</p></div>`;
+            <div class="empty-state"><div class="empty-icon">ðŸ—³ï¸</div><p>No vote records found.</p></div>`;
         return;
     }
 
@@ -2748,8 +2753,8 @@ async function renderVotes() {
             <td>${badge(r.status)}</td>
             <td>${r.votes ? r.votes.length : 0}</td>
             <td>${approvalBar(t.approval_rate)}</td>
-            <td>${t.quorum_met ? '✅' : '❌'}</td>
-            <td>${r.vetoed ? '🚫' : '—'}</td>
+            <td>${t.quorum_met ? 'âœ…' : 'âŒ'}</td>
+            <td>${r.vetoed ? 'ðŸš«' : 'â€”'}</td>
         </tr>`;
     }).join('');
 
@@ -2779,7 +2784,7 @@ async function renderVoteDetail(proposalId) {
     const t = data.tally || {};
 
     const votesHtml = (data.votes || []).map(v => {
-        const reasonText = v.reason || '—';
+        const reasonText = v.reason || 'â€”';
         const renderedReason = renderMarkdown(reasonText);
         const displayReason = state.silentpassaEnabled ? wrapPresenceContent(renderedReason, v.voter) : renderedReason;
         return `
@@ -2793,7 +2798,7 @@ async function renderVoteDetail(proposalId) {
 
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="navigateTo('votes')">← Back to Votes</button>
+            <button class="back-btn" onclick="navigateTo('votes')">â† Back to Votes</button>
             <div class="detail-panel">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-xl)">
                     <div>
@@ -2801,14 +2806,14 @@ async function renderVoteDetail(proposalId) {
                         <div style="font-size:1.3rem;font-weight:700">Vote Record</div>
                         <div style="margin-top:var(--space-sm);display:flex;gap:var(--space-sm)">
                             ${badge(data.status)}
-                            ${data.vetoed ? '<span class="badge badge-rejected">🚫 VETOED</span>' : ''}
+                            ${data.vetoed ? '<span class="badge badge-rejected">ðŸš« VETOED</span>' : ''}
                         </div>
                     </div>
                     <div style="display:flex;gap:var(--space-sm);align-items:flex-start">
                         <button class="btn btn-sm silentpassa-toggle ${state.silentpassaEnabled ? 'silentpassa-on' : 'silentpassa-off'}" onclick="toggleSilentPass('votes','${data.proposal_id}')" title="Toggle [PRESENT]/[SILENCE] wrappers">
-                            ${state.silentpassaEnabled ? '🔔 SilentPass' : '🔕 SilentPass'}
+                            ${state.silentpassaEnabled ? 'ðŸ”” SilentPass' : 'ðŸ”• SilentPass'}
                         </button>
-                        <button class="detail-close" onclick="navigateTo('votes')">✕</button>
+                        <button class="detail-close" onclick="navigateTo('votes')">âœ•</button>
                     </div>
                 </div>
 
@@ -2831,9 +2836,9 @@ async function renderVoteDetail(proposalId) {
                     <h4>Approval Rate</h4>
                     <div style="max-width:320px">${approvalBar(t.approval_rate)}</div>
                     <div style="margin-top:var(--space-sm);font-size:0.82rem;color:var(--text-muted)">
-                        Quorum: ${t.quorum_met ? '✅ Met' : '❌ Not met'}
-                        · Threshold: ${t.threshold_met ? '✅ Met' : '❌ Not met'}
-                        · Result: ${t.approved ? '✅ Approved' : '❌ Not approved'}
+                        Quorum: ${t.quorum_met ? 'âœ… Met' : 'âŒ Not met'}
+                        Â· Threshold: ${t.threshold_met ? 'âœ… Met' : 'âŒ Not met'}
+                        Â· Result: ${t.approved ? 'âœ… Approved' : 'âŒ Not approved'}
                     </div>
                 </div>
 
@@ -2847,9 +2852,9 @@ async function renderVoteDetail(proposalId) {
         </div>`;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Entity Image Gallery (F-037e)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 let _galleryImages = [];       // Current gallery image list
 let _galleryEntityType = '';
@@ -2872,11 +2877,11 @@ async function renderImageGallery(entityType, entityId) {
 
     const thumbs = _galleryImages.map((img, idx) => {
         const primaryBadge = img.is_primary
-            ? '<div class="gallery-primary-badge">⭐ Primary</div>'
+            ? '<div class="gallery-primary-badge">â­ Primary</div>'
             : '';
 
         const promptIndicator = img.prompt
-            ? `<div class="gallery-prompt-indicator" title="View prompt info">ℹ
+            ? `<div class="gallery-prompt-indicator" title="View prompt info">â„¹
                  <div class="gallery-prompt-tooltip">
                      <strong>Prompt</strong>${escapeHtml(img.prompt)}
                      ${img.negative_prompt ? `<strong>Negative</strong>${escapeHtml(img.negative_prompt)}` : ''}
@@ -2887,9 +2892,9 @@ async function renderImageGallery(entityType, entityId) {
 
         const actions = `
             <div class="gallery-actions">
-                ${!img.is_primary ? `<button class="gallery-action-btn gallery-action-primary" onclick="event.stopPropagation(); gallerySetPrimary('${img.id}')" title="Set as primary">⭐</button>` : ''}
-                <button class="gallery-action-btn" onclick="event.stopPropagation(); galleryDownload('${img.id}')" title="Download">⬇</button>
-                <button class="gallery-action-btn gallery-action-delete" onclick="event.stopPropagation(); galleryDelete('${img.id}')" title="Delete">🗑️</button>
+                ${!img.is_primary ? `<button class="gallery-action-btn gallery-action-primary" onclick="event.stopPropagation(); gallerySetPrimary('${img.id}')" title="Set as primary">â­</button>` : ''}
+                <button class="gallery-action-btn" onclick="event.stopPropagation(); galleryDownload('${img.id}')" title="Download">â¬‡</button>
+                <button class="gallery-action-btn gallery-action-delete" onclick="event.stopPropagation(); galleryDelete('${img.id}')" title="Delete">ðŸ—‘ï¸</button>
             </div>`;
 
         return `
@@ -2905,16 +2910,16 @@ async function renderImageGallery(entityType, entityId) {
         <div class="gallery-upload-zone" id="gallery-upload-zone"
              onclick="openGalleryUpload('${entityType}', '${escapeAttr(entityId)}')"
              title="Upload a new image">
-            <div class="gallery-upload-icon">📁</div>
+            <div class="gallery-upload-icon">ðŸ“</div>
             <span>Upload</span>
         </div>`;
 
     return `
         <div class="image-gallery detail-section" id="entity-gallery">
             <div class="gallery-header">
-                <h4>🖼️ Image Gallery (${_galleryImages.length})</h4>
+                <h4>ðŸ–¼ï¸ Image Gallery (${_galleryImages.length})</h4>
                 <button class="btn btn-sm btn-generate" onclick="openGenerateModal('${entityType}', '${escapeAttr(entityId)}')" title="Generate a new image with AI">
-                    🎨 Generate Image
+                    ðŸŽ¨ Generate Image
                 </button>
             </div>
             <div class="gallery-grid">
@@ -2925,7 +2930,7 @@ async function renderImageGallery(entityType, entityId) {
         </div>`;
 }
 
-/* ── Lightbox ────────────────────────────────────────────────── */
+/* â”€â”€ Lightbox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function openGalleryLightbox(index) {
     if (!_galleryImages.length) return;
@@ -2938,18 +2943,18 @@ function openGalleryLightbox(index) {
     overlay.id = 'gallery-lightbox';
     overlay.innerHTML = `
         <div class="gallery-lb-content">
-            <button class="gallery-lb-close" onclick="closeGalleryLightbox()" title="Close">✕</button>
+            <button class="gallery-lb-close" onclick="closeGalleryLightbox()" title="Close">âœ•</button>
             ${_galleryImages.length > 1
-                ? `<button class="gallery-lb-nav gallery-lb-prev" onclick="navigateGalleryLb(${index - 1})">◀</button>
-                   <button class="gallery-lb-nav gallery-lb-next" onclick="navigateGalleryLb(${index + 1})">▶</button>`
+                ? `<button class="gallery-lb-nav gallery-lb-prev" onclick="navigateGalleryLb(${index - 1})">â—€</button>
+                   <button class="gallery-lb-nav gallery-lb-next" onclick="navigateGalleryLb(${index + 1})">â–¶</button>`
                 : ''}
             <img src="${img.url}" alt="${img.id}" />
             <div class="gallery-lb-info">
-                <span>${img.id} · ${index + 1} / ${_galleryImages.length}${img.is_primary ? ' · ⭐ Primary' : ''}</span>
+                <span>${img.id} Â· ${index + 1} / ${_galleryImages.length}${img.is_primary ? ' Â· â­ Primary' : ''}</span>
                 <div class="gallery-lb-actions">
-                    ${!img.is_primary ? `<button class="gallery-lb-action-btn" onclick="gallerySetPrimary('${img.id}')">⭐ Set Primary</button>` : ''}
-                    <button class="gallery-lb-action-btn" onclick="galleryDownload('${img.id}')">⬇ Download</button>
-                    <button class="gallery-lb-action-btn" onclick="galleryDelete('${img.id}')">🗑️ Delete</button>
+                    ${!img.is_primary ? `<button class="gallery-lb-action-btn" onclick="gallerySetPrimary('${img.id}')">â­ Set Primary</button>` : ''}
+                    <button class="gallery-lb-action-btn" onclick="galleryDownload('${img.id}')">â¬‡ Download</button>
+                    <button class="gallery-lb-action-btn" onclick="galleryDelete('${img.id}')">ðŸ—‘ï¸ Delete</button>
                 </div>
             </div>
             ${img.prompt ? `<div style="color:rgba(255,255,255,0.5);font-size:0.75rem;max-width:600px;text-align:center;margin-top:var(--space-xs)">
@@ -2983,7 +2988,7 @@ function navigateGalleryLb(index) {
     openGalleryLightbox(index);
 }
 
-/* ── Upload Modal ────────────────────────────────────────────── */
+/* â”€â”€ Upload Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 let _galleryUploadData = null;
 
@@ -2994,12 +2999,12 @@ function openGalleryUpload(entityType, entityId) {
     modal.id = 'gallery-upload-modal';
     modal.innerHTML = `
         <div class="gallery-upload-modal-content">
-            <h3>📁 Upload Image — ${entityType}/${entityId}</h3>
+            <h3>ðŸ“ Upload Image â€” ${entityType}/${entityId}</h3>
             <div class="gallery-upload-drop" id="gallery-upload-drop"
                  onclick="document.getElementById('gallery-file-input').click()">
                 <input type="file" id="gallery-file-input" accept="image/png,image/jpeg,image/webp"
                        style="display:none" onchange="handleGalleryFileSelect(event)" />
-                <div class="gallery-upload-icon" style="font-size:2rem;margin-bottom:var(--space-sm)">📁</div>
+                <div class="gallery-upload-icon" style="font-size:2rem;margin-bottom:var(--space-sm)">ðŸ“</div>
                 <div style="color:var(--text-secondary);font-size:0.85rem">Click or drag an image here</div>
                 <div style="color:var(--text-muted);font-size:0.72rem;margin-top:var(--space-xs)">PNG, JPEG, or WebP</div>
                 <img id="gallery-upload-preview-img" class="gallery-upload-preview" />
@@ -3008,7 +3013,7 @@ function openGalleryUpload(entityType, entityId) {
                 <button class="btn btn-secondary" onclick="closeGalleryUpload()">Cancel</button>
                 <button class="btn btn-primary" id="gallery-upload-save-btn"
                         onclick="submitGalleryUpload('${entityType}', '${escapeAttr(entityId)}')" disabled>
-                    📤 Upload
+                    ðŸ“¤ Upload
                 </button>
             </div>
         </div>`;
@@ -3063,7 +3068,7 @@ function loadGalleryFile(file) {
 async function submitGalleryUpload(entityType, entityId) {
     if (!_galleryUploadData) return;
     const btn = document.getElementById('gallery-upload-save-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Uploading…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Uploadingâ€¦'; }
 
     try {
         const resp = await fetch(`/api/images/${entityType}/${encodeURIComponent(entityId)}`, {
@@ -3078,21 +3083,21 @@ async function submitGalleryUpload(entityType, entityId) {
             const err = await resp.json().catch(() => ({ detail: 'Upload failed' }));
             throw new Error(err.detail);
         }
-        showToast('Image uploaded ✅');
+        showToast('Image uploaded âœ…');
         closeGalleryUpload();
         await refreshGallery();
     } catch (err) {
         showToast(`Upload error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '📤 Upload'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ“¤ Upload'; }
     }
 }
 
-/* ── Gallery Actions ──────────────────────────────────────────── */
+/* â”€â”€ Gallery Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 async function gallerySetPrimary(imageId) {
     try {
         await fetch(`/api/images/set-primary/${imageId}`, { method: 'POST' });
-        showToast('Primary image updated ⭐');
+        showToast('Primary image updated â­');
         closeGalleryLightbox();
         await refreshGallery();
     } catch (err) {
@@ -3108,7 +3113,7 @@ async function galleryDelete(imageId) {
             const err = await resp.json().catch(() => ({ detail: 'Delete failed' }));
             throw new Error(err.detail);
         }
-        showToast('Image deleted 🗑️');
+        showToast('Image deleted ðŸ—‘ï¸');
         closeGalleryLightbox();
         await refreshGallery();
     } catch (err) {
@@ -3133,9 +3138,9 @@ async function refreshGallery() {
     container.outerHTML = html;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Generation Pipeline & Progress UI (F-037f)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 let _generateEntityType = '';
 let _generateEntityId = '';
@@ -3172,7 +3177,7 @@ async function openGenerateModal(entityType, entityId) {
     } catch { /* endpoints may not be available */ }
 
     if (!templates.length) {
-        showToast('No ComfyUI workflow templates found. Add one in Settings → ComfyUI first.', true);
+        showToast('No ComfyUI workflow templates found. Add one in Settings â†’ ComfyUI first.', true);
         return;
     }
 
@@ -3180,7 +3185,7 @@ async function openGenerateModal(entityType, entityId) {
     const templateOptions = templates.map(t => {
         const isRecommended = t.id === recommendedTemplateId;
         const sel = isRecommended ? 'selected' : '';
-        const badge = isRecommended ? ' 📌 Default' : '';
+        const badge = isRecommended ? ' ðŸ“Œ Default' : '';
         return `<option value="${escapeAttr(t.id)}" ${sel}>${escapeHtml(t.name || t.id)}${badge}</option>`;
     }).join('');
 
@@ -3205,8 +3210,8 @@ async function openGenerateModal(entityType, entityId) {
     modal.innerHTML = `
         <div class="gen-modal">
             <div class="gen-modal-header">
-                <h3>🎨 Generate Image — ${escapeHtml(entityType)}/${escapeHtml(entityId)}</h3>
-                <button class="detail-close" onclick="closeGenerateModal()">✕</button>
+                <h3>ðŸŽ¨ Generate Image â€” ${escapeHtml(entityType)}/${escapeHtml(entityId)}</h3>
+                <button class="detail-close" onclick="closeGenerateModal()">âœ•</button>
             </div>
 
             <div class="gen-modal-body" id="gen-modal-body">
@@ -3224,11 +3229,11 @@ async function openGenerateModal(entityType, entityId) {
                 <div class="filter-group" style="margin-top:var(--space-sm)">
                     <label for="gen-mode">Prompt Mode</label>
                     <select id="gen-mode" class="settings-input" onchange="updateGenModeFields()">
-                        <option value="system">System — AI generates from entity context</option>
-                        <option value="character">Character — A council member describes</option>
-                        <option value="raw_user">Raw User — Your own prompt text</option>
-                        <option value="user_refined">User Refined — Your prompt, refined by a member</option>
-                        <option value="council_vote">Council Vote — Multiple members propose prompts</option>
+                        <option value="system">System â€” AI generates from entity context</option>
+                        <option value="character">Character â€” A council member describes</option>
+                        <option value="raw_user">Raw User â€” Your own prompt text</option>
+                        <option value="user_refined">User Refined â€” Your prompt, refined by a member</option>
+                        <option value="council_vote">Council Vote â€” Multiple members propose prompts</option>
                     </select>
                 </div>
 
@@ -3269,7 +3274,7 @@ async function openGenerateModal(entityType, entityId) {
             <div class="gen-modal-footer" id="gen-modal-footer">
                 <button class="btn btn-secondary" onclick="closeGenerateModal()">Cancel</button>
                 <button class="btn btn-primary" id="gen-submit-btn" onclick="submitGeneration()">
-                    🎨 Generate
+                    ðŸŽ¨ Generate
                 </button>
             </div>
         </div>`;
@@ -3341,7 +3346,7 @@ function updateGenModeFields() {
             </div>
             <div style="margin-top:var(--space-sm)">
                 <button class="btn btn-secondary btn-sm" onclick="previewCouncilPrompts()" id="gen-preview-btn">
-                    👁 Preview Prompts
+                    ðŸ‘ Preview Prompts
                 </button>
             </div>`;
     }
@@ -3400,14 +3405,14 @@ async function _populateGenMembers() {
  */
 async function previewCouncilPrompts() {
     const previewBtn = document.getElementById('gen-preview-btn');
-    if (previewBtn) { previewBtn.disabled = true; previewBtn.textContent = '⏳ Generating prompts...'; }
+    if (previewBtn) { previewBtn.disabled = true; previewBtn.textContent = 'â³ Generating prompts...'; }
 
     const participants = Array.from(document.querySelectorAll('.gen-participant-cb:checked'))
         .map(cb => cb.value);
 
     if (participants.length < 2) {
         showToast('Select at least 2 participants for council vote.', true);
-        if (previewBtn) { previewBtn.disabled = false; previewBtn.textContent = '👁 Preview Prompts'; }
+        if (previewBtn) { previewBtn.disabled = false; previewBtn.textContent = 'ðŸ‘ Preview Prompts'; }
         return;
     }
 
@@ -3455,7 +3460,7 @@ async function previewCouncilPrompts() {
     } catch (err) {
         showToast(`Prompt preview failed: ${err.message}`, true);
     } finally {
-        if (previewBtn) { previewBtn.disabled = false; previewBtn.textContent = '👁 Preview Prompts'; }
+        if (previewBtn) { previewBtn.disabled = false; previewBtn.textContent = 'ðŸ‘ Preview Prompts'; }
     }
 }
 
@@ -3510,7 +3515,7 @@ async function submitGeneration() {
     };
 
     const submitBtn = document.getElementById('gen-submit-btn');
-    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '⏳ Starting...'; }
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'â³ Starting...'; }
 
     try {
         const resp = await fetch(`/api/generate/${_generateEntityType}/${encodeURIComponent(_generateEntityId)}`, {
@@ -3535,7 +3540,7 @@ async function submitGeneration() {
 
     } catch (err) {
         showToast(`Generation error: ${err.message}`, true);
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '🎨 Generate'; }
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'ðŸŽ¨ Generate'; }
     }
 }
 
@@ -3606,14 +3611,14 @@ function updateGenerateProgress(data) {
 
     const stageLabels = {
         'prompt_generating': '🧠 Generating prompt...',
-        'template_filling': '📋 Preparing workflow...',
-        'queued': '📤 Submitting to ComfyUI...',
-        'running': '⚡ ComfyUI is generating...',
-        'downloading': '📥 Downloading image...',
-        'saving': '💾 Saving image...',
-        'completed': '✅ Complete!',
-        'failed': '❌ Failed',
-        'cancelled': '🚫 Cancelled',
+        'template_filling': 'ðŸ“‹ Preparing workflow...',
+        'queued': 'ðŸ“¤ Submitting to ComfyUI...',
+        'running': 'âš¡ ComfyUI is generating...',
+        'downloading': 'ðŸ“¥ Downloading image...',
+        'saving': 'ðŸ’¾ Saving image...',
+        'completed': 'âœ… Complete!',
+        'failed': 'âŒ Failed',
+        'cancelled': 'ðŸš« Cancelled',
     };
 
     if (stageEl) stageEl.textContent = stageLabels[data.stage] || data.stage;
@@ -3632,7 +3637,7 @@ function updateGenerateProgress(data) {
     }
 
     if (data.error) {
-        if (stageEl) stageEl.textContent = `❌ ${data.error}`;
+        if (stageEl) stageEl.textContent = `âŒ ${data.error}`;
     }
 }
 
@@ -3640,7 +3645,7 @@ function updateGenerateProgress(data) {
  * Handle successful generation completion.
  */
 function onGenerationComplete(data) {
-    showToast('Image generated successfully! 🎨');
+    showToast('Image generated successfully! ðŸŽ¨');
 
     const footer = document.getElementById('gen-modal-footer');
     if (footer) {
@@ -3661,7 +3666,7 @@ function onGenerationError() {
     if (footer) {
         footer.innerHTML = `
             <button class="btn btn-secondary" onclick="closeGenerateModal()">Close</button>
-            <button class="btn btn-primary" onclick="retryGeneration()">🔄 Retry</button>
+            <button class="btn btn-primary" onclick="retryGeneration()">ðŸ”„ Retry</button>
         `;
     }
 }
@@ -3672,7 +3677,7 @@ function onGenerationError() {
 async function cancelGeneration() {
     if (!_generateActiveJobId) return;
     const btn = document.getElementById('gen-cancel-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Cancelling...'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Cancelling...'; }
 
     try {
         await fetch(`/api/generate/cancel/${encodeURIComponent(_generateActiveJobId)}`, {
@@ -3693,9 +3698,9 @@ function retryGeneration() {
 }
 
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Exploration View (F-040)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function renderExplore() {
     showLoading();
@@ -3714,8 +3719,8 @@ async function renderExplore() {
                     <p>No active locations to explore yet. Create locations in the <a href="#locations" style="color:var(--accent-cyan)">Locations</a> section and set them to active.</p>
                 </div>
                 <div class="empty-state">
-                    <div class="empty-icon">🗺️</div>
-                    <p>Your world awaits — create some locations first!</p>
+                    <div class="empty-icon">ðŸ—ºï¸</div>
+                    <p>Your world awaits â€” create some locations first!</p>
                 </div>
             </div>`;
         return;
@@ -3733,7 +3738,7 @@ async function renderExplore() {
         return `
             <div class="explore-card card-clickable" onclick="navigateTo('explore','${loc.id}')">
                 <div class="explore-card-image" style="${imgStyle}">
-                    ${!loc.primary_image_url ? '<div class="explore-card-placeholder">🗺️</div>' : ''}
+                    ${!loc.primary_image_url ? '<div class="explore-card-placeholder">ðŸ—ºï¸</div>' : ''}
                     ${scenesBadge}
                 </div>
                 <div class="explore-card-info">
@@ -3781,7 +3786,7 @@ async function renderExploreLocation(locationId) {
     // Features list
     const featuresHtml = (data.features || []).map(f => `
         <div class="explore-feature-item">
-            <span class="explore-feature-icon">${f.feature_type === 'landmark' ? '🏛️' : f.feature_type === 'natural' ? '🌿' : f.feature_type === 'building' ? '🏠' : f.feature_type === 'district' ? '🏘️' : '📍'}</span>
+            <span class="explore-feature-icon">${f.feature_type === 'landmark' ? 'ðŸ›ï¸' : f.feature_type === 'natural' ? 'ðŸŒ¿' : f.feature_type === 'building' ? '🏠' : f.feature_type === 'district' ? 'ðŸ˜ï¸' : 'ðŸ“'}</span>
             <div>
                 <div class="explore-feature-name">${escapeHtml(f.name)}</div>
                 <div class="explore-feature-desc">${escapeHtml(f.description || '')}</div>
@@ -3793,7 +3798,7 @@ async function renderExploreLocation(locationId) {
         <div class="explore-scene-thumb" onclick="openExploreSceneLightbox(${idx})">
             <img src="${s.image_url}" alt="${escapeAttr(s.description || s.scene_id)}" loading="lazy" />
             <div class="explore-scene-type">${s.scene_type}</div>
-            <button class="explore-scene-delete" onclick="event.stopPropagation(); deleteExploreScene('${locationId}', '${s.scene_id}')" title="Delete scene">🗑️</button>
+            <button class="explore-scene-delete" onclick="event.stopPropagation(); deleteExploreScene('${locationId}', '${s.scene_id}')" title="Delete scene">ðŸ—‘ï¸</button>
         </div>`).join('');
 
     // Navigation cards
@@ -3804,7 +3809,7 @@ async function renderExploreLocation(locationId) {
 
     // F-042: Build participant selector HTML
     const participantListHtml = availableParticipants.map(p => {
-        const typeIcon = p.type === 'council' ? '🏛️' : '🎭';
+        const typeIcon = p.type === 'council' ? 'ðŸ›ï¸' : 'ðŸŽ­';
         const typeBadge = p.type === 'council' ? 'Council' : 'Character';
         const avatarStyle = p.avatar_url
             ? `background: url('${p.avatar_url}') center/cover no-repeat`
@@ -3828,17 +3833,17 @@ async function renderExploreLocation(locationId) {
     const participantSectionHtml = availableParticipants.length ? `
         <div class="explore-section explore-participants-section">
             <div class="explore-participants-header" onclick="toggleParticipantPanel()">
-                <h4>👥 Participants</h4>
+                <h4>ðŸ‘¥ Participants</h4>
                 <div class="explore-participants-meta">
                     <span class="participant-counter" id="participant-counter">0 / 10</span>
-                    <span class="participant-toggle-icon" id="participant-toggle-icon">▶</span>
+                    <span class="participant-toggle-icon" id="participant-toggle-icon">â–¶</span>
                 </div>
             </div>
             <div class="explore-participants-body" id="explore-participants-body" style="display:none">
                 <div class="participant-search-row">
                     <input type="text" class="settings-input participant-search" id="participant-search"
-                           placeholder="Search participants…" oninput="filterParticipants()" />
-                    <button class="btn btn-secondary btn-sm" onclick="clearAllParticipants()" title="Clear all">✕ Clear</button>
+                           placeholder="Search participantsâ€¦" oninput="filterParticipants()" />
+                    <button class="btn btn-secondary btn-sm" onclick="clearAllParticipants()" title="Clear all">âœ• Clear</button>
                 </div>
                 <div class="participant-list" id="participant-list">
                     ${participantListHtml}
@@ -3852,22 +3857,22 @@ async function renderExploreLocation(locationId) {
 
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="navigateTo('explore')">← Back to Explore</button>
+            <button class="back-btn" onclick="navigateTo('explore')">â† Back to Explore</button>
 
             <div class="explore-hero" style="${heroStyle}">
                 <div class="explore-hero-overlay">
                     <div class="explore-hero-content">
                         <h2 class="explore-hero-title">${escapeHtml(data.name)}</h2>
-                        ${data.coordinates ? `<div class="explore-hero-coords">📍 ${escapeHtml(data.coordinates)}</div>` : ''}
+                        ${data.coordinates ? `<div class="explore-hero-coords">ðŸ“ ${escapeHtml(data.coordinates)}</div>` : ''}
                         <p class="explore-hero-desc">${escapeHtml(data.description || '')}</p>
                         ${tagsHtml ? `<div class="explore-hero-tags">${tagsHtml}</div>` : ''}
                     </div>
                     <div class="explore-hero-actions">
                         <button class="btn explore-look-around-btn" onclick="exploreLookAround('${locationId}')" id="explore-look-around-btn">
-                            👁️ Look Around
+                            ðŸ‘ï¸ Look Around
                         </button>
                         <button class="btn btn-secondary btn-sm" onclick="navigateTo('locations', '${locationId}')" title="Open location detail page">
-                            🗺️ Location Page
+                            ðŸ—ºï¸ Location Page
                         </button>
                     </div>
                 </div>
@@ -3877,31 +3882,31 @@ async function renderExploreLocation(locationId) {
                 <div class="explore-gen-progress-bar">
                     <div class="explore-gen-progress-fill" id="explore-gen-fill"></div>
                 </div>
-                <div class="explore-gen-status" id="explore-gen-status">Generating scene…</div>
+                <div class="explore-gen-status" id="explore-gen-status">Generating sceneâ€¦</div>
             </div>
 
             ${participantSectionHtml}
 
             ${data.lore ? `
                 <div class="explore-section">
-                    <h4>📜 Lore</h4>
+                    <h4>ðŸ“œ Lore</h4>
                     <p class="explore-lore-text">${escapeHtml(data.lore)}</p>
                 </div>` : ''}
 
             ${featuresHtml ? `
                 <div class="explore-section">
-                    <h4>🏛️ Notable Features</h4>
+                    <h4>ðŸ›ï¸ Notable Features</h4>
                     <div class="explore-features-grid">${featuresHtml}</div>
                 </div>` : ''}
 
             <div class="explore-section">
                 <div class="explore-section-header">
-                    <h4>🖼️ Scene Gallery (${(data.scenes || []).length})</h4>
+                    <h4>ðŸ–¼ï¸ Scene Gallery (${(data.scenes || []).length})</h4>
                 </div>
                 ${scenesHtml
                     ? `<div class="explore-scene-strip" id="explore-scene-strip">${scenesHtml}</div>`
                     : `<div class="explore-empty-scenes">
-                        <div class="empty-icon">👁️</div>
+                        <div class="empty-icon">ðŸ‘ï¸</div>
                         <p>No scenes yet. Click <strong>"Look Around"</strong> to generate your first scene!</p>
                     </div>`
                 }
@@ -3921,13 +3926,13 @@ function _buildExploreNavPanel(nav) {
     const allTargets = [];
 
     if (nav.parent) {
-        allTargets.push({ ...nav.parent, relation: '⬆️ Parent' });
+        allTargets.push({ ...nav.parent, relation: 'â¬†ï¸ Parent' });
     }
     (nav.children || []).forEach(c => {
-        allTargets.push({ ...c, relation: '⬇️ Child' });
+        allTargets.push({ ...c, relation: 'â¬‡ï¸ Child' });
     });
     (nav.siblings || []).forEach(s => {
-        allTargets.push({ ...s, relation: '↔️ Sibling' });
+        allTargets.push({ ...s, relation: 'â†”ï¸ Sibling' });
     });
 
     if (!allTargets.length) return '';
@@ -3940,7 +3945,7 @@ function _buildExploreNavPanel(nav) {
         return `
             <div class="explore-nav-card card-clickable" onclick="navigateTo('explore','${t.id}')">
                 <div class="explore-nav-card-img" style="${imgStyle}">
-                    ${!t.primary_image_url ? '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.5rem;opacity:0.4">🗺️</div>' : ''}
+                    ${!t.primary_image_url ? '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.5rem;opacity:0.4">ðŸ—ºï¸</div>' : ''}
                 </div>
                 <div class="explore-nav-card-info">
                     <span class="explore-nav-relation">${t.relation}</span>
@@ -3957,7 +3962,7 @@ function _buildExploreNavPanel(nav) {
         </div>`;
 }
 
-/* ── F-042: Participant Selector Helpers ───────────────────── */
+/* â”€â”€ F-042: Participant Selector Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function toggleParticipantPanel() {
     const body = document.getElementById('explore-participants-body');
@@ -3965,7 +3970,7 @@ function toggleParticipantPanel() {
     if (!body) return;
     const isOpen = body.style.display !== 'none';
     body.style.display = isOpen ? 'none' : 'block';
-    if (icon) icon.textContent = isOpen ? '▶' : '▼';
+    if (icon) icon.textContent = isOpen ? 'â–¶' : 'â–¼';
 }
 
 function updateParticipantCount() {
@@ -4017,11 +4022,11 @@ function getSelectedParticipants() {
     }));
 }
 
-/* ── Look Around Generation ────────────────────────────────── */
+/* â”€â”€ Look Around Generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 async function exploreLookAround(locationId) {
     const btn = document.getElementById('explore-look-around-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Generatingâ€¦'; }
 
     const progressEl = document.getElementById('explore-gen-progress');
     const fillEl = document.getElementById('explore-gen-fill');
@@ -4044,28 +4049,28 @@ async function exploreLookAround(locationId) {
         const data = await resp.json();
         const pCount = participants.length;
         const pLabel = pCount > 0 ? ` with ${pCount} participant${pCount !== 1 ? 's' : ''}` : '';
-        showToast(`Scene generation started${pLabel} (${data.job_id}) 🎨`);
+        showToast(`Scene generation started${pLabel} (${data.job_id}) ðŸŽ¨`);
 
         // Poll for job status
         _pollExploreGeneration(data.job_id, locationId, fillEl, statusEl);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '👁️ Look Around'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ‘ï¸ Look Around'; }
         if (progressEl) progressEl.style.display = 'none';
     }
 }
 
 async function _pollExploreGeneration(jobId, locationId, fillEl, statusEl) {
     const stageLabels = {
-        'prompt_generating': '🧠 Generating prompt…',
-        'template_filling': '📋 Preparing workflow…',
-        'queued': '📤 Queued…',
-        'running': '⚡ Generating image…',
-        'downloading': '📥 Downloading…',
-        'saving': '💾 Saving…',
-        'completed': '✅ Scene ready!',
-        'failed': '❌ Failed',
-        'cancelled': '🚫 Cancelled',
+        'prompt_generating': '🧠 Generating promptâ€¦',
+        'template_filling': 'ðŸ“‹ Preparing workflowâ€¦',
+        'queued': 'ðŸ“¤ Queuedâ€¦',
+        'running': 'âš¡ Generating imageâ€¦',
+        'downloading': 'ðŸ“¥ Downloadingâ€¦',
+        'saving': 'ðŸ’¾ Savingâ€¦',
+        'completed': 'âœ… Scene ready!',
+        'failed': 'âŒ Failed',
+        'cancelled': 'ðŸš« Cancelled',
     };
 
     const poll = async () => {
@@ -4075,7 +4080,7 @@ async function _pollExploreGeneration(jobId, locationId, fillEl, statusEl) {
             if (statusEl) statusEl.textContent = stageLabels[data.stage] || data.stage;
 
             if (data.stage === 'completed') {
-                showToast('Scene generated! 🎨');
+                showToast('Scene generated! ðŸŽ¨');
 
                 // Auto-add the scene to this location
                 if (data.image_id) {
@@ -4100,7 +4105,7 @@ async function _pollExploreGeneration(jobId, locationId, fillEl, statusEl) {
             if (data.stage === 'failed' || data.stage === 'cancelled') {
                 showToast(`Generation ${data.stage}: ${data.error || ''}`, true);
                 const btn = document.getElementById('explore-look-around-btn');
-                if (btn) { btn.disabled = false; btn.textContent = '👁️ Look Around'; }
+                if (btn) { btn.disabled = false; btn.textContent = 'ðŸ‘ï¸ Look Around'; }
                 const progressEl = document.getElementById('explore-gen-progress');
                 if (progressEl) setTimeout(() => progressEl.style.display = 'none', 2000);
                 return;
@@ -4111,14 +4116,14 @@ async function _pollExploreGeneration(jobId, locationId, fillEl, statusEl) {
         } catch (err) {
             showToast(`Poll error: ${err.message}`, true);
             const btn = document.getElementById('explore-look-around-btn');
-            if (btn) { btn.disabled = false; btn.textContent = '👁️ Look Around'; }
+            if (btn) { btn.disabled = false; btn.textContent = 'ðŸ‘ï¸ Look Around'; }
         }
     };
 
     setTimeout(poll, 2000);
 }
 
-/* ── Scene Lightbox ────────────────────────────────────────── */
+/* â”€â”€ Scene Lightbox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 function openExploreSceneLightbox(index) {
     const scenes = window._exploreScenes || [];
@@ -4132,14 +4137,14 @@ function openExploreSceneLightbox(index) {
     overlay.id = 'explore-scene-lightbox';
     overlay.innerHTML = `
         <div class="gallery-lb-content">
-            <button class="gallery-lb-close" onclick="closeExploreSceneLightbox()" title="Close">✕</button>
+            <button class="gallery-lb-close" onclick="closeExploreSceneLightbox()" title="Close">âœ•</button>
             ${scenes.length > 1
-                ? `<button class="gallery-lb-nav gallery-lb-prev" onclick="navigateExploreSceneLb(${index - 1})">◀</button>
-                   <button class="gallery-lb-nav gallery-lb-next" onclick="navigateExploreSceneLb(${index + 1})">▶</button>`
+                ? `<button class="gallery-lb-nav gallery-lb-prev" onclick="navigateExploreSceneLb(${index - 1})">â—€</button>
+                   <button class="gallery-lb-nav gallery-lb-next" onclick="navigateExploreSceneLb(${index + 1})">â–¶</button>`
                 : ''}
             <img src="${scene.image_url}" alt="${escapeAttr(scene.description || scene.scene_id)}" />
             <div class="gallery-lb-info">
-                <span>${scene.scene_id} · ${index + 1} / ${scenes.length} · ${scene.scene_type}</span>
+                <span>${scene.scene_id} Â· ${index + 1} / ${scenes.length} Â· ${scene.scene_type}</span>
             </div>
             ${scene.description ? `<div style="color:rgba(255,255,255,0.5);font-size:0.75rem;max-width:600px;text-align:center;margin-top:var(--space-xs)">
                 ${escapeHtml(scene.description)}
@@ -4171,7 +4176,7 @@ function navigateExploreSceneLb(index) {
     openExploreSceneLightbox(index);
 }
 
-/* ── Delete Scene ──────────────────────────────────────────── */
+/* â”€â”€ Delete Scene â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 async function deleteExploreScene(locationId, sceneId) {
     if (!confirm('Delete this scene?')) return;
@@ -4183,7 +4188,7 @@ async function deleteExploreScene(locationId, sceneId) {
             const err = await resp.json().catch(() => ({ detail: 'Delete failed' }));
             throw new Error(err.detail);
         }
-        showToast('Scene deleted 🗑️');
+        showToast('Scene deleted ðŸ—‘ï¸');
         renderExploreLocation(locationId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -4191,9 +4196,9 @@ async function deleteExploreScene(locationId, sceneId) {
 }
 
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Characters View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function renderCharacters() {
     showLoading();
@@ -4202,7 +4207,7 @@ async function renderCharacters() {
 
     const createForm = `
         <div class="card character-create-form">
-            <h3>🎭 New Character</h3>
+            <h3>ðŸŽ­ New Character</h3>
             <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-md)">
                 Create a new character template with traits, backstory, and system prompt.
             </p>
@@ -4235,17 +4240,17 @@ async function renderCharacters() {
             <div class="filter-group" style="margin-top:var(--space-sm)">
                 <label for="char-desc-input">Description</label>
                 <textarea id="char-desc-input" class="settings-input proposal-textarea" rows="2"
-                    placeholder="A short summary of this character…"></textarea>
+                    placeholder="A short summary of this characterâ€¦"></textarea>
             </div>
             <div class="filter-group" style="margin-top:var(--space-sm)">
                 <label for="char-backstory-input">Backstory</label>
                 <textarea id="char-backstory-input" class="settings-input proposal-textarea" rows="2"
-                    placeholder="Character history and background…"></textarea>
+                    placeholder="Character history and backgroundâ€¦"></textarea>
             </div>
             <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
                 <div class="filter-group" style="flex:2">
                     <label for="char-greeting-input">Greeting</label>
-                    <input id="char-greeting-input" class="settings-input" placeholder="First message the character says…" />
+                    <input id="char-greeting-input" class="settings-input" placeholder="First message the character saysâ€¦" />
                 </div>
                 <div class="filter-group">
                     <label for="char-tags-input">Tags</label>
@@ -4255,12 +4260,12 @@ async function renderCharacters() {
             <div class="filter-group" style="margin-top:var(--space-sm)">
                 <label for="char-prompt-input">System Prompt</label>
                 <textarea id="char-prompt-input" class="settings-input proposal-textarea" rows="3"
-                    placeholder="You are {{char}}, an adventurous AI who…"></textarea>
+                    placeholder="You are {{char}}, an adventurous AI whoâ€¦"></textarea>
             </div>
             <div class="filter-group" style="margin-top:var(--space-sm)">
                 <label for="char-examples-input">Example Messages</label>
                 <textarea id="char-examples-input" class="settings-input proposal-textarea" rows="2"
-                    placeholder="One message per line…"></textarea>
+                    placeholder="One message per lineâ€¦"></textarea>
             </div>
 
             <div class="char-trait-editor" style="margin-top:var(--space-md)">
@@ -4279,7 +4284,7 @@ async function renderCharacters() {
                         </select>
                     </div>
                     <div class="filter-group" style="flex:2">
-                        <input id="char-trait-desc" class="settings-input" placeholder="Trait description…" />
+                        <input id="char-trait-desc" class="settings-input" placeholder="Trait descriptionâ€¦" />
                     </div>
                     <div class="filter-group" style="flex:0.5">
                         <input id="char-trait-intensity" type="range" min="0" max="1" step="0.1" value="0.5"
@@ -4288,13 +4293,13 @@ async function renderCharacters() {
                     </div>
                 </div>
                 <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-sm)" onclick="addPendingTrait()">
-                    ➕ Add Trait
+                    âž• Add Trait
                 </button>
             </div>
 
             <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                 <button class="btn btn-primary" onclick="createCharacter()" id="char-create-btn">
-                    🎭 Create Character
+                    ðŸŽ­ Create Character
                 </button>
                 <span id="char-create-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
             </div>
@@ -4304,7 +4309,7 @@ async function renderCharacters() {
         $main().innerHTML = `
             <div class="view-enter">
                 <div class="page-header">
-                    <h2>🎭 Characters</h2>
+                    <h2>ðŸŽ­ Characters</h2>
                     <p>No characters yet. Create one below!</p>
                 </div>
                 ${createForm}
@@ -4334,7 +4339,7 @@ async function renderCharacters() {
                 ${avatarHtml}
                 <div style="flex:1">
                     <div class="char-name">${escapeHtml(c.name)}</div>
-                    <div class="char-author">by ${escapeHtml(c.author)} · v${c.version || 1} · <span style="color:var(--accent-cyan)">${escapeHtml(c.api_provider || 'openrouter')}</span> · ${escapeHtml(c.model || 'Default')}</div>
+                    <div class="char-author">by ${escapeHtml(c.author)} Â· v${c.version || 1} Â· <span style="color:var(--accent-cyan)">${escapeHtml(c.api_provider || 'openrouter')}</span> Â· ${escapeHtml(c.model || 'Default')}</div>
                 </div>
                 ${badge(c.status)}
             </div>
@@ -4347,9 +4352,9 @@ async function renderCharacters() {
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
-                <div><h2>🎭 Characters</h2>
+                <div><h2>ðŸŽ­ Characters</h2>
                 <p>${data.length} AI character template${data.length !== 1 ? 's' : ''}</p></div>
-                <button class="btn btn-secondary btn-sm" onclick="openBatchGenerateModal('character')" title="Generate images for multiple characters">🎨 Batch Generate</button>
+                <button class="btn btn-secondary btn-sm" onclick="openBatchGenerateModal('character')" title="Generate images for multiple characters">ðŸŽ¨ Batch Generate</button>
             </div>
             ${createForm}
             <div class="character-grid">${cards}</div>
@@ -4369,7 +4374,7 @@ async function renderCharacterDetail(id) {
             </div>
             <span class="trait-intensity">${Math.round((t.intensity || 0) * 100)}%</span>
             <span class="trait-desc-small">${escapeHtml(t.description)}</span>
-            <button class="btn btn-sm btn-danger-subtle" onclick="removeCharTrait('${data.id}', '${escapeAttr(t.name)}')" title="Delete trait">🗑️</button>
+            <button class="btn btn-sm btn-danger-subtle" onclick="removeCharTrait('${data.id}', '${escapeAttr(t.name)}')" title="Delete trait">ðŸ—‘ï¸</button>
         </div>`).join('');
 
     const tagsHtml = (data.tags || []).map(t => `<span class="tag">#${escapeHtml(t)}</span>`).join('');
@@ -4378,42 +4383,42 @@ async function renderCharacterDetail(id) {
     const avatarHtml = data.avatar_url
         ? `<div class="char-detail-avatar" onclick="openCharAvatarEditor('${data.id}')" title="Click to change avatar"
                 style="background: url('${data.avatar_url}') center/cover no-repeat; cursor: pointer;">
-             <div class="avatar-overlay">📷</div>
+             <div class="avatar-overlay">ðŸ“·</div>
            </div>`
         : `<div class="char-detail-avatar char-avatar-placeholder" onclick="openCharAvatarEditor('${data.id}')" title="Click to upload avatar"
                 style="cursor: pointer;">
-             🎭
-             <div class="avatar-overlay">📷</div>
+             ðŸŽ­
+             <div class="avatar-overlay">ðŸ“·</div>
            </div>`;
 
     // Status action buttons
     let statusActions = '';
     if (data.status === 'draft') {
-        statusActions = `<button class="btn btn-primary btn-sm" onclick="updateCharacterStatus('${data.id}', 'active')">✅ Activate</button>`;
+        statusActions = `<button class="btn btn-primary btn-sm" onclick="updateCharacterStatus('${data.id}', 'active')">âœ… Activate</button>`;
     } else if (data.status === 'active') {
         statusActions = `
-            <button class="btn btn-secondary btn-sm" onclick="updateCharacterStatus('${data.id}', 'archived')">📦 Archive</button>
-            <button class="btn btn-secondary btn-sm" onclick="updateCharacterStatus('${data.id}', 'draft')">📝 Revert to Draft</button>`;
+            <button class="btn btn-secondary btn-sm" onclick="updateCharacterStatus('${data.id}', 'archived')">ðŸ“¦ Archive</button>
+            <button class="btn btn-secondary btn-sm" onclick="updateCharacterStatus('${data.id}', 'draft')">ðŸ“ Revert to Draft</button>`;
     } else if (data.status === 'archived') {
         statusActions = `
-            <button class="btn btn-primary btn-sm" onclick="updateCharacterStatus('${data.id}', 'active')">✅ Reactivate</button>
-            <button class="btn btn-secondary btn-sm" onclick="updateCharacterStatus('${data.id}', 'draft')">📝 Revert to Draft</button>`;
+            <button class="btn btn-primary btn-sm" onclick="updateCharacterStatus('${data.id}', 'active')">âœ… Reactivate</button>
+            <button class="btn btn-secondary btn-sm" onclick="updateCharacterStatus('${data.id}', 'draft')">ðŸ“ Revert to Draft</button>`;
     }
 
     const galleryHtml = await renderImageGallery('character', data.id);
 
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="navigateTo('characters')">← Back to Characters</button>
+            <button class="back-btn" onclick="navigateTo('characters')">â† Back to Characters</button>
             <div class="detail-panel">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-xl)">
                     <div style="display:flex;gap:var(--space-lg);align-items:flex-start">
                         ${avatarHtml}
                         <div>
-                            <div style="font-size:0.78rem;font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);margin-bottom:var(--space-xs)">${data.id} · v${data.version || 1}</div>
+                            <div style="font-size:0.78rem;font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);margin-bottom:var(--space-xs)">${data.id} Â· v${data.version || 1}</div>
                             <div style="font-size:1.4rem;font-weight:700">${escapeHtml(data.name)}</div>
                             <div style="color:var(--text-secondary);margin-top:var(--space-xs);font-size:0.87rem">
-                                by <strong>${escapeHtml(data.author)}</strong> · ${formatDate(data.created_at)}
+                                by <strong>${escapeHtml(data.author)}</strong> Â· ${formatDate(data.created_at)}
                             </div>
                             <div style="margin-top:var(--space-sm);display:flex;align-items:center;gap:var(--space-sm)">
                                 ${badge(data.status)}
@@ -4423,15 +4428,15 @@ async function renderCharacterDetail(id) {
                     </div>
                     <div style="display:flex;gap:var(--space-sm);align-items:flex-start">
                         <button class="btn btn-secondary btn-sm" onclick="exportCharacterPng('${data.id}')" title="Download as TavernCard v2 PNG">
-                            📥 Export PNG
+                            ðŸ“¥ Export PNG
                         </button>
-                        <button class="detail-close" onclick="navigateTo('characters')">✕</button>
+                        <button class="detail-close" onclick="navigateTo('characters')">âœ•</button>
                     </div>
                 </div>
 
                 <div class="detail-section" style="margin-top:var(--space-md)">
-                    <div class="analytics-row"><span class="label">🔌 Provider</span><span class="value">${escapeHtml(data.api_provider || 'openrouter')}</span></div>
-                    <div class="analytics-row"><span class="label">🤖 Model</span><span class="value">${escapeHtml(data.model || 'Default')}</span></div>
+                    <div class="analytics-row"><span class="label">ðŸ”Œ Provider</span><span class="value">${escapeHtml(data.api_provider || 'openrouter')}</span></div>
+                    <div class="analytics-row"><span class="label">ðŸ¤– Model</span><span class="value">${escapeHtml(data.model || 'Default')}</span></div>
                 </div>
 
                 <div class="detail-section">
@@ -4439,7 +4444,7 @@ async function renderCharacterDetail(id) {
                     <p>${escapeHtml(data.description)}</p>
                 </div>
 
-                ${data.backstory ? `<div class="detail-section"><h4>📖 Backstory</h4><p style="white-space:pre-line">${escapeHtml(data.backstory)}</p></div>` : ''}
+                ${data.backstory ? `<div class="detail-section"><h4>ðŸ“– Backstory</h4><p style="white-space:pre-line">${escapeHtml(data.backstory)}</p></div>` : ''}
 
                 ${traitsHtml ? `<div class="detail-section"><h4>🧬 Traits (${data.traits.length})</h4><div class="traits-list">${traitsHtml}</div>
                     <div style="margin-top:var(--space-md);padding:var(--space-sm);border:1px dashed var(--border-subtle);border-radius:var(--radius-md)">
@@ -4456,7 +4461,7 @@ async function renderCharacterDetail(id) {
                                 </select>
                             </div>
                             <div class="filter-group" style="flex:2">
-                                <input id="detail-trait-desc" class="settings-input" placeholder="Trait description…" />
+                                <input id="detail-trait-desc" class="settings-input" placeholder="Trait descriptionâ€¦" />
                             </div>
                             <div class="filter-group" style="flex:0.5">
                                 <input id="detail-trait-intensity" type="range" min="0" max="1" step="0.1" value="0.5" class="avatar-zoom-slider"
@@ -4464,26 +4469,26 @@ async function renderCharacterDetail(id) {
                                 <span id="detail-trait-intensity-val" style="font-size:0.78rem;color:var(--text-muted)">0.5</span>
                             </div>
                         </div>
-                        <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-sm)" onclick="addCharTrait('${data.id}')">➕ Add Trait</button>
+                        <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-sm)" onclick="addCharTrait('${data.id}')">âž• Add Trait</button>
                     </div>
                 </div>` : ''}
 
                 ${tagsHtml ? `<div class="detail-section"><h4>Tags</h4><div class="tag-list">${tagsHtml}</div></div>` : ''}
 
-                ${data.greeting ? `<div class="detail-section"><h4>👋 Greeting</h4><p style="font-style:italic;color:var(--accent-cyan)">"${escapeHtml(data.greeting)}"</p></div>` : ''}
+                ${data.greeting ? `<div class="detail-section"><h4>ðŸ‘‹ Greeting</h4><p style="font-style:italic;color:var(--accent-cyan)">"${escapeHtml(data.greeting)}"</p></div>` : ''}
 
-                ${data.system_prompt ? `<div class="detail-section"><h4>💻 System Prompt</h4><pre>${escapeHtml(data.system_prompt)}</pre></div>` : ''}
+                ${data.system_prompt ? `<div class="detail-section"><h4>ðŸ’» System Prompt</h4><pre>${escapeHtml(data.system_prompt)}</pre></div>` : ''}
 
                 ${data.example_messages && data.example_messages.length ? `
                     <div class="detail-section">
-                        <h4>💬 Example Messages</h4>
-                        ${data.example_messages.map(m => `<p style="color:var(--text-secondary);margin-bottom:var(--space-xs)">💬 ${escapeHtml(m)}</p>`).join('')}
+                        <h4>ðŸ’¬ Example Messages</h4>
+                        ${data.example_messages.map(m => `<p style="color:var(--text-secondary);margin-bottom:var(--space-xs)">ðŸ’¬ ${escapeHtml(m)}</p>`).join('')}
                     </div>` : ''}
 
                 ${galleryHtml}
 
                 <div class="detail-section" style="margin-top:var(--space-xl);border-top:1px solid var(--border-subtle);padding-top:var(--space-lg)">
-                    <h4>✏️ Edit Character</h4>
+                    <h4>âœï¸ Edit Character</h4>
                     <div class="proposal-form-grid">
                         <div class="filter-group" style="flex:2">
                             <label for="char-edit-name">Name</label>
@@ -4533,7 +4538,7 @@ async function renderCharacterDetail(id) {
                     </div>
                     <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                         <button class="btn btn-primary" onclick="saveCharacterEdit('${data.id}')" id="char-save-btn">
-                            💾 Save Changes
+                            ðŸ’¾ Save Changes
                         </button>
                         <span id="char-save-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
                     </div>
@@ -4546,35 +4551,35 @@ async function renderCharacterDetail(id) {
             <div class="avatar-modal-content">
                 <div class="avatar-modal-header">
                     <h3>Upload Character Avatar</h3>
-                    <button class="detail-close" onclick="closeCharAvatarEditor()">✕</button>
+                    <button class="detail-close" onclick="closeCharAvatarEditor()">âœ•</button>
                 </div>
                 <div class="avatar-modal-body">
                     <div class="avatar-drop-zone" id="char-avatar-drop-zone">
                         <input type="file" id="char-avatar-file-input" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handleCharAvatarFile(event)" />
                         <div class="avatar-drop-label" onclick="document.getElementById('char-avatar-file-input').click()">
-                            📁 Click to select image or drag & drop a PNG
+                            ðŸ“ Click to select image or drag & drop a PNG
                         </div>
                     </div>
                     <div class="avatar-preview-section" id="char-avatar-preview-section" style="display:none">
                         <canvas id="char-avatar-canvas" class="avatar-preview-canvas" width="200" height="200"></canvas>
                         <div class="avatar-zoom-control">
-                            <span class="avatar-zoom-label">🔍 Zoom</span>
+                            <span class="avatar-zoom-label">ðŸ” Zoom</span>
                             <input type="range" id="char-avatar-zoom" class="avatar-zoom-slider" min="0.5" max="3" step="0.05" value="1" oninput="updateCharAvatarPreview()" />
-                            <span id="char-avatar-zoom-value">1.0×</span>
+                            <span id="char-avatar-zoom-value">1.0Ã—</span>
                         </div>
                     </div>
                 </div>
                 <div class="avatar-modal-footer">
                     <button class="btn btn-secondary" onclick="closeCharAvatarEditor()">Cancel</button>
-                    <button class="btn btn-primary" id="char-avatar-save-btn" onclick="saveCharAvatar('${data.id}')" disabled>💾 Save Avatar</button>
+                    <button class="btn btn-primary" id="char-avatar-save-btn" onclick="saveCharAvatar('${data.id}')" disabled>ðŸ’¾ Save Avatar</button>
                 </div>
             </div>
         </div>`;
 }
 
-// ── Character Create ────────────────────────────────────────
+// â”€â”€ Character Create â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// ── Pending Traits (for creation form) ──────────────────────
+// â”€â”€ Pending Traits (for creation form) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 let pendingTraits = [];
 
@@ -4627,7 +4632,7 @@ function renderPendingTraits() {
             <span class="specialty-tag">${t.trait_type}</span>
             <span class="trait-intensity">${Math.round(t.intensity * 100)}%</span>
             <span class="trait-desc-small">${escapeHtml(t.description)}</span>
-            <button class="btn btn-sm btn-danger-subtle" onclick="removePendingTrait(${i})" title="Remove">🗑️</button>
+            <button class="btn btn-sm btn-danger-subtle" onclick="removePendingTrait(${i})" title="Remove">ðŸ—‘ï¸</button>
         </div>`).join('');
 }
 
@@ -4667,7 +4672,7 @@ async function createCharacter() {
     if (!traits.length) { document.getElementById('char-trait-name').focus(); status.textContent = 'At least one trait is required'; return; }
 
     btn.disabled = true;
-    btn.textContent = '⏳ Creating…';
+    btn.textContent = 'â³ Creatingâ€¦';
     status.textContent = '';
 
     const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
@@ -4693,24 +4698,24 @@ async function createCharacter() {
         }
         const data = await resp.json();
         pendingTraits = [];  // reset
-        showToast(`Character ${data.id} created ✅`);
+        showToast(`Character ${data.id} created âœ…`);
         navigateTo('characters', data.id);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
         status.textContent = '';
     } finally {
         btn.disabled = false;
-        btn.textContent = '🎭 Create Character';
+        btn.textContent = 'ðŸŽ­ Create Character';
     }
 }
 
-// ── Character Edit Save ─────────────────────────────────────
+// â”€â”€ Character Edit Save â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function saveCharacterEdit(characterId) {
     const btn = document.getElementById('char-save-btn');
     const status = document.getElementById('char-save-status');
     btn.disabled = true;
-    btn.textContent = '⏳ Saving…';
+    btn.textContent = 'â³ Savingâ€¦';
     status.textContent = '';
 
     const tagsRaw = document.getElementById('char-edit-tags').value.trim();
@@ -4740,21 +4745,21 @@ async function saveCharacterEdit(characterId) {
             const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
             throw new Error(err.detail);
         }
-        showToast('Character updated ✅');
-        status.textContent = '✅ Saved';
+        showToast('Character updated âœ…');
+        status.textContent = 'âœ… Saved';
         status.style.color = 'var(--accent-emerald)';
         await renderCharacterDetail(characterId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        status.textContent = '❌ Failed';
+        status.textContent = 'âŒ Failed';
         status.style.color = 'var(--accent-rose)';
     } finally {
         btn.disabled = false;
-        btn.textContent = '💾 Save Changes';
+        btn.textContent = 'ðŸ’¾ Save Changes';
     }
 }
 
-// ── Character Status ────────────────────────────────────────
+// â”€â”€ Character Status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function updateCharacterStatus(characterId, newStatus) {
     try {
@@ -4767,14 +4772,14 @@ async function updateCharacterStatus(characterId, newStatus) {
             const err = await resp.json().catch(() => ({ detail: 'Failed' }));
             throw new Error(err.detail);
         }
-        showToast(`Character set to ${newStatus} ✅`);
+        showToast(`Character set to ${newStatus} âœ…`);
         await renderCharacterDetail(characterId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     }
 }
 
-// ── Character PNG Export ─────────────────────────────────────
+// â”€â”€ Character PNG Export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function exportCharacterPng(characterId) {
     // Open a file picker for the user to select a base PNG
@@ -4812,7 +4817,7 @@ async function exportCharacterPng(characterId) {
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                showToast('Character exported as PNG ✅');
+                showToast('Character exported as PNG âœ…');
             } catch (err) {
                 showToast(`Error: ${err.message}`, true);
             }
@@ -4824,7 +4829,7 @@ async function exportCharacterPng(characterId) {
     fileInput.click();
 }
 
-// ── Character Trait Management (detail view) ─────────────────
+// â”€â”€ Character Trait Management (detail view) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function addCharTrait(characterId) {
     const name = document.getElementById('detail-trait-name').value.trim();
@@ -4844,7 +4849,7 @@ async function addCharTrait(characterId) {
             const err = await resp.json().catch(() => ({ detail: 'Failed to add trait' }));
             throw new Error(err.detail);
         }
-        showToast(`Trait "${name}" added ✅`);
+        showToast(`Trait "${name}" added âœ…`);
         await renderCharacterDetail(characterId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -4862,14 +4867,14 @@ async function removeCharTrait(characterId, traitName) {
             const err = await resp.json().catch(() => ({ detail: 'Failed to remove trait' }));
             throw new Error(err.detail);
         }
-        showToast(`Trait "${traitName}" removed ✅`);
+        showToast(`Trait "${traitName}" removed âœ…`);
         await renderCharacterDetail(characterId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     }
 }
 
-// ── Character Avatar Editor ─────────────────────────────────
+// â”€â”€ Character Avatar Editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 let charAvatarState = { img: null, zoom: 1.0, offsetX: 0, offsetY: 0, dragging: false, lastX: 0, lastY: 0 };
 
@@ -4924,7 +4929,7 @@ function loadCharAvatarImage(file) {
             charAvatarState.offsetX = 0;
             charAvatarState.offsetY = 0;
             document.getElementById('char-avatar-zoom').value = 1.0;
-            document.getElementById('char-avatar-zoom-value').textContent = '1.0×';
+            document.getElementById('char-avatar-zoom-value').textContent = '1.0Ã—';
             document.getElementById('char-avatar-preview-section').style.display = 'block';
             document.getElementById('char-avatar-save-btn').disabled = false;
             updateCharAvatarPreview();
@@ -4939,7 +4944,7 @@ function updateCharAvatarPreview() {
     const ctx = canvas.getContext('2d');
     const zoom = parseFloat(document.getElementById('char-avatar-zoom').value);
     charAvatarState.zoom = zoom;
-    document.getElementById('char-avatar-zoom-value').textContent = zoom.toFixed(1) + '×';
+    document.getElementById('char-avatar-zoom-value').textContent = zoom.toFixed(1) + 'Ã—';
 
     const img = charAvatarState.img;
     if (!img) return;
@@ -4947,7 +4952,7 @@ function updateCharAvatarPreview() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
 
-    // Square clip (not circular — for character cards)
+    // Square clip (not circular â€” for character cards)
     ctx.beginPath();
     ctx.roundRect(0, 0, 200, 200, 12);
     ctx.clip();
@@ -4975,7 +4980,7 @@ async function saveCharAvatar(characterId) {
     const canvas = document.getElementById('char-avatar-canvas');
     const btn = document.getElementById('char-avatar-save-btn');
     btn.disabled = true;
-    btn.textContent = '⏳ Uploading…';
+    btn.textContent = 'â³ Uploadingâ€¦';
 
     try {
         const imageData = canvas.toDataURL('image/png');
@@ -4988,20 +4993,20 @@ async function saveCharAvatar(characterId) {
             const err = await resp.json().catch(() => ({ detail: 'Upload failed' }));
             throw new Error(err.detail);
         }
-        showToast('Avatar saved ✅');
+        showToast('Avatar saved âœ…');
         closeCharAvatarEditor();
         await renderCharacterDetail(characterId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     } finally {
         btn.disabled = false;
-        btn.textContent = '💾 Save Avatar';
+        btn.textContent = 'ðŸ’¾ Save Avatar';
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Locations View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const LOCATION_FEATURE_TYPES = ['landmark', 'district', 'building', 'natural', 'infrastructure', 'custom'];
 
@@ -5012,7 +5017,7 @@ async function renderLocations() {
 
     const createForm = `
         <div class="card location-create-form">
-            <h3>🌍 New Location</h3>
+            <h3>ðŸŒ New Location</h3>
             <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-md)">
                 Define a new world location for the council's domain.
             </p>
@@ -5029,12 +5034,12 @@ async function renderLocations() {
             <div class="filter-group" style="margin-top:var(--space-sm)">
                 <label for="loc-desc-input">Description</label>
                 <textarea id="loc-desc-input" class="settings-input proposal-textarea" rows="2"
-                    placeholder="Describe this location…"></textarea>
+                    placeholder="Describe this locationâ€¦"></textarea>
             </div>
             <div class="filter-group" style="margin-top:var(--space-sm)">
                 <label for="loc-lore-input">Lore</label>
                 <textarea id="loc-lore-input" class="settings-input proposal-textarea" rows="2"
-                    placeholder="History and background of this place…"></textarea>
+                    placeholder="History and background of this placeâ€¦"></textarea>
             </div>
             <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
                 <div class="filter-group" style="flex:2">
@@ -5048,7 +5053,7 @@ async function renderLocations() {
             </div>
             <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                 <button class="btn btn-primary" onclick="createLocation()" id="loc-create-btn">
-                    🌍 Create Location
+                    ðŸŒ Create Location
                 </button>
                 <span id="loc-create-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
             </div>
@@ -5058,7 +5063,7 @@ async function renderLocations() {
         $main().innerHTML = `
             <div class="view-enter">
                 <div class="page-header">
-                    <h2>🗺️ Locations</h2>
+                    <h2>ðŸ—ºï¸ Locations</h2>
                     <p>No locations defined yet. Create one below!</p>
                 </div>
                 ${createForm}
@@ -5082,7 +5087,7 @@ async function renderLocations() {
             <div class="loc-header">
                 <div>
                     <div class="loc-name">${escapeHtml(loc.name)}</div>
-                    <div class="loc-author">by ${escapeHtml(loc.author)} · v${loc.version || 1}</div>
+                    <div class="loc-author">by ${escapeHtml(loc.author)} Â· v${loc.version || 1}</div>
                 </div>
                 ${badge(loc.status)}
             </div>
@@ -5095,9 +5100,9 @@ async function renderLocations() {
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
-                <div><h2>🗺️ Locations</h2>
+                <div><h2>ðŸ—ºï¸ Locations</h2>
                 <p>${data.length} world location${data.length !== 1 ? 's' : ''}</p></div>
-                <button class="btn btn-secondary btn-sm" onclick="openBatchGenerateModal('location')" title="Generate images for multiple locations">🎨 Batch Generate</button>
+                <button class="btn btn-secondary btn-sm" onclick="openBatchGenerateModal('location')" title="Generate images for multiple locations">ðŸŽ¨ Batch Generate</button>
             </div>
             ${createForm}
             <div class="location-grid">${cards}</div>
@@ -5126,7 +5131,7 @@ async function renderLocationDetail(id) {
         const children = await api(`/api/locations?parent_location_id=${encodeURIComponent(id)}`);
         if (children.length) {
             childrenHtml = `<div class="detail-section">
-                <h4>🏛️ Sub-locations (${children.length})</h4>
+                <h4>ðŸ›ï¸ Sub-locations (${children.length})</h4>
                 <div class="location-children-list">
                     ${children.map(c => `
                         <div class="card card-clickable location-child" onclick="navigateTo('locations','${c.id}')">
@@ -5142,11 +5147,11 @@ async function renderLocationDetail(id) {
     // Status action buttons
     let statusActions = '';
     if (data.status === 'draft') {
-        statusActions = `<button class="btn btn-primary btn-sm" onclick="updateLocationStatus('${data.id}', 'active')">✅ Activate</button>`;
+        statusActions = `<button class="btn btn-primary btn-sm" onclick="updateLocationStatus('${data.id}', 'active')">âœ… Activate</button>`;
     } else if (data.status === 'active') {
         statusActions = `
-            <button class="btn btn-secondary btn-sm" onclick="updateLocationStatus('${data.id}', 'draft')">📝 → Draft</button>
-            <button class="btn btn-secondary btn-sm" onclick="updateLocationStatus('${data.id}', 'archived')">📦 Archive</button>`;
+            <button class="btn btn-secondary btn-sm" onclick="updateLocationStatus('${data.id}', 'draft')">ðŸ“ â†’ Draft</button>
+            <button class="btn btn-secondary btn-sm" onclick="updateLocationStatus('${data.id}', 'archived')">ðŸ“¦ Archive</button>`;
     }
 
 
@@ -5154,21 +5159,21 @@ async function renderLocationDetail(id) {
 
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="navigateTo('locations')">← Back to Locations</button>
+            <button class="back-btn" onclick="navigateTo('locations')">â† Back to Locations</button>
             <div class="detail-panel">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-xl)">
                     <div>
-                        <div style="font-size:0.78rem;font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);margin-bottom:var(--space-xs)">${data.id} · v${data.version || 1}</div>
+                        <div style="font-size:0.78rem;font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);margin-bottom:var(--space-xs)">${data.id} Â· v${data.version || 1}</div>
                         <div style="font-size:1.4rem;font-weight:700">${escapeHtml(data.name)}</div>
                         <div style="color:var(--text-secondary);margin-top:var(--space-xs);font-size:0.87rem">
-                            by <strong>${escapeHtml(data.author)}</strong> · ${formatDate(data.created_at)}
+                            by <strong>${escapeHtml(data.author)}</strong> Â· ${formatDate(data.created_at)}
                         </div>
                         <div style="margin-top:var(--space-sm);display:flex;align-items:center;gap:var(--space-sm)">
                             ${badge(data.status)}
                             ${statusActions}
                         </div>
                     </div>
-                    <button class="detail-close" onclick="navigateTo('locations')">✕</button>
+                    <button class="detail-close" onclick="navigateTo('locations')">âœ•</button>
                 </div>
 
                 <div class="detail-section">
@@ -5176,22 +5181,22 @@ async function renderLocationDetail(id) {
                     <p>${escapeHtml(data.description)}</p>
                 </div>
 
-                ${data.lore ? `<div class="detail-section"><h4>📜 Lore</h4><p style="white-space:pre-line">${escapeHtml(data.lore)}</p></div>` : ''}
+                ${data.lore ? `<div class="detail-section"><h4>ðŸ“œ Lore</h4><p style="white-space:pre-line">${escapeHtml(data.lore)}</p></div>` : ''}
 
-                ${data.coordinates ? `<div class="detail-section"><h4>📍 Coordinates</h4><p style="font-family:'JetBrains Mono',monospace;color:var(--accent-cyan)">${escapeHtml(data.coordinates)}</p></div>` : ''}
+                ${data.coordinates ? `<div class="detail-section"><h4>ðŸ“ Coordinates</h4><p style="font-family:'JetBrains Mono',monospace;color:var(--accent-cyan)">${escapeHtml(data.coordinates)}</p></div>` : ''}
 
-                ${featuresHtml ? `<div class="detail-section"><h4>⭐ Features (${data.features.length})</h4><div class="location-features-list">${featuresHtml}</div></div>` : ''}
+                ${featuresHtml ? `<div class="detail-section"><h4>â­ Features (${data.features.length})</h4><div class="location-features-list">${featuresHtml}</div></div>` : ''}
 
                 ${tagsHtml ? `<div class="detail-section"><h4>Tags</h4><div class="tag-list">${tagsHtml}</div></div>` : ''}
 
-                ${data.parent_location_id ? `<div class="detail-section"><h4>🔗 Parent Location</h4><a class="location-parent-link" onclick="navigateTo('locations','${data.parent_location_id}')">${data.parent_location_id}</a></div>` : ''}
+                ${data.parent_location_id ? `<div class="detail-section"><h4>ðŸ”— Parent Location</h4><a class="location-parent-link" onclick="navigateTo('locations','${data.parent_location_id}')">${data.parent_location_id}</a></div>` : ''}
 
                 ${childrenHtml}
 
                 ${galleryHtml}
 
                 <div class="detail-section" style="margin-top:var(--space-xl);border-top:1px solid var(--border-subtle);padding-top:var(--space-lg)">
-                    <h4>✏️ Edit Location</h4>
+                    <h4>âœï¸ Edit Location</h4>
                     <div class="proposal-form-grid">
                         <div class="filter-group" style="flex:2">
                             <label for="loc-edit-name">Name</label>
@@ -5216,7 +5221,7 @@ async function renderLocationDetail(id) {
                     </div>
                     <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                         <button class="btn btn-primary" onclick="saveLocationEdit('${data.id}')" id="loc-save-btn">
-                            💾 Save Changes
+                            ðŸ’¾ Save Changes
                         </button>
                         <span id="loc-save-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
                     </div>
@@ -5240,7 +5245,7 @@ async function createLocation() {
     if (!description) { document.getElementById('loc-desc-input').focus(); return; }
 
     btn.disabled = true;
-    btn.textContent = '⏳ Creating…';
+    btn.textContent = 'â³ Creatingâ€¦';
     status.textContent = '';
 
     const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
@@ -5256,14 +5261,14 @@ async function createLocation() {
             throw new Error(err.detail);
         }
         const data = await resp.json();
-        showToast(`Location ${data.id} created ✅`);
+        showToast(`Location ${data.id} created âœ…`);
         navigateTo('locations', data.id);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
         status.textContent = '';
     } finally {
         btn.disabled = false;
-        btn.textContent = '🌍 Create Location';
+        btn.textContent = 'ðŸŒ Create Location';
     }
 }
 
@@ -5271,7 +5276,7 @@ async function saveLocationEdit(locationId) {
     const btn = document.getElementById('loc-save-btn');
     const status = document.getElementById('loc-save-status');
     btn.disabled = true;
-    btn.textContent = '⏳ Saving…';
+    btn.textContent = 'â³ Savingâ€¦';
     status.textContent = '';
 
     const tagsRaw = document.getElementById('loc-edit-tags').value.trim();
@@ -5295,17 +5300,17 @@ async function saveLocationEdit(locationId) {
             const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
             throw new Error(err.detail);
         }
-        showToast('Location updated ✅');
-        status.textContent = '✅ Saved';
+        showToast('Location updated âœ…');
+        status.textContent = 'âœ… Saved';
         status.style.color = 'var(--accent-emerald)';
         await renderLocationDetail(locationId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        status.textContent = '❌ Failed';
+        status.textContent = 'âŒ Failed';
         status.style.color = 'var(--accent-rose)';
     } finally {
         btn.disabled = false;
-        btn.textContent = '💾 Save Changes';
+        btn.textContent = 'ðŸ’¾ Save Changes';
     }
 }
 
@@ -5320,16 +5325,16 @@ async function updateLocationStatus(locationId, newStatus) {
             const err = await resp.json().catch(() => ({ detail: 'Failed' }));
             throw new Error(err.detail);
         }
-        showToast(`Location set to ${newStatus} ✅`);
+        showToast(`Location set to ${newStatus} âœ…`);
         await renderLocationDetail(locationId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Items View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const ITEM_PROPERTY_TYPES = ['magical', 'physical', 'consumable', 'equipment', 'material', 'custom'];
 const ITEM_TIERS = ['permanent', 'consumable', 'degradable'];
@@ -5342,7 +5347,7 @@ async function renderItems() {
 
     const createForm = `
         <div class="card location-create-form">
-            <h3>📦 New Item</h3>
+            <h3>ðŸ“¦ New Item</h3>
             <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-md)">
                 Define a new world item for the council's domain.
             </p>
@@ -5359,12 +5364,12 @@ async function renderItems() {
             <div class="filter-group" style="margin-top:var(--space-sm)">
                 <label for="item-desc-input">Description</label>
                 <textarea id="item-desc-input" class="settings-input proposal-textarea" rows="2"
-                    placeholder="Describe this item…"></textarea>
+                    placeholder="Describe this itemâ€¦"></textarea>
             </div>
             <div class="filter-group" style="margin-top:var(--space-sm)">
                 <label for="item-lore-input">Lore</label>
                 <textarea id="item-lore-input" class="settings-input proposal-textarea" rows="2"
-                    placeholder="History and background of this item…"></textarea>
+                    placeholder="History and background of this itemâ€¦"></textarea>
             </div>
             <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
                 <div class="filter-group" style="flex:2">
@@ -5392,7 +5397,7 @@ async function renderItems() {
             </div>
             <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                 <button class="btn btn-primary" onclick="createItem()" id="item-create-btn">
-                    📦 Create Item
+                    ðŸ“¦ Create Item
                 </button>
                 <span id="item-create-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
             </div>
@@ -5402,7 +5407,7 @@ async function renderItems() {
         $main().innerHTML = `
             <div class="view-enter">
                 <div class="page-header">
-                    <h2>📦 Items</h2>
+                    <h2>ðŸ“¦ Items</h2>
                     <p>No items defined yet. Create one below!</p>
                 </div>
                 ${createForm}
@@ -5432,24 +5437,24 @@ async function renderItems() {
                 ${(item.tags||[]).map(t => `<span class="badge badge-general">${t}</span>`).join('')}
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:var(--space-sm);font-size:0.78rem;color:var(--text-muted)">
-                <span>📦 ${item.properties ? item.properties.length : 0} properties</span>
-                <span>by ${item.author} · ${formatDate(item.created_at)}</span>
+                <span>ðŸ“¦ ${item.properties ? item.properties.length : 0} properties</span>
+                <span>by ${item.author} Â· ${formatDate(item.created_at)}</span>
             </div>
         </div>`;
 
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
-                <div><h2>📦 Items</h2>
-                <p>${data.length} item${data.length !== 1 ? 's' : ''} · ${active.length} active · ${drafts.length} draft · ${archived.length} archived</p></div>
-                <button class="btn btn-secondary btn-sm" onclick="openBatchGenerateModal('item')" title="Generate images for multiple items">🎨 Batch Generate</button>
+                <div><h2>ðŸ“¦ Items</h2>
+                <p>${data.length} item${data.length !== 1 ? 's' : ''} Â· ${active.length} active Â· ${drafts.length} draft Â· ${archived.length} archived</p></div>
+                <button class="btn btn-secondary btn-sm" onclick="openBatchGenerateModal('item')" title="Generate images for multiple items">ðŸŽ¨ Batch Generate</button>
             </div>
             ${createForm}
-            ${active.length ? `<h3 style="margin:var(--space-lg) 0 var(--space-sm)">✨ Active Items</h3>` : ''}
+            ${active.length ? `<h3 style="margin:var(--space-lg) 0 var(--space-sm)">âœ¨ Active Items</h3>` : ''}
             ${active.map(itemCard).join('')}
-            ${drafts.length ? `<h3 style="margin:var(--space-lg) 0 var(--space-sm)">📝 Drafts</h3>` : ''}
+            ${drafts.length ? `<h3 style="margin:var(--space-lg) 0 var(--space-sm)">ðŸ“ Drafts</h3>` : ''}
             ${drafts.map(itemCard).join('')}
-            ${archived.length ? `<h3 style="margin:var(--space-lg) 0 var(--space-sm)">📁 Archived</h3>` : ''}
+            ${archived.length ? `<h3 style="margin:var(--space-lg) 0 var(--space-sm)">ðŸ“ Archived</h3>` : ''}
             ${archived.map(itemCard).join('')}
         </div>`;
 }
@@ -5460,11 +5465,11 @@ async function renderItemDetail(id) {
 
     const tierBadge = data.tier
         ? `<span class="badge" style="background:linear-gradient(135deg,hsl(${data.tier==='permanent'?'210,60%,50%':data.tier==='consumable'?'40,70%,50%':'0,55%,50%'}),hsl(${data.tier==='permanent'?'230,55%,45%':data.tier==='consumable'?'55,65%,45%':'15,50%,45%'}));font-size:0.78rem;padding:3px 10px">${data.tier.charAt(0).toUpperCase()+data.tier.slice(1)}</span>`
-        : `<span class="badge" style="background:var(--accent-rose);font-size:0.72rem;padding:2px 8px">⚠ No Tier</span>`;
+        : `<span class="badge" style="background:var(--accent-rose);font-size:0.72rem;padding:2px 8px">âš  No Tier</span>`;
 
     const statusActions = {
-        draft: `<button class="btn" onclick="updateItemStatus('${id}','active')" style="background:linear-gradient(135deg, hsl(160,60%,45%),hsl(140,55%,40%));">✨ Set Active</button>`,
-        active: `<button class="btn" onclick="updateItemStatus('${id}','archived')" style="background:linear-gradient(135deg, hsl(0,50%,50%),hsl(15,55%,45%));">📁 Archive</button>`,
+        draft: `<button class="btn" onclick="updateItemStatus('${id}','active')" style="background:linear-gradient(135deg, hsl(160,60%,45%),hsl(140,55%,40%));">âœ¨ Set Active</button>`,
+        active: `<button class="btn" onclick="updateItemStatus('${id}','archived')" style="background:linear-gradient(135deg, hsl(0,50%,50%),hsl(15,55%,45%));">ðŸ“ Archive</button>`,
         archived: '',
     };
 
@@ -5473,7 +5478,7 @@ async function renderItemDetail(id) {
             <span class="badge badge-${p.property_type}">${p.property_type}</span>
             <strong>${p.name}</strong>
             <span style="color:var(--text-secondary)">${p.description}</span>
-            <button class="btn" style="margin-left:auto;padding:2px 8px;font-size:0.75rem" onclick="removeItemProperty('${id}','${p.name.replace(/'/g,"\\'")}')">✕</button>
+            <button class="btn" style="margin-left:auto;padding:2px 8px;font-size:0.75rem" onclick="removeItemProperty('${id}','${p.name.replace(/'/g,"\\'")}')">âœ•</button>
         </div>`).join('');
 
 
@@ -5483,9 +5488,9 @@ async function renderItemDetail(id) {
         <div class="view-enter">
             <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
                 <div>
-                    <button class="btn" onclick="navigateTo('items')" style="margin-bottom:var(--space-sm);font-size:0.82rem">← Back to Items</button>
+                    <button class="btn" onclick="navigateTo('items')" style="margin-bottom:var(--space-sm);font-size:0.82rem">â† Back to Items</button>
                     <h2>${data.name} ${tierBadge} ${data.legality ? `<span class="badge" style="background:linear-gradient(135deg,${data.legality==='legal'?'hsl(150,55%,42%),hsl(160,50%,38%)':'hsl(0,60%,48%),hsl(10,55%,43%)'});font-size:0.78rem;padding:3px 10px">${data.legality.charAt(0).toUpperCase()+data.legality.slice(1)}</span>` : ''} ${data.rarity ? `<span class="badge badge-${data.rarity}">${data.rarity}</span>` : ''} ${data.owner ? `<span class="badge store-owned-badge">Owned by ${escapeHtml(data.owner)}</span>` : ''}</h2>
-                    <p>${badge(data.status)} · ID: ${data.id} · v${data.version} · by ${data.author}</p>
+                    <p>${badge(data.status)} Â· ID: ${data.id} Â· v${data.version} Â· by ${data.author}</p>
                 </div>
                 <div style="display:flex;gap:var(--space-sm)">
                     ${statusActions[data.status] || ''}
@@ -5495,7 +5500,7 @@ async function renderItemDetail(id) {
             ${galleryHtml}
 
             <div class="detail-section">
-                <h3>📝 Edit Item</h3>
+                <h3>ðŸ“ Edit Item</h3>
                 <div class="proposal-form-grid">
                     <div class="filter-group" style="flex:2">
                         <label for="item-edit-name">Name</label>
@@ -5533,13 +5538,13 @@ async function renderItemDetail(id) {
                     <input id="item-edit-tags" class="settings-input" value="${(data.tags || []).join(', ')}" />
                 </div>
                 <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
-                    <button class="btn btn-primary" onclick="saveItemEdit('${id}')" id="item-save-btn">💾 Save Changes</button>
+                    <button class="btn btn-primary" onclick="saveItemEdit('${id}')" id="item-save-btn">ðŸ’¾ Save Changes</button>
                     <span id="item-save-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
                 </div>
             </div>
 
             <div class="detail-section">
-                <h3>⚙️ Properties (${data.properties ? data.properties.length : 0})</h3>
+                <h3>âš™ï¸ Properties (${data.properties ? data.properties.length : 0})</h3>
                 ${propsHtml || '<p style="color:var(--text-muted)">No properties yet.</p>'}
                 <div style="margin-top:var(--space-md);padding-top:var(--space-md);border-top:1px solid var(--border-subtle)">
                     <h4>Add Property</h4>
@@ -5559,12 +5564,12 @@ async function renderItemDetail(id) {
                         <label for="item-prop-desc">Description</label>
                         <input id="item-prop-desc" class="settings-input" placeholder="What does this property do?" />
                     </div>
-                    <button class="btn" onclick="addItemProperty('${id}')" style="margin-top:var(--space-sm)">➕ Add Property</button>
+                    <button class="btn" onclick="addItemProperty('${id}')" style="margin-top:var(--space-sm)">âž• Add Property</button>
                 </div>
             </div>
 
             <div class="detail-section">
-                <h3>📋 Metadata</h3>
+                <h3>ðŸ“‹ Metadata</h3>
                 <div class="detail-row"><span class="label">Created</span><span class="value">${formatDate(data.created_at)}</span></div>
                 <div class="detail-row"><span class="label">Updated</span><span class="value">${formatDate(data.updated_at)}</span></div>
                 <div class="detail-row"><span class="label">Version</span><span class="value">${data.version}</span></div>
@@ -5573,13 +5578,13 @@ async function renderItemDetail(id) {
         </div>`;
 }
 
-// ── Item Creation ────────────────────────────────────────────
+// â”€â”€ Item Creation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function createItem() {
     const btn = document.getElementById('item-create-btn');
     const status = document.getElementById('item-create-status');
     btn.disabled = true;
-    btn.textContent = '⏳ Creating…';
+    btn.textContent = 'â³ Creatingâ€¦';
 
     const name = document.getElementById('item-name-input').value.trim();
     const description = document.getElementById('item-desc-input').value.trim();
@@ -5594,7 +5599,7 @@ async function createItem() {
     if (!name || !description || !author) {
         showToast('Name, description, and author are required.', true);
         btn.disabled = false;
-        btn.textContent = '📦 Create Item';
+        btn.textContent = 'ðŸ“¦ Create Item';
         return;
     }
 
@@ -5609,25 +5614,25 @@ async function createItem() {
             throw new Error(err.detail);
         }
         const data = await resp.json();
-        showToast(`Item "${data.name}" created ✅`);
+        showToast(`Item "${data.name}" created âœ…`);
         navigateTo('items', data.id);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        status.textContent = '❌ Failed';
+        status.textContent = 'âŒ Failed';
         status.style.color = 'var(--accent-rose)';
     } finally {
         btn.disabled = false;
-        btn.textContent = '📦 Create Item';
+        btn.textContent = 'ðŸ“¦ Create Item';
     }
 }
 
-// ── Item Edit ────────────────────────────────────────────────
+// â”€â”€ Item Edit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function saveItemEdit(itemId) {
     const btn = document.getElementById('item-save-btn');
     const status = document.getElementById('item-save-status');
     btn.disabled = true;
-    btn.textContent = '⏳ Saving…';
+    btn.textContent = 'â³ Savingâ€¦';
 
     const tagsRaw = document.getElementById('item-edit-tags').value.trim();
     const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
@@ -5652,21 +5657,21 @@ async function saveItemEdit(itemId) {
             const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
             throw new Error(err.detail);
         }
-        showToast('Item updated ✅');
-        status.textContent = '✅ Saved';
+        showToast('Item updated âœ…');
+        status.textContent = 'âœ… Saved';
         status.style.color = 'var(--accent-emerald)';
         await renderItemDetail(itemId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        status.textContent = '❌ Failed';
+        status.textContent = 'âŒ Failed';
         status.style.color = 'var(--accent-rose)';
     } finally {
         btn.disabled = false;
-        btn.textContent = '💾 Save Changes';
+        btn.textContent = 'ðŸ’¾ Save Changes';
     }
 }
 
-// ── Item Status ──────────────────────────────────────────────
+// â”€â”€ Item Status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function updateItemStatus(itemId, newStatus) {
     // Client-side guard: check tier before activation
@@ -5689,14 +5694,14 @@ async function updateItemStatus(itemId, newStatus) {
             const err = await resp.json().catch(() => ({ detail: 'Failed' }));
             throw new Error(err.detail);
         }
-        showToast(`Item set to ${newStatus} ✅`);
+        showToast(`Item set to ${newStatus} âœ…`);
         await renderItemDetail(itemId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     }
 }
 
-// ── Item Property Management ─────────────────────────────────
+// â”€â”€ Item Property Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function addItemProperty(itemId) {
     const name = document.getElementById('item-prop-name').value.trim();
@@ -5732,7 +5737,7 @@ async function addItemProperty(itemId) {
             const err = await resp.json().catch(() => ({ detail: 'Failed to add property' }));
             throw new Error(err.detail);
         }
-        showToast(`Property "${name}" added ✅`);
+        showToast(`Property "${name}" added âœ…`);
         await renderItemDetail(itemId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -5754,20 +5759,20 @@ async function removeItemProperty(itemId, propName) {
             const err = await resp.json().catch(() => ({ detail: 'Failed to remove property' }));
             throw new Error(err.detail);
         }
-        showToast(`Property "${propName}" removed ✅`);
+        showToast(`Property "${propName}" removed âœ…`);
         await renderItemDetail(itemId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Stores View  (StoreManager-backed — F-036)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Stores View  (StoreManager-backed â€” F-036)
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const STORE_TYPE_ICONS = {
-    general: '🏪', blacksmith: '⚒️', alchemist: '⚗️',
-    enchanter: '✨', tavern: '🍺', custom: '🏷️',
+    general: '🏪', blacksmith: 'âš’ï¸', alchemist: 'âš—ï¸',
+    enchanter: 'âœ¨', tavern: '🍺', custom: '🏷ï¸',
 };
 
 async function renderStores() {
@@ -5781,8 +5786,8 @@ async function renderStores() {
                 <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
                     <div><h2>🏪 Stores</h2><p>Create and manage world stores where items can be purchased</p></div>
                     <div style="display:flex;gap:var(--space-sm)">
-                        <button class="btn btn-secondary" onclick="openLocationStoreModal()" id="btn-add-loc-store">📍 Add Location as Store</button>
-                        <button class="btn btn-primary" onclick="document.getElementById('store-create-form').style.display='block'" id="btn-create-store">➕ Create Store</button>
+                        <button class="btn btn-secondary" onclick="openLocationStoreModal()" id="btn-add-loc-store">ðŸ“ Add Location as Store</button>
+                        <button class="btn btn-primary" onclick="document.getElementById('store-create-form').style.display='block'" id="btn-create-store">âž• Create Store</button>
                     </div>
                 </div>
                 ${_storeCreateForm()}
@@ -5817,11 +5822,11 @@ async function renderStores() {
                 <div class="store-card-icon">${icon}</div>
                 <div style="flex:1">
                     <div class="store-card-name">${escapeHtml(store.name)}</div>
-                    <div class="store-card-author">by ${escapeHtml(store.author)} · ${badge(store.status)} · ${badge(store.store_type)}</div>
+                    <div class="store-card-author">by ${escapeHtml(store.author)} Â· ${badge(store.status)} Â· ${badge(store.store_type)}</div>
                 </div>
                 <div class="store-card-stats">
-                    <span class="store-stat">📦 ${invCount} item${invCount !== 1 ? 's' : ''}</span>
-                    ${store.owner ? `<span class="store-stat">👤 ${escapeHtml(store.owner)}</span>` : ''}
+                    <span class="store-stat">ðŸ“¦ ${invCount} item${invCount !== 1 ? 's' : ''}</span>
+                    ${store.owner ? `<span class="store-stat">ðŸ‘¤ ${escapeHtml(store.owner)}</span>` : ''}
                 </div>
             </div>
             <div class="store-card-desc">${truncate(store.description, 140)}</div>
@@ -5834,9 +5839,9 @@ async function renderStores() {
             <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
                 <div><h2>🏪 Stores</h2><p>${data.length} store${data.length !== 1 ? 's' : ''}</p></div>
                 <div style="display:flex;gap:var(--space-sm)">
-                    <button class="btn btn-secondary btn-sm" onclick="openBatchGenerateModal('store')" title="Generate images for multiple stores">🎨 Batch Generate</button>
-                    <button class="btn btn-secondary" onclick="openLocationStoreModal()" id="btn-add-loc-store">📍 Add Location as Store</button>
-                    <button class="btn btn-primary" onclick="document.getElementById('store-create-form').style.display='block'" id="btn-create-store">➕ Create Store</button>
+                    <button class="btn btn-secondary btn-sm" onclick="openBatchGenerateModal('store')" title="Generate images for multiple stores">ðŸŽ¨ Batch Generate</button>
+                    <button class="btn btn-secondary" onclick="openLocationStoreModal()" id="btn-add-loc-store">ðŸ“ Add Location as Store</button>
+                    <button class="btn btn-primary" onclick="document.getElementById('store-create-form').style.display='block'" id="btn-create-store">âž• Create Store</button>
                 </div>
             </div>
             ${_storeCreateForm()}
@@ -5850,7 +5855,7 @@ function _storeCreateForm() {
         .map(t => `<option value="${t}">${STORE_TYPE_ICONS[t] || ''} ${t}</option>`).join('');
     return `
     <div class="card store-form-card" id="store-create-form" style="display:none;margin-bottom:var(--space-xl)">
-        <h3 class="store-form-title">✨ Create New Store</h3>
+        <h3 class="store-form-title">âœ¨ Create New Store</h3>
         <div class="store-form-grid">
             <div class="store-form-field">
                 <label class="store-form-label">Store Name</label>
@@ -5870,11 +5875,11 @@ function _storeCreateForm() {
             </div>
             <div class="store-form-field store-form-full">
                 <label class="store-form-label">Description</label>
-                <textarea id="store-new-desc" class="store-form-textarea" rows="3" placeholder="A master forge run by the finest artisans…"></textarea>
+                <textarea id="store-new-desc" class="store-form-textarea" rows="3" placeholder="A master forge run by the finest artisansâ€¦"></textarea>
             </div>
             <div class="store-form-field store-form-full">
                 <label class="store-form-label">Lore <span class="store-form-hint">(optional)</span></label>
-                <textarea id="store-new-lore" class="store-form-textarea" rows="2" placeholder="Long ago, the first hammer struck…"></textarea>
+                <textarea id="store-new-lore" class="store-form-textarea" rows="2" placeholder="Long ago, the first hammer struckâ€¦"></textarea>
             </div>
             <div class="store-form-field">
                 <label class="store-form-label">Location ID <span class="store-form-hint">(optional)</span></label>
@@ -5892,7 +5897,7 @@ function _storeCreateForm() {
     </div>`;
 }
 
-// ── Add Location as Store modal ──────────────────────────────
+// â”€â”€ Add Location as Store modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function openLocationStoreModal() {
     let locations = [];
@@ -5912,7 +5917,7 @@ async function openLocationStoreModal() {
         .map(t => `<option value="${t}">${STORE_TYPE_ICONS[t] || ''} ${t}</option>`).join('');
 
     const locOptions = locations.map(l =>
-        `<option value="${l.id}" data-name="${escapeAttr(l.name)}" data-desc="${escapeAttr(l.description)}">${l.id} — ${escapeHtml(l.name)}</option>`
+        `<option value="${l.id}" data-name="${escapeAttr(l.name)}" data-desc="${escapeAttr(l.description)}">${l.id} â€” ${escapeHtml(l.name)}</option>`
     ).join('');
 
     // Build modal
@@ -5922,7 +5927,7 @@ async function openLocationStoreModal() {
     overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
     overlay.innerHTML = `
         <div class="store-form-card" style="width:620px;max-width:90vw">
-            <h3 class="store-form-title">📍 Add Location as Store</h3>
+            <h3 class="store-form-title">ðŸ“ Add Location as Store</h3>
             <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:var(--space-lg)">
                 Create a new store based on an existing active location. The location's name and description will be used.
             </p>
@@ -5981,7 +5986,7 @@ async function submitLocationStore() {
     }
 
     const btn = document.getElementById('btn-loc-store-submit');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Creatingâ€¦'; }
 
     try {
         const resp = await fetch('/api/stores', {
@@ -5994,7 +5999,7 @@ async function submitLocationStore() {
             throw new Error(err.detail);
         }
         const result = await resp.json();
-        showToast(`Store "${result.name}" created from location ✅`);
+        showToast(`Store "${result.name}" created from location âœ…`);
         const modal = document.getElementById('loc-store-modal');
         if (modal) modal.remove();
         navigateTo('stores', result.id);
@@ -6021,7 +6026,7 @@ async function submitNewStore() {
     }
 
     const btn = document.getElementById('btn-submit-store');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Creatingâ€¦'; }
 
     try {
         const resp = await fetch('/api/stores', {
@@ -6034,7 +6039,7 @@ async function submitNewStore() {
             throw new Error(err.detail);
         }
         const result = await resp.json();
-        showToast(`Store "${result.name}" created ✅`);
+        showToast(`Store "${result.name}" created âœ…`);
         navigateTo('stores', result.id);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -6063,7 +6068,7 @@ async function renderStoreDetail(storeId) {
     const transitions = { draft: ['active'], active: ['draft', 'archived'], archived: [] };
     const allowed = transitions[data.status] || [];
     const statusBtns = allowed.map(s =>
-        `<button class="btn btn-sm ${s === 'draft' ? 'btn-secondary' : 'btn-primary'}" onclick="setStoreStatus('${storeId}','${s}')" id="btn-store-status-${s}">→ ${s}</button>`
+        `<button class="btn btn-sm ${s === 'draft' ? 'btn-secondary' : 'btn-primary'}" onclick="setStoreStatus('${storeId}','${s}')" id="btn-store-status-${s}">â†’ ${s}</button>`
     ).join('');
 
     // Inventory table
@@ -6074,16 +6079,16 @@ async function renderStoreDetail(storeId) {
                 si.price_gold ? `${si.price_gold}G` : '',
                 si.price_silver ? `${si.price_silver}S` : '',
                 si.price_bronze ? `${si.price_bronze}B` : '',
-            ].filter(Boolean).join(' ') || '—';
-            const qtyDisplay = si.quantity === -1 ? '∞' : si.quantity;
+            ].filter(Boolean).join(' ') || 'â€”';
+            const qtyDisplay = si.quantity === -1 ? 'âˆž' : si.quantity;
             return `
             <tr>
-                <td style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:var(--accent-cyan)">${si.item_id}${(() => { const m = activeItems.find(it => it.id === si.item_id); return m ? ` <span style="font-family:inherit;color:var(--text-secondary)">— ${escapeHtml(m.name)}</span>` : ''; })()}</td>
-                <td class="store-price-cell">🪙 ${priceDisplay}</td>
+                <td style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:var(--accent-cyan)">${si.item_id}${(() => { const m = activeItems.find(it => it.id === si.item_id); return m ? ` <span style="font-family:inherit;color:var(--text-secondary)">â€” ${escapeHtml(m.name)}</span>` : ''; })()}</td>
+                <td class="store-price-cell">ðŸª™ ${priceDisplay}</td>
                 <td style="text-align:center">${qtyDisplay}</td>
                 <td style="font-size:0.78rem;color:var(--text-muted)">${formatDate(si.added_at)}</td>
                 <td>
-                    <button class="btn btn-sm btn-secondary" onclick="removeStoreInventory('${storeId}','${si.item_id}')" title="Remove">🗑️</button>
+                    <button class="btn btn-sm btn-secondary" onclick="removeStoreInventory('${storeId}','${si.item_id}')" title="Remove">ðŸ—‘ï¸</button>
                 </td>
             </tr>`;
         }).join('');
@@ -6100,13 +6105,13 @@ async function renderStoreDetail(storeId) {
     const existingItemIds = new Set(inv.map(si => si.item_id));
     const availableItems = activeItems.filter(it => !existingItemIds.has(it.id));
     const itemOptions = availableItems.length
-        ? availableItems.map(it => `<option value="${it.id}">${it.id} — ${escapeHtml(it.name)}</option>`).join('')
+        ? availableItems.map(it => `<option value="${it.id}">${it.id} â€” ${escapeHtml(it.name)}</option>`).join('')
         : '<option value="" disabled>No active items available</option>';
 
     // Add inventory form
     const addInvForm = `
     <div class="card store-form-card" id="store-add-inv-form" style="display:none;margin-top:var(--space-md)">
-        <h4 class="store-form-title" style="font-size:1rem">📦 Add Inventory Item</h4>
+        <h4 class="store-form-title" style="font-size:1rem">ðŸ“¦ Add Inventory Item</h4>
         <div class="store-form-grid">
             <div class="store-form-field">
                 <label class="store-form-label">Select Item</label>
@@ -6130,7 +6135,7 @@ async function renderStoreDetail(storeId) {
             </div>
         </div>
         <div class="store-form-actions">
-            <button class="btn btn-primary btn-sm" onclick="addStoreInventory('${storeId}')" id="btn-add-inv">➕ Add Item</button>
+            <button class="btn btn-primary btn-sm" onclick="addStoreInventory('${storeId}')" id="btn-add-inv">âž• Add Item</button>
             <button class="btn btn-secondary btn-sm" onclick="document.getElementById('store-add-inv-form').style.display='none'">Cancel</button>
         </div>
     </div>`;
@@ -6143,24 +6148,24 @@ async function renderStoreDetail(storeId) {
 
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="navigateTo('stores')">← Back to Stores</button>
+            <button class="back-btn" onclick="navigateTo('stores')">â† Back to Stores</button>
             <div class="detail-panel">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-xl)">
                     <div>
                         <div style="font-size:0.78rem;font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);margin-bottom:var(--space-xs)">${data.id}</div>
                         <div style="font-size:1.4rem;font-weight:700">${icon} ${escapeHtml(data.name)}</div>
                         <div style="color:var(--text-secondary);margin-top:var(--space-xs);font-size:0.87rem">
-                            by <strong>${escapeHtml(data.author)}</strong> · ${formatDate(data.created_at)}
+                            by <strong>${escapeHtml(data.author)}</strong> Â· ${formatDate(data.created_at)}
                         </div>
                         <div style="margin-top:var(--space-sm);display:flex;gap:var(--space-sm);align-items:center">
                             ${badge(data.status)} ${badge(data.store_type)}
-                            ${data.owner ? `<span style="color:var(--text-secondary);font-size:0.82rem">👤 ${escapeHtml(data.owner)}</span>` : ''}
-                            ${data.location_id ? `<span style="color:var(--text-secondary);font-size:0.82rem">📍 ${escapeHtml(data.location_id)}</span>` : ''}
-                            <span class="store-stat">📦 ${inv.length} item${inv.length !== 1 ? 's' : ''}</span>
+                            ${data.owner ? `<span style="color:var(--text-secondary);font-size:0.82rem">ðŸ‘¤ ${escapeHtml(data.owner)}</span>` : ''}
+                            ${data.location_id ? `<span style="color:var(--text-secondary);font-size:0.82rem">ðŸ“ ${escapeHtml(data.location_id)}</span>` : ''}
+                            <span class="store-stat">ðŸ“¦ ${inv.length} item${inv.length !== 1 ? 's' : ''}</span>
                             ${statusBtns}
                         </div>
                     </div>
-                    <button class="detail-close" onclick="navigateTo('stores')">✕</button>
+                    <button class="detail-close" onclick="navigateTo('stores')">âœ•</button>
                 </div>
 
                 <div class="detail-section">
@@ -6168,12 +6173,12 @@ async function renderStoreDetail(storeId) {
                     <p>${escapeHtml(data.description)}</p>
                 </div>
 
-                ${data.lore ? `<div class="detail-section"><h4>📜 Lore</h4><p style="white-space:pre-line">${escapeHtml(data.lore)}</p></div>` : ''}
+                ${data.lore ? `<div class="detail-section"><h4>ðŸ“œ Lore</h4><p style="white-space:pre-line">${escapeHtml(data.lore)}</p></div>` : ''}
 
                 <div class="detail-section">
                     <div style="display:flex;justify-content:space-between;align-items:center">
-                        <h4>🛒 Inventory (${inv.length})</h4>
-                        <button class="btn btn-sm btn-primary" onclick="document.getElementById('store-add-inv-form').style.display='block'">➕ Add Item</button>
+                        <h4>ðŸ›’ Inventory (${inv.length})</h4>
+                        <button class="btn btn-sm btn-primary" onclick="document.getElementById('store-add-inv-form').style.display='block'">âž• Add Item</button>
                     </div>
                     ${invHtml}
                     ${addInvForm}
@@ -6181,17 +6186,17 @@ async function renderStoreDetail(storeId) {
 
                 ${data.status === 'active' && inv.length ? `
                 <div class="detail-section">
-                    <h4>💰 Purchase an Item</h4>
+                    <h4>ðŸ’° Purchase an Item</h4>
                     <div class="store-form-grid">
                         <div class="store-form-field">
                             <label class="store-form-label">Select Item</label>
                             <select id="purchase-item-id" class="store-form-input">
                                 ${inv.map(si => {
                                     const matchedItem = activeItems.find(it => it.id === si.item_id);
-                                    const label = matchedItem ? `${si.item_id} — ${escapeHtml(matchedItem.name)}` : si.item_id;
-                                    const qtyLabel = si.quantity === -1 ? '∞' : si.quantity;
+                                    const label = matchedItem ? `${si.item_id} â€” ${escapeHtml(matchedItem.name)}` : si.item_id;
+                                    const qtyLabel = si.quantity === -1 ? 'âˆž' : si.quantity;
                                     const priceLabel = [si.price_gold ? si.price_gold + 'G' : '', si.price_silver ? si.price_silver + 'S' : '', si.price_bronze ? si.price_bronze + 'B' : ''].filter(Boolean).join(' ') || 'Free';
-                                    return `<option value="${si.item_id}">${label} · ${priceLabel} · Qty: ${qtyLabel}</option>`;
+                                    return `<option value="${si.item_id}">${label} Â· ${priceLabel} Â· Qty: ${qtyLabel}</option>`;
                                 }).join('')}
                             </select>
                         </div>
@@ -6201,14 +6206,14 @@ async function renderStoreDetail(storeId) {
                         </div>
                     </div>
                     <div class="store-form-actions">
-                        <button class="btn btn-primary" onclick="purchaseFromStore('${storeId}')" id="btn-purchase">💰 Purchase</button>
+                        <button class="btn btn-primary" onclick="purchaseFromStore('${storeId}')" id="btn-purchase">ðŸ’° Purchase</button>
                     </div>
                 </div>` : ''}
 
                 ${galleryHtml}
 
                 <div class="detail-section">
-                    <h4>✏️ Edit Store</h4>
+                    <h4>âœï¸ Edit Store</h4>
                     <div class="store-form-grid">
                         <div class="store-form-field">
                             <label class="store-form-label">Name</label>
@@ -6243,12 +6248,12 @@ async function renderStoreDetail(storeId) {
                         </div>
                     </div>
                     <div class="store-form-actions">
-                        <button class="btn btn-primary" onclick="updateStore('${storeId}')" id="btn-update-store">💾 Save Changes</button>
+                        <button class="btn btn-primary" onclick="updateStore('${storeId}')" id="btn-update-store">ðŸ’¾ Save Changes</button>
                     </div>
                 </div>
 
                 <div class="detail-section" style="font-size:0.82rem;color:var(--text-muted)">
-                    Created: ${formatDate(data.created_at)} · Updated: ${formatDate(data.updated_at)} · Version: ${data.version}
+                    Created: ${formatDate(data.created_at)} Â· Updated: ${formatDate(data.updated_at)} Â· Version: ${data.version}
                 </div>
             </div>
         </div>`;
@@ -6265,7 +6270,7 @@ async function setStoreStatus(storeId, newStatus) {
             const err = await resp.json().catch(() => ({ detail: 'Status change failed' }));
             throw new Error(err.detail);
         }
-        showToast(`Store status → ${newStatus} ✅`);
+        showToast(`Store status â†’ ${newStatus} âœ…`);
         await renderStoreDetail(storeId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -6291,7 +6296,7 @@ async function addStoreInventory(storeId) {
             const err = await resp.json().catch(() => ({ detail: 'Add failed' }));
             throw new Error(err.detail);
         }
-        showToast(`Item ${item_id} added to inventory ✅`);
+        showToast(`Item ${item_id} added to inventory âœ…`);
         await renderStoreDetail(storeId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -6308,7 +6313,7 @@ async function removeStoreInventory(storeId, itemId) {
             const err = await resp.json().catch(() => ({ detail: 'Remove failed' }));
             throw new Error(err.detail);
         }
-        showToast(`Item ${itemId} removed ✅`);
+        showToast(`Item ${itemId} removed âœ…`);
         await renderStoreDetail(storeId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -6326,7 +6331,7 @@ async function updateStore(storeId) {
         tags: document.getElementById('store-edit-tags').value.split(',').map(t => t.trim()).filter(Boolean),
     };
     const btn = document.getElementById('btn-update-store');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Savingâ€¦'; }
     try {
         const resp = await fetch(`/api/stores/${encodeURIComponent(storeId)}`, {
             method: 'PUT',
@@ -6337,7 +6342,7 @@ async function updateStore(storeId) {
             const err = await resp.json().catch(() => ({ detail: 'Update failed' }));
             throw new Error(err.detail);
         }
-        showToast('Store updated ✅');
+        showToast('Store updated âœ…');
         await renderStoreDetail(storeId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -6355,7 +6360,7 @@ async function purchaseFromStore(storeId) {
     }
 
     const btn = document.getElementById('btn-purchase');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Processing…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Processingâ€¦'; }
 
     try {
         const resp = await fetch(`/api/stores/${encodeURIComponent(storeId)}/purchase`, {
@@ -6368,17 +6373,17 @@ async function purchaseFromStore(storeId) {
             throw new Error(err.detail);
         }
         const result = await resp.json();
-        showToast(`Purchased ${result.item.item_id} successfully! ✅`);
+        showToast(`Purchased ${result.item.item_id} successfully! âœ…`);
         await renderStoreDetail(storeId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '💰 Purchase'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ’° Purchase'; }
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Analytics View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function renderAnalytics() {
     showLoading();
@@ -6413,7 +6418,7 @@ async function renderAnalytics() {
 
             <div class="analytics-grid">
                 <div class="card analytics-card">
-                    <h3>📜 Proposal Statistics</h3>
+                    <h3>ðŸ“œ Proposal Statistics</h3>
                     <div class="analytics-row"><span class="label">Total Proposals</span><span class="value">${ps.total || 0}</span></div>
                     <div class="analytics-row"><span class="label">Approval Rate</span><span class="value">${Math.round((ps.approval_rate || 0) * 100)}%</span></div>
                     ${Object.entries(ps.by_status || {}).map(([k, v]) => `
@@ -6423,7 +6428,7 @@ async function renderAnalytics() {
                 </div>
 
                 <div class="card analytics-card">
-                    <h3>🗳️ Voting Statistics</h3>
+                    <h3>ðŸ—³ï¸ Voting Statistics</h3>
                     <div class="analytics-row"><span class="label">Total Records</span><span class="value">${vs.total_records || 0}</span></div>
                     <div class="analytics-row"><span class="label">Total Votes Cast</span><span class="value">${vs.total_votes_cast || 0}</span></div>
                     <div class="analytics-row"><span class="label">Avg Votes / Record</span><span class="value">${vs.avg_votes_per_record || 0}</span></div>
@@ -6433,7 +6438,7 @@ async function renderAnalytics() {
                 </div>
 
                 <div class="card analytics-card">
-                    <h3>📊 Session Statistics</h3>
+                    <h3>ðŸ“Š Session Statistics</h3>
                     <div class="analytics-row"><span class="label">Total Sessions</span><span class="value">${ss.total_sessions || 0}</span></div>
                     <div class="analytics-row"><span class="label">Avg Messages / Session</span><span class="value">${ss.avg_messages_per_session || 0}</span></div>
                     <div class="analytics-row"><span class="label">Avg Participants</span><span class="value">${ss.avg_participants || 0}</span></div>
@@ -6443,16 +6448,16 @@ async function renderAnalytics() {
 
                 ${topHtml ? `
                 <div class="card analytics-card">
-                    <h3>🏆 Top Participants</h3>
+                    <h3>ðŸ† Top Participants</h3>
                     <div class="top-members-list">${topHtml}</div>
                 </div>` : ''}
             </div>
         </div>`;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Chat View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function renderChat() {
     showLoading();
@@ -6473,11 +6478,11 @@ async function renderChat() {
     characters.forEach(c => { if (c.avatar_url) avatarMap[c.name.toLowerCase()] = c.avatar_url; });
 
     const memberOptions = members.map(m =>
-        `<option value="member:${m.name}">${m.name} — ${m.role}</option>`
+        `<option value="member:${m.name}">${m.name} â€” ${m.role}</option>`
     ).join('');
 
     const characterOptions = characters.map(c =>
-        `<option value="char:${c.id}">🎭 ${c.name} — ${c.description ? c.description.substring(0, 40) : 'Character'}</option>`
+        `<option value="char:${c.id}">ðŸŽ­ ${c.name} â€” ${c.description ? c.description.substring(0, 40) : 'Character'}</option>`
     ).join('');
 
     const activeChats = chats.filter(c => !c.closed_at);
@@ -6505,7 +6510,7 @@ async function renderChat() {
         const rawMembers = c.council_members && c.council_members.length
             ? c.council_members : (!hasCharacters && c.member_name ? [c.member_name] : []);
         const chatMembers = rawMembers.filter(m => !charNamesLower.includes(m.toLowerCase()));
-        const membersLabel = [...chatMembers, ...charNames.map(n => '🎭 ' + n)].join(', ');
+        const membersLabel = [...chatMembers, ...charNames.map(n => 'ðŸŽ­ ' + n)].join(', ');
 
         // Build avatar list: council members + character names (for character-only chats)
         const allCardParticipants = [...chatMembers, ...charNames];
@@ -6520,7 +6525,7 @@ async function renderChat() {
                     </div>
                     <div>
                         <div class="chat-card-title">${c.title}</div>
-                        <div class="chat-card-member">${membersLabel}${c.topic ? ' · ' + c.topic : ''}</div>
+                        <div class="chat-card-member">${membersLabel}${c.topic ? ' Â· ' + c.topic : ''}</div>
                     </div>
                 </div>
                 <div class="chat-card-meta">
@@ -6535,7 +6540,7 @@ async function renderChat() {
 
     const activeHtml = activeChats.length
         ? [...activeChats].reverse().map((c, i) => chatCard(c, i)).join('')
-        : '<div class="empty-state"><div class="empty-icon">💬</div><p>No active chats. Start a new conversation!</p></div>';
+        : '<div class="empty-state"><div class="empty-icon">ðŸ’¬</div><p>No active chats. Start a new conversation!</p></div>';
 
     const closedHtml = closedChats.length
         ? `<details class="chat-closed-section">
@@ -6547,7 +6552,7 @@ async function renderChat() {
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header">
-                <h2>💬 Chat</h2>
+                <h2>ðŸ’¬ Chat</h2>
                 <p>Talk directly with council members and characters</p>
             </div>
 
@@ -6557,7 +6562,7 @@ async function renderChat() {
                     <div class="filter-group">
                         <label for="chat-participant-select">Participant</label>
                         <select id="chat-participant-select" class="settings-input">
-                            <option value="">Select a participant…</option>
+                            <option value="">Select a participantâ€¦</option>
                             <optgroup label="Council Members">
                                 ${memberOptions}
                             </optgroup>
@@ -6573,7 +6578,7 @@ async function renderChat() {
                         <input id="chat-topic-input" class="settings-input" placeholder="e.g. AI alignment" />
                     </div>
                     <button class="btn btn-primary chat-new-btn" onclick="createNewChat()" id="chat-create-btn">
-                        🚀 Start Chat
+                        ðŸš€ Start Chat
                     </button>
                 </div>
             </div>
@@ -6604,11 +6609,11 @@ async function createNewChat() {
         displayName = payload.member_name;
     } else if (participantVal.startsWith('char:')) {
         payload.character_id = participantVal.substring(5);
-        displayName = participantSel.options[participantSel.selectedIndex].text.replace('🎭 ', '');
+        displayName = participantSel.options[participantSel.selectedIndex].text.replace('ðŸŽ­ ', '');
     }
 
     btn.disabled = true;
-    btn.textContent = 'Creating…';
+    btn.textContent = 'Creatingâ€¦';
     try {
         const data = await fetch('/api/chat', {
             method: 'POST',
@@ -6616,13 +6621,13 @@ async function createNewChat() {
             body: JSON.stringify(payload),
         }).then(r => { if (!r.ok) throw new Error('Failed to create chat'); return r.json(); });
 
-        showToast(`Chat with ${displayName} started! ✅`);
+        showToast(`Chat with ${displayName} started! âœ…`);
         navigateTo('chat', data.chat_id);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     } finally {
         btn.disabled = false;
-        btn.textContent = '🚀 Start Chat';
+        btn.textContent = 'ðŸš€ Start Chat';
     }
 }
 
@@ -6703,7 +6708,7 @@ async function renderChatDetail(chatId) {
     // Member chips in topbar
     const memberChipsHtml = members.map((m, i) => {
         const removeBtn = (!isClosed && totalParticipants > 1)
-            ? `<button class="chip-remove" onclick="event.stopPropagation();removeChatMember('${chatId}','${m}')" title="Remove ${m}">✕</button>`
+            ? `<button class="chip-remove" onclick="event.stopPropagation();removeChatMember('${chatId}','${m}')" title="Remove ${m}">âœ•</button>`
             : '';
         return `<div class="member-chip">${memberAvatarWithImage(m, i, null, avatarMap[m.toLowerCase()])}<span>${m}</span>${removeBtn}</div>`;
     }).join('');
@@ -6712,9 +6717,9 @@ async function renderChatDetail(chatId) {
     const characterChipsHtml = chatCharacters.map((cid, i) => {
         const cname = charNameMap[cid] || cid;
         const removeBtn = (!isClosed && totalParticipants > 1)
-            ? `<button class="chip-remove" onclick="event.stopPropagation();removeChatCharacter('${chatId}','${cid}')" title="Remove ${cname}">✕</button>`
+            ? `<button class="chip-remove" onclick="event.stopPropagation();removeChatCharacter('${chatId}','${cid}')" title="Remove ${cname}">âœ•</button>`
             : '';
-        return `<div class="member-chip"><span class="char-chip-icon">🎭</span>${memberAvatarWithImage(cname, members.length + i, null, avatarMap[cname.toLowerCase()])}<span>${cname}</span>${removeBtn}</div>`;
+        return `<div class="member-chip"><span class="char-chip-icon">ðŸŽ­</span>${memberAvatarWithImage(cname, members.length + i, null, avatarMap[cname.toLowerCase()])}<span>${cname}</span>${removeBtn}</div>`;
     }).join('');
 
     // Add member dropdown (includes both council members and characters)
@@ -6722,16 +6727,16 @@ async function renderChatDetail(chatId) {
     const addMemberHtml = (!isClosed && hasAvailable) ? `
         <div class="add-member-dropdown">
             <button class="btn btn-secondary btn-sm add-member-btn" onclick="toggleAddMemberDropdown()" id="add-member-toggle">
-                ＋ Add Participant
+                ï¼‹ Add Participant
             </button>
             <div class="add-member-list" id="add-member-list" style="display:none">
                 ${availableMembers.map(m => `
                     <button class="add-member-option" onclick="addChatMember('${chatId}','${m.name}')">
-                        ${m.name} <span class="add-member-role">— ${m.role}</span>
+                        ${m.name} <span class="add-member-role">â€” ${m.role}</span>
                     </button>`).join('')}
                 ${availableCharacters.map(c => `
                     <button class="add-member-option" onclick="addChatCharacter('${chatId}','${c.id}')">
-                        🎭 ${c.name} <span class="add-member-role">— Character</span>
+                        ðŸŽ­ ${c.name} <span class="add-member-role">â€” Character</span>
                     </button>`).join('')}
             </div>
         </div>` : '';
@@ -6739,15 +6744,15 @@ async function renderChatDetail(chatId) {
     // Pause / Resume button (only when multi-member)
     const pauseResumeHtml = (!isClosed && isMultiMember) ? (
         isPaused
-            ? `<button class="btn btn-primary btn-sm chat-pause-btn" onclick="resumeChat('${chatId}')">▶ Resume</button>
-               <button class="btn btn-primary btn-sm chat-continue-btn" onclick="continueChat('${chatId}')">🔄 Continue</button>`
-            : `<button class="btn btn-secondary btn-sm chat-pause-btn" onclick="pauseChat('${chatId}')">⏸ Pause</button>`
+            ? `<button class="btn btn-primary btn-sm chat-pause-btn" onclick="resumeChat('${chatId}')">â–¶ Resume</button>
+               <button class="btn btn-primary btn-sm chat-continue-btn" onclick="continueChat('${chatId}')">ðŸ”„ Continue</button>`
+            : `<button class="btn btn-secondary btn-sm chat-pause-btn" onclick="pauseChat('${chatId}')">â¸ Pause</button>`
     ) : '';
 
     // Paused notice
     const pausedNotice = isPaused ? `
         <div class="chat-paused-notice">
-            <span>⏸ Chat is paused.</span>
+            <span>â¸ Chat is paused.</span>
             <span>Send a message or click <strong>Resume</strong> to continue the conversation.</span>
         </div>` : '';
 
@@ -6757,11 +6762,11 @@ async function renderChatDetail(chatId) {
         ${pausedNotice}
         <div class="chat-input-bar">
             <input id="chat-input" class="chat-input" type="text"
-                   placeholder="${isPaused ? 'Type to resume and send…' : 'Type your message…'}" autocomplete="off"
+                   placeholder="${isPaused ? 'Type to resume and sendâ€¦' : 'Type your messageâ€¦'}" autocomplete="off"
                    onkeydown="if(event.key==='Enter')sendChatMessage('${chatId}')" />
             <button class="btn btn-primary chat-send-btn" id="chat-send-btn"
                     onclick="sendChatMessage('${chatId}')">
-                Send ➤
+                Send âž¤
             </button>
         </div>`;
 
@@ -6772,19 +6777,19 @@ async function renderChatDetail(chatId) {
     $main().innerHTML = `
         <div class="view-enter chat-detail-view">
             <div class="chat-detail-topbar">
-                <button class="back-btn" onclick="navigateTo('chat')">← Back to Chats</button>
+                <button class="back-btn" onclick="navigateTo('chat')">â† Back to Chats</button>
                 <div class="chat-detail-info">
                     <div>
                         <div style="font-weight:700">${data.title}</div>
                         <div style="font-size:0.8rem;color:var(--text-muted)">
-                            ${data.topic ? data.topic + ' · ' : ''}
+                            ${data.topic ? data.topic + ' Â· ' : ''}
                             ${isClosed ? badge('closed', 'closed') : (isPaused ? badge('paused', 'paused') : badge('active', 'active'))}
                         </div>
                     </div>
                 </div>
                 <div class="chat-topbar-actions">
                     <button class="btn btn-sm silentpassa-toggle ${state.silentpassaEnabled ? 'silentpassa-on' : 'silentpassa-off'}" onclick="toggleSilentPass('chat','${chatId}')" id="silentpassa-btn" title="Toggle [PRESENT]/[SILENCE] wrappers">
-                        ${state.silentpassaEnabled ? '🔔 SilentPass' : '🔕 SilentPass'}
+                        ${state.silentpassaEnabled ? 'ðŸ”” SilentPass' : 'ðŸ”• SilentPass'}
                     </button>
                     ${pauseResumeHtml}
                     ${closeBtn}
@@ -6824,7 +6829,7 @@ async function addChatMember(chatId, memberName) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ member_name: memberName }),
         }).then(r => { if (!r.ok) throw new Error('Failed'); return r.json(); });
-        showToast(`${memberName} joined the chat ✅`);
+        showToast(`${memberName} joined the chat âœ…`);
         await renderChatDetail(chatId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -6879,7 +6884,7 @@ async function pauseChat(chatId) {
     try {
         await fetch(`/api/chat/${encodeURIComponent(chatId)}/pause`, { method: 'POST' })
             .then(r => { if (!r.ok) throw new Error('Failed'); return r.json(); });
-        showToast('Chat paused ⏸');
+        showToast('Chat paused â¸');
         await renderChatDetail(chatId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -6890,7 +6895,7 @@ async function resumeChat(chatId) {
     try {
         await fetch(`/api/chat/${encodeURIComponent(chatId)}/resume`, { method: 'POST' })
             .then(r => { if (!r.ok) throw new Error('Failed'); return r.json(); });
-        showToast('Chat resumed ▶');
+        showToast('Chat resumed â–¶');
         await renderChatDetail(chatId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -6902,7 +6907,7 @@ async function continueChat(chatId) {
     const msgContainer = document.getElementById('chat-messages');
     const typingEl = document.createElement('div');
     typingEl.className = 'chat-message chat-bubble-agent chat-typing';
-    typingEl.innerHTML = `<div class="chat-msg-body"><div class="chat-msg-header"><span class="chat-msg-speaker">Council deliberating…</span></div><div class="chat-typing-dots"><span></span><span></span><span></span></div></div>`;
+    typingEl.innerHTML = `<div class="chat-msg-body"><div class="chat-msg-header"><span class="chat-msg-speaker">Council deliberatingâ€¦</span></div><div class="chat-typing-dots"><span></span><span></span><span></span></div></div>`;
     if (msgContainer) {
         msgContainer.appendChild(typingEl);
         msgContainer.scrollTop = msgContainer.scrollHeight;
@@ -7043,7 +7048,7 @@ async function sendChatMessage(chatId) {
 
     input.disabled = true;
     btn.disabled = true;
-    btn.textContent = '⏳ Thinking…';
+    btn.textContent = 'â³ Thinkingâ€¦';
 
     // Immediately show the human message as a preview
     const msgContainer = document.getElementById('chat-messages');
@@ -7127,7 +7132,7 @@ async function sendChatMessage(chatId) {
         showToast(`Error: ${err.message}`, true);
         input.disabled = false;
         btn.disabled = false;
-        btn.textContent = 'Send ➤';
+        btn.textContent = 'Send âž¤';
     }
 }
 
@@ -7139,21 +7144,21 @@ async function closeChatConversation(chatId) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({}),
         });
-        showToast('Chat closed ✅');
+        showToast('Chat closed âœ…');
         await renderChatDetail(chatId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Settings View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const PROVIDER_LABELS = {
-    openrouter: { name: 'OpenRouter', icon: '🌐', url: 'https://openrouter.ai/keys' },
+    openrouter: { name: 'OpenRouter', icon: 'ðŸŒ', url: 'https://openrouter.ai/keys' },
     mancer:     { name: 'Mancer',     icon: '🧠', url: 'https://mancer.tech' },
-    lmstudio:   { name: 'LM Studio', icon: '🖥️', url: 'https://lmstudio.ai' },
+    lmstudio:   { name: 'LM Studio', icon: 'ðŸ–¥ï¸', url: 'https://lmstudio.ai' },
 };
 
 // Model dropdown options (fetched from API, cached here)
@@ -7176,7 +7181,7 @@ async function loadModelOptions() {
         if (openrouter && openrouter.length) OPENROUTER_MODEL_OPTIONS = openrouter;
         if (lmstudio && lmstudio.length) LMSTUDIO_MODEL_OPTIONS = lmstudio;
         _modelOptionsLoaded = true;
-    } catch (_) { /* silently degrade — will try again on Settings visit */ }
+    } catch (_) { /* silently degrade â€” will try again on Settings visit */ }
 }
 
 /** Return model options array for a given provider. */
@@ -7195,7 +7200,7 @@ function getModelOptionsForProvider(provider) {
 function renderModelField(selectId, provider, currentModel, includeDefault) {
     if (provider === 'lmstudio') {
         return `<div class="lmstudio-model-info" style="padding:var(--space-sm);background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--radius-md);color:var(--text-secondary);font-size:0.85rem">
-            🖥️ Model is selected in the LM Studio application
+            ðŸ–¥ï¸ Model is selected in the LM Studio application
             <input type="hidden" id="${selectId}" value="Loaded Model" />
         </div>`;
     }
@@ -7232,11 +7237,11 @@ async function renderSettings() {
     models.forEach(m => { modelMap[m.provider] = m; });
 
     const cards = keys.map(k => {
-        const info = PROVIDER_LABELS[k.provider] || { name: k.provider, icon: '🔑', url: '#' };
+        const info = PROVIDER_LABELS[k.provider] || { name: k.provider, icon: 'ðŸ”‘', url: '#' };
         const configured = k.configured;
         const statusBadge = configured
-            ? `<span class="badge badge-active">✅ Configured</span>`
-            : `<span class="badge badge-draft">❌ Not Set</span>`;
+            ? `<span class="badge badge-active">âœ… Configured</span>`
+            : `<span class="badge badge-draft">âŒ Not Set</span>`;
         const maskedDisplay = configured
             ? `<div class="key-masked"><code>${k.masked}</code></div>`
             : '';
@@ -7256,7 +7261,7 @@ async function renderSettings() {
                     <span class="settings-provider-icon">${info.icon}</span>
                     <div>
                         <div class="settings-provider-name">${info.name}</div>
-                        <a href="${info.url}" target="_blank" rel="noopener" class="settings-provider-link">Get API key ↗</a>
+                        <a href="${info.url}" target="_blank" rel="noopener" class="settings-provider-link">Get API key â†—</a>
                     </div>
                 </div>
                 ${statusBadge}
@@ -7267,18 +7272,18 @@ async function renderSettings() {
                     <input type="password"
                            id="key-input-${k.provider}"
                            class="settings-input"
-                           placeholder="Paste your ${info.name} API key…"
+                           placeholder="Paste your ${info.name} API keyâ€¦"
                            autocomplete="off"
                            spellcheck="false" />
                     <button class="btn btn-primary" onclick="saveApiKey('${k.provider}')">
-                        💾 Save
+                        ðŸ’¾ Save
                     </button>
-                    ${configured ? `<button class="btn btn-danger" onclick="deleteApiKey('${k.provider}')">🗑️ Delete</button>` : ''}
+                    ${configured ? `<button class="btn btn-danger" onclick="deleteApiKey('${k.provider}')">ðŸ—‘ï¸ Delete</button>` : ''}
                 </div>
             </div>
             <div class="settings-model-section">
                 <div class="settings-model-header">
-                    <span class="settings-model-label">🤖 ${modelLabel}</span>
+                    <span class="settings-model-label">ðŸ¤– ${modelLabel}</span>
                     ${modelBadge}
                 </div>
                 <p style="font-size:0.8rem;color:var(--text-muted);margin:var(--space-xs) 0">Used when a council member's model is set to "Default".</p>
@@ -7296,7 +7301,7 @@ async function renderSettings() {
                            </select>`
                     }
                     <button class="btn btn-primary" onclick="saveModel('${k.provider}')">
-                        💾 Save
+                        ðŸ’¾ Save
                     </button>
                 </div>
             </div>
@@ -7306,14 +7311,14 @@ async function renderSettings() {
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header">
-                <h2>⚙️ Settings</h2>
+                <h2>âš™ï¸ Settings</h2>
                 <p>Configure your profile, API provider keys, and models</p>
             </div>
 
             <div class="card settings-card user-profile-card">
                 <div class="settings-card-header">
                     <div class="settings-provider-info">
-                        <span class="settings-provider-icon">👤</span>
+                        <span class="settings-provider-icon">ðŸ‘¤</span>
                         <div>
                             <div class="settings-provider-name">About You</div>
                             <span class="settings-provider-link" style="cursor:default">Tell the AI council about yourself so they know who they're speaking with</span>
@@ -7331,10 +7336,10 @@ async function renderSettings() {
                                    class="settings-input"
                                    type="text"
                                    maxlength="100"
-                                   placeholder="Enter your name…"
+                                   placeholder="Enter your nameâ€¦"
                                    value="${escapeHtml(userName)}" />
                             <button class="btn btn-primary" onclick="saveUserName()" id="user-name-save-btn">
-                                💾 Save
+                                ðŸ’¾ Save
                             </button>
                         </div>
                         <span id="user-name-status" style="font-size:0.82rem;color:var(--text-muted);margin-top:var(--space-xs);display:block"></span>
@@ -7347,7 +7352,7 @@ async function renderSettings() {
                               class="settings-input user-desc-textarea"
                               rows="5"
                               maxlength="${maxLen}"
-                              placeholder="Write a brief description about yourself — your interests, role, what you're working on…"
+                              placeholder="Write a brief description about yourself â€” your interests, role, what you're working onâ€¦"
                               oninput="updateCharCount()">${escapeHtml(userDesc)}</textarea>
                     <div class="user-desc-footer">
                         <span class="user-desc-counter" id="user-desc-counter">
@@ -7356,7 +7361,7 @@ async function renderSettings() {
                         <div style="display:flex;align-items:center;gap:var(--space-sm)">
                             <span id="user-desc-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
                             <button class="btn btn-primary" onclick="saveUserDescription()" id="user-desc-save-btn">
-                                💾 Save
+                                ðŸ’¾ Save
                             </button>
                         </div>
                     </div>
@@ -7364,11 +7369,11 @@ async function renderSettings() {
             </div>
 
             <div class="settings-notice">
-                <span class="settings-notice-icon">🔒</span>
+                <span class="settings-notice-icon">ðŸ”’</span>
                 <div>
                     <strong>Your keys are safe.</strong>
                     Keys are encrypted with AES before being stored locally in <code>config/.env</code>.
-                    They are never transmitted to any third party — only to the API providers you configure.
+                    They are never transmitted to any third party â€” only to the API providers you configure.
                 </div>
             </div>
 
@@ -7392,7 +7397,7 @@ async function saveApiKey(provider) {
             body: JSON.stringify({ provider, api_key: key }),
         });
         input.value = '';
-        showToast(`${PROVIDER_LABELS[provider]?.name || provider} key saved & encrypted ✅`);
+        showToast(`${PROVIDER_LABELS[provider]?.name || provider} key saved & encrypted âœ…`);
         await renderSettings();
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -7424,7 +7429,7 @@ async function saveModel(provider) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ provider, model }),
         });
-        showToast(`${PROVIDER_LABELS[provider]?.name || provider} default model saved ✅`);
+        showToast(`${PROVIDER_LABELS[provider]?.name || provider} default model saved âœ…`);
         await renderSettings();
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -7461,7 +7466,7 @@ async function saveUserDescription() {
     const description = textarea.value;
 
     btn.disabled = true;
-    btn.textContent = '⏳ Saving…';
+    btn.textContent = 'â³ Savingâ€¦';
     status.textContent = '';
 
     try {
@@ -7474,16 +7479,16 @@ async function saveUserDescription() {
             const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
             throw new Error(err.detail);
         }
-        showToast('User description saved ✅');
-        status.textContent = '✅ Saved';
+        showToast('User description saved âœ…');
+        status.textContent = 'âœ… Saved';
         status.style.color = 'var(--accent-emerald)';
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        status.textContent = '❌ Failed';
+        status.textContent = 'âŒ Failed';
         status.style.color = 'var(--accent-rose)';
     } finally {
         btn.disabled = false;
-        btn.textContent = '💾 Save';
+        btn.textContent = 'ðŸ’¾ Save';
     }
 }
 
@@ -7494,7 +7499,7 @@ async function saveUserName() {
     const name = input.value.trim();
 
     btn.disabled = true;
-    btn.textContent = '⏳ Saving…';
+    btn.textContent = 'â³ Savingâ€¦';
     status.textContent = '';
 
     try {
@@ -7507,16 +7512,16 @@ async function saveUserName() {
             const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
             throw new Error(err.detail);
         }
-        showToast('Name saved ✅');
-        status.textContent = '✅ Saved';
+        showToast('Name saved âœ…');
+        status.textContent = 'âœ… Saved';
         status.style.color = 'var(--accent-emerald)';
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        status.textContent = '❌ Failed';
+        status.textContent = 'âŒ Failed';
         status.style.color = 'var(--accent-rose)';
     } finally {
         btn.disabled = false;
-        btn.textContent = '💾 Save';
+        btn.textContent = 'ðŸ’¾ Save';
     }
 }
 
@@ -7542,9 +7547,9 @@ function showToast(msg, isError) {
     setTimeout(() => { toast.remove(); }, 3000);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Memory Explorer Views (F-028)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function renderMemories() {
     showLoading();
@@ -7583,7 +7588,7 @@ async function renderMemories() {
     const sharedCard = `
         <div class="card card-clickable memory-card memory-card-shared" onclick="navigateTo('memories','shared')">
             <div class="memory-card-header">
-                <div class="memory-avatar memory-avatar-shared">🌐</div>
+                <div class="memory-avatar memory-avatar-shared">ðŸŒ</div>
                 <div>
                     <div class="member-name">Shared Memory</div>
                     <div class="member-role">Council-wide decisions & history</div>
@@ -7595,7 +7600,7 @@ async function renderMemories() {
                     <span class="memory-stat-label">Decisions</span>
                 </div>
                 <div class="memory-stat">
-                    <span class="memory-stat-value">${sharedData.history ? '✓' : '—'}</span>
+                    <span class="memory-stat-value">${sharedData.history ? 'âœ“' : 'â€”'}</span>
                     <span class="memory-stat-label">History</span>
                 </div>
             </div>
@@ -7604,7 +7609,7 @@ async function renderMemories() {
     const lawSharedCard = `
         <div class="card card-clickable memory-card memory-card-shared" onclick="navigateTo('memories','law_shared')">
             <div class="memory-card-header">
-                <div class="memory-avatar memory-avatar-shared" style="background:linear-gradient(135deg, var(--accent-blue), var(--accent-indigo))">⚖️</div>
+                <div class="memory-avatar memory-avatar-shared" style="background:linear-gradient(135deg, var(--accent-blue), var(--accent-indigo))">âš–ï¸</div>
                 <div>
                     <div class="member-name">Law Shared Memory</div>
                     <div class="member-role">Active laws accessible to the LLM</div>
@@ -7642,7 +7647,7 @@ async function renderMemoryDetail(memberName) {
             <div class="belief-header">
                 <span class="belief-topic">${escapeHtml(b.topic)}</span>
                 <button class="btn-icon belief-delete" onclick="deleteCoreBelief('${escapeAttr(data.name)}', '${escapeAttr(b.topic)}')" title="Delete belief">
-                    🗑️
+                    ðŸ—‘ï¸
                 </button>
             </div>
             <div class="belief-content">${escapeHtml(b.content)}</div>
@@ -7650,7 +7655,7 @@ async function renderMemoryDetail(memberName) {
                 ${b.source ? `<span class="belief-source">Source: ${escapeHtml(b.source)}</span>` : ''}
                 ${b.added_timestamp ? `<span class="belief-timestamp">${formatDate(b.added_timestamp)}</span>` : ''}
             </div>
-        </div>`).join('') : '<div class="empty-state"><div class="empty-icon">💭</div><p>No core beliefs recorded yet.</p></div>';
+        </div>`).join('') : '<div class="empty-state"><div class="empty-icon">ðŸ’­</div><p>No core beliefs recorded yet.</p></div>';
 
     const eventRows = data.events.length ? data.events.map(e => {
         const typeBadge = e.event_type || 'event';
@@ -7662,22 +7667,22 @@ async function renderMemoryDetail(memberName) {
                 <span class="event-timestamp">${formatDate(e.timestamp)}</span>
             </div>
             <div class="event-content">${escapeHtml(e.content)}</div>
-            ${e.source ? `<div class="event-source">— ${escapeHtml(e.source)}</div>` : ''}
+            ${e.source ? `<div class="event-source">â€” ${escapeHtml(e.source)}</div>` : ''}
         </div>`;
-    }).join('') : '<div class="empty-state"><div class="empty-icon">📝</div><p>No session events recorded yet.</p></div>';
+    }).join('') : '<div class="empty-state"><div class="empty-icon">ðŸ“</div><p>No session events recorded yet.</p></div>';
 
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="navigateTo('memories')">← Back to Memories</button>
+            <button class="back-btn" onclick="navigateTo('memories')">â† Back to Memories</button>
             <div class="page-header">
                 <h2>🧠 ${escapeHtml(data.name)}'s Memory</h2>
-                <p>${data.belief_count} core belief${data.belief_count !== 1 ? 's' : ''} · ${data.event_count} total event${data.event_count !== 1 ? 's' : ''}</p>
+                <p>${data.belief_count} core belief${data.belief_count !== 1 ? 's' : ''} Â· ${data.event_count} total event${data.event_count !== 1 ? 's' : ''}</p>
             </div>
 
             <div class="memory-detail-grid">
                 <div class="memory-panel">
                     <div class="memory-panel-header">
-                        <h3>💎 Core Beliefs</h3>
+                        <h3>ðŸ’Ž Core Beliefs</h3>
                         <span class="memory-panel-count">${data.belief_count}</span>
                     </div>
                     <div class="belief-list" id="belief-list">
@@ -7687,7 +7692,7 @@ async function renderMemoryDetail(memberName) {
 
                 <div class="memory-panel">
                     <div class="memory-panel-header">
-                        <h3>📋 Recent Events</h3>
+                        <h3>ðŸ“‹ Recent Events</h3>
                         <span class="memory-panel-count">Showing ${data.events.length} of ${data.event_count}</span>
                     </div>
                     <div class="event-list">
@@ -7711,12 +7716,12 @@ async function renderSharedMemory() {
                 <span class="badge badge-decided">#${i + 1}</span>
                 ${ts ? `<span class="event-timestamp">${formatDate(ts)}</span>` : ''}
                 <button class="btn-icon belief-delete" onclick="deleteSharedDecision(${i}, '${escapeAttr(truncate(summary, 50))}')" title="Delete decision">
-                    🗑️
+                    ðŸ—‘ï¸
                 </button>
             </div>
             <div class="event-content">${escapeHtml(summary)}</div>
         </div>`;
-    }).join('') : '<div class="empty-state"><div class="empty-icon">📜</div><p>No council decisions recorded yet.</p></div>';
+    }).join('') : '<div class="empty-state"><div class="empty-icon">ðŸ“œ</div><p>No council decisions recorded yet.</p></div>';
 
     // Narrative History with sort toggle
     const historyNewestFirst = localStorage.getItem('jericho-history-sort') === 'newest';
@@ -7737,24 +7742,24 @@ async function renderSharedMemory() {
         }
         historyHtml = `<div class="shared-history-content">${escapeHtml(displayHistory)}</div>`;
     } else {
-        historyHtml = '<div class="empty-state"><div class="empty-icon">📖</div><p>No narrative history written yet.</p></div>';
+        historyHtml = '<div class="empty-state"><div class="empty-icon">ðŸ“–</div><p>No narrative history written yet.</p></div>';
     }
 
     const sortLabel = historyNewestFirst ? 'Newest First' : 'Oldest First';
-    const sortIcon = historyNewestFirst ? '⬇️' : '⬆️';
+    const sortIcon = historyNewestFirst ? 'â¬‡ï¸' : 'â¬†ï¸';
 
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="navigateTo('memories')">← Back to Memories</button>
+            <button class="back-btn" onclick="navigateTo('memories')">â† Back to Memories</button>
             <div class="page-header">
-                <h2>🌐 Shared Council Memory</h2>
+                <h2>ðŸŒ Shared Council Memory</h2>
                 <p>${data.decision_count} decision${data.decision_count !== 1 ? 's' : ''} recorded</p>
             </div>
 
             <div class="memory-detail-grid">
                 <div class="memory-panel">
                     <div class="memory-panel-header">
-                        <h3>⚖️ Council Decisions</h3>
+                        <h3>âš–ï¸ Council Decisions</h3>
                         <span class="memory-panel-count">${data.decision_count}</span>
                     </div>
                     <div class="event-list">
@@ -7764,7 +7769,7 @@ async function renderSharedMemory() {
 
                 <div class="memory-panel">
                     <div class="memory-panel-header">
-                        <h3>📖 Narrative History</h3>
+                        <h3>ðŸ“– Narrative History</h3>
                         <button class="btn btn-sm" onclick="toggleHistorySort()" title="Toggle sort order" id="history-sort-btn">
                             ${sortIcon} ${sortLabel}
                         </button>
@@ -7791,7 +7796,7 @@ async function deleteSharedDecision(index, label) {
             const err = await resp.json().catch(() => ({ detail: 'Delete failed' }));
             throw new Error(err.detail);
         }
-        showToast(`Decision deleted ✅`);
+        showToast(`Decision deleted âœ…`);
         await renderSharedMemory();
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -7808,14 +7813,14 @@ async function deleteCoreBelief(memberName, topic) {
             const err = await resp.json().catch(() => ({ detail: 'Delete failed' }));
             throw new Error(err.detail);
         }
-        showToast(`Belief "${topic}" deleted ✅`);
+        showToast(`Belief "${topic}" deleted âœ…`);
         await renderMemoryDetail(memberName);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     }
 }
 
-// ─── Nav Count Updater ────────────────────────────────────────
+// â”€â”€â”€ Nav Count Updater â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function updateNavCounts(data) {
     if (data.members) document.getElementById('count-council').textContent = data.members.count || 0;
@@ -7848,24 +7853,24 @@ function updateNavCounts(data) {
         if (sEl) sEl.textContent = data.stores.count || 0;
     }
 }
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Treasury View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const ACCT_TYPE_LABELS = {
-    council_member: { icon: '👥', label: 'Council Member', badge: 'council_member' },
-    character:      { icon: '🎭', label: 'Character',      badge: 'character' },
-    user:           { icon: '👤', label: 'User',            badge: 'user' },
-    government:     { icon: '🏛️', label: 'Government',     badge: 'government' },
+    council_member: { icon: 'ðŸ‘¥', label: 'Council Member', badge: 'council_member' },
+    character:      { icon: 'ðŸŽ­', label: 'Character',      badge: 'character' },
+    user:           { icon: 'ðŸ‘¤', label: 'User',            badge: 'user' },
+    government:     { icon: 'ðŸ›ï¸', label: 'Government',     badge: 'government' },
 };
 
 function obeliskBadge(balance) {
     if (!balance) return '';
     const parts = [];
-    if (balance.gold)   parts.push(`<span class="obelisk-coin obelisk-gold">🥇 ${balance.gold}</span>`);
-    if (balance.silver) parts.push(`<span class="obelisk-coin obelisk-silver">🥈 ${balance.silver}</span>`);
-    if (balance.bronze) parts.push(`<span class="obelisk-coin obelisk-bronze">🥉 ${balance.bronze}</span>`);
-    if (!parts.length)  parts.push(`<span class="obelisk-coin obelisk-empty">— empty —</span>`);
+    if (balance.gold)   parts.push(`<span class="obelisk-coin obelisk-gold">ðŸ¥‡ ${balance.gold}</span>`);
+    if (balance.silver) parts.push(`<span class="obelisk-coin obelisk-silver">ðŸ¥ˆ ${balance.silver}</span>`);
+    if (balance.bronze) parts.push(`<span class="obelisk-coin obelisk-bronze">ðŸ¥‰ ${balance.bronze}</span>`);
+    if (!parts.length)  parts.push(`<span class="obelisk-coin obelisk-empty">â€” empty â€”</span>`);
     return `<div class="obelisk-balance">${parts.join('')}</div>`;
 }
 
@@ -7891,21 +7896,21 @@ async function renderTreasury() {
             <div class="view-enter">
                 <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
                     <div>
-                        <h2>🪙 Treasury — Obelisk Accounts</h2>
+                        <h2>ðŸª™ Treasury â€” Obelisk Accounts</h2>
                         <p>No treasury accounts found. Initialize to create default accounts.</p>
                     </div>
                     <div style="display:flex;gap:var(--space-sm)">
                         <select class="settings-input" style="min-width:140px" onchange="state._treasuryFilter=this.value;renderTreasury()" id="treasury-filter">${filterOptions}</select>
-                        <button class="btn btn-primary" onclick="initializeTreasury()" id="btn-treasury-init">⚡ Initialize Treasury</button>
+                        <button class="btn btn-primary" onclick="initializeTreasury()" id="btn-treasury-init">âš¡ Initialize Treasury</button>
                     </div>
                 </div>
-                <div class="empty-state"><div class="empty-icon">🪙</div><p>Click "Initialize Treasury" to create accounts for all council members, characters, and the government.</p></div>
+                <div class="empty-state"><div class="empty-icon">ðŸª™</div><p>Click "Initialize Treasury" to create accounts for all council members, characters, and the government.</p></div>
             </div>`;
         return;
     }
 
     const cards = data.map(a => {
-        const meta = ACCT_TYPE_LABELS[a.account_type] || { icon: '💰', label: a.account_type, badge: 'default' };
+        const meta = ACCT_TYPE_LABELS[a.account_type] || { icon: 'ðŸ’°', label: a.account_type, badge: 'default' };
         const total = obeliskTotal(a.balance);
         return `
         <div class="card card-clickable treasury-card" onclick="navigateTo('treasury','${a.account_id}')">
@@ -7918,7 +7923,7 @@ async function renderTreasury() {
                 ${badge(meta.label, meta.badge)}
             </div>
             ${obeliskBadge(a.balance)}
-            <div class="treasury-card-total">≈ ${total} Gold equivalent</div>
+            <div class="treasury-card-total">â‰ˆ ${total} Gold equivalent</div>
         </div>`;
     }).join('');
 
@@ -7926,13 +7931,13 @@ async function renderTreasury() {
         <div class="view-enter">
             <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
                 <div>
-                    <h2>🪙 Treasury — Obelisk Accounts</h2>
+                    <h2>ðŸª™ Treasury â€” Obelisk Accounts</h2>
                     <p>${data.length} account${data.length !== 1 ? 's' : ''} across the Jericho economy</p>
                 </div>
                 <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap">
                     <select class="settings-input" style="min-width:140px" onchange="state._treasuryFilter=this.value;renderTreasury()" id="treasury-filter">${filterOptions}</select>
-                    <button class="btn btn-primary" onclick="initializeTreasury()" id="btn-treasury-init">⚡ Initialize</button>
-                    <button class="btn btn-secondary" onclick="openTransferModal()" id="btn-treasury-transfer">💸 Transfer</button>
+                    <button class="btn btn-primary" onclick="initializeTreasury()" id="btn-treasury-init">âš¡ Initialize</button>
+                    <button class="btn btn-secondary" onclick="openTransferModal()" id="btn-treasury-transfer">ðŸ’¸ Transfer</button>
                 </div>
             </div>
             <div class="treasury-grid">${cards}</div>
@@ -7948,12 +7953,12 @@ async function renderTreasuryDetail(accountId) {
         showError(`Account not found: ${accountId}`);
         return;
     }
-    const meta = ACCT_TYPE_LABELS[data.account_type] || { icon: '💰', label: data.account_type, badge: 'default' };
+    const meta = ACCT_TYPE_LABELS[data.account_type] || { icon: 'ðŸ’°', label: data.account_type, badge: 'default' };
     const total = obeliskTotal(data.balance);
 
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="navigateTo('treasury')">← Back to Treasury</button>
+            <button class="back-btn" onclick="navigateTo('treasury')">â† Back to Treasury</button>
             <div class="detail-panel">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-lg)">
                     <div>
@@ -7961,39 +7966,39 @@ async function renderTreasuryDetail(accountId) {
                         <div style="font-size:1.4rem;font-weight:700">${meta.icon} ${escapeHtml(data.owner_name)}</div>
                         <div style="color:var(--text-secondary);margin-top:var(--space-xs);font-size:0.87rem">
                             ${badge(meta.label, meta.badge)}
-                            · Created ${formatDate(data.created_at)}
-                            ${data.updated_at ? ` · Updated ${formatDate(data.updated_at)}` : ''}
+                            Â· Created ${formatDate(data.created_at)}
+                            ${data.updated_at ? ` Â· Updated ${formatDate(data.updated_at)}` : ''}
                         </div>
                     </div>
-                    <button class="detail-close" onclick="navigateTo('treasury')">✕</button>
+                    <button class="detail-close" onclick="navigateTo('treasury')">âœ•</button>
                 </div>
 
                 <!-- Balance Display -->
                 <div class="detail-section treasury-balance-panel">
-                    <h4>💰 Obelisk Balance</h4>
+                    <h4>ðŸ’° Obelisk Balance</h4>
                     <div class="treasury-balance-grid">
                         <div class="treasury-tier treasury-tier-gold">
-                            <div class="treasury-tier-icon">🥇</div>
+                            <div class="treasury-tier-icon">ðŸ¥‡</div>
                             <div class="treasury-tier-value">${data.balance.gold}</div>
                             <div class="treasury-tier-label">Gold</div>
                         </div>
                         <div class="treasury-tier treasury-tier-silver">
-                            <div class="treasury-tier-icon">🥈</div>
+                            <div class="treasury-tier-icon">ðŸ¥ˆ</div>
                             <div class="treasury-tier-value">${data.balance.silver}</div>
                             <div class="treasury-tier-label">Silver</div>
                         </div>
                         <div class="treasury-tier treasury-tier-bronze">
-                            <div class="treasury-tier-icon">🥉</div>
+                            <div class="treasury-tier-icon">ðŸ¥‰</div>
                             <div class="treasury-tier-value">${data.balance.bronze}</div>
                             <div class="treasury-tier-label">Bronze</div>
                         </div>
                     </div>
-                    <div class="treasury-total-display">≈ <strong>${total}</strong> Gold equivalent</div>
+                    <div class="treasury-total-display">â‰ˆ <strong>${total}</strong> Gold equivalent</div>
                 </div>
 
                 <!-- Credit Form -->
                 <div class="detail-section">
-                    <h4>➕ Credit Funds</h4>
+                    <h4>âž• Credit Funds</h4>
                     <div class="treasury-action-form" id="credit-form">
                         <div class="treasury-input-row">
                             <div class="treasury-input-group">
@@ -8008,14 +8013,14 @@ async function renderTreasuryDetail(accountId) {
                                 <label>Bronze</label>
                                 <input type="number" id="credit-bronze" class="settings-input" value="0" min="0" />
                             </div>
-                            <button class="btn btn-primary" onclick="treasuryCredit('${data.account_id}')" id="btn-credit">➕ Credit</button>
+                            <button class="btn btn-primary" onclick="treasuryCredit('${data.account_id}')" id="btn-credit">âž• Credit</button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Debit Form -->
                 <div class="detail-section">
-                    <h4>➖ Debit Funds</h4>
+                    <h4>âž– Debit Funds</h4>
                     <div class="treasury-action-form" id="debit-form">
                         <div class="treasury-input-row">
                             <div class="treasury-input-group">
@@ -8030,7 +8035,7 @@ async function renderTreasuryDetail(accountId) {
                                 <label>Bronze</label>
                                 <input type="number" id="debit-bronze" class="settings-input" value="0" min="0" />
                             </div>
-                            <button class="btn btn-secondary" onclick="treasuryDebit('${data.account_id}')" id="btn-debit" style="border-color:var(--accent-rose)">➖ Debit</button>
+                            <button class="btn btn-secondary" onclick="treasuryDebit('${data.account_id}')" id="btn-debit" style="border-color:var(--accent-rose)">âž– Debit</button>
                         </div>
                     </div>
                 </div>
@@ -8040,7 +8045,7 @@ async function renderTreasuryDetail(accountId) {
 
 async function initializeTreasury() {
     const btn = document.getElementById('btn-treasury-init');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Initializing…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Initializingâ€¦'; }
 
     try {
         const resp = await fetch('/api/treasury/initialize', { method: 'POST' });
@@ -8049,11 +8054,11 @@ async function initializeTreasury() {
             throw new Error(err.detail);
         }
         const data = await resp.json();
-        showToast(`Treasury initialized — ${data.created_count} account${data.created_count !== 1 ? 's' : ''} created ✅`);
+        showToast(`Treasury initialized â€” ${data.created_count} account${data.created_count !== 1 ? 's' : ''} created âœ…`);
         await renderTreasury();
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '⚡ Initialize Treasury'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'âš¡ Initialize Treasury'; }
     }
 }
 
@@ -8064,7 +8069,7 @@ async function treasuryCredit(accountId) {
     if (!gold && !silver && !bronze) { showToast('Enter an amount to credit.', true); return; }
 
     const btn = document.getElementById('btn-credit');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³â€¦'; }
 
     try {
         const resp = await fetch(`/api/treasury/${encodeURIComponent(accountId)}/credit`, {
@@ -8076,11 +8081,11 @@ async function treasuryCredit(accountId) {
             const err = await resp.json().catch(() => ({ detail: 'Credit failed' }));
             throw new Error(err.detail);
         }
-        showToast(`Credited ${gold}G ${silver}S ${bronze}B ✅`);
+        showToast(`Credited ${gold}G ${silver}S ${bronze}B âœ…`);
         await renderTreasuryDetail(accountId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '➕ Credit'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'âž• Credit'; }
     }
 }
 
@@ -8091,7 +8096,7 @@ async function treasuryDebit(accountId) {
     if (!gold && !silver && !bronze) { showToast('Enter an amount to debit.', true); return; }
 
     const btn = document.getElementById('btn-debit');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³â€¦'; }
 
     try {
         const resp = await fetch(`/api/treasury/${encodeURIComponent(accountId)}/debit`, {
@@ -8103,17 +8108,17 @@ async function treasuryDebit(accountId) {
             const err = await resp.json().catch(() => ({ detail: 'Debit failed' }));
             throw new Error(err.detail);
         }
-        showToast(`Debited ${gold}G ${silver}S ${bronze}B ✅`);
+        showToast(`Debited ${gold}G ${silver}S ${bronze}B âœ…`);
         await renderTreasuryDetail(accountId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '➖ Debit'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'âž– Debit'; }
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Taxation View (F-034)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function renderTaxation() {
     showLoading();
@@ -8149,21 +8154,21 @@ async function renderTaxation() {
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header">
-                <h2>🏛️ Taxation — Obelisk Tax System</h2>
+                <h2>ðŸ›ï¸ Taxation â€” Obelisk Tax System</h2>
                 <p>Government tax policy and collection ledger</p>
             </div>
 
             <div class="tax-panels-grid">
                 <!-- Policy Panel -->
                 <div class="card tax-policy-panel">
-                    <h3>📋 Tax Policy</h3>
+                    <h3>ðŸ“‹ Tax Policy</h3>
                     <div class="tax-policy-fields">
                         <div class="tax-field">
                             <label>Status</label>
                             <div class="tax-toggle-row">
                                 <span class="badge badge-${policy.enabled ? 'active' : 'archived'}">${policy.enabled ? 'Enabled' : 'Disabled'}</span>
                                 <button class="btn btn-sm" onclick="toggleTaxEnabled(${!policy.enabled})" id="btn-tax-toggle">
-                                    ${policy.enabled ? '⏸ Disable' : '▶ Enable'}
+                                    ${policy.enabled ? 'â¸ Disable' : 'â–¶ Enable'}
                                 </button>
                             </div>
                         </div>
@@ -8189,7 +8194,7 @@ async function renderTaxation() {
 
                 <!-- Revenue Summary -->
                 <div class="card tax-revenue-panel">
-                    <h3>💰 Revenue Summary</h3>
+                    <h3>ðŸ’° Revenue Summary</h3>
                     <div class="tax-revenue-stats">
                         <div class="tax-rev-stat">
                             <div class="tax-rev-value">${summary.event_count || 0}</div>
@@ -8197,25 +8202,25 @@ async function renderTaxation() {
                         </div>
                         <div class="tax-rev-stat">
                             <div class="tax-rev-value">${total.gold || 0}</div>
-                            <div class="tax-rev-label">🥇 Gold Collected</div>
+                            <div class="tax-rev-label">ðŸ¥‡ Gold Collected</div>
                         </div>
                         <div class="tax-rev-stat">
                             <div class="tax-rev-value">${total.silver || 0}</div>
-                            <div class="tax-rev-label">🥈 Silver Collected</div>
+                            <div class="tax-rev-label">ðŸ¥ˆ Silver Collected</div>
                         </div>
                         <div class="tax-rev-stat">
                             <div class="tax-rev-value">${total.bronze || 0}</div>
-                            <div class="tax-rev-label">🥉 Bronze Collected</div>
+                            <div class="tax-rev-label">ðŸ¥‰ Bronze Collected</div>
                         </div>
                     </div>
                     ${obeliskBadge(total)}
-                    <div class="treasury-total-display" style="margin-top:var(--space-sm)">≈ <strong>${obeliskTotal(total)}</strong> Gold equivalent total tax revenue</div>
+                    <div class="treasury-total-display" style="margin-top:var(--space-sm)">â‰ˆ <strong>${obeliskTotal(total)}</strong> Gold equivalent total tax revenue</div>
                 </div>
             </div>
 
             <!-- Tax Events Log -->
             <div class="card" style="margin-top:var(--space-lg)">
-                <h3>📜 Tax Collection Ledger</h3>
+                <h3>ðŸ“œ Tax Collection Ledger</h3>
                 <div class="table-container">
                     <table class="data-table tax-events-table">
                         <thead>
@@ -8238,14 +8243,14 @@ async function renderTaxation() {
 
 async function toggleTaxEnabled(enabled) {
     const btn = document.getElementById('btn-tax-toggle');
-    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Savingâ€¦'; }
     try {
         await fetch('/api/tax/policy', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ enabled }),
         });
-        showToast(enabled ? 'Tax collection enabled ✅' : 'Tax collection disabled ⏸');
+        showToast(enabled ? 'Tax collection enabled âœ…' : 'Tax collection disabled â¸');
         await renderTaxation();
     } catch (err) {
         showToast('Failed: ' + err.message, true);
@@ -8258,7 +8263,7 @@ async function updateTaxRate() {
     const btn = document.getElementById('btn-tax-rate');
     if (!slider) return;
     const rate = parseInt(slider.value, 10) / 100;
-    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Savingâ€¦'; }
     try {
         const resp = await fetch('/api/tax/policy', {
             method: 'PUT',
@@ -8269,7 +8274,7 @@ async function updateTaxRate() {
             const err = await resp.json().catch(() => ({detail: 'Failed'}));
             throw new Error(err.detail);
         }
-        showToast(`Tax rate updated to ${slider.value}% ✅`);
+        showToast(`Tax rate updated to ${slider.value}% âœ…`);
         await renderTaxation();
     } catch (err) {
         showToast('Failed: ' + err.message, true);
@@ -8277,7 +8282,7 @@ async function updateTaxRate() {
     }
 }
 
-// ── Transfer Modal ──────────────────────────────────────────────
+// â”€â”€ Transfer Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function openTransferModal() {
     try {
@@ -8289,7 +8294,7 @@ async function openTransferModal() {
 
         const optionsHtml = accounts.map(a => {
             const meta = ACCT_TYPE_LABELS[a.account_type] || { label: a.account_type };
-            return `<option value="${a.account_id}">${a.owner_name} (${meta.label}) — ${a.balance.gold}G ${a.balance.silver}S ${a.balance.bronze}B</option>`;
+            return `<option value="${a.account_id}">${a.owner_name} (${meta.label}) â€” ${a.balance.gold}G ${a.balance.silver}S ${a.balance.bronze}B</option>`;
         }).join('');
 
         const existing = document.getElementById('transfer-modal');
@@ -8302,8 +8307,8 @@ async function openTransferModal() {
         modal.innerHTML = `
             <div class="promote-modal-content" style="max-width:520px">
                 <div class="promote-modal-header">
-                    <h3>💸 Transfer Obelisk</h3>
-                    <button class="detail-close" onclick="closeTransferModal()">✕</button>
+                    <h3>ðŸ’¸ Transfer Obelisk</h3>
+                    <button class="detail-close" onclick="closeTransferModal()">âœ•</button>
                 </div>
                 <div class="promote-modal-body">
                     <div class="promote-form-group">
@@ -8331,7 +8336,7 @@ async function openTransferModal() {
                 </div>
                 <div class="promote-modal-footer">
                     <button class="btn" onclick="closeTransferModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="executeTransfer()" id="btn-xfer-submit">💸 Transfer</button>
+                    <button class="btn btn-primary" onclick="executeTransfer()" id="btn-xfer-submit">ðŸ’¸ Transfer</button>
                 </div>
             </div>`;
         document.body.appendChild(modal);
@@ -8362,7 +8367,7 @@ async function executeTransfer() {
     if (!gold && !silver && !bronze) { showToast('Enter an amount to transfer.', true); return; }
 
     const btn = document.getElementById('btn-xfer-submit');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Transferring…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Transferringâ€¦'; }
 
     try {
         const resp = await fetch('/api/treasury/transfer', {
@@ -8374,29 +8379,39 @@ async function executeTransfer() {
             const err = await resp.json().catch(() => ({ detail: 'Transfer failed' }));
             throw new Error(err.detail);
         }
-        showToast(`Transferred ${gold}G ${silver}S ${bronze}B ✅`);
+        showToast(`Transferred ${gold}G ${silver}S ${bronze}B âœ…`);
         closeTransferModal();
         await renderTreasury();
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '💸 Transfer'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ’¸ Transfer'; }
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Evolution View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Evolution View (Expanded â€” Conv 2)
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+let _evoOverlayFilter = 'all';
 
 async function renderEvolution() {
     showLoading();
-    const data = await api('/api/evolutions');
+    const params = new URLSearchParams();
+    if (_evoOverlayFilter !== 'all') params.set('overlay_status', _evoOverlayFilter);
+    const data = await api('/api/evolutions' + (params.toString() ? '?' + params : ''));
 
-    if (!data.length) {
+    const tabClass = (val) => `evo-overlay-tab${_evoOverlayFilter === val ? ' active' : ''}`;
+
+    if (!data.length && _evoOverlayFilter === 'all') {
         $main().innerHTML = `
             <div class="view-enter">
                 <div class="page-header">
-                    <h2>🧬 Character Evolution</h2>
-                    <p>No evolution records yet.</p>
+                    <div class="evo-list-header">
+                        <div><h2>🧬 Character Evolution</h2><p>No evolution records yet.</p></div>
+                        <div class="evo-list-header-actions">
+                            <button class="btn btn-primary" onclick="openCreateEvolutionModal()" id="evo-create-btn">+ New Evolution</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="empty-state">
                     <div class="empty-icon">🧬</div>
@@ -8409,37 +8424,59 @@ async function renderEvolution() {
     const rows = data.map(e => {
         const statusBadge = badge(e.status);
         const changeCount = (e.changes || []).length;
+        const overlayBadge = `<span class="evo-overlay-badge evo-overlay-badge-${e.overlay_status || 'draft'}">${e.overlay_status === 'active' ? 'âœ¨ ' : ''}${e.overlay_status || 'draft'}</span>`;
+        const targetBadge = `<span class="evo-target-badge evo-target-badge-${e.target_type || 'character'}">${e.target_type === 'council_member' ? 'ðŸ‘‘ Council' : 'ðŸ‘¤ Char'}</span>`;
+        const nameDisplay = e.name ? escapeHtml(truncate(e.name, 30)) : e.evolution_id;
+        const activeIcon = e.overlay_status === 'active' ? '<span class="evo-active-icon">âœ¨ LIVE</span>' : '';
         return `
         <tr class="proposal-row" onclick="navigateTo('evolution','${e.evolution_id}')">
             <td class="col-id">${e.evolution_id}</td>
-            <td>${e.character_id}</td>
+            <td>${nameDisplay}${activeIcon}</td>
+            <td>${targetBadge} ${escapeHtml(e.target_id || e.character_id)}</td>
             <td>${e.author}</td>
             <td>${changeCount} change${changeCount !== 1 ? 's' : ''}</td>
             <td>${statusBadge}</td>
+            <td>${overlayBadge}</td>
             <td>${formatDate(e.created_at)}</td>
         </tr>`;
     }).join('');
 
+    const totalCount = data.length;
+    const emptyMsg = _evoOverlayFilter !== 'all'
+        ? `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:var(--space-lg)">No ${_evoOverlayFilter} evolutions found.</td></tr>`
+        : '';
+
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header">
-                <h2>🧬 Character Evolution</h2>
-                <p>${data.length} evolution record${data.length !== 1 ? 's' : ''}</p>
+                <div class="evo-list-header">
+                    <div>
+                        <h2>🧬 Character Evolution</h2>
+                        <p>${totalCount} evolution record${totalCount !== 1 ? 's' : ''}${_evoOverlayFilter !== 'all' ? ` (${_evoOverlayFilter})` : ''}</p>
+                    </div>
+                    <div class="evo-list-header-actions">
+                        <button class="btn btn-secondary" onclick="renderEvolutionTimelines()">ðŸ“Š View Timelines</button>
+                        <button class="btn btn-primary" onclick="openCreateEvolutionModal()" id="evo-create-btn">+ New Evolution</button>
+                    </div>
+                </div>
             </div>
 
-            <div class="evo-controls">
-                <button class="btn btn-secondary" onclick="renderEvolutionTimelines()">📊 View Timelines</button>
+            <div class="evo-overlay-tabs">
+                <button class="${tabClass('all')}" onclick="_evoOverlayFilter='all';renderEvolution()">All</button>
+                <button class="${tabClass('draft')}" onclick="_evoOverlayFilter='draft';renderEvolution()">ðŸ“ Draft</button>
+                <button class="${tabClass('active')}" onclick="_evoOverlayFilter='active';renderEvolution()">âœ¨ Active</button>
+                <button class="${tabClass('archived')}" onclick="_evoOverlayFilter='archived';renderEvolution()">ðŸ“¦ Archived</button>
             </div>
 
             <div class="table-wrapper">
                 <table class="data-table" id="evolutions-table">
                     <thead>
                         <tr>
-                            <th>ID</th><th>Character</th><th>Author</th>
-                            <th>Changes</th><th>Status</th><th>Created</th>
+                            <th>ID</th><th>Name</th><th>Target</th><th>Author</th>
+                            <th>Changes</th><th>Status</th><th>Overlay</th><th>Created</th>
                         </tr>
                     </thead>
-                    <tbody>${rows}</tbody>
+                    <tbody>${rows || emptyMsg}</tbody>
                 </table>
             </div>
         </div>`;
@@ -8455,6 +8492,65 @@ async function renderEvolutionDetail(evolutionId) {
         return;
     }
 
+    // â”€â”€ Active overlay banner
+    const activeBanner = evo.overlay_status === 'active' ? `
+        <div class="evo-active-banner">
+            <div class="evo-active-banner-icon">âœ¨</div>
+            <div class="evo-active-banner-text">
+                Active Overlay
+                <span>This evolution's changes are currently overriding the base configuration for ${escapeHtml(evo.target_id || evo.character_id)}.</span>
+            </div>
+        </div>` : '';
+
+    // â”€â”€ Rollback indicator
+    const rollbackHtml = evo.rollback_of ? `
+        <div class="evo-rollback-indicator" onclick="navigateTo('evolution','${evo.rollback_of}')">
+            â†© Rolls back: ${evo.rollback_of}
+        </div>` : '';
+
+    // â”€â”€ Name and sequence display
+    const nameHtml = evo.name ? `
+        <div class="evo-name-display">
+            ${escapeHtml(evo.name)}
+            ${evo.sequence_number ? `<span class="evo-seq-badge">#${evo.sequence_number}</span>` : ''}
+            <span class="evo-target-badge evo-target-badge-${evo.target_type || 'character'}">${evo.target_type === 'council_member' ? 'ðŸ‘‘ Council' : 'ðŸ‘¤ Character'}</span>
+        </div>` : '';
+
+    // â”€â”€ Overlay status lifecycle
+    const overlayLifecycle = `
+        <div class="evo-overlay-lifecycle">
+            ${['draft', 'active', 'archived'].map(s => {
+                const isCurrent = s === evo.overlay_status;
+                const cls = isCurrent ? 'evo-overlay-step-active' : '';
+                return `<div class="evo-overlay-step ${cls}">${s}</div>`;
+            }).join('<div class="evo-overlay-step-arrow">â†’</div>')}
+        </div>`;
+
+    // â”€â”€ Overlay status action buttons
+    let overlayActions = '';
+    const os = evo.overlay_status || 'draft';
+    const actionBtns = [];
+    if (os === 'draft') {
+        actionBtns.push(`<button class="btn btn-primary btn-sm" onclick="updateEvoOverlayStatus('${evolutionId}','active')">â–¶ Activate</button>`);
+        actionBtns.push(`<button class="btn btn-sm" onclick="updateEvoOverlayStatus('${evolutionId}','archived')">ðŸ“¦ Archive</button>`);
+    } else if (os === 'active') {
+        actionBtns.push(`<button class="btn btn-sm" onclick="updateEvoOverlayStatus('${evolutionId}','archived')">ðŸ“¦ Archive</button>`);
+    } else if (os === 'archived') {
+        actionBtns.push(`<button class="btn btn-sm" onclick="updateEvoOverlayStatus('${evolutionId}','draft')">ðŸ“ Return to Draft</button>`);
+        actionBtns.push(`<button class="btn btn-primary btn-sm" onclick="updateEvoOverlayStatus('${evolutionId}','active')">â–¶ Re-activate</button>`);
+    }
+    if (actionBtns.length) {
+        overlayActions = `<div class="evo-status-actions">${actionBtns.join('')}</div>`;
+    }
+
+    // â”€â”€ Rollback button (for applied/decided/active overlays)
+    let rollbackBtn = '';
+    const canRollback = evo.status === 'applied' || evo.status === 'decided' || evo.overlay_status === 'active';
+    if (canRollback) {
+        rollbackBtn = `<button class="btn btn-sm" style="border-color:var(--accent-amber)" onclick="confirmRollbackEvolution('${evolutionId}')">â†© Rollback</button>`;
+    }
+
+    // â”€â”€ Changes list
     const changes = (evo.changes || []).map(c => `
         <div class="evo-change-card">
             <div class="evo-change-header">
@@ -8474,8 +8570,8 @@ async function renderEvolutionDetail(evolutionId) {
         <div class="detail-section">
             <h4>Vote Tally</h4>
             <div class="evo-tally">
-                <span>👍 ${meta.tally.votes_for || 0}</span>
-                <span>👎 ${meta.tally.votes_against || 0}</span>
+                <span>ðŸ‘ ${meta.tally.votes_for || 0}</span>
+                <span>ðŸ‘Ž ${meta.tally.votes_against || 0}</span>
                 <span>🤷 ${meta.tally.votes_abstain || 0}</span>
                 ${approvalBar(meta.tally.approval_rate)}
             </div>
@@ -8483,29 +8579,42 @@ async function renderEvolutionDetail(evolutionId) {
 
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="navigateTo('evolution')">← Back to Evolutions</button>
+            <button class="back-btn" onclick="navigateTo('evolution')">â† Back to Evolutions</button>
+
+            ${activeBanner}
+
             <div class="detail-panel">
                 <div class="detail-header">
                     <div class="detail-avatar" style="background: linear-gradient(135deg, var(--accent-cyan), var(--accent-emerald))">🧬</div>
                     <div style="flex:1">
                         <h3>${evo.evolution_id}</h3>
-                        <div class="member-role">Character: ${evo.character_id} · Author: ${evo.author}</div>
+                        ${nameHtml}
+                        <div class="member-role">Target: ${escapeHtml(evo.target_id || evo.character_id)} Â· Author: ${evo.author}</div>
                     </div>
+                    <span class="evo-overlay-badge evo-overlay-badge-${os}">${os === 'active' ? 'âœ¨ ' : ''}${os}</span>
                     ${badge(evo.status)}
-                    <button class="detail-close" onclick="navigateTo('evolution')">✕</button>
+                    <button class="detail-close" onclick="navigateTo('evolution')">âœ•</button>
                 </div>
 
+                ${rollbackHtml}
+
                 <div class="detail-section">
-                    <h4>Status</h4>
+                    <h4>Governance Lifecycle</h4>
                     <div class="evo-lifecycle">
                         ${['draft','proposed','voting','decided','applied'].map(s => {
                             const active = s === evo.status ? 'evo-step-active' : '';
                             const done = ['draft','proposed','voting','decided','applied'].indexOf(s) < ['draft','proposed','voting','decided','applied'].indexOf(evo.status) ? 'evo-step-done' : '';
                             const rejected = evo.status === 'rejected' && s === 'decided' ? 'evo-step-rejected' : '';
                             return `<div class="evo-step ${active} ${done} ${rejected}">${s}</div>`;
-                        }).join('<div class="evo-step-arrow">→</div>')}
+                        }).join('<div class="evo-step-arrow">â†’</div>')}
                     </div>
                     ${evo.summary ? `<p class="evo-summary">${escapeHtml(evo.summary)}</p>` : ''}
+                </div>
+
+                <div class="detail-section">
+                    <h4>Overlay Status</h4>
+                    ${overlayLifecycle}
+                    ${overlayActions}
                 </div>
 
                 ${tallyHtml}
@@ -8520,16 +8629,419 @@ async function renderEvolutionDetail(evolutionId) {
                 <div class="detail-section">
                     <h4>Metadata</h4>
                     <div class="detail-meta-grid">
-                        <div><span class="meta-label">Proposal ID</span><span>${evo.proposal_id || '—'}</span></div>
-                        <div><span class="meta-label">Vote Record</span><span>${evo.vote_record_id || '—'}</span></div>
-                        <div><span class="meta-label">Applied As</span><span>${evo.applied_character_id || '—'}</span></div>
+                        <div><span class="meta-label">Target Type</span><span class="evo-target-badge evo-target-badge-${evo.target_type || 'character'}">${evo.target_type || 'character'}</span></div>
+                        <div><span class="meta-label">Target ID</span><span>${escapeHtml(evo.target_id || evo.character_id)}</span></div>
+                        <div><span class="meta-label">Sequence</span><span>${evo.sequence_number ? '#' + evo.sequence_number : 'â€”'}</span></div>
+                        <div><span class="meta-label">Proposal ID</span><span>${evo.proposal_id || 'â€”'}</span></div>
+                        <div><span class="meta-label">Vote Record</span><span>${evo.vote_record_id || 'â€”'}</span></div>
+                        <div><span class="meta-label">Applied As</span><span>${evo.applied_character_id || 'â€”'}</span></div>
+                        <div><span class="meta-label">Rollback Of</span><span>${evo.rollback_of ? `<span class="evo-rollback-indicator" onclick="event.stopPropagation();navigateTo('evolution','${evo.rollback_of}')">â†© ${evo.rollback_of}</span>` : 'â€”'}</span></div>
                         <div><span class="meta-label">Created</span><span>${formatDate(evo.created_at)}</span></div>
                         <div><span class="meta-label">Updated</span><span>${formatDate(evo.updated_at)}</span></div>
                     </div>
+                    ${rollbackBtn ? `<div style="margin-top:var(--space-md)">${rollbackBtn}</div>` : ''}
                 </div>
             </div>
         </div>`;
 }
+
+// â”€â”€ Overlay Status Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+async function updateEvoOverlayStatus(evolutionId, newStatus) {
+    if (newStatus === 'active') {
+        if (!confirm('âš  Activating this overlay will archive any existing active overlay for this target. Continue?')) return;
+    }
+    try {
+        await fetch(`/api/evolutions/${encodeURIComponent(evolutionId)}/overlay-status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ overlay_status: newStatus }),
+        });
+        showToast(`Overlay status â†’ ${newStatus} âœ…`);
+        await renderEvolutionDetail(evolutionId);
+    } catch (err) {
+        showToast(`Failed: ${err.message}`, true);
+    }
+}
+
+// â”€â”€ Rollback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+function confirmRollbackEvolution(evolutionId) {
+    const existing = document.getElementById('evo-rollback-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'evo-rollback-modal';
+    modal.className = 'evo-confirm-modal';
+    modal.innerHTML = `
+        <div class="evo-confirm-content">
+            <h3>â†© Confirm Rollback</h3>
+            <p>This will create a new rollback evolution that reverses all changes from <strong>${escapeHtml(evolutionId)}</strong>. Any active overlay will be archived.</p>
+            <div class="evo-confirm-actions">
+                <button class="btn" onclick="document.getElementById('evo-rollback-modal').remove()">Cancel</button>
+                <button class="btn btn-primary" onclick="executeRollbackEvolution('${evolutionId}')" id="evo-rollback-confirm-btn" style="background:linear-gradient(135deg,hsl(35,90%,50%),hsl(15,80%,50%))">â†© Rollback</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+async function executeRollbackEvolution(evolutionId) {
+    const btn = document.getElementById('evo-rollback-confirm-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Rolling backâ€¦'; }
+    try {
+        const resp = await fetch(`/api/evolutions/${encodeURIComponent(evolutionId)}/rollback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Rollback failed' }));
+            throw new Error(err.detail);
+        }
+        const newEvo = await resp.json();
+        showToast(`Rollback created: ${newEvo.evolution_id} âœ…`);
+        const modal = document.getElementById('evo-rollback-modal');
+        if (modal) modal.remove();
+        navigateTo('evolution', newEvo.evolution_id);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = 'â†© Rollback'; }
+    }
+}
+
+// â”€â”€ Rollback to Version (from timeline detail) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+function openRollbackToVersionModal(targetId, versions) {
+    const existing = document.getElementById('evo-rollback-version-modal');
+    if (existing) existing.remove();
+
+    const options = versions.map(v => `<option value="${v}">${v}</option>`).join('');
+    const modal = document.createElement('div');
+    modal.id = 'evo-rollback-version-modal';
+    modal.className = 'evo-confirm-modal';
+    modal.innerHTML = `
+        <div class="evo-confirm-content">
+            <h3>â†© Rollback to Version</h3>
+            <p>Select a version to restore for <strong>${escapeHtml(targetId)}</strong>. This will archive any active overlays and create a new evolution capturing the target version's state.</p>
+            <div style="margin-bottom:var(--space-lg)">
+                <label class="evo-form-label">Target Version</label>
+                <select id="evo-rollback-version-select" class="settings-input">${options}</select>
+            </div>
+            <div class="evo-confirm-actions">
+                <button class="btn" onclick="document.getElementById('evo-rollback-version-modal').remove()">Cancel</button>
+                <button class="btn btn-primary" onclick="executeRollbackToVersion('${targetId}')" id="evo-rollback-version-btn" style="background:linear-gradient(135deg,hsl(35,90%,50%),hsl(15,80%,50%))">â†© Rollback to Version</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+async function executeRollbackToVersion(targetId) {
+    const select = document.getElementById('evo-rollback-version-select');
+    const btn = document.getElementById('evo-rollback-version-btn');
+    if (!select) return;
+    const versionId = select.value;
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Rolling backâ€¦'; }
+    try {
+        const resp = await fetch(`/api/evolutions/rollback-to/${encodeURIComponent(targetId)}/${encodeURIComponent(versionId)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Rollback failed' }));
+            throw new Error(err.detail);
+        }
+        const newEvo = await resp.json();
+        showToast(`Rollback to ${versionId} created: ${newEvo.evolution_id} âœ…`);
+        const modal = document.getElementById('evo-rollback-version-modal');
+        if (modal) modal.remove();
+        navigateTo('evolution', newEvo.evolution_id);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = 'â†© Rollback to Version'; }
+    }
+}
+
+// â”€â”€ Create Evolution Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+async function openCreateEvolutionModal(prefillProposalId) {
+    const existing = document.getElementById('evo-create-modal');
+    if (existing) existing.remove();
+
+    // If auto-filling from a proposal, just call the API directly
+    if (prefillProposalId) {
+        try {
+            const resp = await fetch(`/api/evolutions/from-proposal/${encodeURIComponent(prefillProposalId)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+            });
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({ detail: 'Failed' }));
+                throw new Error(err.detail);
+            }
+            const newEvo = await resp.json();
+            showToast(`Evolution ${newEvo.evolution_id} created from proposal âœ…`);
+            navigateTo('evolution', newEvo.evolution_id);
+        } catch (err) {
+            showToast(`Error: ${err.message}`, true);
+        }
+        return;
+    }
+
+    // Fetch characters and council members for dropdowns
+    let characters = [], council = [];
+    try { characters = await api('/api/characters?status=active'); } catch { /* empty */ }
+    try { council = await api('/api/council'); } catch { /* empty */ }
+
+    const charOptions = characters.map(c =>
+        `<option value="${c.id}">${escapeHtml(c.name)} (${c.id})</option>`
+    ).join('');
+    const councilOptions = council.map(m =>
+        `<option value="${m.name}">${escapeHtml(m.name)} â€” ${m.role}</option>`
+    ).join('');
+
+    const changeTypes = ['trait_add','trait_remove','trait_modify','field_update','version_bump','system_prompt_update','personality_update'];
+    const changeTypeOptions = changeTypes.map(t => `<option value="${t}">${t}</option>`).join('');
+
+    const modal = document.createElement('div');
+    modal.id = 'evo-create-modal';
+    modal.className = 'evo-create-modal';
+    modal.innerHTML = `
+        <div class="evo-create-content">
+            <div class="evo-create-header">
+                <h3>🧬 Create Evolution</h3>
+                <button class="detail-close" onclick="document.getElementById('evo-create-modal').remove()">âœ•</button>
+            </div>
+            <div class="evo-create-body">
+                <div>
+                    <label class="evo-form-label">Target Type</label>
+                    <div class="evo-target-toggle" id="evo-target-toggle">
+                        <input type="radio" name="evo-target-type" id="evo-tt-char" value="character" checked>
+                        <label for="evo-tt-char" class="active" onclick="switchEvoTargetType('character')">ðŸ‘¤ Character</label>
+                        <input type="radio" name="evo-target-type" id="evo-tt-council" value="council_member">
+                        <label for="evo-tt-council" onclick="switchEvoTargetType('council_member')">ðŸ‘‘ Council Member</label>
+                    </div>
+                </div>
+
+                <div id="evo-target-char-group">
+                    <label class="evo-form-label">Target Character</label>
+                    <select id="evo-target-char" class="settings-input">${charOptions || '<option value="">No active characters</option>'}</select>
+                </div>
+
+                <div id="evo-target-council-group" style="display:none">
+                    <label class="evo-form-label">Council Member</label>
+                    <select id="evo-target-council" class="settings-input">${councilOptions || '<option value="">No council members</option>'}</select>
+                </div>
+
+                <div>
+                    <label class="evo-form-label">Evolution Name</label>
+                    <input id="evo-create-name" class="settings-input" placeholder="e.g. Courage Boost, System Prompt v3â€¦" />
+                    <span class="evo-form-hint">Optional â€” auto-generated if left empty</span>
+                </div>
+
+                <div>
+                    <label class="evo-form-label">Author</label>
+                    <input id="evo-create-author" class="settings-input" placeholder="Who is proposing this evolution?" value="User" />
+                </div>
+
+                <div>
+                    <label class="evo-form-label">Changes</label>
+                    <div class="evo-change-builder" id="evo-change-builder">
+                        <div class="evo-change-row" data-idx="0">
+                            <button class="evo-change-remove" onclick="removeEvoChangeRow(this)" title="Remove">âœ•</button>
+                            <div class="evo-change-row-header">
+                                <select class="settings-input evo-ct-select">${changeTypeOptions}</select>
+                                <input class="settings-input evo-fn-input" placeholder="Field name (e.g. courage, backstory)" />
+                            </div>
+                            <div class="evo-change-row-fields">
+                                <div>
+                                    <label class="evo-form-label" style="font-size:0.68rem">Old Value</label>
+                                    <textarea class="settings-input evo-ov-input" rows="2" placeholder="Previous value (optional)"></textarea>
+                                </div>
+                                <div>
+                                    <label class="evo-form-label" style="font-size:0.68rem">New Value</label>
+                                    <textarea class="settings-input evo-nv-input" rows="2" placeholder="New value"></textarea>
+                                </div>
+                            </div>
+                            <div class="evo-change-row-rationale">
+                                <label class="evo-form-label" style="font-size:0.68rem">Rationale</label>
+                                <input class="settings-input evo-rat-input" placeholder="Why this change?" />
+                            </div>
+                        </div>
+                    </div>
+                    <button class="evo-change-add-btn" onclick="addEvoChangeRow()">+ Add Change</button>
+                </div>
+            </div>
+            <div class="evo-create-footer">
+                <button class="btn" onclick="document.getElementById('evo-create-modal').remove()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitCreateEvolution()" id="evo-submit-btn">🧬 Create Evolution</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+function switchEvoTargetType(type) {
+    const charGroup = document.getElementById('evo-target-char-group');
+    const councilGroup = document.getElementById('evo-target-council-group');
+    const labels = document.querySelectorAll('#evo-target-toggle label');
+    labels.forEach(l => l.classList.remove('active'));
+    if (type === 'council_member') {
+        charGroup.style.display = 'none';
+        councilGroup.style.display = '';
+        labels[1].classList.add('active');
+        document.getElementById('evo-tt-council').checked = true;
+    } else {
+        charGroup.style.display = '';
+        councilGroup.style.display = 'none';
+        labels[0].classList.add('active');
+        document.getElementById('evo-tt-char').checked = true;
+    }
+}
+
+let _evoChangeRowIdx = 1;
+function addEvoChangeRow() {
+    const changeTypes = ['trait_add','trait_remove','trait_modify','field_update','version_bump','system_prompt_update','personality_update'];
+    const changeTypeOptions = changeTypes.map(t => `<option value="${t}">${t}</option>`).join('');
+    const builder = document.getElementById('evo-change-builder');
+    const row = document.createElement('div');
+    row.className = 'evo-change-row';
+    row.dataset.idx = _evoChangeRowIdx++;
+    row.innerHTML = `
+        <button class="evo-change-remove" onclick="removeEvoChangeRow(this)" title="Remove">âœ•</button>
+        <div class="evo-change-row-header">
+            <select class="settings-input evo-ct-select">${changeTypeOptions}</select>
+            <input class="settings-input evo-fn-input" placeholder="Field name" />
+        </div>
+        <div class="evo-change-row-fields">
+            <div>
+                <label class="evo-form-label" style="font-size:0.68rem">Old Value</label>
+                <textarea class="settings-input evo-ov-input" rows="2" placeholder="Previous value (optional)"></textarea>
+            </div>
+            <div>
+                <label class="evo-form-label" style="font-size:0.68rem">New Value</label>
+                <textarea class="settings-input evo-nv-input" rows="2" placeholder="New value"></textarea>
+            </div>
+        </div>
+        <div class="evo-change-row-rationale">
+            <label class="evo-form-label" style="font-size:0.68rem">Rationale</label>
+            <input class="settings-input evo-rat-input" placeholder="Why this change?" />
+        </div>`;
+    builder.appendChild(row);
+}
+
+function removeEvoChangeRow(btn) {
+    const builder = document.getElementById('evo-change-builder');
+    if (builder.children.length <= 1) {
+        showToast('At least one change is required.', true);
+        return;
+    }
+    btn.closest('.evo-change-row').remove();
+}
+
+async function submitCreateEvolution() {
+    const btn = document.getElementById('evo-submit-btn');
+    const targetType = document.querySelector('input[name="evo-target-type"]:checked')?.value || 'character';
+    const name = document.getElementById('evo-create-name').value.trim();
+    const author = document.getElementById('evo-create-author').value.trim();
+
+    if (!author) { showToast('Author is required.', true); return; }
+
+    let characterId = '', memberName = '';
+    if (targetType === 'council_member') {
+        memberName = document.getElementById('evo-target-council').value;
+        if (!memberName) { showToast('Select a council member.', true); return; }
+        characterId = `CM-${memberName}`;
+    } else {
+        characterId = document.getElementById('evo-target-char').value;
+        if (!characterId) { showToast('Select a character.', true); return; }
+    }
+
+    // Gather changes
+    const rows = document.querySelectorAll('#evo-change-builder .evo-change-row');
+    const changes = [];
+    for (const row of rows) {
+        const ct = row.querySelector('.evo-ct-select').value;
+        const fn = row.querySelector('.evo-fn-input').value.trim();
+        const ov = row.querySelector('.evo-ov-input').value.trim();
+        const nv = row.querySelector('.evo-nv-input').value.trim();
+        const rat = row.querySelector('.evo-rat-input').value.trim();
+        if (!fn) { showToast('Field name is required for all changes.', true); return; }
+
+        // Try to parse JSON values
+        let oldVal = ov, newVal = nv;
+        try { oldVal = JSON.parse(ov); } catch { /* keep as string */ }
+        try { newVal = JSON.parse(nv); } catch { /* keep as string */ }
+
+        changes.push({
+            change_type: ct,
+            field_name: fn,
+            old_value: oldVal,
+            new_value: newVal,
+            rationale: rat,
+        });
+    }
+
+    if (!changes.length) { showToast('At least one change is required.', true); return; }
+
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Creatingâ€¦'; }
+
+    try {
+        const body = {
+            character_id: characterId,
+            author,
+            changes,
+            name,
+            target_type: targetType,
+        };
+        if (targetType === 'council_member') {
+            body.member_name = memberName;
+        }
+
+        const resp = await fetch('/api/evolutions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Creation failed' }));
+            throw new Error(err.detail);
+        }
+        const newEvo = await resp.json();
+        showToast(`Evolution ${newEvo.evolution_id} created âœ…`);
+        document.getElementById('evo-create-modal').remove();
+        navigateTo('evolution', newEvo.evolution_id);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        if (btn) { btn.disabled = false; btn.textContent = '🧬 Create Evolution'; }
+    }
+}
+
+// â”€â”€ Auto-fill from Proposal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+async function createEvolutionFromProposal(proposalId) {
+    try {
+        const resp = await fetch(`/api/evolutions/from-proposal/${encodeURIComponent(proposalId)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Failed' }));
+            throw new Error(err.detail);
+        }
+        const newEvo = await resp.json();
+        showToast(`Evolution ${newEvo.evolution_id} created from proposal âœ…`);
+        navigateTo('evolution', newEvo.evolution_id);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
+
+// â”€â”€ Timelines (preserved from Conv 1, with rollback-to-version) â”€
 
 async function renderEvolutionTimelines() {
     showLoading();
@@ -8544,12 +9056,12 @@ async function renderEvolutionTimelines() {
     if (!timelines.length) {
         $main().innerHTML = `
             <div class="view-enter">
-                <button class="back-btn" onclick="navigateTo('evolution')">← Back to Evolutions</button>
+                <button class="back-btn" onclick="navigateTo('evolution')">â† Back to Evolutions</button>
                 <div class="page-header">
-                    <h2>📊 Character Timelines</h2>
+                    <h2>ðŸ“Š Character Timelines</h2>
                     <p>No character timelines available.</p>
                 </div>
-                <div class="empty-state"><div class="empty-icon">📊</div><p>No characters found.</p></div>
+                <div class="empty-state"><div class="empty-icon">ðŸ“Š</div><p>No characters found.</p></div>
             </div>`;
         return;
     }
@@ -8568,16 +9080,16 @@ async function renderEvolutionTimelines() {
                 <span>${events.length} evolution event${events.length !== 1 ? 's' : ''}</span>
             </div>
             <div class="evo-version-chain">
-                ${versions.map(v => `<span class="evo-version-chip">${v}</span>`).join('<span class="evo-chain-arrow">→</span>')}
+                ${versions.map(v => `<span class="evo-version-chip">${v}</span>`).join('<span class="evo-chain-arrow">â†’</span>')}
             </div>
         </div>`;
     }).join('');
 
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="navigateTo('evolution')">← Back to Evolutions</button>
+            <button class="back-btn" onclick="navigateTo('evolution')">â† Back to Evolutions</button>
             <div class="page-header">
-                <h2>📊 Character Timelines</h2>
+                <h2>ðŸ“Š Character Timelines</h2>
                 <p>${timelines.length} character lineage${timelines.length !== 1 ? 's' : ''}</p>
             </div>
             <div class="member-grid">${cards}</div>
@@ -8593,6 +9105,8 @@ async function renderEvolutionTimelineDetail(characterId) {
         showError(`Timeline not found: ${err.message}`);
         return;
     }
+
+    const versions = timeline.version_chain || [];
 
     const snapshots = (timeline.snapshots || []).map(s => `
         <div class="card evo-snapshot-card">
@@ -8625,23 +9139,29 @@ async function renderEvolutionTimelineDetail(characterId) {
         </div>
     `).join('');
 
+    // Rollback-to-version button
+    const rollbackToBtn = versions.length > 1
+        ? `<button class="btn btn-sm" style="border-color:var(--accent-amber)" onclick="openRollbackToVersionModal('${characterId}', ${JSON.stringify(versions)})">â†© Rollback to Versionâ€¦</button>`
+        : '';
+
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="renderEvolutionTimelines()">← Back to Timelines</button>
+            <button class="back-btn" onclick="renderEvolutionTimelines()">â† Back to Timelines</button>
             <div class="detail-panel">
                 <div class="detail-header">
-                    <div class="detail-avatar" style="background: linear-gradient(135deg, var(--accent-emerald), var(--accent-cyan))">📊</div>
+                    <div class="detail-avatar" style="background: linear-gradient(135deg, var(--accent-emerald), var(--accent-cyan))">ðŸ“Š</div>
                     <div style="flex:1">
                         <h3>${escapeHtml(timeline.character_name)}</h3>
-                        <div class="member-role">Latest: ${timeline.latest_version} · ${(timeline.version_chain || []).length} version(s)</div>
+                        <div class="member-role">Latest: ${timeline.latest_version} Â· ${versions.length} version(s)</div>
                     </div>
-                    <button class="detail-close" onclick="renderEvolutionTimelines()">✕</button>
+                    ${rollbackToBtn}
+                    <button class="detail-close" onclick="renderEvolutionTimelines()">âœ•</button>
                 </div>
 
                 <div class="detail-section">
                     <h4>Version Chain</h4>
                     <div class="evo-version-chain evo-chain-large">
-                        ${(timeline.version_chain || []).map(v => `<span class="evo-version-chip">${v}</span>`).join('<span class="evo-chain-arrow">→</span>')}
+                        ${versions.map(v => `<span class="evo-version-chip">${v}</span>`).join('<span class="evo-chain-arrow">â†’</span>')}
                     </div>
                 </div>
 
@@ -8663,9 +9183,10 @@ async function renderEvolutionTimelineDetail(characterId) {
         </div>`;
 }
 
-// ═══════════════════════════════════════════════════════════════
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Council Sessions View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function renderCouncilSessions() {
     showLoading();
@@ -8704,17 +9225,17 @@ async function renderCouncilSessions() {
                 </thead>
                 <tbody>${rows}</tbody>
             </table>
-        </div>` : '<div class="empty-state"><div class="empty-icon">🏛️</div><p>No council sessions yet. Start one below!</p></div>';
+        </div>` : '<div class="empty-state"><div class="empty-icon">ðŸ›ï¸</div><p>No council sessions yet. Start one below!</p></div>';
 
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header">
-                <h2>🏛️ Council Sessions</h2>
+                <h2>ðŸ›ï¸ Council Sessions</h2>
                 <p>${data.length} council session${data.length !== 1 ? 's' : ''}</p>
             </div>
 
             <div class="proposal-form card">
-                <h3>📋 New Council Session</h3>
+                <h3>ðŸ“‹ New Council Session</h3>
                 <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-md)">
                     Open a new deliberation session for the full council. Sessions can later be handed off as proposals.
                 </p>
@@ -8734,17 +9255,17 @@ async function renderCouncilSessions() {
                 <div class="filter-group" style="margin-top:var(--space-sm)">
                     <label for="session-topic-input">Topic</label>
                     <textarea id="session-topic-input" class="settings-input proposal-textarea" rows="2"
-                        placeholder="What should the council discuss? This will frame the deliberation…"></textarea>
+                        placeholder="What should the council discuss? This will frame the deliberationâ€¦"></textarea>
                 </div>
                 <div class="filter-group" style="margin-top:var(--space-sm)">
                     <label for="session-agenda-input">Agenda <span style="font-weight:400;font-size:0.78rem;color:var(--text-muted)">(optional)</span></label>
                     <textarea id="session-agenda-input" class="settings-input proposal-textarea" rows="2"
-                        placeholder="Key points or questions to address…"></textarea>
+                        placeholder="Key points or questions to addressâ€¦"></textarea>
                 </div>
 
                 <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                     <button class="btn btn-primary" onclick="createNewSession()" id="session-create-btn">
-                        🚀 Start Session
+                        ðŸš€ Start Session
                     </button>
                     <span id="session-create-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
                 </div>
@@ -8766,8 +9287,8 @@ async function createNewSession() {
     if (!topic) { document.getElementById('session-topic-input').focus(); return; }
 
     btn.disabled = true;
-    btn.textContent = '⏳ Creating…';
-    status.textContent = 'Setting up council session…';
+    btn.textContent = 'â³ Creatingâ€¦';
+    status.textContent = 'Setting up council sessionâ€¦';
 
     try {
         const resp = await fetch('/api/council-sessions', {
@@ -8780,14 +9301,14 @@ async function createNewSession() {
             throw new Error(err.detail);
         }
         const data = await resp.json();
-        showToast(`Session ${data.session_id} created ✅`);
+        showToast(`Session ${data.session_id} created âœ…`);
         navigateTo('sessions', data.session_id);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
         status.textContent = '';
     } finally {
         btn.disabled = false;
-        btn.textContent = '🚀 Start Session';
+        btn.textContent = 'ðŸš€ Start Session';
     }
 }
 
@@ -8813,7 +9334,7 @@ async function renderCouncilSessionDetail(id) {
 
     // Author options for the handoff form
     const authorOptions = sessionMembers.map(m =>
-        `<option value="${m.name}" ${data.participants && data.participants[0] === m.name ? 'selected' : ''}>${m.name} — ${m.role}</option>`
+        `<option value="${m.name}" ${data.participants && data.participants[0] === m.name ? 'selected' : ''}>${m.name} â€” ${m.role}</option>`
     ).join('');
 
     // Discussion feed
@@ -8837,15 +9358,15 @@ async function renderCouncilSessionDetail(id) {
         }).join('');
         discussionFeedHtml = `
             <div class="detail-section">
-                <h4>💬 Council Deliberation (${data.contributions.length} contributions, Round ${data.current_round}/${data.round_count})</h4>
+                <h4>ðŸ’¬ Council Deliberation (${data.contributions.length} contributions, Round ${data.current_round}/${data.round_count})</h4>
                 <div class="discussion-feed" id="session-discussion-feed">${contribs}</div>
             </div>`;
     } else {
         discussionFeedHtml = `
             <div class="detail-section">
-                <h4>💬 Council Deliberation</h4>
+                <h4>ðŸ’¬ Council Deliberation</h4>
                 <div class="discussion-feed" id="session-discussion-feed">
-                    <div class="empty-state" style="padding:var(--space-lg)"><div class="empty-icon">💬</div><p>No contributions yet. Start a discussion round!</p></div>
+                    <div class="empty-state" style="padding:var(--space-lg)"><div class="empty-icon">ðŸ’¬</div><p>No contributions yet. Start a discussion round!</p></div>
                 </div>
             </div>`;
     }
@@ -8855,7 +9376,7 @@ async function renderCouncilSessionDetail(id) {
     if (isClosed && data.summary) {
         summaryHtml = `
             <div class="detail-section">
-                <h4>📋 Session Summary</h4>
+                <h4>ðŸ“‹ Session Summary</h4>
                 <p style="color:var(--text-secondary)">${renderMarkdown(data.summary)}</p>
             </div>`;
     }
@@ -8865,9 +9386,9 @@ async function renderCouncilSessionDetail(id) {
     if (isOpen) {
         const buttons = [];
         if (roundsLeft > 0) {
-            buttons.push(`<button class="btn btn-primary" onclick="runSessionRound('${id}')" id="session-discuss-btn">▶️ Continue Discussion (${roundsLeft} left)</button>`);
+            buttons.push(`<button class="btn btn-primary" onclick="runSessionRound('${id}')" id="session-discuss-btn">â–¶ï¸ Continue Discussion (${roundsLeft} left)</button>`);
         }
-        buttons.push(`<button class="btn btn-secondary" onclick="closeSession('${id}')" id="session-close-btn">⏹️ Close Session</button>`);
+        buttons.push(`<button class="btn btn-secondary" onclick="closeSession('${id}')" id="session-close-btn">â¹ï¸ Close Session</button>`);
         actionsHtml = `<div class="proposal-actions">${buttons.join('')}</div>`;
     }
 
@@ -8882,21 +9403,21 @@ async function renderCouncilSessionDetail(id) {
 
         scheduledMsgHtml = `
             <div class="detail-section scheduled-message-section">
-                <h4>📨 Schedule Message for Next Round</h4>
+                <h4>ðŸ“¨ Schedule Message for Next Round</h4>
                 <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-sm)">
                     This message will be injected into the session at the start of the next round, before the council members speak.
                 </p>
                 <textarea id="session-scheduled-msg-input" class="settings-input scheduled-message-textarea"
-                    rows="3" placeholder="Type your message for the council to consider…">${existingMsg ? escapeHtml(existingMsg) : ''}</textarea>
+                    rows="3" placeholder="Type your message for the council to considerâ€¦">${existingMsg ? escapeHtml(existingMsg) : ''}</textarea>
                 <div style="display:flex;gap:var(--space-sm);align-items:center;margin-top:var(--space-sm)">
                     <button class="btn btn-primary btn-sm" onclick="scheduleSessionMessage('${id}')" id="session-schedule-msg-btn">
-                        📨 Schedule Message
+                        ðŸ“¨ Schedule Message
                     </button>
                     <button class="btn btn-secondary btn-sm" onclick="clearSessionScheduledMessage('${id}')" id="session-clear-msg-btn">
-                        🗑️ Clear
+                        ðŸ—‘ï¸ Clear
                     </button>
                     <span id="session-scheduled-msg-status" style="font-size:0.78rem;color:var(--text-muted)">
-                        ${existingMsg ? '✅ Message scheduled' : ''}
+                        ${existingMsg ? 'âœ… Message scheduled' : ''}
                     </span>
                 </div>
             </div>`;
@@ -8907,7 +9428,7 @@ async function renderCouncilSessionDetail(id) {
     if (isClosed) {
         handoffHtml = `
             <div class="detail-section session-handoff-panel">
-                <h4>📜 Create Proposal from Session</h4>
+                <h4>ðŸ“œ Create Proposal from Session</h4>
                 <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:var(--space-md)">
                     Hand off this session's deliberation into a formal proposal. Edit the fields below before creating.
                 </p>
@@ -8936,7 +9457,7 @@ async function renderCouncilSessionDetail(id) {
                 <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                     <button class="btn btn-primary" onclick="handoffSessionToProposal('${id}')" id="session-handoff-btn"
                         style="background:linear-gradient(135deg, hsl(210,70%,50%), hsl(170,60%,45%))">
-                        📜 Create Proposal
+                        ðŸ“œ Create Proposal
                     </button>
                     <span id="session-handoff-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
                 </div>
@@ -8950,7 +9471,7 @@ async function renderCouncilSessionDetail(id) {
 
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="navigateTo('sessions')">← Back to Sessions</button>
+            <button class="back-btn" onclick="navigateTo('sessions')">â† Back to Sessions</button>
             <div class="detail-panel">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-lg)">
                     <div>
@@ -8958,7 +9479,7 @@ async function renderCouncilSessionDetail(id) {
                         <div style="font-size:1.4rem;font-weight:700">${escapeHtml(data.title)}</div>
                         <div style="color:var(--text-secondary);margin-top:var(--space-xs);font-size:0.87rem">
                             ${formatDate(data.created_at)}
-                            ${data.closed_at ? ` · Closed ${formatDate(data.closed_at)}` : ''}
+                            ${data.closed_at ? ` Â· Closed ${formatDate(data.closed_at)}` : ''}
                         </div>
                         <div style="margin-top:var(--space-sm);display:flex;gap:var(--space-sm)">
                             ${badge(data.status)}
@@ -8967,9 +9488,9 @@ async function renderCouncilSessionDetail(id) {
                     </div>
                     <div style="display:flex;gap:var(--space-sm);align-items:flex-start">
                         <button class="btn btn-sm silentpassa-toggle ${state.silentpassaEnabled ? 'silentpassa-on' : 'silentpassa-off'}" onclick="toggleSilentPass('sessions','${id}')" title="Toggle [PRESENT]/[SILENCE] wrappers">
-                            ${state.silentpassaEnabled ? '🔔 SilentPass' : '🔕 SilentPass'}
+                            ${state.silentpassaEnabled ? 'ðŸ”” SilentPass' : 'ðŸ”• SilentPass'}
                         </button>
-                        <button class="detail-close" onclick="navigateTo('sessions')">✕</button>
+                        <button class="detail-close" onclick="navigateTo('sessions')">âœ•</button>
                     </div>
                 </div>
 
@@ -8997,7 +9518,7 @@ async function renderCouncilSessionDetail(id) {
 
 async function runSessionRound(sessionId) {
     const btn = document.getElementById('session-discuss-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Council is deliberating…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Council is deliberatingâ€¦'; }
 
     const feed = document.getElementById('session-discussion-feed');
     if (feed) {
@@ -9037,7 +9558,7 @@ async function runSessionRound(sessionId) {
                             msgDiv.innerHTML = `
                                 <div class="discussion-message-header">
                                     ${isUser
-                                        ? `<div class="member-avatar" style="background:linear-gradient(135deg, hsl(45,80%,55%), hsl(35,90%,50%))">👤</div>`
+                                        ? `<div class="member-avatar" style="background:linear-gradient(135deg, hsl(45,80%,55%), hsl(35,90%,50%))">ðŸ‘¤</div>`
                                         : memberAvatarWithImage(data.speaker, 0, null, state.sessionAvatarMap && state.sessionAvatarMap[data.speaker.toLowerCase()])}
                                     <div>
                                         <span class="discussion-speaker">${data.speaker}</span>
@@ -9051,7 +9572,7 @@ async function runSessionRound(sessionId) {
                             // Clear scheduled message status after it's been consumed
                             if (isUser) {
                                 const statusEl = document.getElementById('session-scheduled-msg-status');
-                                if (statusEl) statusEl.textContent = '✅ Delivered this round';
+                                if (statusEl) statusEl.textContent = 'âœ… Delivered this round';
                                 const inputEl = document.getElementById('session-scheduled-msg-input');
                                 if (inputEl) inputEl.value = '';
                             }
@@ -9064,11 +9585,11 @@ async function runSessionRound(sessionId) {
             }
         }
 
-        showToast('Discussion round complete ✅');
+        showToast('Discussion round complete âœ…');
         setTimeout(() => renderCouncilSessionDetail(sessionId), 500);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '▶️ Continue Discussion'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'â–¶ï¸ Continue Discussion'; }
     }
 }
 
@@ -9079,7 +9600,7 @@ async function scheduleSessionMessage(sessionId) {
 
     const btn = document.getElementById('session-schedule-msg-btn');
     const status = document.getElementById('session-scheduled-msg-status');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Savingâ€¦'; }
 
     try {
         const resp = await fetch(`/api/council-sessions/${encodeURIComponent(sessionId)}/scheduled-message`, {
@@ -9091,12 +9612,12 @@ async function scheduleSessionMessage(sessionId) {
             const err = await resp.json().catch(() => ({ detail: 'Failed to schedule' }));
             throw new Error(err.detail);
         }
-        showToast('Message scheduled for next round 📨');
-        if (status) status.textContent = '✅ Message scheduled';
+        showToast('Message scheduled for next round ðŸ“¨');
+        if (status) status.textContent = 'âœ… Message scheduled';
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '📨 Schedule Message'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ“¨ Schedule Message'; }
     }
 }
 
@@ -9118,7 +9639,7 @@ async function clearSessionScheduledMessage(sessionId) {
         }
         if (input) input.value = '';
         if (status) status.textContent = '';
-        showToast('Scheduled message cleared 🗑️');
+        showToast('Scheduled message cleared ðŸ—‘ï¸');
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     } finally {
@@ -9129,7 +9650,7 @@ async function clearSessionScheduledMessage(sessionId) {
 async function closeSession(sessionId) {
     if (!confirm('Close this council session? You can create a proposal from it afterwards.')) return;
     const btn = document.getElementById('session-close-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Closing…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Closingâ€¦'; }
 
     try {
         const resp = await fetch(`/api/council-sessions/${encodeURIComponent(sessionId)}/close`, {
@@ -9139,26 +9660,26 @@ async function closeSession(sessionId) {
             const err = await resp.json().catch(() => ({ detail: 'Failed to close' }));
             throw new Error(err.detail);
         }
-        showToast('Session closed ⏹️');
+        showToast('Session closed â¹ï¸');
         await renderCouncilSessionDetail(sessionId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '⏹️ Close Session'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'â¹ï¸ Close Session'; }
     }
 }
 
 async function handoffSessionToProposal(sessionId) {
     const btn = document.getElementById('session-handoff-btn');
     const statusEl = document.getElementById('session-handoff-status');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating proposal…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Creating proposalâ€¦'; }
 
     const title = (document.getElementById('handoff-title').value || '').trim();
     const description = (document.getElementById('handoff-desc').value || '').trim();
     const category = document.getElementById('handoff-category').value;
     const author = document.getElementById('handoff-author').value;
 
-    if (!title) { document.getElementById('handoff-title').focus(); btn.disabled = false; btn.textContent = '📜 Create Proposal'; return; }
-    if (!description) { document.getElementById('handoff-desc').focus(); btn.disabled = false; btn.textContent = '📜 Create Proposal'; return; }
+    if (!title) { document.getElementById('handoff-title').focus(); btn.disabled = false; btn.textContent = 'ðŸ“œ Create Proposal'; return; }
+    if (!description) { document.getElementById('handoff-desc').focus(); btn.disabled = false; btn.textContent = 'ðŸ“œ Create Proposal'; return; }
 
     try {
         const resp = await fetch(`/api/council-sessions/${encodeURIComponent(sessionId)}/handoff-proposal`, {
@@ -9171,19 +9692,19 @@ async function handoffSessionToProposal(sessionId) {
             throw new Error(err.detail);
         }
         const data = await resp.json();
-        showToast(`Proposal ${data.id} created from session ✅`);
+        showToast(`Proposal ${data.id} created from session âœ…`);
         navigateTo('proposals', data.id);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
         if (statusEl) statusEl.textContent = '';
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '📜 Create Proposal'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ“œ Create Proposal'; }
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Laws View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function renderLaws() {
     showLoading();
@@ -9191,7 +9712,7 @@ async function renderLaws() {
 
     const createForm = `
         <div class="card location-create-form">
-            <h3>⚖️ New Law</h3>
+            <h3>âš–ï¸ New Law</h3>
             <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-md)">
                 Draft a new law for the council's governance framework.
             </p>
@@ -9208,12 +9729,12 @@ async function renderLaws() {
             <div class="filter-group" style="margin-top:var(--space-sm)">
                 <label for="law-desc-input">Description</label>
                 <textarea id="law-desc-input" class="settings-input proposal-textarea" rows="2"
-                    placeholder="Brief summary of what this law enforces…"></textarea>
+                    placeholder="Brief summary of what this law enforcesâ€¦"></textarea>
             </div>
             <div class="filter-group" style="margin-top:var(--space-sm)">
                 <label for="law-body-input">Body</label>
                 <textarea id="law-body-input" class="settings-input proposal-textarea" rows="3"
-                    placeholder="Full text of the law…"></textarea>
+                    placeholder="Full text of the lawâ€¦"></textarea>
             </div>
             <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
                 <div class="filter-group" style="flex:2">
@@ -9223,7 +9744,7 @@ async function renderLaws() {
             </div>
             <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                 <button class="btn btn-primary" onclick="createLaw()" id="law-create-btn">
-                    ⚖️ Create Law
+                    âš–ï¸ Create Law
                 </button>
                 <span id="law-create-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
             </div>
@@ -9240,7 +9761,7 @@ async function renderLaws() {
             <div class="loc-header">
                 <div>
                     <div class="loc-name">${escapeHtml(law.title)}</div>
-                    <div class="loc-author">by ${escapeHtml(law.author)} · ${formatDate(law.created_at)}</div>
+                    <div class="loc-author">by ${escapeHtml(law.author)} Â· ${formatDate(law.created_at)}</div>
                 </div>
                 ${badge(law.status)}
             </div>
@@ -9252,8 +9773,8 @@ async function renderLaws() {
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header">
-                <h2>⚖️ Laws</h2>
-                <p>${data.length} law${data.length !== 1 ? 's' : ''} —
+                <h2>âš–ï¸ Laws</h2>
+                <p>${data.length} law${data.length !== 1 ? 's' : ''} â€”
                     <span class="badge badge-draft">Draft: ${counts.draft}</span>
                     <span class="badge badge-active">Active: ${counts.active}</span>
                     <span class="badge badge-archived">Archived: ${counts.archived}</span>
@@ -9267,7 +9788,7 @@ async function renderLaws() {
 async function createLaw() {
     const btn = document.getElementById('law-create-btn');
     const status = document.getElementById('law-create-status');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Creatingâ€¦'; }
 
     const title = (document.getElementById('law-title-input')?.value || '').trim();
     const author = (document.getElementById('law-author-input')?.value || '').trim();
@@ -9278,7 +9799,7 @@ async function createLaw() {
 
     if (!title || !author || !description) {
         showToast('Title, Author, and Description are required.', true);
-        if (btn) { btn.disabled = false; btn.textContent = '⚖️ Create Law'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'âš–ï¸ Create Law'; }
         return;
     }
 
@@ -9293,13 +9814,13 @@ async function createLaw() {
             throw new Error(err.detail);
         }
         const data = await resp.json();
-        showToast(`Law "${data.title}" created ✅`);
+        showToast(`Law "${data.title}" created âœ…`);
         navigateTo('laws', data.id);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
         if (status) status.textContent = '';
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '⚖️ Create Law'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'âš–ï¸ Create Law'; }
     }
 }
 
@@ -9312,23 +9833,23 @@ async function renderLawDetail(id) {
     // Status action buttons
     let statusActions = '';
     if (data.status === 'draft') {
-        statusActions = `<button class="btn btn-primary btn-sm" onclick="updateLawStatus('${data.id}', 'active')">✅ Activate</button>`;
+        statusActions = `<button class="btn btn-primary btn-sm" onclick="updateLawStatus('${data.id}', 'active')">âœ… Activate</button>`;
     } else if (data.status === 'active') {
-        statusActions = `<button class="btn btn-secondary btn-sm" onclick="updateLawStatus('${data.id}', 'archived')">📁 Archive</button>`;
+        statusActions = `<button class="btn btn-secondary btn-sm" onclick="updateLawStatus('${data.id}', 'archived')">ðŸ“ Archive</button>`;
     } else if (data.status === 'archived') {
-        statusActions = `<button class="btn btn-primary btn-sm" onclick="updateLawStatus('${data.id}', 'active')">♻️ Reactivate</button>`;
+        statusActions = `<button class="btn btn-primary btn-sm" onclick="updateLawStatus('${data.id}', 'active')">â™»ï¸ Reactivate</button>`;
     }
 
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="navigateTo('laws')">← Back to Laws</button>
+            <button class="back-btn" onclick="navigateTo('laws')">â† Back to Laws</button>
             <div class="detail-panel">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-xl)">
                     <div>
-                        <div style="font-size:0.78rem;font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);margin-bottom:var(--space-xs)">${data.id}${data.source_proposal_id ? ` · from ${data.source_proposal_id}` : ''}</div>
+                        <div style="font-size:0.78rem;font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);margin-bottom:var(--space-xs)">${data.id}${data.source_proposal_id ? ` Â· from ${data.source_proposal_id}` : ''}</div>
                         <div style="font-size:1.4rem;font-weight:700">${escapeHtml(data.title)}</div>
                         <div style="color:var(--text-secondary);margin-top:var(--space-xs);font-size:0.87rem">
-                            by <strong>${escapeHtml(data.author)}</strong> · ${formatDate(data.created_at)}
+                            by <strong>${escapeHtml(data.author)}</strong> Â· ${formatDate(data.created_at)}
                         </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:var(--space-sm)">
@@ -9347,7 +9868,7 @@ async function renderLawDetail(id) {
                 ${tagsHtml ? `<div class="detail-section"><h4>Tags</h4><div class="tag-list">${tagsHtml}</div></div>` : ''}
 
                 <div class="detail-section" style="font-size:0.82rem;color:var(--text-muted)">
-                    Created: ${formatDate(data.created_at)} · Updated: ${formatDate(data.updated_at)}
+                    Created: ${formatDate(data.created_at)} Â· Updated: ${formatDate(data.updated_at)}
                 </div>
             </div>
         </div>`;
@@ -9364,16 +9885,16 @@ async function updateLawStatus(lawId, newStatus) {
             const err = await resp.json().catch(() => ({ detail: 'Update failed' }));
             throw new Error(err.detail);
         }
-        showToast(`Law status updated to "${newStatus}" ✅`);
+        showToast(`Law status updated to "${newStatus}" âœ…`);
         await renderLawDetail(lawId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Law Shared Memory View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function renderLawSharedMemory() {
     showLoading();
@@ -9389,20 +9910,20 @@ async function renderLawSharedMemory() {
             <div class="event-content">${escapeHtml(law.description || '')}</div>
             ${law.body ? `<div class="event-content" style="margin-top:var(--space-xs);color:var(--text-muted);font-size:0.82rem">${escapeHtml(truncate(law.body, 200))}</div>` : ''}
         </div>
-    `).join('') : '<div class="empty-state"><div class="empty-icon">⚖️</div><p>No active laws. Activate a law to see it here.</p></div>';
+    `).join('') : '<div class="empty-state"><div class="empty-icon">âš–ï¸</div><p>No active laws. Activate a law to see it here.</p></div>';
 
     $main().innerHTML = `
         <div class="view-enter">
-            <button class="back-btn" onclick="navigateTo('memories')">← Back to Memories</button>
+            <button class="back-btn" onclick="navigateTo('memories')">â† Back to Memories</button>
             <div class="page-header">
-                <h2>⚖️ Law Shared Memory</h2>
+                <h2>âš–ï¸ Law Shared Memory</h2>
                 <p>${data.law_count} active law${data.law_count !== 1 ? 's' : ''} accessible to the LLM</p>
             </div>
 
             <div class="memory-detail-grid">
                 <div class="memory-panel">
                     <div class="memory-panel-header">
-                        <h3>⚖️ Active Laws</h3>
+                        <h3>âš–ï¸ Active Laws</h3>
                         <span class="memory-panel-count">${data.law_count}</span>
                     </div>
                     <div class="event-list">
@@ -9412,17 +9933,17 @@ async function renderLawSharedMemory() {
 
                 <div class="memory-panel">
                     <div class="memory-panel-header">
-                        <h3>📄 LLM Context</h3>
+                        <h3>ðŸ“„ LLM Context</h3>
                     </div>
-                    ${data.context ? `<div class="shared-history-content">${escapeHtml(data.context)}</div>` : '<div class="empty-state"><div class="empty-icon">📄</div><p>No active laws — no LLM context generated.</p></div>'}
+                    ${data.context ? `<div class="shared-history-content">${escapeHtml(data.context)}</div>` : '<div class="empty-state"><div class="empty-icon">ðŸ“„</div><p>No active laws â€” no LLM context generated.</p></div>'}
                 </div>
             </div>
         </div>`;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Settings View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function renderSettings() {
     const currentSkin = state.activeSkin || 'default';
@@ -9469,9 +9990,9 @@ async function renderSettings() {
 
     // Build provider sections (OpenRouter + Mancer)
     const providers = [
-        { id: 'openrouter', label: 'OpenRouter', icon: '🌐', models: openrouterModels },
-        { id: 'mancer', label: 'Mancer', icon: '⚡', models: mancerModels },
-        { id: 'lmstudio', label: 'LM Studio', icon: '🖥️', models: lmstudioModels },
+        { id: 'openrouter', label: 'OpenRouter', icon: 'ðŸŒ', models: openrouterModels },
+        { id: 'mancer', label: 'Mancer', icon: 'âš¡', models: mancerModels },
+        { id: 'lmstudio', label: 'LM Studio', icon: 'ðŸ–¥ï¸', models: lmstudioModels },
     ];
 
     const providerSections = providers.map(prov => {
@@ -9497,10 +10018,10 @@ async function renderSettings() {
                     <label>API Key</label>
                     <div class="settings-key-row">
                         <input type="password" id="settings-key-${prov.id}" class="settings-input"
-                               placeholder="${hasKey ? maskedKey : 'Enter API key…'}"
+                               placeholder="${hasKey ? maskedKey : 'Enter API keyâ€¦'}"
                                autocomplete="off" />
                         <button class="btn btn-primary btn-sm" onclick="saveSettingsKey('${prov.id}')">Save</button>
-                        ${hasKey ? `<button class="btn btn-sm" onclick="deleteSettingsKey('${prov.id}')" title="Remove key">🗑️</button>` : ''}
+                        ${hasKey ? `<button class="btn btn-sm" onclick="deleteSettingsKey('${prov.id}')" title="Remove key">ðŸ—‘ï¸</button>` : ''}
                     </div>
                 </div>
 
@@ -9528,16 +10049,16 @@ async function renderSettings() {
             </div>
 
             <div class="settings-section">
-                <div class="settings-section-title">👤 About You</div>
+                <div class="settings-section-title">ðŸ‘¤ About You</div>
                 <div class="settings-provider-card">
                     <div class="settings-field-group">
                         <label>Your Name</label>
                         <div class="settings-key-row">
                             <input type="text" id="settings-user-name" class="settings-input"
                                    maxlength="100"
-                                   placeholder="Enter your name…"
+                                   placeholder="Enter your nameâ€¦"
                                    value="${escapeHtml(userName)}" />
-                            <button class="btn btn-primary btn-sm" onclick="saveSettingsUserName()">💾 Save</button>
+                            <button class="btn btn-primary btn-sm" onclick="saveSettingsUserName()">ðŸ’¾ Save</button>
                         </div>
                         <span class="settings-field-hint">How the council members and characters will address you</span>
                     </div>
@@ -9545,27 +10066,27 @@ async function renderSettings() {
                         <label>User Description</label>
                         <textarea id="settings-user-desc" class="settings-input settings-textarea"
                                   rows="4" maxlength="700"
-                                  placeholder="Tell the AI council about yourself — this context is shared in chats…">${escapeHtml(userDesc)}</textarea>
+                                  placeholder="Tell the AI council about yourself â€” this context is shared in chatsâ€¦">${escapeHtml(userDesc)}</textarea>
                         <div class="settings-key-row" style="margin-top:var(--space-sm)">
                             <span class="settings-field-hint" id="settings-desc-count">${userDesc.length}/700</span>
-                            <button class="btn btn-primary btn-sm" onclick="saveSettingsUserDesc()">💾 Save</button>
+                            <button class="btn btn-primary btn-sm" onclick="saveSettingsUserDesc()">ðŸ’¾ Save</button>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="settings-section">
-                <div class="settings-section-title">🔑 API Providers & Models</div>
+                <div class="settings-section-title">ðŸ”‘ API Providers & Models</div>
                 <div class="settings-providers-grid">${providerSections}</div>
             </div>
 
             <div class="settings-section">
-                <div class="settings-section-title">🎨 Appearance — Skin</div>
+                <div class="settings-section-title">ðŸŽ¨ Appearance â€” Skin</div>
                 <div class="settings-skin-grid">${skinCards}</div>
             </div>
 
             <div class="settings-section">
-                <div class="settings-section-title">💬 Chat Features</div>
+                <div class="settings-section-title">ðŸ’¬ Chat Features</div>
                 <div class="settings-info-grid">
                     <div class="settings-info-card settings-toggle-card" onclick="toggleSilentPassSettings()" style="cursor:pointer">
                         <div class="settings-info-label">SilentPass</div>
@@ -9578,7 +10099,7 @@ async function renderSettings() {
             </div>
 
             <div class="settings-section">
-                <div class="settings-section-title">🎨 ComfyUI — Image Generation</div>
+                <div class="settings-section-title">ðŸŽ¨ ComfyUI â€” Image Generation</div>
                 <div id="comfyui-settings-container"></div>
             </div>
         </div>`;
@@ -9684,9 +10205,9 @@ async function saveSettingsUserName() {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // ComfyUI Settings Helpers (F-037d)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 let _comfyuiPendingWorkflowJson = null;
 let _comfyuiPendingFilename = '';
@@ -9717,17 +10238,17 @@ async function loadComfyUISettings() {
         templateAssignments = assigns;
     } catch { /* endpoints may not be available */ }
 
-    // ── Connection Config ─────────────
+    // â”€â”€ Connection Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const presetOptions = presets.map(p =>
         `<option value="${escapeAttr(p.name)}" ${p.name === defaultStyle || p.name.toLowerCase().replace(/ /g, '_') === defaultStyle ? 'selected' : ''}>${escapeHtml(p.name)}</option>`
     ).join('');
 
-    // ── Template List ─────────────────
+    // â”€â”€ Template List â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     let templateListHtml;
     if (templates.length === 0) {
         templateListHtml = `
             <div class="comfyui-empty">
-                <div class="comfyui-empty-icon">📄</div>
+                <div class="comfyui-empty-icon">ðŸ“„</div>
                 <p>No workflow templates uploaded yet.</p>
             </div>`;
     } else {
@@ -9751,17 +10272,17 @@ async function loadComfyUISettings() {
                         </div>
                     </div>
                     <div class="comfyui-template-actions">
-                        <button class="btn btn-sm" onclick="event.stopPropagation(); deleteComfyUITemplate('${t.id}', '${escapeAttr(t.name)}')" title="Delete template">🗑️</button>
+                        <button class="btn btn-sm" onclick="event.stopPropagation(); deleteComfyUITemplate('${t.id}', '${escapeAttr(t.name)}')" title="Delete template">ðŸ—‘ï¸</button>
                     </div>
                 </div>
-                ${isExpanded ? `<div class="comfyui-template-detail" id="comfyui-detail-${t.id}"><em>Loading…</em></div>` : ''}`;
+                ${isExpanded ? `<div class="comfyui-template-detail" id="comfyui-detail-${t.id}"><em>Loadingâ€¦</em></div>` : ''}`;
         }).join('');
     }
 
     container.innerHTML = `
         <div class="settings-provider-card">
             <div class="settings-provider-header">
-                <span class="settings-provider-icon">🖥️</span>
+                <span class="settings-provider-icon">ðŸ–¥ï¸</span>
                 <span class="settings-provider-name">Connection</span>
             </div>
             <div class="comfyui-config-row">
@@ -9776,8 +10297,8 @@ async function loadComfyUISettings() {
                 <div class="settings-field-group" style="flex:0;min-width:auto">
                     <label>&nbsp;</label>
                     <div style="display:flex;gap:var(--space-xs)">
-                        <button class="btn btn-primary btn-sm" onclick="saveComfyUIConfig()" id="comfyui-save-btn">💾 Save</button>
-                        <button class="btn btn-sm" onclick="testComfyUIConnection()" id="comfyui-test-btn">🔌 Test</button>
+                        <button class="btn btn-primary btn-sm" onclick="saveComfyUIConfig()" id="comfyui-save-btn">ðŸ’¾ Save</button>
+                        <button class="btn btn-sm" onclick="testComfyUIConnection()" id="comfyui-test-btn">ðŸ”Œ Test</button>
                     </div>
                 </div>
             </div>
@@ -9786,14 +10307,14 @@ async function loadComfyUISettings() {
 
         <div class="settings-provider-card" style="margin-top:var(--space-lg)">
             <div class="settings-provider-header">
-                <span class="settings-provider-icon">📄</span>
+                <span class="settings-provider-icon">ðŸ“„</span>
                 <span class="settings-provider-name">Workflow Templates</span>
                 <span class="badge badge-draft" style="font-size:0.72rem">${templates.length} template${templates.length !== 1 ? 's' : ''}</span>
             </div>
             <div class="comfyui-drop-zone" id="comfyui-drop-zone"
                  onclick="document.getElementById('comfyui-file-input').click()">
                 <input type="file" id="comfyui-file-input" accept=".json,application/json" style="display:none" onchange="handleComfyUIFile(event)" />
-                <div class="comfyui-drop-zone-icon">📁</div>
+                <div class="comfyui-drop-zone-icon">ðŸ“</div>
                 <div class="comfyui-drop-zone-text">Click to select or drag & drop a workflow JSON file</div>
                 <div class="comfyui-drop-zone-hint">ComfyUI API format (.json)</div>
                 <div class="comfyui-drop-zone-filename" id="comfyui-filename"></div>
@@ -9816,14 +10337,14 @@ async function loadComfyUISettings() {
                 </div>
                 <div class="settings-field-group">
                     <label>Description</label>
-                    <input type="text" id="comfyui-tpl-desc" class="settings-input" placeholder="Optional description…" />
+                    <input type="text" id="comfyui-tpl-desc" class="settings-input" placeholder="Optional descriptionâ€¦" />
                 </div>
                 <div class="settings-field-group">
                     <label>Author</label>
                     <input type="text" id="comfyui-tpl-author" class="settings-input" placeholder="Optional author name" />
                 </div>
                 <div class="settings-field-group" style="grid-column: 1 / -1">
-                    <button class="btn btn-primary" onclick="uploadComfyUITemplate()" id="comfyui-upload-btn">📤 Upload Template</button>
+                    <button class="btn btn-primary" onclick="uploadComfyUITemplate()" id="comfyui-upload-btn">ðŸ“¤ Upload Template</button>
                 </div>
             </div>
             <div class="comfyui-template-list">
@@ -9833,7 +10354,7 @@ async function loadComfyUISettings() {
 
         <div class="settings-provider-card" style="margin-top:var(--space-lg)">
             <div class="settings-provider-header">
-                <span class="settings-provider-icon">✨</span>
+                <span class="settings-provider-icon">âœ¨</span>
                 <span class="settings-provider-name">Default Style Preset</span>
             </div>
             <div class="settings-field-group">
@@ -9843,7 +10364,7 @@ async function loadComfyUISettings() {
                         <option value="">None (no style applied)</option>
                         ${presetOptions}
                     </select>
-                    <button class="btn btn-primary btn-sm" onclick="saveComfyUIDefaultStyle()">💾 Save</button>
+                    <button class="btn btn-primary btn-sm" onclick="saveComfyUIDefaultStyle()">ðŸ’¾ Save</button>
                 </div>
                 <span class="settings-field-hint">Applied automatically when generating prompts without an explicit style</span>
             </div>
@@ -9852,7 +10373,7 @@ async function loadComfyUISettings() {
 
         <div class="settings-provider-card" style="margin-top:var(--space-lg)">
             <div class="settings-provider-header">
-                <span class="settings-provider-icon">📌</span>
+                <span class="settings-provider-icon">ðŸ“Œ</span>
                 <span class="settings-provider-name">Default Templates per Entity Type</span>
                 <span class="badge badge-draft" style="font-size:0.72rem">F-039</span>
             </div>
@@ -9863,7 +10384,7 @@ async function loadComfyUISettings() {
                 ${_renderAssignmentCards(templates, templateAssignments)}
             </div>
             <div style="margin-top:var(--space-sm);display:flex;gap:var(--space-sm)">
-                <button class="btn btn-primary btn-sm" onclick="saveTemplateAssignments()" id="tpl-assign-save-btn">💾 Save Assignments</button>
+                <button class="btn btn-primary btn-sm" onclick="saveTemplateAssignments()" id="tpl-assign-save-btn">ðŸ’¾ Save Assignments</button>
                 <span id="tpl-assign-status" style="font-size:0.78rem;color:var(--text-muted)"></span>
             </div>
         </div>
@@ -9913,9 +10434,9 @@ async function loadComfyUISettings() {
  */
 function _renderAssignmentCards(templates, assignments) {
     const entityTypes = [
-        { key: 'character', label: 'Character', icon: '🎭' },
+        { key: 'character', label: 'Character', icon: 'ðŸŽ­' },
         { key: 'location', label: 'Location', icon: '🏰' },
-        { key: 'item', label: 'Item', icon: '⚔️' },
+        { key: 'item', label: 'Item', icon: 'âš”ï¸' },
         { key: 'store', label: 'Store', icon: '🏪' },
     ];
 
@@ -9931,8 +10452,8 @@ function _renderAssignmentCards(templates, assignments) {
 
         const assignedTpl = assigned ? templates.find(t => t.id === assigned) : null;
         const statusHtml = assigned
-            ? `<span class="tpl-assign-status-set">📌 ${escapeHtml(assignedTpl?.name || assigned)}</span>`
-            : '<span class="tpl-assign-status-auto">⚡ Auto</span>';
+            ? `<span class="tpl-assign-status-set">ðŸ“Œ ${escapeHtml(assignedTpl?.name || assigned)}</span>`
+            : '<span class="tpl-assign-status-auto">âš¡ Auto</span>';
 
         return `
             <div class="tpl-assign-card ${assigned ? 'tpl-assign-active' : ''}">
@@ -9954,7 +10475,7 @@ function _renderAssignmentCards(templates, assignments) {
 async function saveTemplateAssignments() {
     const btn = document.getElementById('tpl-assign-save-btn');
     const status = document.getElementById('tpl-assign-status');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Savingâ€¦'; }
 
     const selects = document.querySelectorAll('.tpl-assign-select');
     const assignments = {};
@@ -9969,16 +10490,16 @@ async function saveTemplateAssignments() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(assignments),
         }).then(r => { if (!r.ok) throw new Error('Save failed'); return r.json(); });
-        showToast('Template assignments saved 📌');
-        if (status) status.textContent = '✅ Saved';
+        showToast('Template assignments saved ðŸ“Œ');
+        if (status) status.textContent = 'âœ… Saved';
         setTimeout(() => { if (status) status.textContent = ''; }, 2000);
         // Refresh to update status badges
         loadComfyUISettings();
     } catch (err) {
         showToast(`Save error: ${err.message}`, true);
-        if (status) status.textContent = '❌ Error';
+        if (status) status.textContent = 'âŒ Error';
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '💾 Save Assignments'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ’¾ Save Assignments'; }
     }
 }
 
@@ -10003,7 +10524,7 @@ function processComfyUIFile(file) {
             _comfyuiPendingWorkflowJson = json;
             _comfyuiPendingFilename = file.name;
             const filenameEl = document.getElementById('comfyui-filename');
-            if (filenameEl) filenameEl.textContent = `✅ ${file.name}`;
+            if (filenameEl) filenameEl.textContent = `âœ… ${file.name}`;
             const form = document.getElementById('comfyui-upload-form');
             if (form) form.style.display = '';
             // Auto-fill name from filename
@@ -10011,7 +10532,7 @@ function processComfyUIFile(file) {
             if (nameInput && !nameInput.value) {
                 nameInput.value = file.name.replace(/\.json$/i, '').replace(/[_-]/g, ' ');
             }
-            showToast(`Loaded ${file.name} ✅`);
+            showToast(`Loaded ${file.name} âœ…`);
         } catch (err) {
             showToast('Failed to parse JSON: ' + err.message, true);
         }
@@ -10024,7 +10545,7 @@ async function saveComfyUIConfig() {
     const port = parseInt(document.getElementById('comfyui-port')?.value, 10);
     if (!host) return;
     const btn = document.getElementById('comfyui-save-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³'; }
     try {
         const resp = await fetch('/api/settings/comfyui', {
             method: 'POST',
@@ -10035,18 +10556,18 @@ async function saveComfyUIConfig() {
             const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
             throw new Error(err.detail);
         }
-        showToast('ComfyUI config saved ✅');
+        showToast('ComfyUI config saved âœ…');
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '💾 Save'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ’¾ Save'; }
     }
 }
 
 async function testComfyUIConnection() {
     const btn = document.getElementById('comfyui-test-btn');
     const statusEl = document.getElementById('comfyui-status');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Testing…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Testingâ€¦'; }
     if (statusEl) statusEl.innerHTML = '';
 
     try {
@@ -10057,14 +10578,14 @@ async function testComfyUIConnection() {
             const gpuInfo = stats.system?.gpus?.[0] || {};
             statusEl.innerHTML = `
                 <div class="comfyui-status-result comfyui-status-success">
-                    ✅ <strong>Connected</strong> to ComfyUI at ${escapeHtml(data.host)}:${data.port}
+                    âœ… <strong>Connected</strong> to ComfyUI at ${escapeHtml(data.host)}:${data.port}
                     ${gpuInfo.name ? `<br>GPU: ${escapeHtml(gpuInfo.name)} (${Math.round((gpuInfo.vram_total || 0) / 1073741824)}GB VRAM)` : ''}
                 </div>`;
-            showToast('ComfyUI connection successful ✅');
+            showToast('ComfyUI connection successful âœ…');
         } else {
             statusEl.innerHTML = `
                 <div class="comfyui-status-result comfyui-status-error">
-                    ❌ <strong>Cannot connect</strong> to ${escapeHtml(data.host)}:${data.port}
+                    âŒ <strong>Cannot connect</strong> to ${escapeHtml(data.host)}:${data.port}
                     <br><span style="font-size:0.78rem">${escapeHtml(data.error || 'Unknown error')}</span>
                 </div>`;
             showToast('ComfyUI connection failed', true);
@@ -10072,11 +10593,11 @@ async function testComfyUIConnection() {
     } catch (err) {
         if (statusEl) statusEl.innerHTML = `
             <div class="comfyui-status-result comfyui-status-error">
-                ❌ <strong>Request failed</strong>: ${escapeHtml(err.message)}
+                âŒ <strong>Request failed</strong>: ${escapeHtml(err.message)}
             </div>`;
         showToast(`Error: ${err.message}`, true);
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '🔌 Test'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ”Œ Test'; }
     }
 }
 
@@ -10092,7 +10613,7 @@ async function uploadComfyUITemplate() {
         return;
     }
     const btn = document.getElementById('comfyui-upload-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Uploading…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Uploadingâ€¦'; }
 
     try {
         const resp = await fetch('/api/settings/comfyui/templates', {
@@ -10113,12 +10634,12 @@ async function uploadComfyUITemplate() {
         const data = await resp.json();
         _comfyuiPendingWorkflowJson = null;
         _comfyuiPendingFilename = '';
-        showToast(`Template ${data.id} created ✅`);
+        showToast(`Template ${data.id} created âœ…`);
         loadComfyUISettings();
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '📤 Upload Template'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ“¤ Upload Template'; }
     }
 }
 
@@ -10132,7 +10653,7 @@ async function deleteComfyUITemplate(templateId, templateName) {
             const err = await resp.json().catch(() => ({ detail: 'Delete failed' }));
             throw new Error(err.detail);
         }
-        showToast(`Template ${templateId} deleted ✅`);
+        showToast(`Template ${templateId} deleted âœ…`);
         if (_comfyuiExpandedTemplate === templateId) _comfyuiExpandedTemplate = null;
         loadComfyUISettings();
     } catch (err) {
@@ -10159,7 +10680,7 @@ async function loadComfyUITemplateDetail(templateId) {
             `<span class="comfyui-placeholder-tag">${escapeHtml(p)}</span>`
         ).join(' ');
         const jsonStr = JSON.stringify(data.workflow_json, null, 2);
-        const truncJson = jsonStr.length > 5000 ? jsonStr.slice(0, 5000) + '\n… (truncated)' : jsonStr;
+        const truncJson = jsonStr.length > 5000 ? jsonStr.slice(0, 5000) + '\nâ€¦ (truncated)' : jsonStr;
 
         container.innerHTML = `
             <div style="margin-bottom:var(--space-sm)">
@@ -10220,13 +10741,13 @@ async function saveComfyUIDefaultStyle() {
             const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
             throw new Error(err.detail);
         }
-        showToast('Default style preset saved ✅');
+        showToast('Default style preset saved âœ…');
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
     }
 }
 
-// ─── Character Form Model Helpers ─────────────────────────────
+// â”€â”€â”€ Character Form Model Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Swap model field in character creation form when provider changes. */
 function updateCharCreateModelField() {
@@ -10245,9 +10766,9 @@ function updateCharEditModelField() {
 }
 
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Tasks View
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function renderTasks() {
     showLoading();
@@ -10273,12 +10794,12 @@ async function renderTasks() {
     ).join('');
 
     const doTasksBtn = activeTasks.length > 0
-        ? `<button class="btn btn-primary" id="btn-do-tasks" onclick="doTasks()">▶️ Do Tasks (${activeTasks.length} active)</button>`
+        ? `<button class="btn btn-primary" id="btn-do-tasks" onclick="doTasks()">â–¶ï¸ Do Tasks (${activeTasks.length} active)</button>`
         : '';
 
     const createForm = `
         <div class="card character-create-form">
-            <h3>📋 New Task</h3>
+            <h3>ðŸ“‹ New Task</h3>
             <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-md)">
                 Create a task and assign it to council members and characters. Active tasks are executed via "Do Tasks".
             </p>
@@ -10291,12 +10812,12 @@ async function renderTasks() {
             <div class="filter-group" style="margin-top:var(--space-sm)">
                 <label for="task-desc-input">Description</label>
                 <textarea id="task-desc-input" class="settings-input proposal-textarea" rows="3"
-                    placeholder="What needs to be done…"></textarea>
+                    placeholder="What needs to be doneâ€¦"></textarea>
             </div>
             <div class="filter-group" style="margin-top:var(--space-sm)">
                 <label for="task-reason-input">Reason</label>
                 <textarea id="task-reason-input" class="settings-input proposal-textarea" rows="2"
-                    placeholder="Why this task is needed…"></textarea>
+                    placeholder="Why this task is neededâ€¦"></textarea>
             </div>
             <div class="filter-group" style="margin-top:var(--space-sm)">
                 <label>Assignees</label>
@@ -10306,7 +10827,7 @@ async function renderTasks() {
             </div>
             <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                 <button class="btn btn-primary" onclick="createTask()" id="task-create-btn">
-                    📋 Create Task
+                    ðŸ“‹ Create Task
                 </button>
                 <span id="task-create-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
             </div>
@@ -10335,12 +10856,12 @@ async function renderTasks() {
                 </thead>
                 <tbody>${rows}</tbody>
             </table>
-        </div>` : '<div class="empty-state"><div class="empty-icon">📋</div><p>No tasks yet. Create one above!</p></div>';
+        </div>` : '<div class="empty-state"><div class="empty-icon">ðŸ“‹</div><p>No tasks yet. Create one above!</p></div>';
 
     const executionFeed = `
         <div id="task-execution-feed" class="card" style="display:none;margin-bottom:var(--space-xl)">
             <h3 style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-md)">
-                ⚙️ Completing Tasks
+                âš™ï¸ Completing Tasks
                 <div class="loading-spinner" id="task-spinner" style="width:18px;height:18px;"></div>
             </h3>
             <div id="task-feed-messages" class="task-feed-messages"></div>
@@ -10349,8 +10870,8 @@ async function renderTasks() {
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header">
-                <h2>📋 Tasks</h2>
-                <p>${tasks.length} task${tasks.length !== 1 ? 's' : ''}${activeTasks.length > 0 ? ` — <span class="badge badge-active">${activeTasks.length} active</span>` : ''}</p>
+                <h2>ðŸ“‹ Tasks</h2>
+                <p>${tasks.length} task${tasks.length !== 1 ? 's' : ''}${activeTasks.length > 0 ? ` â€” <span class="badge badge-active">${activeTasks.length} active</span>` : ''}</p>
             </div>
 
             <div style="margin-bottom:var(--space-xl)">
@@ -10369,7 +10890,7 @@ async function renderTasks() {
 async function createTask() {
     const btn = document.getElementById('task-create-btn');
     const status = document.getElementById('task-create-status');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Creatingâ€¦'; }
 
     const name = (document.getElementById('task-name-input')?.value || '').trim();
     const description = (document.getElementById('task-desc-input')?.value || '').trim();
@@ -10379,7 +10900,7 @@ async function createTask() {
 
     if (!name || !description || !reason || assignees.length === 0) {
         showToast('Please fill in all fields and select at least one assignee.', true);
-        if (btn) { btn.disabled = false; btn.textContent = '📋 Create Task'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ“‹ Create Task'; }
         return;
     }
 
@@ -10394,13 +10915,13 @@ async function createTask() {
             throw new Error(err.detail);
         }
         const data = await resp.json();
-        showToast(`Task "${data.name}" created ✅`);
+        showToast(`Task "${data.name}" created âœ…`);
         await renderTasks();
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
         if (status) status.textContent = '';
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '📋 Create Task'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ“‹ Create Task'; }
     }
 }
 
@@ -10572,9 +11093,9 @@ async function setTaskStatus(taskId, newStatus) {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Generation Queue Dashboard (F-037g)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 let _queuePollTimer = null;
 
@@ -10596,15 +11117,15 @@ async function renderGenerationQueue() {
     });
 
     const stageLabels = {
-        'queued': '📤 Queued',
+        'queued': 'ðŸ“¤ Queued',
         'prompt_generating': '🧠 Generating Prompt',
-        'template_filling': '📋 Preparing Workflow',
-        'running': '⚡ Generating',
-        'downloading': '📥 Downloading',
-        'saving': '💾 Saving',
-        'completed': '✅ Completed',
-        'failed': '❌ Failed',
-        'cancelled': '🚫 Cancelled',
+        'template_filling': 'ðŸ“‹ Preparing Workflow',
+        'running': 'âš¡ Generating',
+        'downloading': 'ðŸ“¥ Downloading',
+        'saving': 'ðŸ’¾ Saving',
+        'completed': 'âœ… Completed',
+        'failed': 'âŒ Failed',
+        'cancelled': 'ðŸš« Cancelled',
     };
 
     const jobCards = jobs.length ? jobs.map(job => {
@@ -10630,12 +11151,12 @@ async function renderGenerationQueue() {
                         <span class="queue-card-pct">${pct}%</span>
                     </div>
                 ` : ''}
-                ${job.prompt_positive ? `<div class="queue-card-prompt" title="${escapeAttr(job.prompt_positive)}">${escapeHtml(job.prompt_positive.substring(0, 120))}${job.prompt_positive.length > 120 ? '…' : ''}</div>` : ''}
+                ${job.prompt_positive ? `<div class="queue-card-prompt" title="${escapeAttr(job.prompt_positive)}">${escapeHtml(job.prompt_positive.substring(0, 120))}${job.prompt_positive.length > 120 ? 'â€¦' : ''}</div>` : ''}
                 ${job.image_id && job.stage === 'completed' ? `<img class="queue-card-thumb" src="/api/images/file/${escapeAttr(job.image_id)}" loading="lazy" />` : ''}
                 ${job.error ? `<div class="queue-card-error-msg">${escapeHtml(job.error)}</div>` : ''}
                 <div class="queue-card-actions">
                     ${isActive ? `<button class="btn btn-secondary btn-sm" onclick="cancelQueueJob('${escapeAttr(job.job_id)}')">Cancel</button>` : ''}
-                    ${job.stage === 'failed' ? `<button class="btn btn-primary btn-sm" onclick="retryQueueJob('${escapeAttr(job.job_id)}', '${escapeAttr(job.entity_type)}', '${escapeAttr(job.entity_id)}')">🔄 Retry</button>` : ''}
+                    ${job.stage === 'failed' ? `<button class="btn btn-primary btn-sm" onclick="retryQueueJob('${escapeAttr(job.job_id)}', '${escapeAttr(job.entity_type)}', '${escapeAttr(job.entity_id)}')">ðŸ”„ Retry</button>` : ''}
                     ${job.stage === 'completed' && job.entity_type && job.entity_id ? `<button class="btn btn-secondary btn-sm" onclick="navigateTo('${escapeAttr(job.entity_type === 'council_member' ? 'council' : job.entity_type + 's')}', '${escapeAttr(job.entity_id)}')">View Entity</button>` : ''}
                 </div>
             </div>`;
@@ -10644,7 +11165,7 @@ async function renderGenerationQueue() {
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header">
-                <h2>🎨 Generation Queue</h2>
+                <h2>ðŸŽ¨ Generation Queue</h2>
                 <p>Monitor and manage image generation jobs</p>
             </div>
             <div class="queue-grid" id="queue-grid">
@@ -10700,9 +11221,9 @@ function retryQueueJob(jobId, entityType, entityId) {
 }
 
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Custom Style Preset Editor (F-037g)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function renderPresetEditor() {
     let builtins = [];
@@ -10720,8 +11241,8 @@ async function renderPresetEditor() {
                 <span class="preset-badge preset-badge-builtin">Built-in</span>
             </div>
             <div class="preset-card-desc">${escapeHtml(p.description || 'No description')}</div>
-            <div class="preset-card-detail"><strong>Positive:</strong> ${escapeHtml(p.positive_suffix || '—')}</div>
-            <div class="preset-card-detail"><strong>Negative:</strong> ${escapeHtml(p.negative_prefix || '—')}</div>
+            <div class="preset-card-detail"><strong>Positive:</strong> ${escapeHtml(p.positive_suffix || 'â€”')}</div>
+            <div class="preset-card-detail"><strong>Negative:</strong> ${escapeHtml(p.negative_prefix || 'â€”')}</div>
             <div class="preset-card-key">Key: <code>${escapeHtml(p.key)}</code></div>
         </div>
     `).join('');
@@ -10733,27 +11254,27 @@ async function renderPresetEditor() {
                 <span class="preset-badge preset-badge-custom">Custom</span>
             </div>
             <div class="preset-card-desc">${escapeHtml(p.description || 'No description')}</div>
-            <div class="preset-card-detail"><strong>Positive:</strong> ${escapeHtml(p.positive_suffix || '—')}</div>
-            <div class="preset-card-detail"><strong>Negative:</strong> ${escapeHtml(p.negative_prefix || '—')}</div>
+            <div class="preset-card-detail"><strong>Positive:</strong> ${escapeHtml(p.positive_suffix || 'â€”')}</div>
+            <div class="preset-card-detail"><strong>Negative:</strong> ${escapeHtml(p.negative_prefix || 'â€”')}</div>
             <div class="preset-card-key">Key: <code>${escapeHtml(p.key)}</code> | ID: <code>${escapeHtml(p.id)}</code></div>
             <div class="preset-card-actions">
-                <button class="btn btn-secondary btn-sm" onclick="editCustomPreset('${escapeAttr(p.id)}')">✏️ Edit</button>
-                <button class="btn btn-secondary btn-sm" onclick="deleteCustomPreset('${escapeAttr(p.id)}', '${escapeAttr(p.name)}')">🗑️ Delete</button>
+                <button class="btn btn-secondary btn-sm" onclick="editCustomPreset('${escapeAttr(p.id)}')">âœï¸ Edit</button>
+                <button class="btn btn-secondary btn-sm" onclick="deleteCustomPreset('${escapeAttr(p.id)}', '${escapeAttr(p.name)}')">ðŸ—‘ï¸ Delete</button>
             </div>
         </div>
     `).join('') : '<p style="color:var(--text-muted)">No custom presets yet.</p>';
 
     return `
         <div class="card" style="margin-top:var(--space-lg)">
-            <h3>🎨 Style Preset Editor</h3>
+            <h3>ðŸŽ¨ Style Preset Editor</h3>
             <p style="color:var(--text-muted);margin-bottom:var(--space-md)">
                 Create custom style presets that modify how AI generates image prompts.
             </p>
 
             <div class="preset-editor-actions" style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-md);flex-wrap:wrap">
-                <button class="btn btn-primary btn-sm" onclick="openCreatePresetModal()">➕ Create Preset</button>
-                <button class="btn btn-secondary btn-sm" onclick="exportPresets()">📤 Export All</button>
-                <button class="btn btn-secondary btn-sm" onclick="importPresetsDialog()">📥 Import</button>
+                <button class="btn btn-primary btn-sm" onclick="openCreatePresetModal()">âž• Create Preset</button>
+                <button class="btn btn-secondary btn-sm" onclick="exportPresets()">ðŸ“¤ Export All</button>
+                <button class="btn btn-secondary btn-sm" onclick="importPresetsDialog()">ðŸ“¥ Import</button>
             </div>
 
             <h4 style="margin-bottom:var(--space-sm)">Custom Presets</h4>
@@ -10775,8 +11296,8 @@ function openCreatePresetModal() {
     modal.innerHTML = `
         <div class="gen-modal" style="max-width:560px">
             <div class="gen-modal-header">
-                <h3>➕ Create Custom Preset</h3>
-                <button class="detail-close" onclick="closePresetModal()">✕</button>
+                <h3>âž• Create Custom Preset</h3>
+                <button class="detail-close" onclick="closePresetModal()">âœ•</button>
             </div>
             <div class="gen-modal-body">
                 <div class="gen-form-grid">
@@ -10805,14 +11326,14 @@ function openCreatePresetModal() {
                 <div class="preset-preview" id="preset-preview" style="margin-top:var(--space-md)">
                     <h4>Live Preview</h4>
                     <div class="preset-preview-box">
-                        <div id="preset-preview-positive"><strong>Positive:</strong> <em style="color:var(--text-muted)">Enter suffix above…</em></div>
-                        <div id="preset-preview-negative"><strong>Negative:</strong> <em style="color:var(--text-muted)">Enter prefix above…</em></div>
+                        <div id="preset-preview-positive"><strong>Positive:</strong> <em style="color:var(--text-muted)">Enter suffix aboveâ€¦</em></div>
+                        <div id="preset-preview-negative"><strong>Negative:</strong> <em style="color:var(--text-muted)">Enter prefix aboveâ€¦</em></div>
                     </div>
                 </div>
             </div>
             <div class="gen-modal-footer">
                 <button class="btn btn-secondary" onclick="closePresetModal()">Cancel</button>
-                <button class="btn btn-primary" id="preset-save-btn" onclick="saveCustomPreset()">💾 Save Preset</button>
+                <button class="btn btn-primary" id="preset-save-btn" onclick="saveCustomPreset()">ðŸ’¾ Save Preset</button>
             </div>
         </div>`;
     modal.addEventListener('click', (e) => { if (e.target === modal) closePresetModal(); });
@@ -10851,7 +11372,7 @@ async function saveCustomPreset(presetId) {
     }
 
     const btn = document.getElementById('preset-save-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Savingâ€¦'; }
 
     try {
         const url = presetId
@@ -10868,13 +11389,13 @@ async function saveCustomPreset(presetId) {
             const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
             throw new Error(err.detail);
         }
-        showToast(`Preset "${name}" saved ✅`);
+        showToast(`Preset "${name}" saved âœ…`);
         closePresetModal();
         // Refresh the settings page to show the new preset
         await renderSettings();
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '💾 Save Preset'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸ’¾ Save Preset'; }
     }
 }
 
@@ -10903,10 +11424,10 @@ async function editCustomPreset(presetId) {
         if (descEl) descEl.value = preset.description || '';
         if (posEl) posEl.value = preset.positive_suffix || '';
         if (negEl) negEl.value = preset.negative_prefix || '';
-        if (header) header.textContent = `✏️ Edit Preset — ${preset.name}`;
+        if (header) header.textContent = `âœï¸ Edit Preset â€” ${preset.name}`;
         if (saveBtn) {
             saveBtn.onclick = () => saveCustomPreset(presetId);
-            saveBtn.textContent = '💾 Update Preset';
+            saveBtn.textContent = 'ðŸ’¾ Update Preset';
         }
         updatePresetPreview();
     }, 50);
@@ -10917,7 +11438,7 @@ async function deleteCustomPreset(presetId, presetName) {
     try {
         const resp = await fetch(`/api/settings/comfyui/presets/${encodeURIComponent(presetId)}`, { method: 'DELETE' });
         if (!resp.ok) throw new Error('Delete failed');
-        showToast(`Preset "${presetName}" deleted 🗑️`);
+        showToast(`Preset "${presetName}" deleted ðŸ—‘ï¸`);
         await renderSettings();
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
@@ -10934,7 +11455,7 @@ async function exportPresets() {
         a.download = 'jericho_style_presets.json';
         a.click();
         URL.revokeObjectURL(url);
-        showToast('Presets exported 📤');
+        showToast('Presets exported ðŸ“¤');
     } catch (err) {
         showToast(`Export error: ${err.message}`, true);
     }
@@ -10961,7 +11482,7 @@ function importPresetsDialog() {
                 throw new Error(err.detail);
             }
             const result = await resp.json();
-            showToast(`Imported ${result.imported_count} preset(s) 📥`);
+            showToast(`Imported ${result.imported_count} preset(s) ðŸ“¥`);
             await renderSettings();
         } catch (err) {
             showToast(`Import error: ${err.message}`, true);
@@ -10971,9 +11492,9 @@ function importPresetsDialog() {
 }
 
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Batch Generation Modal (F-037g)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 async function openBatchGenerateModal(entityType) {
     let entities = [];
@@ -10995,7 +11516,7 @@ async function openBatchGenerateModal(entityType) {
     try { presets = await api('/api/settings/comfyui/style-presets'); } catch {}
 
     if (!templates.length) {
-        showToast('No ComfyUI workflow templates found. Add one in Settings → ComfyUI first.', true);
+        showToast('No ComfyUI workflow templates found. Add one in Settings â†’ ComfyUI first.', true);
         return;
     }
 
@@ -11021,8 +11542,8 @@ async function openBatchGenerateModal(entityType) {
     modal.innerHTML = `
         <div class="gen-modal" style="max-width:600px">
             <div class="gen-modal-header">
-                <h3>🎨 Batch Generate — ${escapeHtml(entityType)}s</h3>
-                <button class="detail-close" onclick="closeBatchModal()">✕</button>
+                <h3>ðŸŽ¨ Batch Generate â€” ${escapeHtml(entityType)}s</h3>
+                <button class="detail-close" onclick="closeBatchModal()">âœ•</button>
             </div>
             <div class="gen-modal-body">
                 <div class="filter-group">
@@ -11055,7 +11576,7 @@ async function openBatchGenerateModal(entityType) {
             <div class="gen-modal-footer">
                 <button class="btn btn-secondary" onclick="closeBatchModal()">Cancel</button>
                 <button class="btn btn-primary" id="batch-submit-btn" onclick="submitBatchGeneration('${escapeAttr(entityType)}')">
-                    🎨 Generate Batch
+                    ðŸŽ¨ Generate Batch
                 </button>
             </div>
         </div>`;
@@ -11081,7 +11602,7 @@ async function submitBatchGeneration(entityType) {
     }
 
     const btn = document.getElementById('batch-submit-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Queuing…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'â³ Queuingâ€¦'; }
 
     const body = {
         entity_type: entityType,
@@ -11105,19 +11626,19 @@ async function submitBatchGeneration(entityType) {
             throw new Error(err.detail);
         }
         const data = await resp.json();
-        showToast(`Queued ${data.count} generation job(s) 🎨`);
+        showToast(`Queued ${data.count} generation job(s) ðŸŽ¨`);
         closeBatchModal();
         navigateTo('generation-queue');
     } catch (err) {
         showToast(`Batch error: ${err.message}`, true);
-        if (btn) { btn.disabled = false; btn.textContent = '🎨 Generate Batch'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸŽ¨ Generate Batch'; }
     }
 }
 
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Generation Completion Toast Poller (F-037g)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 let _genToastPollTimer = null;
 let _genToastKnownJobs = new Set();
@@ -11131,10 +11652,10 @@ function startGenToastPoller() {
                 if (_genToastKnownJobs.has(job.job_id)) continue;
                 if (job.stage === 'completed') {
                     _genToastKnownJobs.add(job.job_id);
-                    showToast(`🎨 Image generated for ${job.entity_type}/${job.entity_id}!`);
+                    showToast(`ðŸŽ¨ Image generated for ${job.entity_type}/${job.entity_id}!`);
                 } else if (job.stage === 'failed') {
                     _genToastKnownJobs.add(job.job_id);
-                    showToast(`❌ Generation failed for ${job.entity_type}/${job.entity_id}`, true);
+                    showToast(`âŒ Generation failed for ${job.entity_type}/${job.entity_id}`, true);
                 } else if (['cancelled', 'queued', 'prompt_generating', 'template_filling', 'running', 'downloading', 'saving'].includes(job.stage)) {
                     // Track active jobs so we can detect transitions
                 }
@@ -11143,9 +11664,9 @@ function startGenToastPoller() {
     }, 5000);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Stories View (F-041)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const STORY_STATUS_COLORS = {
     draft: 'amber', active: 'emerald', completed: 'blue', archived: 'text-muted',
@@ -11175,22 +11696,22 @@ async function renderStories() {
             </div>
             <div class="story-card-synopsis">${escapeHtml(truncate(s.synopsis, 120))}</div>
             <div class="story-card-meta">
-                ${s.author ? `<span class="story-meta-chip">✍️ ${escapeHtml(s.author)}</span>` : ''}
-                <span class="story-meta-chip">📑 ${s.chapter_count} ch</span>
-                <span class="story-meta-chip">🎬 ${s.scene_count} scenes</span>
-                <span class="story-meta-chip">🖼️ ${s.illustration_count} illus</span>
+                ${s.author ? `<span class="story-meta-chip">âœï¸ ${escapeHtml(s.author)}</span>` : ''}
+                <span class="story-meta-chip">ðŸ“‘ ${s.chapter_count} ch</span>
+                <span class="story-meta-chip">ðŸŽ¬ ${s.scene_count} scenes</span>
+                <span class="story-meta-chip">ðŸ–¼ï¸ ${s.illustration_count} illus</span>
             </div>
             <div class="story-card-date">${formatDate(s.updated_at || s.created_at)}</div>
-        </div>`).join('') : '<div class="empty-state"><div class="empty-icon">📖</div><p>No stories yet. Create your first illustrated story!</p></div>';
+        </div>`).join('') : '<div class="empty-state"><div class="empty-icon">ðŸ“–</div><p>No stories yet. Create your first illustrated story!</p></div>';
 
     $main().innerHTML = `
         <div class="view-enter">
             <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
                 <div>
-                    <h2>📖 Stories</h2>
+                    <h2>ðŸ“– Stories</h2>
                     <p>LLM-narrated illustrated stories from your world</p>
                 </div>
-                <button class="btn btn-primary" onclick="openCreateStoryModal()" id="btn-create-story">✨ New Story</button>
+                <button class="btn btn-primary" onclick="openCreateStoryModal()" id="btn-create-story">âœ¨ New Story</button>
             </div>
             <div class="story-filter-bar">${tabsHtml}</div>
             <div class="story-grid" id="story-grid">${cardsHtml}</div>
@@ -11213,8 +11734,8 @@ function openCreateStoryModal() {
     modal.innerHTML = `
         <div class="gen-modal" style="max-width:560px">
             <div class="gen-modal-header story-modal-header">
-                <h3>✨ Create New Story</h3>
-                <button class="detail-close" onclick="closeStoryModal()">✕</button>
+                <h3>âœ¨ Create New Story</h3>
+                <button class="detail-close" onclick="closeStoryModal()">âœ•</button>
             </div>
             <div class="gen-modal-body">
                 <div class="filter-group">
@@ -11224,7 +11745,7 @@ function openCreateStoryModal() {
                 <div class="filter-group">
                     <label for="story-synopsis">Synopsis</label>
                     <textarea id="story-synopsis" class="settings-input settings-textarea" rows="3"
-                              placeholder="A tale of betrayal, courage, and the quest for redemption…"></textarea>
+                              placeholder="A tale of betrayal, courage, and the quest for redemptionâ€¦"></textarea>
                 </div>
                 <div class="filter-group">
                     <label for="story-author">Author</label>
@@ -11233,7 +11754,7 @@ function openCreateStoryModal() {
             </div>
             <div class="gen-modal-footer">
                 <button class="btn btn-secondary" onclick="closeStoryModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="submitCreateStory()" id="btn-submit-story">✨ Create Story</button>
+                <button class="btn btn-primary" onclick="submitCreateStory()" id="btn-submit-story">âœ¨ Create Story</button>
             </div>
         </div>`;
     document.body.appendChild(modal);
@@ -11250,7 +11771,7 @@ async function submitCreateStory() {
     const title = (document.getElementById('story-title')?.value || '').trim();
     if (!title) { showToast('Title is required.', true); return; }
     const btn = document.getElementById('btn-submit-story');
-    if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Creatingâ€¦'; }
     try {
         const resp = await fetch('/api/stories', {
             method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -11262,7 +11783,7 @@ async function submitCreateStory() {
         });
         if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || 'Failed'); }
         const story = await resp.json();
-        showToast(`📖 Story "${story.title}" created!`);
+        showToast(`ðŸ“– Story "${story.title}" created!`);
         closeStoryModal();
         navigateTo('stories', story.story_id);
     } catch (err) {
@@ -11271,7 +11792,7 @@ async function submitCreateStory() {
     }
 }
 
-// ─── Story Detail ───────────────────────────────────────────
+// â”€â”€â”€ Story Detail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function renderStoryDetail(storyId) {
     // Check for reader mode
@@ -11294,15 +11815,15 @@ async function renderStoryDetail(storyId) {
                     <span class="story-scene-num">Scene ${sc.scene_number}</span>
                     ${sc.mood ? `<span class="story-mood-badge">${sc.mood}</span>` : ''}
                     <div class="story-scene-actions">
-                        <button class="btn btn-sm" onclick="narrateScene('${storyId}','${ch.chapter_id}','${sc.scene_id}')" title="Generate narration">✍️ Narrate</button>
-                        <button class="btn btn-sm" onclick="illustrateScene('${storyId}','${ch.chapter_id}','${sc.scene_id}')" title="Generate illustration">🎨 Illustrate</button>
-                        <button class="btn btn-sm btn-danger-subtle" onclick="deleteScene('${storyId}','${ch.chapter_id}','${sc.scene_id}')" title="Delete scene">🗑️</button>
+                        <button class="btn btn-sm" onclick="narrateScene('${storyId}','${ch.chapter_id}','${sc.scene_id}')" title="Generate narration">âœï¸ Narrate</button>
+                        <button class="btn btn-sm" onclick="illustrateScene('${storyId}','${ch.chapter_id}','${sc.scene_id}')" title="Generate illustration">ðŸŽ¨ Illustrate</button>
+                        <button class="btn btn-sm btn-danger-subtle" onclick="deleteScene('${storyId}','${ch.chapter_id}','${sc.scene_id}')" title="Delete scene">ðŸ—‘ï¸</button>
                     </div>
                 </div>
-                ${sc.characters?.length ? `<div class="story-scene-entities">${sc.characters.map(c => `<span class="story-entity-chip">🎭 ${c}</span>`).join('')}${sc.location_id ? `<span class="story-entity-chip">📍 ${sc.location_id}</span>` : ''}</div>` : ''}
+                ${sc.characters?.length ? `<div class="story-scene-entities">${sc.characters.map(c => `<span class="story-entity-chip">ðŸŽ­ ${c}</span>`).join('')}${sc.location_id ? `<span class="story-entity-chip">ðŸ“ ${sc.location_id}</span>` : ''}</div>` : ''}
                 <div class="story-scene-body">
                     ${hasImage ? `<div class="story-scene-illustration"><img src="${sc.image_url}" alt="Scene illustration" onclick="openStoryLightbox('${sc.image_url}')" /></div>` : ''}
-                    ${hasText ? `<div class="story-scene-narrative">${escapeHtml(sc.narrative_text)}</div>` : '<div class="story-scene-empty">No narration yet. Click ✍️ Narrate to generate.</div>'}
+                    ${hasText ? `<div class="story-scene-narrative">${escapeHtml(sc.narrative_text)}</div>` : '<div class="story-scene-empty">No narration yet. Click âœï¸ Narrate to generate.</div>'}
                 </div>
             </div>`;
         }).join('');
@@ -11313,23 +11834,23 @@ async function renderStoryDetail(storyId) {
                 <div class="story-chapter-title-row">
                     <h3>Chapter ${ch.chapter_number}: ${escapeHtml(ch.title || 'Untitled')}</h3>
                     <div class="story-chapter-actions">
-                        <button class="btn btn-sm" onclick="addSceneToChapter('${storyId}','${ch.chapter_id}')" title="Add scene">➕ Scene</button>
-                        <button class="btn btn-sm" onclick="editChapter('${storyId}','${ch.chapter_id}','${escapeAttr(ch.title)}','${escapeAttr(ch.synopsis)}')" title="Edit chapter">✏️</button>
-                        <button class="btn btn-sm btn-danger-subtle" onclick="deleteChapter('${storyId}','${ch.chapter_id}')" title="Delete chapter">🗑️</button>
+                        <button class="btn btn-sm" onclick="addSceneToChapter('${storyId}','${ch.chapter_id}')" title="Add scene">âž• Scene</button>
+                        <button class="btn btn-sm" onclick="editChapter('${storyId}','${ch.chapter_id}','${escapeAttr(ch.title)}','${escapeAttr(ch.synopsis)}')" title="Edit chapter">âœï¸</button>
+                        <button class="btn btn-sm btn-danger-subtle" onclick="deleteChapter('${storyId}','${ch.chapter_id}')" title="Delete chapter">ðŸ—‘ï¸</button>
                     </div>
                 </div>
                 ${ch.synopsis ? `<div class="story-chapter-synopsis">${escapeHtml(ch.synopsis)}</div>` : ''}
             </div>
-            <div class="story-scenes-list">${scenesHtml || '<div class="story-scene-empty">No scenes yet. Click ➕ Scene to add one.</div>'}</div>
+            <div class="story-scenes-list">${scenesHtml || '<div class="story-scene-empty">No scenes yet. Click âž• Scene to add one.</div>'}</div>
         </div>`;
-    }).join('') : '<div class="empty-state" style="padding:2rem"><div class="empty-icon">📑</div><p>No chapters yet. Add one to start building your story.</p></div>';
+    }).join('') : '<div class="empty-state" style="padding:2rem"><div class="empty-icon">ðŸ“‘</div><p>No chapters yet. Add one to start building your story.</p></div>';
 
     $main().innerHTML = `
         <div class="view-enter">
             <div class="story-detail-header">
                 <div class="story-detail-nav">
-                    <button class="btn btn-ghost" onclick="navigateTo('stories')">← Stories</button>
-                    <button class="btn btn-primary" onclick="navigateTo('stories','${storyId}/read')">📖 Read Mode</button>
+                    <button class="btn btn-ghost" onclick="navigateTo('stories')">â† Stories</button>
+                    <button class="btn btn-primary" onclick="navigateTo('stories','${storyId}/read')">ðŸ“– Read Mode</button>
                 </div>
                 <div class="story-detail-title-row">
                     <div>
@@ -11338,18 +11859,18 @@ async function renderStoryDetail(storyId) {
                     </div>
                     <div class="story-detail-actions">
                         ${statusBadge}
-                        <button class="btn btn-sm" onclick="editStory('${storyId}')" title="Edit story">✏️ Edit</button>
+                        <button class="btn btn-sm" onclick="editStory('${storyId}')" title="Edit story">âœï¸ Edit</button>
                         <select class="settings-input form-input-sm" onchange="changeStoryStatus('${storyId}', this.value)" id="story-status-select">
-                            <option value="">Status…</option>
+                            <option value="">Statusâ€¦</option>
                             ${['draft','active','completed','archived'].map(s => `<option value="${s}" ${s === story.status ? 'disabled' : ''}>${s}</option>`).join('')}
                         </select>
-                        <button class="btn btn-sm btn-danger-subtle" onclick="deleteStory('${storyId}')" title="Delete story">🗑️</button>
+                        <button class="btn btn-sm btn-danger-subtle" onclick="deleteStory('${storyId}')" title="Delete story">ðŸ—‘ï¸</button>
                     </div>
                 </div>
                 <div class="story-detail-meta">
-                    ${story.author ? `<span class="story-meta-chip">✍️ ${escapeHtml(story.author)}</span>` : ''}
-                    <span class="story-meta-chip">📑 ${story.chapters.length} chapters</span>
-                    <span class="story-meta-chip">🎬 ${story.chapters.reduce((a,c) => a + (c.scenes?.length || 0), 0)} scenes</span>
+                    ${story.author ? `<span class="story-meta-chip">âœï¸ ${escapeHtml(story.author)}</span>` : ''}
+                    <span class="story-meta-chip">ðŸ“‘ ${story.chapters.length} chapters</span>
+                    <span class="story-meta-chip">ðŸŽ¬ ${story.chapters.reduce((a,c) => a + (c.scenes?.length || 0), 0)} scenes</span>
                     <span class="story-meta-chip">Updated ${formatDate(story.updated_at)}</span>
                 </div>
             </div>
@@ -11357,23 +11878,23 @@ async function renderStoryDetail(storyId) {
             <!-- F-043: Participant Selector -->
             <div class="story-participant-panel" id="story-participant-panel">
                 <div class="participant-header" onclick="toggleStoryParticipants()">
-                    <span class="participant-header-label">👥 Participants</span>
+                    <span class="participant-header-label">ðŸ‘¥ Participants</span>
                     <span class="participant-counter" id="story-part-counter">0/10</span>
-                    <span class="participant-chevron" id="story-part-chevron">▸</span>
+                    <span class="participant-chevron" id="story-part-chevron">â–¸</span>
                 </div>
                 <div class="participant-body" id="story-part-body" style="display:none">
                     <div class="participant-search">
                         <input type="text" class="settings-input" id="story-part-search"
-                               placeholder="Search participants…" oninput="filterStoryParticipants()" />
+                               placeholder="Search participantsâ€¦" oninput="filterStoryParticipants()" />
                     </div>
                     <div class="participant-list" id="story-part-list">
-                        <div style="color:var(--text-muted);padding:0.5rem">Loading…</div>
+                        <div style="color:var(--text-muted);padding:0.5rem">Loadingâ€¦</div>
                     </div>
                 </div>
             </div>
 
             <div class="story-add-chapter-bar">
-                <button class="btn btn-primary" onclick="addChapter('${storyId}')">➕ Add Chapter</button>
+                <button class="btn btn-primary" onclick="addChapter('${storyId}')">âž• Add Chapter</button>
             </div>
 
             <div class="story-chapters-container">${chaptersHtml}</div>
@@ -11383,7 +11904,7 @@ async function renderStoryDetail(storyId) {
     loadStoryParticipants();
 }
 
-// ─── Story Reader (Immersive Read Mode) ─────────────────────
+// â”€â”€â”€ Story Reader (Immersive Read Mode) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function renderStoryReader(storyId) {
     showLoading();
@@ -11426,7 +11947,7 @@ async function renderStoryReader(storyId) {
         <div class="view-enter">
             <div class="reader-container">
                 <div class="reader-toolbar">
-                    <button class="btn btn-ghost" onclick="navigateTo('stories','${storyId}')">← Back to Editor</button>
+                    <button class="btn btn-ghost" onclick="navigateTo('stories','${storyId}')">â† Back to Editor</button>
                     <span class="reader-title-bar">${escapeHtml(story.title)}</span>
                 </div>
                 <article class="reader-content">
@@ -11441,7 +11962,7 @@ async function renderStoryReader(storyId) {
         </div>`;
 }
 
-// ─── Story CRUD Actions ────────────────────────────────────
+// â”€â”€â”€ Story CRUD Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function addChapter(storyId) {
     const title = prompt('Chapter title (or leave blank):') ?? '';
@@ -11451,7 +11972,7 @@ async function addChapter(storyId) {
             body: JSON.stringify({ title: title.trim() }),
         });
         if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || 'Failed'); }
-        showToast('📑 Chapter added!');
+        showToast('ðŸ“‘ Chapter added!');
         renderStoryDetail(storyId);
     } catch (err) { showToast('Error: ' + err.message, true); }
 }
@@ -11465,7 +11986,7 @@ async function editChapter(storyId, chapterId, currentTitle, currentSynopsis) {
             body: JSON.stringify({ title: newTitle.trim() }),
         });
         if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || 'Failed'); }
-        showToast('✏️ Chapter updated!');
+        showToast('âœï¸ Chapter updated!');
         renderStoryDetail(storyId);
     } catch (err) { showToast('Error: ' + err.message, true); }
 }
@@ -11475,7 +11996,7 @@ async function deleteChapter(storyId, chapterId) {
     try {
         const resp = await fetch(`/api/stories/${storyId}/chapters/${chapterId}`, { method: 'DELETE' });
         if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || 'Failed'); }
-        showToast('🗑️ Chapter deleted.');
+        showToast('ðŸ—‘ï¸ Chapter deleted.');
         renderStoryDetail(storyId);
     } catch (err) { showToast('Error: ' + err.message, true); }
 }
@@ -11490,13 +12011,13 @@ async function addSceneToChapter(storyId, chapterId) {
     modal.innerHTML = `
         <div class="gen-modal" style="max-width:520px">
             <div class="gen-modal-header story-modal-header">
-                <h3>🎬 Add Scene</h3>
-                <button class="detail-close" onclick="closeStoryModal()">✕</button>
+                <h3>ðŸŽ¬ Add Scene</h3>
+                <button class="detail-close" onclick="closeStoryModal()">âœ•</button>
             </div>
             <div class="gen-modal-body">
                 <div class="filter-group">
                     <label for="scene-mood">Mood</label>
-                    <select id="scene-mood" class="settings-input"><option value="">Select mood…</option>${moodPicker}</select>
+                    <select id="scene-mood" class="settings-input"><option value="">Select moodâ€¦</option>${moodPicker}</select>
                 </div>
                 <div class="gen-form-grid" style="margin-top:var(--space-sm)">
                     <div class="filter-group">
@@ -11512,7 +12033,7 @@ async function addSceneToChapter(storyId, chapterId) {
             </div>
             <div class="gen-modal-footer">
                 <button class="btn btn-secondary" onclick="closeStoryModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="submitAddScene('${storyId}','${chapterId}')">🎬 Add Scene</button>
+                <button class="btn btn-primary" onclick="submitAddScene('${storyId}','${chapterId}')">ðŸŽ¬ Add Scene</button>
             </div>
         </div>`;
     document.body.appendChild(modal);
@@ -11530,7 +12051,7 @@ async function submitAddScene(storyId, chapterId) {
             body: JSON.stringify({ mood, location_id: locationId, characters }),
         });
         if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || 'Failed'); }
-        showToast('🎬 Scene added!');
+        showToast('ðŸŽ¬ Scene added!');
         closeStoryModal();
         renderStoryDetail(storyId);
     } catch (err) { showToast('Error: ' + err.message, true); }
@@ -11541,7 +12062,7 @@ async function deleteScene(storyId, chapterId, sceneId) {
     try {
         const resp = await fetch(`/api/stories/${storyId}/chapters/${chapterId}/scenes/${sceneId}`, { method: 'DELETE' });
         if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || 'Failed'); }
-        showToast('🗑️ Scene deleted.');
+        showToast('ðŸ—‘ï¸ Scene deleted.');
         renderStoryDetail(storyId);
     } catch (err) { showToast('Error: ' + err.message, true); }
 }
@@ -11550,7 +12071,7 @@ async function narrateScene(storyId, chapterId, sceneId) {
     const sceneEl = document.getElementById(`scene-${sceneId}`);
     if (sceneEl) {
         const narrateBtn = sceneEl.querySelector('button[onclick*="narrateScene"]');
-        if (narrateBtn) { narrateBtn.disabled = true; narrateBtn.textContent = '⏳ Narrating…'; }
+        if (narrateBtn) { narrateBtn.disabled = true; narrateBtn.textContent = 'â³ Narratingâ€¦'; }
     }
     // F-043: Include selected participants
     const participants = getSelectedStoryParticipants();
@@ -11561,7 +12082,7 @@ async function narrateScene(storyId, chapterId, sceneId) {
         });
         if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || 'Narration failed'); }
         const result = await resp.json();
-        showToast(`✍️ Narration generated! (${result.model})`);
+        showToast(`âœï¸ Narration generated! (${result.model})`);
         renderStoryDetail(storyId);
     } catch (err) {
         showToast('Narration error: ' + err.message, true);
@@ -11573,7 +12094,7 @@ async function illustrateScene(storyId, chapterId, sceneId) {
     const sceneEl = document.getElementById(`scene-${sceneId}`);
     if (sceneEl) {
         const illustrateBtn = sceneEl.querySelector('button[onclick*="illustrateScene"]');
-        if (illustrateBtn) { illustrateBtn.disabled = true; illustrateBtn.textContent = '⏳ Generating…'; }
+        if (illustrateBtn) { illustrateBtn.disabled = true; illustrateBtn.textContent = 'â³ Generatingâ€¦'; }
     }
     // F-043: Include selected participants
     const participants = getSelectedStoryParticipants();
@@ -11584,7 +12105,7 @@ async function illustrateScene(storyId, chapterId, sceneId) {
         });
         if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || 'Illustration failed'); }
         const result = await resp.json();
-        showToast(`🎨 Illustration queued! Job: ${result.job_id}`);
+        showToast(`ðŸŽ¨ Illustration queued! Job: ${result.job_id}`);
 
         // Poll job status until completion, then refresh the view
         _pollIllustrationJob(result.job_id, storyId, sceneId);
@@ -11602,7 +12123,7 @@ function _pollIllustrationJob(jobId, storyId, sceneId) {
         polls++;
         if (polls > MAX_POLLS) {
             clearInterval(timer);
-            showToast('Illustration timed out — check Generation Queue.', true);
+            showToast('Illustration timed out â€” check Generation Queue.', true);
             return;
         }
         try {
@@ -11611,15 +12132,15 @@ function _pollIllustrationJob(jobId, storyId, sceneId) {
             const sceneEl = document.getElementById(`scene-${sceneId}`);
             if (sceneEl) {
                 const btn = sceneEl.querySelector('button[onclick*="illustrateScene"]');
-                if (btn) btn.textContent = `⏳ ${job.progress_pct || 0}%`;
+                if (btn) btn.textContent = `â³ ${job.progress_pct || 0}%`;
             }
             if (job.stage === 'completed') {
                 clearInterval(timer);
-                showToast(`🎨 Illustration complete!`);
+                showToast(`ðŸŽ¨ Illustration complete!`);
                 renderStoryDetail(storyId);
             } else if (job.stage === 'failed' || job.stage === 'cancelled') {
                 clearInterval(timer);
-                showToast(`❌ Illustration ${job.stage}: ${job.error || 'Unknown error'}`, true);
+                showToast(`âŒ Illustration ${job.stage}: ${job.error || 'Unknown error'}`, true);
                 renderStoryDetail(storyId);
             }
         } catch {
@@ -11641,8 +12162,8 @@ async function editStory(storyId) {
     modal.innerHTML = `
         <div class="gen-modal" style="max-width:560px">
             <div class="gen-modal-header story-modal-header">
-                <h3>✏️ Edit Story</h3>
-                <button class="detail-close" onclick="closeStoryModal()">✕</button>
+                <h3>âœï¸ Edit Story</h3>
+                <button class="detail-close" onclick="closeStoryModal()">âœ•</button>
             </div>
             <div class="gen-modal-body">
                 <div class="filter-group">
@@ -11660,7 +12181,7 @@ async function editStory(storyId) {
             </div>
             <div class="gen-modal-footer">
                 <button class="btn btn-secondary" onclick="closeStoryModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="submitEditStory('${storyId}')">💾 Save Changes</button>
+                <button class="btn btn-primary" onclick="submitEditStory('${storyId}')">ðŸ’¾ Save Changes</button>
             </div>
         </div>`;
     document.body.appendChild(modal);
@@ -11680,7 +12201,7 @@ async function submitEditStory(storyId) {
             }),
         });
         if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || 'Failed'); }
-        showToast('✏️ Story updated!');
+        showToast('âœï¸ Story updated!');
         closeStoryModal();
         renderStoryDetail(storyId);
     } catch (err) { showToast('Error: ' + err.message, true); }
@@ -11704,7 +12225,7 @@ async function deleteStory(storyId) {
     try {
         const resp = await fetch(`/api/stories/${storyId}`, { method: 'DELETE' });
         if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || 'Failed'); }
-        showToast('🗑️ Story deleted.');
+        showToast('ðŸ—‘ï¸ Story deleted.');
         navigateTo('stories');
     } catch (err) { showToast('Error: ' + err.message, true); }
 }
@@ -11720,9 +12241,9 @@ function openStoryLightbox(imageUrl) {
     document.body.appendChild(lb);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Story Participant Selector (F-043)
-// ═══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 window._storyParticipants = [];
 window._storyAvailableParticipants = [];
@@ -11752,8 +12273,8 @@ function renderStoryParticipantList(participants) {
             sel => sel.id === p.id && sel.type === p.type
         );
         const typeBadge = p.type === 'council'
-            ? '<span class="participant-type-badge participant-type-council">🏛️ Council</span>'
-            : '<span class="participant-type-badge participant-type-character">🎭 Character</span>';
+            ? '<span class="participant-type-badge participant-type-council">ðŸ›ï¸ Council</span>'
+            : '<span class="participant-type-badge participant-type-character">ðŸŽ­ Character</span>';
         const avatarHtml = p.avatar_url
             ? `<img class="participant-avatar" src="${p.avatar_url}" alt="" />`
             : `<div class="participant-avatar participant-avatar-placeholder">${escapeHtml(p.name.charAt(0))}</div>`;
@@ -11781,7 +12302,7 @@ function toggleStoryParticipants() {
     if (!body) return;
     const isOpen = body.style.display !== 'none';
     body.style.display = isOpen ? 'none' : 'block';
-    if (chev) chev.textContent = isOpen ? '▸' : '▾';
+    if (chev) chev.textContent = isOpen ? 'â–¸' : 'â–¾';
 }
 
 function filterStoryParticipants() {
@@ -11830,7 +12351,7 @@ function getSelectedStoryParticipants() {
 }
 
 
-// ─── Init ─────────────────────────────────────────────────────
+// â”€â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 document.addEventListener('DOMContentLoaded', () => {
     // Apply saved skin before anything renders

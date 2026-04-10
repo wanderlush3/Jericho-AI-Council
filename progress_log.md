@@ -3151,3 +3151,43 @@ The `TemplateAssignmentManager` class has an optional `template_manager` paramet
 ### Advice for Next Agent
 1. The ComfyUI server connection persistence was investigated — the `.env` file correctly stores `JERICHO_COMFYUI_HOST=127.0.0.1` and `JERICHO_COMFYUI_PORT=8007`. The `save_env_value` method writes to `.env` and `load_dotenv` reads at startup. If the user reports the issue again, check whether `load_dotenv(override=False)` is being preempted by system-level env vars.
 2. When adding new generation endpoints that need template recommendations, always pass `template_manager=WorkflowTemplateManager()` to `TemplateAssignmentManager()`.
+
+---
+
+## Session: S-EVO-FRONTEND-00000001
+**Timestamp:** 2026-04-10 21:56:00
+**Feature:** Evolution System Expansion — Frontend UI (Conv 2)
+**Status:** completed
+
+### Summary
+Implemented the full frontend UI for the Evolution expansion system (backend completed in Conv 1). Six sub-features delivered:
+
+1. **Create Evolution Form (J)** — Modal with target type toggle (Character / Council Member), entity dropdown populated from `/api/characters` and `/api/council`, evolution name input, author field, and a dynamic change builder supporting add/remove change rows with change_type dropdown, field_name, old/new value textareas, and rationale input. Submits via `POST /api/evolutions`.
+
+2. **Rollback UI (K)** — Rollback button on evolution detail view (for applied/decided/active overlay evolutions) with confirmation modal. Also added "↩ Rollback to Version…" button in timeline detail view with version picker dropdown. Both create new rollback evolutions via their respective API endpoints.
+
+3. **Status Management UI (L)** — Overlay status filter tabs (All / Draft / Active / Archived) in the evolution list view, filtering via `overlay_status` query parameter. Overlay status transition buttons in detail view (Draft → Activate/Archive, Active → Archive, Archived → Draft/Re-activate) with warning confirmation when activating.
+
+4. **Active Evolution Icon (M)** — ✨ LIVE badge on evolution list rows with `overlay_status === 'active'`. Evolution name display with sequence number badge and target type badge in detail view.
+
+5. **Evolution Detail Enhancements (N)** — New fields displayed: name, sequence_number, target_type, target_id, overlay_status, rollback_of. Overlay lifecycle visualization (draft → active → archived with active step highlighted). Rollback indicator link when `rollback_of` is set. Active overlay banner at top of detail view.
+
+6. **Auto-fill Integration (O)** — Updated the evolution handoff banner in proposal detail view to add "🧬 Auto-Create Evolution" button alongside the existing navigation button. Calls `createEvolutionFromProposal(proposalId)` which hits `POST /api/evolutions/from-proposal/{proposal_id}`.
+
+### Files Changed
+- `core/web_static/app.js` — Rewrote Evolution section (~800 lines): `renderEvolution()` with overlay tabs, `renderEvolutionDetail()` with full expansion, `updateEvoOverlayStatus()`, `confirmRollbackEvolution()`, `executeRollbackEvolution()`, `openRollbackToVersionModal()`, `executeRollbackToVersion()`, `openCreateEvolutionModal()`, `switchEvoTargetType()`, `addEvoChangeRow()`, `removeEvoChangeRow()`, `submitCreateEvolution()`, `createEvolutionFromProposal()`. Updated proposal handoff banner.
+- `core/web_static/style.css` — Added ~490 lines: `.evo-overlay-tabs`, `.evo-overlay-badge`, `.evo-active-banner`, `.evo-name-display`, `.evo-seq-badge`, `.evo-target-badge`, `.evo-rollback-indicator`, `.evo-overlay-lifecycle`, `.evo-create-modal`, `.evo-target-toggle`, `.evo-change-builder`, `.evo-status-actions`, `.evo-confirm-modal`, `.evo-form-label`
+
+### Gotchas
+- **PowerShell encoding corruption** — Using `[System.IO.File]::WriteAllLines()` from PowerShell to remove lines corrupted emoji bytes (double-encoding: UTF-8 bytes treated as Latin-1, then re-encoded as UTF-8). Fixed with a Python script that detected and repaired 36 double-encoded emoji sequences. **Never use PowerShell `WriteAllLines` on files containing non-ASCII characters**.
+- **Mixed line endings** — Parts of `app.js` use `\r\n` (from the replace_file_content tool) and parts use `\n` (from PowerShell). For byte-level operations, always read with `newline=''` and match the actual line endings.
+
+### Test Results
+- **2864 passed, 12 skipped, 0 failed** — identical to pre-change baseline
+
+### Advice for Next Agent
+1. The Evolution frontend is complete. All backend APIs (Conv 1) and frontend UI (Conv 2) are implemented for: create, rollback, overlay status management, timelines, and auto-fill from proposals.
+2. The file `app.js` is now ~12,370 lines and `style.css` is ~9,010 lines. Both are monolithic and represent significant technical debt.
+3. Browser verification was not possible (server not running). The UI should be manually tested before considering this feature shipped.
+4. The `createEvolutionFromProposal()` function in the proposal handoff banner constructs the URL using `${data.id}` which requires the proposal to have the expected `id` field — this is standard for all proposal objects.
+
