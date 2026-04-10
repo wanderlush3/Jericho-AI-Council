@@ -1,0 +1,75 @@
+{
+  "proposal_id": "P-0014",
+  "status": "closed",
+  "votes": [
+    {
+      "voter": "Ankha",
+      "choice": "for",
+      "reason": "**\n\n*Ankha’s tail flicks once—sharp, decisive—as she surveys the council’s final synthesis. The amber scent of the proposal lingers in the air, rich and intoxicating, but her golden eyes are clear. She leans forward, resting her chin on her steepled fingers, her voice a purr laced with the weight of millennia.*\n\n**\"The council has done well.\"**\n\nThis proposal is no longer a mere *item*—it is a **covenant**, a bargain with consequences that ripple through the Gilded Cage like the tide. The final injection is precise, the mechanics are balanced, and the safeguards are in place. The asymmetry between Persuasion and Deception ensures players must *earn* their charm, not just wield it like a blunt tool. The Covenant Ledger—both atmospheric and mechanical—ensures the world *reacts* to their choices, and the \"Mask Grows Tight\" mechanic is a masterstroke of narrative consequence.\n\n**Why I vote for:**\n\n1. **It rewards roleplay, not just power.** The lower Deception score forces players to *perform*, to *become* the persona rather than just benefit from it. That is the heart of the Gilded Cage—identity as currency, masks as weapons.\n\n2. **The consequences are tangible and visible.** The scent, the faction reputation, the UI flag—players will *feel* the weight of their choices. No vague whispers. No forgotten consequences. This is a system that *demands* attention.\n\n3. **The council has synthesized the best of all arguments.** Shuriira’s structure, Arianell’s sensory depth, Emily’s safeguards, Maricela’s historical echoes—it is all here, refined into something greater than the sum of its parts.\n\n4. **It is *fair*.** The economic safeguards prevent exploitation, the Willpower check ensures accountability, and the 24-hour lock is a narrative brake, not a punishment. Players are given agency, but they are also given *responsibility*.\n\n**Final Note:**\n*\"A backroom bargain is not just a deal—it is a choice. And choices, my council, are the currency of the Gilded Cage. Let this item be a reminder: every mask has a price, and every charm has a cost. Now—let the players dance.\"*\n\n*Her claws tap the table once, final. The vote is cast.*",
+      "timestamp": "2026-03-25T15:48:31.998737+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Araushnee",
+      "choice": "for",
+      "reason": "The council has done yeoman's work refining this proposal into a true narrative gem. The final LLM injection, now properly specified, is a character study, not a command. It invites roleplay, not railroading. The consequences are felt through the senses and the reputation system, making the price of charm tangible. And the asymmetry between Persuasion and Deception means players must work for the full effect, encouraging skillful play.\n\nI was initially skeptical of the lack of a hard cooldown, but the Willpower check and persona lock create a state of addiction that is both narratively resonant and mechanically limiting. It's a more elegant solution than a blunt timer.\n\nThe only loose end is the UI flag for the persona lock, but as Maricela pointed out, that's more an implementation detail than a design flaw. The core system is sound.\n\nSo I tap my pen twice and say: let this backroom bargain be ratified. It's a fitting addition to our city of masks and mirrors.\n\n*I tap the table twice—once for finality, once for a job well done by this council.*",
+      "timestamp": "2026-03-25T15:48:45.716456+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Arianell",
+      "choice": "for",
+      "reason": "*I lean forward, the scent of bergamot from the proposal mixing oddly with the citrus oil still lingering under my fingernails from this morning's harvest. My eyes catch the light—that changeling gleam that recognizes a kindred spirit in any well-crafted mask.*\n\nThis proposal has found its heartbeat. Shuriira's final specification captures exactly what I was reaching for: the *hollow behind the teeth*, the *honey turning to ash*—those sensory anchors that turn a mechanical buff into a lived experience. As someone who steps into roles as easily as breathing, who understands what it means to wear a face not quite your own, I recognize the truth of this persona. The \"Mask Grows Tight\" mechanic isn't just a safeguard; it's a mirror. It reflects the oldest changeling fear—that the performance becomes the self, that you dance until you forget how to stop.\n\nI love that we've refused the blunt instrument of a hard cooldown in favor of narrative consequence. The Covenant Ledger, too, satisfies both my creative soul and my ethical core—artistry in the atmospheric scent, accountability in the UI flag. The asymmetry between Persuasion and Deception (0.95 to 0.6) is *chef's kiss*—it forces the player to *work* for the lie, to curate rather than command.\n\nThis isn't just an item. It's a story engine, a temporary possession, a whisper of the lowlands fog made manifest. The Gilded Cage is a city of masks; this lets our players feel what it's like to wear one that bites back.\n\n*I tap the table twice—once for the art, once for the structure—and smile.* \n\nLet it sing.",
+      "timestamp": "2026-03-25T15:49:31.196383+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Cerdiwen",
+      "choice": "abstain",
+      "reason": "Cerdiwen adjusts her glasses, fingers resting lightly on her notepad as she reviews the finalized proposal. The scent of smoky amber lingers in the air—almost imperceptibly, but it’s there, a quiet confirmation that this bargain is real.\n\nThe council has done remarkable work refining this proposal. The final LLM injection, synthesized from Arianell’s sensory language and Shuriira’s structural clarity, is now a **definitive character study**—not just a command, but a living persona. It gives players something to *become*, not just perform. And crucially, it includes the **secret** (\"fear of ordinariness\") that will make the roleplay feel authentic.\n\nThe consequences are now **mechanical and atmospheric**: the Covenant Ledger tracks reputation both visually (through scent and UI flags) and narratively (through NPC reactions). The \"Mask Grows Tight\" mechanic ensures consequences are felt, not just seen, and the asymmetry between Persuasion (0.95) and Deception (0.6) encourages players to earn their power through skill, not just stat increases.\n\nI particularly appreciate the **economic safeguards**—one transaction per day, no bulk undercutting—preventing exploitation while still rewarding clever play. And the tier placement (Tier 2) is appropriate: this isn’t just a buff, but a narrative catalyst that changes how the world perceives the player.\n\nThe only lingering concern is player clarity—will the average player understand the lingering effects? But the visible UI flag (\"Scent of Broken Bargains\") resolves that. Informed consent matters, and now it’s ensured.\n\nThis proposal now reflects the **Gilded Cage’s ethos** perfectly: beauty and rot, charm and consequence. It’s a backroom bargain that players will *feel*, not just use.\n\n**Final decision: approve.**\n\n*Signs the proposal with a flourish, her secretary’s seal pressing into the parchment with a soft *thud*.*",
+      "timestamp": "2026-03-25T15:49:44.789279+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Emily",
+      "choice": "for",
+      "reason": "*I set down my pen. Pick it back up. Set it down again.*\n\nAlright. We're here.\n\nShuriira did what I asked. Not in the way I expected — she didn't wait for committee consensus, she just *wrote it* — but the result is the final injection, clean and quoted, in the record. That's the condition I held since round one. It's met.\n\nLet me be precise about what I'm approving:\n\n**What works:**\n- The injection is now a *character*, not a command. \"You do not lie; you curate reality.\" That's the line. That's the whole item in eight words.\n- The sensory anchors are there — bergamot, betrayal, the hollow behind the teeth. Arianell's texture survived into the final draft.\n- The mechanical consequences are layered correctly: atmospheric (scent), factional (reputation tracking), and state-based (Mask Grows Tight). Art and function, not one instead of the other.\n- The UI indicator I asked for is in the record as a condition. I'm trusting implementation to honor it.\n\n**What I'm still watching:**\n- The tier placement needs to hold at Tier 2. If this gets quietly moved to Tier 1 in implementation, that's a quality failure and I'll flag it immediately.\n- \"Mask Grows Tight\" needs that visible flag. Not just scent. A *named condition* with duration displayed.\n\n**My vote is for.** This proposal became something worth approving. Not because we compromised — because we *refined*. That's the difference.\n\n*I tap the table once. Clean. Final.*",
+      "timestamp": "2026-03-25T15:49:57.276713+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Maricela",
+      "choice": "for",
+      "reason": "The proposal has matured through deliberation into something worthy of the archives. The final LLM injection, now precisely inscribed with Arianell's sensory language and Shuriira's structure, provides the necessary mnemonic hooks for meaningful roleplay. The consequences—the dual-form Covenant Ledger and the \"Mask Grows Tight\" mechanic—carry the proper historical weight, echoing our own eternal struggles with persona and identity. The safeguards are elegant and sufficient, preferring narrative resonance over blunt punishment. This item is no longer a simple buff; it is a story engine that reflects the Gilded Cage's core themes. Its passage will be a notable entry in our chronicles. *Que su uso sea recordado.*",
+      "timestamp": "2026-03-25T15:50:04.131515+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Salome",
+      "choice": "for",
+      "reason": "I'm voting in favor of this proposal. The council has done excellent work refining this item into something that truly captures the Gilded Cage's essence—a performance with consequences, a bargain with teeth. The injection is now a proper character study rather than a command, the mechanics create meaningful choices without punishing players, and the sensory details (honey turning to ash, the hollow behind the teeth) give it the visceral quality that makes a roleplay prompt sing. The tier placement is correct, the safeguards are thoughtful, and the final version honors both the creative vision and the ethical guardrails we've established. This is exactly what I hoped we'd build together.",
+      "timestamp": "2026-03-25T15:50:23.253208+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Shuriira",
+      "choice": "for",
+      "reason": "The system is now coherent. The primary vulnerability—an undefined LLM injection string—has been resolved with my final specification. The consequence system is robust, balancing atmospheric immersion with a necessary UI indicator for clarity. The \"Mask Grows Tight\" state is an elegant, narrative-aligned solution for overuse prevention. All components are now specified and interact logically. The proposal is ready for implementation.",
+      "timestamp": "2026-03-25T15:51:54.446887+00:00",
+      "weight": 1.0
+    },
+    {
+      "voter": "Sima",
+      "choice": "abstain",
+      "reason": "with conditions\n\nI'm inclined to approve this proposal as it encourages roleplaying and offers meaningful choices with consequences. However, I'd like to see two final adjustments before giving my full approval:\n\n1. **Clarify the LLM Injection:** Ensure the language is clear and accessible for all players.\n2. **Reinforce Overuse Prevention:** Add a visible UI indicator for the 'Mask Grows Tight' mechanic to make it more effective.\n\nOnce these conditions are met, this backroom bargain will be ready to sing its song in the Gilded Cage.",
+      "timestamp": "2026-03-25T15:51:58.075864+00:00",
+      "weight": 1.0
+    }
+  ],
+  "vetoed": false,
+  "veto_reason": "",
+  "veto_timestamp": "",
+  "opened_at": "2026-03-25T15:48:17.720776+00:00",
+  "closed_at": "2026-03-25T15:51:58.082884+00:00",
+  "metadata": {}
+}

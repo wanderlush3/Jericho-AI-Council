@@ -1,0 +1,37 @@
+{
+  "id": "P-0013",
+  "title": "Sima's shop tier 1 backroom bargain",
+  "description": "Backroom Bargain (Smoky Amber)\n   Trait Boost: Persuasion (0.95) / Deception (0.6) / Store Prices (-15%)\n   Duration: 1 day\n   LLM Injection: \"Negotiate with exaggerated charm. Hide motives behind flattery.\"",
+  "author": "Sima",
+  "category": "item",
+  "status": "withdrawn",
+  "created_at": "2026-03-25T00:12:15.944028+00:00",
+  "updated_at": "2026-03-25T00:42:36.273029+00:00",
+  "body": "",
+  "reviews": [],
+  "metadata": {
+    "item_data": {
+      "name": "Backroom Bargain (Smoky Amber)",
+      "description": "Backroom Bargain (Smoky Amber)\n   Trait Boost: Persuasion (0.95) / Deception (0.6) / Store Prices (-15%)\n   Duration: 1 day\n   LLM Injection: \"Negotiate with exaggerated charm. Hide motives behind flattery.\"",
+      "lore": "",
+      "tags": [
+        "potion"
+      ],
+      "rarity": "common",
+      "tier": "consumable",
+      "legality": "legal",
+      "properties": [
+        {
+          "name": "Trait Boost: Persuasion",
+          "description": "Persuasion (0.95)",
+          "property_type": "magical"
+        },
+        {
+          "name": "Trait Boost: Deception",
+          "description": "Deception (0.6)",
+          "property_type": "magical"
+        }
+      ]
+    }
+  }
+}

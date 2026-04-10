@@ -1,0 +1,13 @@
+{
+  "account_id": "ACCT-cm-emily",
+  "account_type": "council_member",
+  "owner_name": "Emily",
+  "balance": {
+    "gold": 600,
+    "silver": 0,
+    "bronze": 0
+  },
+  "created_at": "2026-03-22T14:39:09.903530+00:00",
+  "updated_at": "2026-04-04T20:48:40.438327+00:00",
+  "metadata": {}
+}

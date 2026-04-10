@@ -455,6 +455,194 @@ class TestApiCharacters:
         assert resp.status_code == 404
 
 
+# ─── Character Proposal Handoff ──────────────────────────────
+
+
+@pytest.fixture
+def handoff_env(tmp_path):
+    """Set up a decided character proposal with approved vote + character dir."""
+    proposals_d = tmp_path / "proposals"
+    proposals_d.mkdir()
+    votes_d = tmp_path / "votes"
+    votes_d.mkdir()
+    characters_d = tmp_path / "characters"
+    characters_d.mkdir()
+    members_d = tmp_path / "members"
+    members_d.mkdir()
+
+    # Council member for authoring
+    sage = {
+        "name": "Sage", "role": "Ethics Advisor",
+        "description": "Ethics.", "personality": {"tone": "calm"},
+        "api_provider": "openrouter", "model": "anthropic/claude-3.5-sonnet",
+        "vote_weight": 1.0, "specialties": ["ethics"],
+        "system_prompt": "You are Sage.",
+    }
+    (members_d / "sage.yaml").write_text(yaml.dump(sage), encoding="utf-8")
+
+    # Character proposal (decided)
+    p1 = {
+        "id": "P-0010", "title": "Propose New Character: Ember",
+        "description": "A fire-themed AI explorer",
+        "author": "Sage", "category": "character", "status": "decided",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "updated_at": "2026-01-01T00:00:00+00:00",
+        "body": "", "reviews": [],
+        "metadata": {
+            "character_data": {
+                "name": "Ember",
+                "backstory": "Born in flames of the digital forge.",
+                "system_prompt": "You are Ember, a fiery explorer.",
+                "greeting": "The fire burns bright!",
+                "tags": ["fire", "explorer"],
+                "example_messages": ["Let's ignite this!"],
+                "traits": [
+                    {"trait_type": "personality", "name": "Bold",
+                     "description": "Fearless and daring", "intensity": 0.9},
+                ],
+                "api_provider": "openrouter",
+                "model": "anthropic/claude-3.5-sonnet",
+            }
+        },
+    }
+    (proposals_d / "P-0010.json").write_text(
+        json.dumps(p1, indent=2), encoding="utf-8",
+    )
+
+    # Non-character proposal (decided)
+    p2 = {
+        "id": "P-0011", "title": "Ethics Enhancement",
+        "description": "Improve ethics", "author": "Sage",
+        "category": "ethics", "status": "decided",
+        "created_at": "2026-01-02T00:00:00+00:00",
+        "updated_at": "2026-01-02T00:00:00+00:00",
+        "body": "", "reviews": [], "metadata": {},
+    }
+    (proposals_d / "P-0011.json").write_text(
+        json.dumps(p2, indent=2), encoding="utf-8",
+    )
+
+    # Undecided character proposal
+    p3 = {
+        "id": "P-0012", "title": "Propose Character: Breeze",
+        "description": "An air-themed AI", "author": "Sage",
+        "category": "character", "status": "open",
+        "created_at": "2026-01-03T00:00:00+00:00",
+        "updated_at": "2026-01-03T00:00:00+00:00",
+        "body": "", "reviews": [], "metadata": {},
+    }
+    (proposals_d / "P-0012.json").write_text(
+        json.dumps(p3, indent=2), encoding="utf-8",
+    )
+
+    # Approved vote for P-0010
+    v_approved = {
+        "proposal_id": "P-0010", "status": "closed",
+        "votes": [
+            {"voter": "Sage", "choice": "for", "reason": "Great",
+             "timestamp": "2026-01-01T00:00:00+00:00", "weight": 1.0},
+        ] * 5,  # 5 for-votes to exceed quorum
+        "vetoed": False, "veto_reason": "", "veto_timestamp": "",
+        "opened_at": "2026-01-01T00:00:00+00:00",
+        "closed_at": "2026-01-01T12:00:00+00:00", "metadata": {},
+    }
+    (votes_d / "V-P-0010.json").write_text(
+        json.dumps(v_approved, indent=2), encoding="utf-8",
+    )
+
+    # Rejected vote for P-0011
+    v_rejected = {
+        "proposal_id": "P-0011", "status": "closed",
+        "votes": [
+            {"voter": "Sage", "choice": "against", "reason": "No",
+             "timestamp": "2026-01-02T00:00:00+00:00", "weight": 1.0},
+        ] * 5,
+        "vetoed": False, "veto_reason": "", "veto_timestamp": "",
+        "opened_at": "2026-01-02T00:00:00+00:00",
+        "closed_at": "2026-01-02T12:00:00+00:00", "metadata": {},
+    }
+    (votes_d / "V-P-0011.json").write_text(
+        json.dumps(v_rejected, indent=2), encoding="utf-8",
+    )
+
+    return {
+        "proposals_dir": proposals_d,
+        "votes_dir": votes_d,
+        "characters_dir": characters_d,
+        "members_dir": members_d,
+    }
+
+
+@pytest.fixture
+def handoff_client(handoff_env, tmp_path):
+    """TestClient configured for handoff tests."""
+    static_dir = tmp_path / "web_static"
+    static_dir.mkdir(exist_ok=True)
+    (static_dir / "index.html").write_text("<h1>Test</h1>", encoding="utf-8")
+    avatars_dir = tmp_path / "council_avatars"
+    avatars_dir.mkdir(exist_ok=True)
+
+    with (
+        patch("core.web_api.WEB_STATIC_DIR", static_dir),
+        patch("core.web_api.COUNCIL_MEMBERS_DIR", handoff_env["members_dir"]),
+        patch("core.registry.COUNCIL_MEMBERS_DIR", handoff_env["members_dir"]),
+        patch("core.proposals.PROPOSALS_DIR", handoff_env["proposals_dir"]),
+        patch("core.voting.VOTES_DIR", handoff_env["votes_dir"]),
+        patch("core.characters.CHARACTERS_DIR", handoff_env["characters_dir"]),
+        patch("config.settings.COUNCIL_AVATARS_DIR", avatars_dir),
+    ):
+        app = create_app()
+        yield TestClient(app)
+
+
+class TestApiCharacterProposalHandoff:
+    """Tests for POST /api/proposals/{id}/handoff-character."""
+
+    def test_handoff_creates_draft_character(self, handoff_client, handoff_env):
+        """Approved character proposal creates a draft character."""
+        resp = handoff_client.post("/api/proposals/P-0010/handoff-character")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["name"] == "Ember"
+        assert data["status"] == "draft"
+        assert data["backstory"] == "Born in flames of the digital forge."
+        assert data["greeting"] == "The fire burns bright!"
+        assert data["source_proposal"] == "P-0010"
+        assert len(data["traits"]) == 1
+        assert data["traits"][0]["name"] == "Bold"
+        # Verify file was created
+        char_files = list(handoff_env["characters_dir"].glob("CH-*.json"))
+        assert len(char_files) == 1
+
+    def test_handoff_rejects_non_character_category(self, handoff_client):
+        """400 when trying to handoff a non-character proposal."""
+        resp = handoff_client.post("/api/proposals/P-0011/handoff-character")
+        assert resp.status_code == 400
+        assert "not a character proposal" in resp.json()["detail"]
+
+    def test_handoff_rejects_undecided_proposal(self, handoff_client):
+        """400 when proposal hasn't been decided yet."""
+        resp = handoff_client.post("/api/proposals/P-0012/handoff-character")
+        assert resp.status_code == 400
+        assert "not been decided" in resp.json()["detail"]
+
+    def test_handoff_not_found(self, handoff_client):
+        """404 for non-existent proposal."""
+        resp = handoff_client.post("/api/proposals/P-9999/handoff-character")
+        assert resp.status_code == 404
+
+    def test_proposal_metadata_stores_character_data(self, handoff_client):
+        """Character data round-trips through proposal metadata."""
+        resp = handoff_client.get("/api/proposals/P-0010")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "character_data" in data["metadata"]
+        cd = data["metadata"]["character_data"]
+        assert cd["name"] == "Ember"
+        assert cd["backstory"] == "Born in flames of the digital forge."
+        assert len(cd["traits"]) == 1
+
+
 # ─── Static / Index ──────────────────────────────────────────
 
 
@@ -1171,6 +1359,61 @@ class TestApiUserDescription:
             assert resp.json()["description"] == ""
 
 
+# ─── User Name Endpoints ─────────────────────────────────────
+
+
+class TestApiUserName:
+    """Tests for /api/settings/user-name endpoints."""
+
+    def test_get_user_name_empty(self, client, tmp_path):
+        """GET returns empty name by default."""
+        env_file = tmp_path / ".env"
+        env_file.write_text("", encoding="utf-8")
+        with patch("core.api_keys.ENV_FILE", env_file):
+            resp = client.get("/api/settings/user-name")
+        assert resp.status_code == 200
+        assert resp.json()["name"] == ""
+
+    def test_save_and_get_user_name(self, client, tmp_path):
+        """POST saves name and GET retrieves it."""
+        env_file = tmp_path / ".env"
+        env_file.write_text("", encoding="utf-8")
+        with patch("core.api_keys.ENV_FILE", env_file):
+            resp = client.post("/api/settings/user-name", json={
+                "name": "Alice",
+            })
+            assert resp.status_code == 200
+            assert resp.json()["name"] == "Alice"
+
+            # Verify GET returns the same
+            resp2 = client.get("/api/settings/user-name")
+            assert resp2.status_code == 200
+            assert resp2.json()["name"] == "Alice"
+
+    def test_save_user_name_too_long(self, client, tmp_path):
+        """POST rejects names longer than 100 characters."""
+        env_file = tmp_path / ".env"
+        env_file.write_text("", encoding="utf-8")
+        with patch("core.api_keys.ENV_FILE", env_file):
+            long_name = "a" * 101
+            resp = client.post("/api/settings/user-name", json={
+                "name": long_name,
+            })
+            assert resp.status_code == 400
+            assert "100" in resp.json()["detail"]
+
+    def test_save_user_name_empty(self, client, tmp_path):
+        """POST accepts an empty name (clearing it)."""
+        env_file = tmp_path / ".env"
+        env_file.write_text("", encoding="utf-8")
+        with patch("core.api_keys.ENV_FILE", env_file):
+            resp = client.post("/api/settings/user-name", json={
+                "name": "",
+            })
+            assert resp.status_code == 200
+            assert resp.json()["name"] == ""
+
+
 # ─── OpenRouter Model Options Endpoint ────────────────────────
 
 
@@ -1751,6 +1994,56 @@ class TestApiMemories:
         assert data["decisions"][0]["summary"] == "Approved character design"
         assert "Council History" in data["history"]
 
+    # ── DELETE /api/memories/shared/decisions — Delete Decision ──
+
+    def test_delete_decision_success(self, memory_client, memories_dir):
+        """DELETE removes a decision by index and returns remaining count."""
+        shared_dir = memories_dir / "shared"
+        shared_dir.mkdir(exist_ok=True)
+
+        decisions = [
+            {"summary": "First decision", "timestamp": "2026-01-01T00:00:00+00:00"},
+            {"summary": "Second decision", "timestamp": "2026-01-02T00:00:00+00:00"},
+            {"summary": "Third decision", "timestamp": "2026-01-03T00:00:00+00:00"},
+        ]
+        (shared_dir / "decisions.jsonl").write_text(
+            "\n".join(json.dumps(d) for d in decisions),
+            encoding="utf-8",
+        )
+
+        resp = memory_client.delete("/api/memories/shared/decisions?index=1")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "deleted"
+        assert data["removed"]["summary"] == "Second decision"
+        assert data["remaining"] == 2
+
+        # Verify it's actually removed
+        resp2 = memory_client.get("/api/memories/shared")
+        assert resp2.json()["decision_count"] == 2
+        summaries = [d["summary"] for d in resp2.json()["decisions"]]
+        assert "Second decision" not in summaries
+        assert "First decision" in summaries
+        assert "Third decision" in summaries
+
+    def test_delete_decision_out_of_range(self, memory_client, memories_dir):
+        """DELETE with out-of-range index returns 404."""
+        shared_dir = memories_dir / "shared"
+        shared_dir.mkdir(exist_ok=True)
+        (shared_dir / "decisions.jsonl").write_text(
+            json.dumps({"summary": "Only one"}),
+            encoding="utf-8",
+        )
+
+        resp = memory_client.delete("/api/memories/shared/decisions?index=5")
+        assert resp.status_code == 404
+        assert "out of range" in resp.json()["detail"]
+
+    def test_delete_decision_missing_index(self, memory_client):
+        """DELETE without index query param returns 400."""
+        resp = memory_client.delete("/api/memories/shared/decisions")
+        assert resp.status_code == 400
+
     # ── GET /api/status — Memory stats ────────────────────────
 
     def test_status_includes_memories(self, memory_client, memories_dir):
@@ -2209,4 +2502,1287 @@ class TestApiCouncilPromotion:
         })
         assert resp.status_code == 400
         assert "already" in resp.json()["detail"].lower()
+
+
+# ─── Council Session Endpoints ───────────────────────────────
+
+
+@pytest.fixture
+def sessions_dir(tmp_path):
+    """Create a temporary council sessions directory."""
+    d = tmp_path / "council_sessions"
+    d.mkdir()
+    return d
+
+
+@pytest.fixture
+def session_client(members_dir, proposals_dir, votes_dir, characters_dir,
+                   sessions_dir, tmp_path):
+    """TestClient with council_sessions_dir also mocked."""
+    static_dir = tmp_path / "web_static"
+    static_dir.mkdir(exist_ok=True)
+    (static_dir / "index.html").write_text("<h1>Test</h1>", encoding="utf-8")
+
+    avatars_dir = tmp_path / "council_avatars"
+    avatars_dir.mkdir(exist_ok=True)
+
+    discussions_dir = tmp_path / "discussions"
+    discussions_dir.mkdir(exist_ok=True)
+
+    with (
+        patch("core.web_api.WEB_STATIC_DIR", static_dir),
+        patch("core.web_api.COUNCIL_MEMBERS_DIR", members_dir),
+        patch("core.registry.COUNCIL_MEMBERS_DIR", members_dir),
+        patch("core.proposals.PROPOSALS_DIR", proposals_dir),
+        patch("core.voting.VOTES_DIR", votes_dir),
+        patch("core.characters.CHARACTERS_DIR", characters_dir),
+        patch("core.council_session.COUNCIL_SESSIONS_DIR", sessions_dir),
+        patch("core.discussion.DISCUSSIONS_DIR", discussions_dir),
+        patch("config.settings.COUNCIL_AVATARS_DIR", avatars_dir),
+    ):
+        app = create_app()
+        yield TestClient(app)
+
+
+class TestApiCouncilSessions:
+    """Tests for /api/council-sessions endpoints."""
+
+    def test_list_empty(self, session_client):
+        resp = session_client.get("/api/council-sessions")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_create_session(self, session_client):
+        resp = session_client.post("/api/council-sessions", json={
+            "title": "Ethics Framework Review",
+            "topic": "Discuss ethical boundaries for AI council",
+            "category": "ethics",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["session_id"] == "CS-0001"
+        assert data["title"] == "Ethics Framework Review"
+        assert data["topic"] == "Discuss ethical boundaries for AI council"
+        assert data["status"] == "open"
+        assert data["proposed_category"] == "ethics"
+        assert len(data["participants"]) == 2  # Sage and Logic
+
+    def test_create_session_missing_fields(self, session_client):
+        resp = session_client.post("/api/council-sessions", json={
+            "title": "Test",
+        })
+        assert resp.status_code == 400
+        assert "required" in resp.json()["detail"].lower()
+
+    def test_get_session_detail(self, session_client):
+        # Create a session first
+        session_client.post("/api/council-sessions", json={
+            "title": "Test Session",
+            "topic": "Test topic",
+        })
+        resp = session_client.get("/api/council-sessions/CS-0001")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["title"] == "Test Session"
+        assert data["status"] == "open"
+
+    def test_session_not_found(self, session_client):
+        resp = session_client.get("/api/council-sessions/CS-9999")
+        assert resp.status_code == 404
+
+    def test_close_session(self, session_client):
+        session_client.post("/api/council-sessions", json={
+            "title": "Closeable Session",
+            "topic": "To be closed",
+        })
+        resp = session_client.post("/api/council-sessions/CS-0001/close")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "closed"
+        assert data["summary"]  # Auto-generated summary
+        assert data["closed_at"]
+
+    def test_close_already_closed(self, session_client):
+        session_client.post("/api/council-sessions", json={
+            "title": "Test", "topic": "Test",
+        })
+        session_client.post("/api/council-sessions/CS-0001/close")
+        resp = session_client.post("/api/council-sessions/CS-0001/close")
+        assert resp.status_code == 400
+        assert "already closed" in resp.json()["detail"].lower()
+
+    def test_close_not_found(self, session_client):
+        resp = session_client.post("/api/council-sessions/CS-9999/close")
+        assert resp.status_code == 404
+
+    def test_list_filter_by_status(self, session_client):
+        session_client.post("/api/council-sessions", json={
+            "title": "Open Session", "topic": "Open topic",
+        })
+        session_client.post("/api/council-sessions", json={
+            "title": "Closed Session", "topic": "Closed topic",
+        })
+        session_client.post("/api/council-sessions/CS-0002/close")
+
+        resp_open = session_client.get("/api/council-sessions?status=open")
+        assert len(resp_open.json()) == 1
+        assert resp_open.json()[0]["session_id"] == "CS-0001"
+
+        resp_closed = session_client.get("/api/council-sessions?status=closed")
+        assert len(resp_closed.json()) == 1
+        assert resp_closed.json()[0]["session_id"] == "CS-0002"
+
+    def test_handoff_creates_proposal(self, session_client):
+        """Closed session can be handed off to a proposal."""
+        session_client.post("/api/council-sessions", json={
+            "title": "Governance Idea",
+            "topic": "We need a new governance rule",
+            "category": "governance",
+        })
+        session_client.post("/api/council-sessions/CS-0001/close")
+
+        resp = session_client.post(
+            "/api/council-sessions/CS-0001/handoff-proposal",
+            json={"author": "Sage"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "id" in data  # Proposal ID
+        assert data["title"] == "Governance Idea"
+        assert data["category"] == "governance"
+        assert data["status"] == "open"
+        assert data["source_session"] == "CS-0001"
+
+    def test_handoff_rejects_open_session(self, session_client):
+        """400 when trying to handoff an open session."""
+        session_client.post("/api/council-sessions", json={
+            "title": "Open One", "topic": "Still open",
+        })
+        resp = session_client.post(
+            "/api/council-sessions/CS-0001/handoff-proposal",
+        )
+        assert resp.status_code == 400
+        assert "closed" in resp.json()["detail"].lower()
+
+    def test_handoff_not_found(self, session_client):
+        resp = session_client.post(
+            "/api/council-sessions/CS-9999/handoff-proposal",
+        )
+        assert resp.status_code == 404
+
+    # ── Scheduled Message ─────────────────────────────────────
+
+    def test_scheduled_message_get_empty(self, session_client):
+        """GET returns null when no message is scheduled."""
+        session_client.post("/api/council-sessions", json={
+            "title": "Test", "topic": "Scheduling test",
+        })
+        resp = session_client.get(
+            "/api/council-sessions/CS-0001/scheduled-message",
+        )
+        assert resp.status_code == 200
+        assert resp.json()["message"] is None
+
+    def test_scheduled_message_set_and_get(self, session_client):
+        """POST a message, GET returns it."""
+        session_client.post("/api/council-sessions", json={
+            "title": "Test", "topic": "Scheduling test",
+        })
+        set_resp = session_client.post(
+            "/api/council-sessions/CS-0001/scheduled-message",
+            json={"message": "Hello council!"},
+        )
+        assert set_resp.status_code == 200
+        data = set_resp.json()
+        assert data["status"] == "ok"
+        assert data["message"] == "Hello council!"
+        assert data["scheduled"] is True
+
+        get_resp = session_client.get(
+            "/api/council-sessions/CS-0001/scheduled-message",
+        )
+        assert get_resp.json()["message"] == "Hello council!"
+
+    def test_scheduled_message_clear(self, session_client):
+        """POST empty string clears the scheduled message."""
+        session_client.post("/api/council-sessions", json={
+            "title": "Test", "topic": "Clear test",
+        })
+        # Set a message first
+        session_client.post(
+            "/api/council-sessions/CS-0001/scheduled-message",
+            json={"message": "Will be cleared"},
+        )
+        # Clear it
+        clear_resp = session_client.post(
+            "/api/council-sessions/CS-0001/scheduled-message",
+            json={"message": ""},
+        )
+        assert clear_resp.status_code == 200
+        assert clear_resp.json()["message"] is None
+        assert clear_resp.json()["scheduled"] is False
+
+        # Confirm it's gone
+        get_resp = session_client.get(
+            "/api/council-sessions/CS-0001/scheduled-message",
+        )
+        assert get_resp.json()["message"] is None
+
+    def test_scheduled_message_rejects_closed_session(self, session_client):
+        """400 when scheduling on a closed session."""
+        session_client.post("/api/council-sessions", json={
+            "title": "Closed", "topic": "Will close",
+        })
+        session_client.post("/api/council-sessions/CS-0001/close")
+        resp = session_client.post(
+            "/api/council-sessions/CS-0001/scheduled-message",
+            json={"message": "Too late!"},
+        )
+        assert resp.status_code == 400
+        assert "closed" in resp.json()["detail"].lower()
+
+    def test_scheduled_message_not_found(self, session_client):
+        """404 for non-existent session."""
+        resp = session_client.get(
+            "/api/council-sessions/CS-9999/scheduled-message",
+        )
+        assert resp.status_code == 404
+
+# ─── Location Proposal Handoff ───────────────────────────────
+
+
+@pytest.fixture
+def location_handoff_env(tmp_path):
+    """Set up a decided location proposal with approved vote + location dir."""
+    proposals_d = tmp_path / "proposals"
+    proposals_d.mkdir()
+    votes_d = tmp_path / "votes"
+    votes_d.mkdir()
+    locations_d = tmp_path / "locations"
+    locations_d.mkdir()
+    characters_d = tmp_path / "characters"
+    characters_d.mkdir()
+    members_d = tmp_path / "members"
+    members_d.mkdir()
+
+    # Council member for authoring
+    sage = {
+        "name": "Sage", "role": "Ethics Advisor",
+        "description": "Ethics.", "personality": {"tone": "calm"},
+        "api_provider": "openrouter", "model": "anthropic/claude-3.5-sonnet",
+        "vote_weight": 1.0, "specialties": ["ethics"],
+        "system_prompt": "You are Sage.",
+    }
+    (members_d / "sage.yaml").write_text(yaml.dump(sage), encoding="utf-8")
+
+    # Location proposal (decided)
+    p1 = {
+        "id": "P-0020", "title": "Propose New Location: Ironhaven",
+        "description": "A fortified port city on the northern coast",
+        "author": "Sage", "category": "location", "status": "decided",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "updated_at": "2026-01-01T00:00:00+00:00",
+        "body": "", "reviews": [],
+        "metadata": {
+            "location_data": {
+                "name": "Ironhaven",
+                "description": "A fortified port city on the northern coast",
+                "lore": "Founded by seafaring warriors centuries ago.",
+                "tags": ["port", "fortress", "capital"],
+                "coordinates": "62.3N, 14.2W",
+                "features": [
+                    {"name": "Great Harbor", "description": "Deep water port",
+                     "feature_type": "infrastructure"},
+                    {"name": "Iron Citadel", "description": "Ancient fortress",
+                     "feature_type": "landmark"},
+                ],
+            }
+        },
+    }
+    (proposals_d / "P-0020.json").write_text(
+        json.dumps(p1, indent=2), encoding="utf-8",
+    )
+
+    # Non-location proposal (decided)
+    p2 = {
+        "id": "P-0021", "title": "Ethics Enhancement",
+        "description": "Improve ethics", "author": "Sage",
+        "category": "ethics", "status": "decided",
+        "created_at": "2026-01-02T00:00:00+00:00",
+        "updated_at": "2026-01-02T00:00:00+00:00",
+        "body": "", "reviews": [], "metadata": {},
+    }
+    (proposals_d / "P-0021.json").write_text(
+        json.dumps(p2, indent=2), encoding="utf-8",
+    )
+
+    # Undecided location proposal
+    p3 = {
+        "id": "P-0022", "title": "Propose Location: Windmere",
+        "description": "A mountain village", "author": "Sage",
+        "category": "location", "status": "open",
+        "created_at": "2026-01-03T00:00:00+00:00",
+        "updated_at": "2026-01-03T00:00:00+00:00",
+        "body": "", "reviews": [], "metadata": {},
+    }
+    (proposals_d / "P-0022.json").write_text(
+        json.dumps(p3, indent=2), encoding="utf-8",
+    )
+
+    # Approved vote for P-0020
+    v_approved = {
+        "proposal_id": "P-0020", "status": "closed",
+        "votes": [
+            {"voter": "Sage", "choice": "for", "reason": "Great",
+             "timestamp": "2026-01-01T00:00:00+00:00", "weight": 1.0},
+        ] * 5,  # 5 for-votes to exceed quorum
+        "vetoed": False, "veto_reason": "", "veto_timestamp": "",
+        "opened_at": "2026-01-01T00:00:00+00:00",
+        "closed_at": "2026-01-01T12:00:00+00:00", "metadata": {},
+    }
+    (votes_d / "V-P-0020.json").write_text(
+        json.dumps(v_approved, indent=2), encoding="utf-8",
+    )
+
+    # Rejected vote for P-0021
+    v_rejected = {
+        "proposal_id": "P-0021", "status": "closed",
+        "votes": [
+            {"voter": "Sage", "choice": "against", "reason": "No",
+             "timestamp": "2026-01-02T00:00:00+00:00", "weight": 1.0},
+        ] * 5,
+        "vetoed": False, "veto_reason": "", "veto_timestamp": "",
+        "opened_at": "2026-01-02T00:00:00+00:00",
+        "closed_at": "2026-01-02T12:00:00+00:00", "metadata": {},
+    }
+    (votes_d / "V-P-0021.json").write_text(
+        json.dumps(v_rejected, indent=2), encoding="utf-8",
+    )
+
+    return {
+        "proposals_dir": proposals_d,
+        "votes_dir": votes_d,
+        "locations_dir": locations_d,
+        "characters_dir": characters_d,
+        "members_dir": members_d,
+    }
+
+
+@pytest.fixture
+def location_handoff_client(location_handoff_env, tmp_path):
+    """TestClient configured for location handoff tests."""
+    static_dir = tmp_path / "web_static"
+    static_dir.mkdir(exist_ok=True)
+    (static_dir / "index.html").write_text("<h1>Test</h1>", encoding="utf-8")
+    avatars_dir = tmp_path / "council_avatars"
+    avatars_dir.mkdir(exist_ok=True)
+
+    with (
+        patch("core.web_api.WEB_STATIC_DIR", static_dir),
+        patch("core.web_api.COUNCIL_MEMBERS_DIR", location_handoff_env["members_dir"]),
+        patch("core.registry.COUNCIL_MEMBERS_DIR", location_handoff_env["members_dir"]),
+        patch("core.proposals.PROPOSALS_DIR", location_handoff_env["proposals_dir"]),
+        patch("core.voting.VOTES_DIR", location_handoff_env["votes_dir"]),
+        patch("core.locations.LOCATIONS_DIR", location_handoff_env["locations_dir"]),
+        patch("core.characters.CHARACTERS_DIR", location_handoff_env["characters_dir"]),
+        patch("config.settings.COUNCIL_AVATARS_DIR", avatars_dir),
+    ):
+        app = create_app()
+        yield TestClient(app)
+
+
+class TestApiLocationProposalHandoff:
+    """Tests for POST /api/proposals/{id}/handoff-location."""
+
+    def test_location_category_in_settings(self):
+        """'location' is a valid proposal category in settings."""
+        from config.settings import PROPOSAL_CATEGORIES
+        assert "location" in PROPOSAL_CATEGORIES
+
+    def test_handoff_creates_draft_location(self, location_handoff_client, location_handoff_env):
+        """Approved location proposal creates a draft location."""
+        resp = location_handoff_client.post("/api/proposals/P-0020/handoff-location")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["name"] == "Ironhaven"
+        assert data["status"] == "draft"
+        assert data["lore"] == "Founded by seafaring warriors centuries ago."
+        assert data["coordinates"] == "62.3N, 14.2W"
+        assert data["source_proposal"] == "P-0020"
+        assert len(data["features"]) == 2
+        feature_names = [f["name"] for f in data["features"]]
+        assert "Great Harbor" in feature_names
+        assert "Iron Citadel" in feature_names
+        # Verify tags
+        assert "port" in data["tags"]
+        assert "fortress" in data["tags"]
+        # Verify file was created
+        loc_files = list(location_handoff_env["locations_dir"].glob("LOC-*.json"))
+        assert len(loc_files) == 1
+
+    def test_handoff_rejects_non_location_category(self, location_handoff_client):
+        """400 when trying to handoff a non-location proposal."""
+        resp = location_handoff_client.post("/api/proposals/P-0021/handoff-location")
+        assert resp.status_code == 400
+        assert "not a location proposal" in resp.json()["detail"]
+
+    def test_handoff_rejects_undecided_proposal(self, location_handoff_client):
+        """400 when proposal hasn't been decided yet."""
+        resp = location_handoff_client.post("/api/proposals/P-0022/handoff-location")
+        assert resp.status_code == 400
+        assert "not been decided" in resp.json()["detail"]
+
+    def test_handoff_not_found(self, location_handoff_client):
+        """404 for non-existent proposal."""
+        resp = location_handoff_client.post("/api/proposals/P-9999/handoff-location")
+        assert resp.status_code == 404
+
+    def test_proposal_metadata_stores_location_data(self, location_handoff_client):
+        """Location data round-trips through proposal metadata."""
+        resp = location_handoff_client.get("/api/proposals/P-0020")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "location_data" in data["metadata"]
+        ld = data["metadata"]["location_data"]
+        assert ld["name"] == "Ironhaven"
+        assert ld["lore"] == "Founded by seafaring warriors centuries ago."
+        assert len(ld["features"]) == 2
+
+# ─── Item Proposal Handoff ──────────────────────────────────
+
+
+@pytest.fixture
+def item_handoff_env(tmp_path):
+    """Set up a decided item proposal with approved vote + items dir."""
+    proposals_d = tmp_path / "proposals"
+    proposals_d.mkdir()
+    votes_d = tmp_path / "votes"
+    votes_d.mkdir()
+    items_d = tmp_path / "items"
+    items_d.mkdir()
+    characters_d = tmp_path / "characters"
+    characters_d.mkdir()
+    members_d = tmp_path / "members"
+    members_d.mkdir()
+
+    # Council member
+    sage = {
+        "name": "Sage", "role": "Ethics Advisor",
+        "description": "Ethics.", "personality": {"tone": "calm"},
+        "api_provider": "openrouter", "model": "anthropic/claude-3.5-sonnet",
+        "vote_weight": 1.0, "specialties": ["ethics"],
+        "system_prompt": "You are Sage.",
+    }
+    (members_d / "sage.yaml").write_text(yaml.dump(sage), encoding="utf-8")
+
+    # Item proposal (decided)
+    p1 = {
+        "id": "P-0030", "title": "Propose New Item: Starfall Blade",
+        "description": "A legendary sword forged from a fallen star",
+        "author": "Sage", "category": "item", "status": "decided",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "updated_at": "2026-01-01T00:00:00+00:00",
+        "body": "", "reviews": [],
+        "metadata": {
+            "item_data": {
+                "name": "Starfall Blade",
+                "description": "A legendary sword forged from a fallen star",
+                "lore": "Crashed from the heavens during the Age of Stars.",
+                "tags": ["weapon", "legendary"],
+                "rarity": "legendary",
+                "legality": "legal",
+                "properties": [
+                    {"name": "Fire Enchantment", "description": "Burns on impact",
+                     "property_type": "magical"},
+                    {"name": "Unbreakable", "description": "Cannot be destroyed",
+                     "property_type": "physical"},
+                ],
+            }
+        },
+    }
+    (proposals_d / "P-0030.json").write_text(
+        json.dumps(p1, indent=2), encoding="utf-8",
+    )
+
+    # Non-item proposal (decided)
+    p2 = {
+        "id": "P-0031", "title": "Ethics Enhancement",
+        "description": "Improve ethics", "author": "Sage",
+        "category": "ethics", "status": "decided",
+        "created_at": "2026-01-02T00:00:00+00:00",
+        "updated_at": "2026-01-02T00:00:00+00:00",
+        "body": "", "reviews": [], "metadata": {},
+    }
+    (proposals_d / "P-0031.json").write_text(
+        json.dumps(p2, indent=2), encoding="utf-8",
+    )
+
+    # Undecided item proposal
+    p3 = {
+        "id": "P-0032", "title": "Propose Item: Shield of Dawn",
+        "description": "A radiant shield", "author": "Sage",
+        "category": "item", "status": "open",
+        "created_at": "2026-01-03T00:00:00+00:00",
+        "updated_at": "2026-01-03T00:00:00+00:00",
+        "body": "", "reviews": [], "metadata": {},
+    }
+    (proposals_d / "P-0032.json").write_text(
+        json.dumps(p3, indent=2), encoding="utf-8",
+    )
+
+    # Approved vote for P-0030
+    v_approved = {
+        "proposal_id": "P-0030", "status": "closed",
+        "votes": [
+            {"voter": "Sage", "choice": "for", "reason": "Great",
+             "timestamp": "2026-01-01T00:00:00+00:00", "weight": 1.0},
+        ] * 5,
+        "vetoed": False, "veto_reason": "", "veto_timestamp": "",
+        "opened_at": "2026-01-01T00:00:00+00:00",
+        "closed_at": "2026-01-01T12:00:00+00:00", "metadata": {},
+    }
+    (votes_d / "V-P-0030.json").write_text(
+        json.dumps(v_approved, indent=2), encoding="utf-8",
+    )
+
+    # Rejected vote for P-0031
+    v_rejected = {
+        "proposal_id": "P-0031", "status": "closed",
+        "votes": [
+            {"voter": "Sage", "choice": "against", "reason": "No",
+             "timestamp": "2026-01-02T00:00:00+00:00", "weight": 1.0},
+        ] * 5,
+        "vetoed": False, "veto_reason": "", "veto_timestamp": "",
+        "opened_at": "2026-01-02T00:00:00+00:00",
+        "closed_at": "2026-01-02T12:00:00+00:00", "metadata": {},
+    }
+    (votes_d / "V-P-0031.json").write_text(
+        json.dumps(v_rejected, indent=2), encoding="utf-8",
+    )
+
+    return {
+        "proposals_dir": proposals_d,
+        "votes_dir": votes_d,
+        "items_dir": items_d,
+        "characters_dir": characters_d,
+        "members_dir": members_d,
+    }
+
+
+@pytest.fixture
+def item_handoff_client(item_handoff_env, tmp_path):
+    """TestClient configured for item handoff tests."""
+    static_dir = tmp_path / "web_static"
+    static_dir.mkdir(exist_ok=True)
+    (static_dir / "index.html").write_text("<h1>Test</h1>", encoding="utf-8")
+    avatars_dir = tmp_path / "council_avatars"
+    avatars_dir.mkdir(exist_ok=True)
+
+    with (
+        patch("core.web_api.WEB_STATIC_DIR", static_dir),
+        patch("core.web_api.COUNCIL_MEMBERS_DIR", item_handoff_env["members_dir"]),
+        patch("core.registry.COUNCIL_MEMBERS_DIR", item_handoff_env["members_dir"]),
+        patch("core.proposals.PROPOSALS_DIR", item_handoff_env["proposals_dir"]),
+        patch("core.voting.VOTES_DIR", item_handoff_env["votes_dir"]),
+        patch("core.items.ITEMS_DIR", item_handoff_env["items_dir"]),
+        patch("core.characters.CHARACTERS_DIR", item_handoff_env["characters_dir"]),
+        patch("config.settings.COUNCIL_AVATARS_DIR", avatars_dir),
+    ):
+        app = create_app()
+        yield TestClient(app)
+
+
+class TestApiItemProposalHandoff:
+    """Tests for POST /api/proposals/{id}/handoff-item."""
+
+    def test_item_category_in_settings(self):
+        """'item' is a valid proposal category in settings."""
+        from config.settings import PROPOSAL_CATEGORIES
+        assert "item" in PROPOSAL_CATEGORIES
+
+    def test_handoff_creates_draft_item(self, item_handoff_client, item_handoff_env):
+        """Approved item proposal creates a draft item."""
+        resp = item_handoff_client.post("/api/proposals/P-0030/handoff-item")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["name"] == "Starfall Blade"
+        assert data["status"] == "draft"
+        assert data["lore"] == "Crashed from the heavens during the Age of Stars."
+        assert data["rarity"] == "legendary"
+        assert data["legality"] == "legal"
+        assert data["source_proposal"] == "P-0030"
+        assert len(data["properties"]) == 2
+        prop_names = [p["name"] for p in data["properties"]]
+        assert "Fire Enchantment" in prop_names
+        assert "Unbreakable" in prop_names
+        assert "weapon" in data["tags"]
+        assert "legendary" in data["tags"]
+        # Verify file was created
+        item_files = list(item_handoff_env["items_dir"].glob("ITEM-*.json"))
+        assert len(item_files) == 1
+
+    def test_handoff_rejects_non_item_category(self, item_handoff_client):
+        """400 when trying to handoff a non-item proposal."""
+        resp = item_handoff_client.post("/api/proposals/P-0031/handoff-item")
+        assert resp.status_code == 400
+        assert "not an item proposal" in resp.json()["detail"]
+
+    def test_handoff_rejects_undecided_proposal(self, item_handoff_client):
+        """400 when proposal hasn't been decided yet."""
+        resp = item_handoff_client.post("/api/proposals/P-0032/handoff-item")
+        assert resp.status_code == 400
+        assert "not been decided" in resp.json()["detail"]
+
+    def test_handoff_not_found(self, item_handoff_client):
+        """404 for non-existent proposal."""
+        resp = item_handoff_client.post("/api/proposals/P-9999/handoff-item")
+        assert resp.status_code == 404
+
+    def test_proposal_metadata_stores_item_data(self, item_handoff_client):
+        """Item data round-trips through proposal metadata."""
+        resp = item_handoff_client.get("/api/proposals/P-0030")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "item_data" in data["metadata"]
+        idata = data["metadata"]["item_data"]
+        assert idata["name"] == "Starfall Blade"
+        assert idata["rarity"] == "legendary"
+        assert len(idata["properties"]) == 2
+
+
+# ─── Treasury Endpoints ─────────────────────────────────────
+
+
+@pytest.fixture
+def treasury_dir(tmp_path):
+    """Create a temporary treasury directory."""
+    d = tmp_path / "treasury"
+    d.mkdir()
+    return d
+
+
+@pytest.fixture
+def treasury_client(members_dir, proposals_dir, votes_dir, characters_dir,
+                    treasury_dir, tmp_path):
+    """TestClient with treasury_dir also mocked."""
+    static_dir = tmp_path / "web_static"
+    static_dir.mkdir()
+    (static_dir / "index.html").write_text("<h1>Test</h1>", encoding="utf-8")
+
+    avatars_dir = tmp_path / "council_avatars"
+    avatars_dir.mkdir()
+
+    with (
+        patch("core.web_api.WEB_STATIC_DIR", static_dir),
+        patch("core.web_api.COUNCIL_MEMBERS_DIR", members_dir),
+        patch("core.registry.COUNCIL_MEMBERS_DIR", members_dir),
+        patch("core.proposals.PROPOSALS_DIR", proposals_dir),
+        patch("core.voting.VOTES_DIR", votes_dir),
+        patch("core.characters.CHARACTERS_DIR", characters_dir),
+        patch("core.treasury.TREASURY_DIR", treasury_dir),
+        patch("config.settings.COUNCIL_AVATARS_DIR", avatars_dir),
+    ):
+        app = create_app()
+        yield TestClient(app)
+
+
+class TestApiTreasury:
+    """Tests for /api/treasury endpoints."""
+
+    def test_list_empty(self, treasury_client):
+        resp = treasury_client.get("/api/treasury")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_initialize_creates_accounts(self, treasury_client):
+        resp = treasury_client.post("/api/treasury/initialize")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "ok"
+        assert data["created_count"] >= 2  # at least government + user
+
+    def test_list_after_init(self, treasury_client):
+        treasury_client.post("/api/treasury/initialize")
+        resp = treasury_client.get("/api/treasury")
+        assert resp.status_code == 200
+        accounts = resp.json()
+        assert len(accounts) >= 2
+
+    def test_list_filter_by_type(self, treasury_client):
+        treasury_client.post("/api/treasury/initialize")
+        resp = treasury_client.get("/api/treasury?type=government")
+        assert resp.status_code == 200
+        accounts = resp.json()
+        assert len(accounts) == 1
+        assert accounts[0]["account_type"] == "government"
+
+    def test_get_detail(self, treasury_client):
+        treasury_client.post("/api/treasury/initialize")
+        resp = treasury_client.get("/api/treasury/ACCT-gov-jericho")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["account_id"] == "ACCT-gov-jericho"
+        assert data["balance"]["gold"] == 1000
+
+    def test_get_detail_not_found(self, treasury_client):
+        resp = treasury_client.get("/api/treasury/ACCT-nonexistent")
+        assert resp.status_code == 404
+
+    def test_credit(self, treasury_client):
+        treasury_client.post("/api/treasury/initialize")
+        resp = treasury_client.post(
+            "/api/treasury/ACCT-user-human/credit",
+            json={"gold": 50, "silver": 10},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["balance"]["gold"] == 250
+        assert data["balance"]["silver"] == 10
+
+    def test_credit_not_found(self, treasury_client):
+        resp = treasury_client.post(
+            "/api/treasury/ACCT-nonexistent/credit",
+            json={"gold": 10},
+        )
+        assert resp.status_code == 404
+
+    def test_debit(self, treasury_client):
+        treasury_client.post("/api/treasury/initialize")
+        resp = treasury_client.post(
+            "/api/treasury/ACCT-gov-jericho/debit",
+            json={"gold": 100},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["balance"]["gold"] == 900
+
+    def test_debit_insufficient(self, treasury_client):
+        treasury_client.post("/api/treasury/initialize")
+        resp = treasury_client.post(
+            "/api/treasury/ACCT-user-human/debit",
+            json={"gold": 999},
+        )
+        assert resp.status_code == 400
+        assert "Insufficient" in resp.json()["detail"]
+
+    def test_status_includes_treasury(self, treasury_client):
+        treasury_client.post("/api/treasury/initialize")
+        resp = treasury_client.get("/api/status")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "treasury" in data
+        assert data["treasury"]["total_accounts"] >= 2
+        assert data["treasury"]["government_balance"]["gold"] == 1000
+
+
+# ─── Scheduled Message Endpoints ─────────────────────────────
+
+
+class TestApiScheduledMessage:
+    """Tests for GET/POST /api/proposals/{id}/scheduled-message."""
+
+    @staticmethod
+    def _create_open_discussion(discussions_dir, proposal_id="P-0001"):
+        """Write a minimal open discussion record for the given proposal."""
+        disc = {
+            "discussion_id": proposal_id,
+            "proposal_id": proposal_id,
+            "title": f"Discussion: {proposal_id}",
+            "participants": ["Sage", "Logic"],
+            "contributions": [],
+            "round_count": 5,
+            "current_round": 0,
+            "status": "open",
+            "summary": "",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "closed_at": "",
+            "metadata": {},
+        }
+        (discussions_dir / f"D-{proposal_id}.json").write_text(
+            json.dumps(disc, indent=2), encoding="utf-8",
+        )
+
+    @staticmethod
+    def _create_closed_discussion(discussions_dir, proposal_id="P-0002"):
+        """Write a minimal closed discussion record."""
+        disc = {
+            "discussion_id": proposal_id,
+            "proposal_id": proposal_id,
+            "title": f"Discussion: {proposal_id}",
+            "participants": ["Sage", "Logic"],
+            "contributions": [],
+            "round_count": 5,
+            "current_round": 5,
+            "status": "closed",
+            "summary": "Discussion concluded.",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "closed_at": "2026-01-02T00:00:00+00:00",
+            "metadata": {},
+        }
+        (discussions_dir / f"D-{proposal_id}.json").write_text(
+            json.dumps(disc, indent=2), encoding="utf-8",
+        )
+
+    @pytest.fixture
+    def sched_env(self, tmp_path):
+        """Set up dirs for scheduled message tests."""
+        proposals_d = tmp_path / "proposals"
+        proposals_d.mkdir()
+        discussions_d = tmp_path / "discussions"
+        discussions_d.mkdir()
+        members_d = tmp_path / "members"
+        members_d.mkdir()
+        characters_d = tmp_path / "characters"
+        characters_d.mkdir()
+        votes_d = tmp_path / "votes"
+        votes_d.mkdir()
+
+        # Create a minimal proposal
+        p = {
+            "id": "P-0001", "title": "Test Proposal",
+            "description": "Test description", "author": "Sage",
+            "category": "governance", "status": "open",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+            "body": "", "reviews": [], "metadata": {},
+        }
+        (proposals_d / "P-0001.json").write_text(
+            json.dumps(p, indent=2), encoding="utf-8",
+        )
+
+        # Council members
+        sage = {
+            "name": "Sage", "role": "Ethics Advisor",
+            "description": "Ethics.", "personality": {"tone": "calm"},
+            "api_provider": "openrouter", "model": "test",
+            "vote_weight": 1.0, "specialties": ["ethics"],
+            "system_prompt": "You are Sage.",
+        }
+        logic = {
+            "name": "Logic", "role": "Analyst",
+            "description": "Analysis.", "personality": {"tone": "precise"},
+            "api_provider": "openrouter", "model": "test",
+            "vote_weight": 1.0, "specialties": ["analysis"],
+            "system_prompt": "You are Logic.",
+        }
+        (members_d / "sage.yaml").write_text(
+            yaml.dump(sage), encoding="utf-8",
+        )
+        (members_d / "logic.yaml").write_text(
+            yaml.dump(logic), encoding="utf-8",
+        )
+
+        return {
+            "proposals_dir": proposals_d,
+            "discussions_dir": discussions_d,
+            "members_dir": members_d,
+            "characters_dir": characters_d,
+            "votes_dir": votes_d,
+        }
+
+    @pytest.fixture
+    def sched_client(self, sched_env, tmp_path):
+        """TestClient for scheduled message tests."""
+        static_dir = tmp_path / "web_static"
+        static_dir.mkdir(exist_ok=True)
+        (static_dir / "index.html").write_text("<h1>Test</h1>", encoding="utf-8")
+        avatars_dir = tmp_path / "council_avatars"
+        avatars_dir.mkdir(exist_ok=True)
+
+        with (
+            patch("core.web_api.WEB_STATIC_DIR", static_dir),
+            patch("core.web_api.COUNCIL_MEMBERS_DIR", sched_env["members_dir"]),
+            patch("core.registry.COUNCIL_MEMBERS_DIR", sched_env["members_dir"]),
+            patch("core.proposals.PROPOSALS_DIR", sched_env["proposals_dir"]),
+            patch("core.voting.VOTES_DIR", sched_env["votes_dir"]),
+            patch("core.characters.CHARACTERS_DIR", sched_env["characters_dir"]),
+            patch("core.discussion.DISCUSSIONS_DIR", sched_env["discussions_dir"]),
+            patch("config.settings.COUNCIL_AVATARS_DIR", avatars_dir),
+        ):
+            app = create_app()
+            yield TestClient(app)
+
+    def test_set_scheduled_message(self, sched_client, sched_env):
+        """POST saves a message to the discussion metadata."""
+        self._create_open_discussion(sched_env["discussions_dir"])
+        resp = sched_client.post(
+            "/api/proposals/P-0001/scheduled-message",
+            json={"message": "Please consider the budget impact."},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "ok"
+        assert data["scheduled"] is True
+        assert data["message"] == "Please consider the budget impact."
+
+    def test_get_scheduled_message(self, sched_client, sched_env):
+        """GET returns the saved message."""
+        self._create_open_discussion(sched_env["discussions_dir"])
+        sched_client.post(
+            "/api/proposals/P-0001/scheduled-message",
+            json={"message": "My input here."},
+        )
+        resp = sched_client.get("/api/proposals/P-0001/scheduled-message")
+        assert resp.status_code == 200
+        assert resp.json()["message"] == "My input here."
+
+    def test_get_no_scheduled_message(self, sched_client, sched_env):
+        """GET returns null when no message is set."""
+        self._create_open_discussion(sched_env["discussions_dir"])
+        resp = sched_client.get("/api/proposals/P-0001/scheduled-message")
+        assert resp.status_code == 200
+        assert resp.json()["message"] is None
+
+    def test_clear_scheduled_message(self, sched_client, sched_env):
+        """POST with empty string clears the scheduled message."""
+        self._create_open_discussion(sched_env["discussions_dir"])
+        sched_client.post(
+            "/api/proposals/P-0001/scheduled-message",
+            json={"message": "To be cleared."},
+        )
+        resp = sched_client.post(
+            "/api/proposals/P-0001/scheduled-message",
+            json={"message": ""},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["scheduled"] is False
+        assert resp.json()["message"] is None
+
+        # Confirm via GET
+        get_resp = sched_client.get("/api/proposals/P-0001/scheduled-message")
+        assert get_resp.json()["message"] is None
+
+    def test_scheduled_message_no_discussion(self, sched_client, sched_env):
+        """404 when no discussion exists for the proposal."""
+        resp = sched_client.get("/api/proposals/P-0001/scheduled-message")
+        assert resp.status_code == 404
+
+        resp2 = sched_client.post(
+            "/api/proposals/P-0001/scheduled-message",
+            json={"message": "test"},
+        )
+        assert resp2.status_code == 404
+
+    def test_scheduled_message_closed_discussion(self, sched_client, sched_env):
+        """400 when trying to schedule on a closed discussion."""
+        self._create_closed_discussion(
+            sched_env["discussions_dir"], proposal_id="P-0001",
+        )
+        resp = sched_client.post(
+            "/api/proposals/P-0001/scheduled-message",
+            json={"message": "Too late."},
+        )
+        assert resp.status_code == 400
+        assert "closed" in resp.json()["detail"].lower()
+
+
+# ─── Task Endpoints ──────────────────────────────────────────
+
+
+@pytest.fixture
+def tasks_dir(tmp_path):
+    """Create a temporary tasks directory."""
+    d = tmp_path / "tasks"
+    d.mkdir()
+    return d
+
+
+@pytest.fixture
+def task_client(members_dir, proposals_dir, votes_dir, characters_dir,
+                tasks_dir, tmp_path):
+    """TestClient with tasks_dir also mocked."""
+    static_dir = tmp_path / "web_static"
+    static_dir.mkdir()
+    (static_dir / "index.html").write_text("<h1>Test</h1>", encoding="utf-8")
+
+    avatars_dir = tmp_path / "council_avatars"
+    avatars_dir.mkdir()
+
+    with (
+        patch("core.web_api.WEB_STATIC_DIR", static_dir),
+        patch("core.web_api.COUNCIL_MEMBERS_DIR", members_dir),
+        patch("core.registry.COUNCIL_MEMBERS_DIR", members_dir),
+        patch("core.proposals.PROPOSALS_DIR", proposals_dir),
+        patch("core.voting.VOTES_DIR", votes_dir),
+        patch("core.characters.CHARACTERS_DIR", characters_dir),
+        patch("core.tasks.TASKS_DIR", tasks_dir),
+        patch("config.settings.COUNCIL_AVATARS_DIR", avatars_dir),
+    ):
+        app = create_app()
+        yield TestClient(app)
+
+
+class TestApiTasks:
+    """Tests for /api/tasks endpoints."""
+
+    # ── GET /api/tasks — List ─────────────────────────────────
+
+    def test_list_empty(self, task_client):
+        resp = task_client.get("/api/tasks")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_list_with_tasks(self, task_client):
+        task_client.post("/api/tasks", json={
+            "name": "Patrol Northern Gate",
+            "description": "Guard the northern gate.",
+            "reason": "Security concerns.",
+            "assignees": ["Sage"],
+        })
+        resp = task_client.get("/api/tasks")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "Patrol Northern Gate"
+        assert data[0]["status"] == "draft"
+
+    def test_list_filter_by_status(self, task_client):
+        task_client.post("/api/tasks", json={
+            "name": "Task A",
+            "description": "A",
+            "reason": "R",
+            "assignees": ["Sage"],
+        })
+        resp = task_client.get("/api/tasks?status=draft")
+        assert resp.status_code == 200
+        assert len(resp.json()) == 1
+
+        resp2 = task_client.get("/api/tasks?status=active")
+        assert resp2.status_code == 200
+        assert len(resp2.json()) == 0
+
+    def test_list_filter_by_assignee(self, task_client):
+        task_client.post("/api/tasks", json={
+            "name": "Task A",
+            "description": "A",
+            "reason": "R",
+            "assignees": ["Sage"],
+        })
+        task_client.post("/api/tasks", json={
+            "name": "Task B",
+            "description": "B",
+            "reason": "R",
+            "assignees": ["Logic"],
+        })
+        resp = task_client.get("/api/tasks?assignee=Sage")
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "Task A"
+
+    # ── POST /api/tasks — Create ──────────────────────────────
+
+    def test_create_task(self, task_client):
+        resp = task_client.post("/api/tasks", json={
+            "name": "Build Wall",
+            "description": "Construct the wall.",
+            "reason": "Defense.",
+            "assignees": ["Sage", "Logic"],
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["id"].startswith("TK-")
+        assert data["name"] == "Build Wall"
+        assert data["status"] == "draft"
+        assert data["assignees"] == ["Sage", "Logic"]
+        assert data["current_round"] == 0
+        assert data["messages"] == []
+
+    def test_create_missing_name(self, task_client):
+        resp = task_client.post("/api/tasks", json={
+            "name": "",
+            "description": "D",
+            "reason": "R",
+            "assignees": ["Sage"],
+        })
+        assert resp.status_code == 400
+        assert "name" in resp.json()["detail"].lower()
+
+    def test_create_missing_assignees(self, task_client):
+        resp = task_client.post("/api/tasks", json={
+            "name": "T",
+            "description": "D",
+            "reason": "R",
+            "assignees": [],
+        })
+        assert resp.status_code == 400
+        assert "assignee" in resp.json()["detail"].lower()
+
+    def test_create_missing_description(self, task_client):
+        resp = task_client.post("/api/tasks", json={
+            "name": "T",
+            "description": "",
+            "reason": "R",
+            "assignees": ["Sage"],
+        })
+        assert resp.status_code == 400
+        assert "description" in resp.json()["detail"].lower()
+
+    def test_create_missing_reason(self, task_client):
+        resp = task_client.post("/api/tasks", json={
+            "name": "T",
+            "description": "D",
+            "reason": "",
+            "assignees": ["Sage"],
+        })
+        assert resp.status_code == 400
+        assert "reason" in resp.json()["detail"].lower()
+
+    # ── GET /api/tasks/{id} — Detail ──────────────────────────
+
+    def test_get_detail(self, task_client):
+        resp = task_client.post("/api/tasks", json={
+            "name": "Explore",
+            "description": "Go out.",
+            "reason": "Curiosity.",
+            "assignees": ["Sage"],
+        })
+        task_id = resp.json()["id"]
+        resp2 = task_client.get(f"/api/tasks/{task_id}")
+        assert resp2.status_code == 200
+        assert resp2.json()["name"] == "Explore"
+
+    def test_get_not_found(self, task_client):
+        resp = task_client.get("/api/tasks/TK-9999")
+        assert resp.status_code == 404
+
+    # ── PUT /api/tasks/{id} — Update ──────────────────────────
+
+    def test_update_fields(self, task_client):
+        resp = task_client.post("/api/tasks", json={
+            "name": "Old Name",
+            "description": "D",
+            "reason": "R",
+            "assignees": ["Sage"],
+        })
+        task_id = resp.json()["id"]
+        resp2 = task_client.put(f"/api/tasks/{task_id}", json={
+            "name": "New Name",
+            "description": "New description.",
+        })
+        assert resp2.status_code == 200
+        assert resp2.json()["name"] == "New Name"
+        assert resp2.json()["description"] == "New description."
+
+    def test_update_not_found(self, task_client):
+        resp = task_client.put("/api/tasks/TK-9999", json={"name": "X"})
+        assert resp.status_code == 404
+
+    def test_update_immutable_field(self, task_client):
+        resp = task_client.post("/api/tasks", json={
+            "name": "T",
+            "description": "D",
+            "reason": "R",
+            "assignees": ["Sage"],
+        })
+        task_id = resp.json()["id"]
+        resp2 = task_client.put(f"/api/tasks/{task_id}", json={
+            "id": "TK-HACK",
+        })
+        assert resp2.status_code == 400
+        assert "immutable" in resp2.json()["detail"].lower()
+
+    # ── PUT /api/tasks/{id}/status — Lifecycle ────────────────
+
+    def test_status_draft_to_active(self, task_client):
+        resp = task_client.post("/api/tasks", json={
+            "name": "T",
+            "description": "D",
+            "reason": "R",
+            "assignees": ["Sage"],
+        })
+        task_id = resp.json()["id"]
+        resp2 = task_client.put(
+            f"/api/tasks/{task_id}/status",
+            json={"status": "active"},
+        )
+        assert resp2.status_code == 200
+        assert resp2.json()["status"] == "active"
+
+    def test_status_active_to_draft(self, task_client):
+        resp = task_client.post("/api/tasks", json={
+            "name": "T",
+            "description": "D",
+            "reason": "R",
+            "assignees": ["Sage"],
+        })
+        task_id = resp.json()["id"]
+        task_client.put(
+            f"/api/tasks/{task_id}/status",
+            json={"status": "active"},
+        )
+        resp2 = task_client.put(
+            f"/api/tasks/{task_id}/status",
+            json={"status": "draft"},
+        )
+        assert resp2.status_code == 200
+        assert resp2.json()["status"] == "draft"
+
+    def test_status_invalid_transition(self, task_client):
+        """Cannot go from draft directly to completed."""
+        resp = task_client.post("/api/tasks", json={
+            "name": "T",
+            "description": "D",
+            "reason": "R",
+            "assignees": ["Sage"],
+        })
+        task_id = resp.json()["id"]
+        resp2 = task_client.put(
+            f"/api/tasks/{task_id}/status",
+            json={"status": "completed"},
+        )
+        assert resp2.status_code == 400
+
+    def test_status_unknown(self, task_client):
+        resp = task_client.post("/api/tasks", json={
+            "name": "T",
+            "description": "D",
+            "reason": "R",
+            "assignees": ["Sage"],
+        })
+        task_id = resp.json()["id"]
+        resp2 = task_client.put(
+            f"/api/tasks/{task_id}/status",
+            json={"status": "banana"},
+        )
+        assert resp2.status_code == 400
+
+    def test_status_not_found(self, task_client):
+        resp = task_client.put(
+            "/api/tasks/TK-9999/status",
+            json={"status": "active"},
+        )
+        assert resp.status_code == 404
+
+    def test_status_missing_field(self, task_client):
+        resp = task_client.post("/api/tasks", json={
+            "name": "T",
+            "description": "D",
+            "reason": "R",
+            "assignees": ["Sage"],
+        })
+        task_id = resp.json()["id"]
+        resp2 = task_client.put(
+            f"/api/tasks/{task_id}/status",
+            json={},
+        )
+        assert resp2.status_code == 400
+        assert "status" in resp2.json()["detail"].lower()
+
+    # ── Sequential ID generation ──────────────────────────────
+
+    def test_sequential_ids(self, task_client):
+        resp1 = task_client.post("/api/tasks", json={
+            "name": "T1",
+            "description": "D",
+            "reason": "R",
+            "assignees": ["Sage"],
+        })
+        resp2 = task_client.post("/api/tasks", json={
+            "name": "T2",
+            "description": "D",
+            "reason": "R",
+            "assignees": ["Logic"],
+        })
+        assert resp1.json()["id"] == "TK-0001"
+        assert resp2.json()["id"] == "TK-0002"
 

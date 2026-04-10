@@ -65,7 +65,7 @@ class LocationLifecycleError(LocationError):
 
 _VALID_TRANSITIONS: dict[str, set[str]] = {
     "draft": {"active"},
-    "active": {"archived"},
+    "active": {"archived", "draft"},
     "archived": set(),  # terminal
 }
 

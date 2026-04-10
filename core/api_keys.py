@@ -27,15 +27,20 @@ from typing import Any
 from cryptography.fernet import Fernet, InvalidToken
 
 from config.settings import (
+    DEFAULT_LMSTUDIO_MODEL,
     DEFAULT_MANCER_MODEL,
     DEFAULT_OPENROUTER_MODEL,
     ENV_FILE,
+    LMSTUDIO_API_KEY_ENV,
+    LMSTUDIO_MODEL_ENV,
     MANCER_API_KEY_ENV,
     MANCER_MODEL_ENV,
     OPENROUTER_API_KEY_ENV,
     OPENROUTER_MODEL_ENV,
     USER_DESCRIPTION_ENV,
     USER_DESCRIPTION_MAX_LENGTH,
+    USER_NAME_ENV,
+    USER_NAME_MAX_LENGTH,
 )
 
 # ─── Constants ─────────────────────────────────────────────────
@@ -43,16 +48,19 @@ from config.settings import (
 _PROVIDER_ENV_MAP: dict[str, str] = {
     "openrouter": OPENROUTER_API_KEY_ENV,
     "mancer": MANCER_API_KEY_ENV,
+    "lmstudio": LMSTUDIO_API_KEY_ENV,
 }
 
 _PROVIDER_MODEL_ENV_MAP: dict[str, str] = {
     "openrouter": OPENROUTER_MODEL_ENV,
     "mancer": MANCER_MODEL_ENV,
+    "lmstudio": LMSTUDIO_MODEL_ENV,
 }
 
 _PROVIDER_MODEL_DEFAULTS: dict[str, str] = {
     "openrouter": DEFAULT_OPENROUTER_MODEL,
     "mancer": DEFAULT_MANCER_MODEL,
+    "lmstudio": DEFAULT_LMSTUDIO_MODEL,
 }
 
 # Fernet tokens are base64url and always start with "gAAAAA"
@@ -288,6 +296,29 @@ class APIKeyManager:
         self._write_env_lines(lines)
         return {"description": text}
 
+    # ── User Name ─────────────────────────────────────────────
+
+    def get_user_name(self) -> str:
+        """Read the user's display name from the ``.env`` file."""
+        value = self._read_env_value(USER_NAME_ENV)
+        return value or ""
+
+    def save_user_name(self, name: str) -> dict[str, Any]:
+        """Save the user's display name to the ``.env`` file.
+
+        Raises ``ValueError`` if the name exceeds the maximum length.
+        """
+        name = name.strip()
+        if len(name) > USER_NAME_MAX_LENGTH:
+            raise ValueError(
+                f"Name exceeds {USER_NAME_MAX_LENGTH} "
+                f"characters (got {len(name)})"
+            )
+        lines = self._read_env_lines()
+        lines = self._upsert_line(lines, USER_NAME_ENV, name)
+        self._write_env_lines(lines)
+        return {"name": name}
+
     # ── Masking ───────────────────────────────────────────────
 
     @staticmethod
@@ -300,6 +331,18 @@ class APIKeyManager:
         if len(raw_key) <= 6:
             return "••••"
         return f"{raw_key[:4]}…{raw_key[-2:]}"
+
+    # ── Generic Env Persistence ────────────────────────────────
+
+    def save_env_value(self, env_var: str, value: str) -> None:
+        """Persist an arbitrary env-var to the ``.env`` file.
+
+        Also sets it in ``os.environ`` for the current process.
+        """
+        lines = self._read_env_lines()
+        lines = self._upsert_line(lines, env_var, value)
+        self._write_env_lines(lines)
+        os.environ[env_var] = value
 
     # ── Internal Helpers ──────────────────────────────────────
 

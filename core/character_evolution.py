@@ -218,7 +218,7 @@ class EvolutionRecord:
 
 # ─── Helpers ───────────────────────────────────────────────────
 
-# _atomic_write is imported from core.utils
+
 
 
 # ─── Character Evolution ──────────────────────────────────────

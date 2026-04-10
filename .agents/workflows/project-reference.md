@@ -74,6 +74,8 @@ Use these to jump directly to the code you need:
 | Chat | 2300–2900 | `renderChat()`, `renderChatDetail()`, message handling |
 | Settings | 2900–3200 | `renderSettings()`, API key management |
 | Memories | 3200–3500 | `renderMemories()`, `renderMemoryDetail()` |
+| Image Gallery | 2848–3132 | `renderImageGallery()`, lightbox, upload |
+| Generation Pipeline | 3133–3681 | `openGenerateModal()`, SSE progress, council vote preview |
 
 ## web_api.py Endpoint Map (approximate line ranges)
 
@@ -86,6 +88,8 @@ Use these to jump directly to the code you need:
 | Locations | 1260–1400 | CRUD, status, features |
 | Analytics & Settings | 1400–1600 | `/api/analytics`, keys, models, user-description |
 | Memories | 1600–1900 | `/api/memories`, beliefs, shared |
+| Image Gallery | 5001–5162 | `/api/images/file`, list, upload, set-primary, delete |
+| Generation Pipeline | 5163–5417 | `/api/generate/start`, `/stream`, `/cancel`, `/jobs`, `/prompts` |
 
 ## Common Patterns
 
@@ -133,3 +137,32 @@ draft → active → superseded (terminal, versioning only)
 python -c "import subprocess; r = subprocess.run(['python', '-m', 'pytest', 'tests/', '-v', '--tb=short', '--no-header'], capture_output=True, text=True, encoding='utf-8'); open(r'C:\\tmp\\testout.txt', 'w', encoding='utf-8').write(r.stdout + '\n---STDERR---\n' + r.stderr); print('returncode:', r.returncode)"
 ```
 Then view `C:\tmp\testout.txt` for results.
+
+## ComfyUI Integration Reference (F-037a through F-037g)
+
+### Architecture: Workflow Template System
+Users export ComfyUI workflows as API-format JSON, upload to Jericho. Jericho fills `%placeholder%` tokens and POSTs to ComfyUI's API. Images downloaded via ComfyUI's `/view` endpoint, stored in `data/images/{entity_type}/{entity_id}/`.
+
+### Feature Dependency Chain
+```
+F-037a (Client)  →  F-037b (Images)  →  F-037d (Settings UI)  →  F-037e (Galleries)
+        ↓                                                                ↓
+F-037c (Prompts) ──────────────────────────────────────────→  F-037f (Pipeline)  →  F-037g (Polish)
+```
+
+### Implemented Modules
+- `core/comfyui_client.py` — ComfyUIClient, WorkflowTemplateManager, ComfyUIConfig, GenerationJob
+- `core/image_manager.py` — ImageManager, EntityImage
+- `core/prompt_builder.py` — PromptBuilder (5 modes), StylePreset, PromptRequest/Result
+- `core/generation_pipeline.py` — GenerationPipeline, GenerationRequest, GenerationProgress
+
+### Key Design Details
+- **Image retrieval**: POST `/prompt` → poll `/history/{id}` → GET `/view?filename=X&type=output`
+- **Prompt modes**: council_vote, character, system, user_refined, raw_user
+- **IDs**: TPL-XXXX (templates), IMG-XXXX (images), GEN-XXXX (generation jobs)
+- **Queue limit**: 10 concurrent generation jobs
+- **Connection**: Local only, default `127.0.0.1:8188`
+- **Dimensions**: User-configurable per entity type (stored in settings)
+
+### Full specification
+See `progress_log.md` session `S-PLANNING-COMFYUI-00000001` for complete details.

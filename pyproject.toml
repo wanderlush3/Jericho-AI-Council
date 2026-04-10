@@ -24,6 +24,9 @@ dev = [
     "pytest-asyncio>=0.23",
     "pytest-cov>=4.0",
 ]
+embeddings = [
+    "sentence-transformers>=2.2",
+]
 
 [project.scripts]
 jericho = "core.cli:cli"

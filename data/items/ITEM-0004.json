@@ -1,0 +1,33 @@
+{
+  "id": "ITEM-0004",
+  "name": "Dragon’s Tongue (Amber, metallic sheen)",
+  "description": "Dragon’s Tongue (Amber, metallic sheen)\nTrait Boost: Boldness (0.85) / Charisma (0.8)\nDuration: 1 day\nLLM Injection: \"Speak as though you are the last ember in a dying world—your words will either ignite a wildfire or be smothered by the dark.\"",
+  "author": "Sima",
+  "status": "active",
+  "lore": "",
+  "properties": [
+    {
+      "name": "Trait Boost: Boldness",
+      "description": "Boldness (0.85)",
+      "property_type": "magical"
+    },
+    {
+      "name": "Trait Boost: Charisma",
+      "description": "Charisma (0.8)",
+      "property_type": "magical"
+    }
+  ],
+  "tags": [
+    "potion"
+  ],
+  "rarity": "common",
+  "tier": "consumable",
+  "legality": "legal",
+  "owner": "",
+  "version": 1,
+  "created_at": "2026-04-04T21:15:53.781165+00:00",
+  "updated_at": "2026-04-05T00:10:53.186431+00:00",
+  "metadata": {
+    "source_proposal": "P-0015"
+  }
+}

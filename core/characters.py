@@ -210,7 +210,7 @@ class CharacterTemplate:
 
 # ─── Helpers ───────────────────────────────────────────────────
 
-# _atomic_write is imported from core.utils
+
 
 
 # ─── Character Manager ────────────────────────────────────────
@@ -257,6 +257,8 @@ class CharacterManager:
         greeting: str = "",
         example_messages: list[str] | None = None,
         tags: list[str] | None = None,
+        api_provider: str = "openrouter",
+        model: str = "Default",
         metadata: dict[str, Any] | None = None,
     ) -> CharacterTemplate:
         """
@@ -292,6 +294,8 @@ class CharacterManager:
             greeting=greeting,
             example_messages=example_messages,
             tags=tags,
+            api_provider=api_provider,
+            model=model,
             metadata=metadata,
         )
         self._save(character)

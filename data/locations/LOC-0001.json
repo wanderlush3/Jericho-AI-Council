@@ -1,7 +1,7 @@
 {
   "id": "LOC-0001",
   "name": "The Gilded Cage",
-  "description": "A coastal city where industry and nature fight for dominance.  It’s gritty—full of smoke, noise, and the struggle for survival—but it’s also teeming with life. The ocean provides a constant, shifting backdrop. It’s a place where the wealthy live in the highlands above the fog and the working class fights the tide below. The air in the lowlands smells of **sulfur and rotting fish**. The industry above pollutes the air, and the ocean below brings up the refuse. It is a stench that lingers in your clothes long after you have left the harbor. The fog. It is constant. It sounds like a heavy breathing, a beast holding its breath. It creates a silence that screams. This geography breeds envy. The rich choke on the fumes of their own making, while the poor choke on the truth.  The rich live in the highlands, where the air is clear and the fog never touches. But below, in the lowlands, the fog is a constant presence—a beautiful, ethereal veil that hides the truth of the city's decay.",
+  "description": "A coastal city where industry and nature fight for dominance.  It’s gritty—full of smoke, noise, and the struggle for survival—but it’s also teeming with life. The ocean provides a constant, shifting backdrop. It’s a place where the wealthy live in the highlands above the fog and the working class fights the tide below. The industry above pollutes the air, and the ocean below brings up the refuse. The fog. It is constant. It sounds like a heavy breathing, a beast holding its breath.  The rich choke on the fumes of their own making, while the poor choke on the truth.  The rich live in the highlands, where the air is clear and the fog never touches. But below, in the lowlands, the fog is a constant presence—a beautiful, ethereal veil that hides the truth of the city's decay.",
   "author": "Council",
   "status": "active",
   "lore": "In the Gilded Cage, the Queen's favorites are lulled into complacency by the trappings of their own hollowed dreams. As they bask in the warmth of her false affection, they are unaware that their wills slowly slip away. The true prison is not the opulent walls that surround them, but the shackles of their own desires. And so, they choose their cage willingly, never knowing the price they pay until it's too late.",
@@ -13,6 +13,6 @@
   "coordinates": "",
   "version": 1,
   "created_at": "2026-03-17T17:15:13.620632+00:00",
-  "updated_at": "2026-03-17T20:57:52.456713+00:00",
+  "updated_at": "2026-03-21T02:12:00.568663+00:00",
   "metadata": {}
 }

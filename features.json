@@ -441,7 +441,7 @@
         "id": "F-041",
         "title": "Story Illustration System",
         "description": "LLM-narrated story segments with inline generated illustrations \u2014 per-scene image generation, chapter/scene management, story viewer with embedded images",
-        "status": "planned",
+        "status": "completed",
         "dependencies": [
             "F-037f",
             "F-039"

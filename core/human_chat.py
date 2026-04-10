@@ -180,7 +180,7 @@ class HumanChatRecord:
 
 # ─── Helpers ───────────────────────────────────────────────────
 
-# _atomic_write is imported from core.utils
+
 
 
 def _build_human_chat_prompt(
@@ -191,12 +191,17 @@ def _build_human_chat_prompt(
     council_members: list[str] | None = None,
     user_description: str = "",
     character_names: list[str] | None = None,
+    user_name: str = "",
 ) -> str:
     """Build a prompt for the council member to respond to the human."""
     parts = ["## Direct Conversation with Human Operator"]
 
-    if user_description:
-        parts.append(f"\n**About the Human Operator:** {user_description}")
+    if user_description or user_name:
+        label = "About the Human Operator"
+        if user_name:
+            label += f" ({user_name})"
+        desc = user_description or "No further details provided."
+        parts.append(f"\n**{label}:** {desc}")
 
     if topic:
         parts.append(f"**Topic:** {topic}")
@@ -480,9 +485,11 @@ class HumanChat:
         effective_topic = record.topic
         last_response = None
 
-        # Load user description for prompt context
+        # Load user profile for prompt context
         from core.api_keys import APIKeyManager
-        _user_desc = APIKeyManager().get_user_description()
+        _mgr = APIKeyManager()
+        _user_desc = _mgr.get_user_description()
+        _user_name = _mgr.get_user_name()
 
         # Resolve character names for prompt context
         char_names = self._resolve_character_names(record)
@@ -525,6 +532,7 @@ class HumanChat:
                 council_members=list(record.council_members),
                 user_description=_user_desc,
                 character_names=char_names,
+                user_name=_user_name,
             )
 
             # Build API messages
@@ -924,9 +932,11 @@ class HumanChat:
 
         effective_topic = record.topic
 
-        # Load user description for prompt context
+        # Load user profile for prompt context
         from core.api_keys import APIKeyManager
-        _user_desc = APIKeyManager().get_user_description()
+        _mgr = APIKeyManager()
+        _user_desc = _mgr.get_user_description()
+        _user_name = _mgr.get_user_name()
 
         # Resolve character names for prompt context
         char_names = self._resolve_character_names(record)
@@ -961,6 +971,7 @@ class HumanChat:
                 council_members=list(record.council_members),
                 user_description=_user_desc,
                 character_names=char_names,
+                user_name=_user_name,
             )
             api_messages = self._build_api_messages(record, member, prompt)
 
@@ -1053,9 +1064,11 @@ class HumanChat:
 
         effective_topic = record.topic
 
-        # Load user description for prompt context
+        # Load user profile for prompt context
         from core.api_keys import APIKeyManager
-        _user_desc = APIKeyManager().get_user_description()
+        _mgr = APIKeyManager()
+        _user_desc = _mgr.get_user_description()
+        _user_name = _mgr.get_user_name()
 
         for idx, (member, mem_name) in enumerate(respondents):
             memory_text = ""
@@ -1073,6 +1086,7 @@ class HumanChat:
                 council_members=list(record.council_members),
                 user_description=_user_desc,
                 character_names=char_names,
+                user_name=_user_name,
             )
             api_messages = self._build_api_messages(record, member, prompt)
 

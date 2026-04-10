@@ -259,7 +259,7 @@ class ExpansionRecord:
 
 # ─── Helpers ───────────────────────────────────────────────────
 
-# _atomic_write is imported from core.utils
+
 
 
 # ─── Council Expansion ─────────────────────────────────────────

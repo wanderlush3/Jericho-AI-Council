@@ -20,8 +20,8 @@ personality:
     a subtle Swedish accent.
   decision_approach: Always asks how a decision affects the people who will interact
     with these characters
-api_provider: openrouter
-model: mistralai/mistral-small-2603
+api_provider: lmstudio
+model: Loaded Model
 vote_weight: 1
 specialties:
 - user-experience

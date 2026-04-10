@@ -38,7 +38,7 @@ class RegistryValidationError(ValueError):
 # ─── Data Model ────────────────────────────────────────────────
 
 REQUIRED_FIELDS = {"name", "role", "description", "api_provider", "model", "system_prompt"}
-VALID_API_PROVIDERS = {"openrouter", "mancer"}
+VALID_API_PROVIDERS = {"openrouter", "mancer", "lmstudio"}
 EDITABLE_FIELDS = {"name", "api_provider", "model", "vote_weight", "system_prompt"}
 EDITABLE_PERSONALITY_FIELDS = {"traits", "communication_style", "decision_approach"}
 READONLY_FIELDS = {"role", "description", "specialties"}
@@ -66,6 +66,10 @@ class CouncilMember:
     @property
     def is_mancer(self) -> bool:
         return self.api_provider == "mancer"
+
+    @property
+    def is_lmstudio(self) -> bool:
+        return self.api_provider == "lmstudio"
 
 
 # ─── Registry ──────────────────────────────────────────────────

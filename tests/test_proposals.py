@@ -369,6 +369,50 @@ class TestStatusLifecycle:
         with pytest.raises(ProposalLifecycleError):
             mgr.update_status(p.id, "open")
 
+    # ── open_to_review transitions ────────────────────────────
+
+    def test_open_to_open_to_review(self, mgr: ProposalManager):
+        p = _make_proposal(mgr)
+        mgr.update_status(p.id, "open")
+        updated = mgr.update_status(p.id, "open_to_review")
+        assert updated.status == "open_to_review"
+
+    def test_open_to_review_to_decided(self, mgr: ProposalManager):
+        """Call Vote directly from review skips under_review."""
+        p = _make_proposal(mgr)
+        mgr.update_status(p.id, "open")
+        mgr.update_status(p.id, "open_to_review")
+        updated = mgr.update_status(p.id, "decided")
+        assert updated.status == "decided"
+
+    def test_open_to_review_to_under_review(self, mgr: ProposalManager):
+        p = _make_proposal(mgr)
+        mgr.update_status(p.id, "open")
+        mgr.update_status(p.id, "open_to_review")
+        updated = mgr.update_status(p.id, "under_review")
+        assert updated.status == "under_review"
+
+    def test_withdraw_from_open_to_review(self, mgr: ProposalManager):
+        p = _make_proposal(mgr)
+        mgr.update_status(p.id, "open")
+        mgr.update_status(p.id, "open_to_review")
+        updated = mgr.update_status(p.id, "withdrawn")
+        assert updated.status == "withdrawn"
+
+    def test_full_lifecycle_through_review(self, mgr: ProposalManager):
+        """draft → open → open_to_review → decided."""
+        p = _make_proposal(mgr)
+        mgr.update_status(p.id, "open")
+        mgr.update_status(p.id, "open_to_review")
+        final = mgr.update_status(p.id, "decided")
+        assert final.status == "decided"
+
+    def test_cannot_skip_open_to_open_to_review(self, mgr: ProposalManager):
+        """draft → open_to_review should be invalid."""
+        p = _make_proposal(mgr)
+        with pytest.raises(ProposalLifecycleError):
+            mgr.update_status(p.id, "open_to_review")
+
     def test_unknown_status(self, mgr: ProposalManager):
         p = _make_proposal(mgr)
         with pytest.raises(ProposalValidationError, match="Unknown status"):

@@ -2936,7 +2936,7 @@ Implemented a visual location exploration system with generated scene images, "L
   - `ExplorationScene` frozen dataclass (scene_id, location_id, image_id, scene_type, description, metadata)
   - Scene types: `overview`, `feature`, `transition`
   - CRUD operations: `add_scene()`, `get_scene()`, `list_scenes()`, `delete_scene()`, `delete_scenes_for_location()`
-  - `get_navigation_targets()` static method — resolves parent, children, siblings via LocationManager
+- `get_navigation_targets()` static method — resolves parent, children, siblings via LocationManager
   - `build_look_around_description()` — builds contextual prompts from location data
   - JSON file persistence via `atomic_write`
 - **`core/web_api.py`** — 7 new `/api/explore` endpoints:
@@ -2979,3 +2979,66 @@ Implemented a visual location exploration system with generated scene images, "L
 2. **`grep_search` does not work on `app.js`** — use `view_file` with specific line ranges. The Explore view is ~lines 3694–4074.
 3. **ExplorationManager is stateless** — scenes persist to `data/exploration/scenes.json`. Safe to instantiate in each endpoint.
 4. **Look Around currently stores all scenes as "overview"** — future work could auto-classify based on features.
+
+---
+
+## Session: S-F041-20260409
+**Timestamp:** 2026-04-09 10:25:00
+**Feature:** `F-041` — Story Illustration System
+**Status:** completed
+
+### Summary
+Implemented the complete Story Illustration System: LLM-narrated story segments with inline generated illustrations, hierarchical Story -> Chapter -> Scene management, and an immersive reader UI. Built across multiple sessions with backend, API, frontend, and CSS all verified working.
+
+### Changes Made
+
+**Backend:**
+- **`config/settings.py`** — Added `STORIES_DIR`, `STORY_STATUSES`, `STORY_MAX_CHAPTERS` (50), `STORY_MAX_SCENES_PER_CHAPTER` (20)
+- **`core/story.py`** [NEW] — 1000 lines. Complete `StoryManager` with:
+  - `StoryScene`, `StoryChapter`, `StoryRecord` frozen dataclasses
+  - Full CRUD: `create()`, `get()`, `list_stories()`, `update()`, `update_status()`, `delete()`
+  - Chapter management: `add_chapter()`, `update_chapter()`, `delete_chapter()`
+  - Scene management: `add_scene()`, `update_scene()`, `attach_illustration()`, `delete_scene()`
+  - `build_scene_narration_prompt()` — rich context builder with preceding scenes, character/location data, mood directives
+  - Status lifecycle: draft -> active -> completed -> archived with validated transitions
+  - JSON file persistence via `atomic_write`
+  - 5 custom exceptions: StoryNotFoundError, ChapterNotFoundError, SceneNotFoundError, StoryValidationError, StoryLifecycleError
+- **`core/web_api.py`** — ~680 lines of 14 new `/api/stories` endpoints:
+  - Full story CRUD (list, create, get, update, status, delete)
+  - Chapter CRUD (add, update, delete)
+  - Scene CRUD (add, update, delete)
+  - `POST .../scenes/{sc_id}/narrate` — LLM narration generation
+  - `POST .../scenes/{sc_id}/illustrate` — ComfyUI illustration generation via pipeline
+
+**Frontend:**
+- **`index.html`** — Added Stories nav item in World section
+- **`app.js`** — ~530 lines of new code (lines 11024-11550):
+  - `renderStories()` — Story list with status filter tabs, card grid with metadata chips
+  - `renderStoryDetail(id)` — Editor view with chapter blocks, scene management, Narrate/Illustrate buttons
+  - `renderStoryReader(id)` — Immersive book-like reader with inline illustrations
+  - Create Story modal, Edit Story modal, Add Scene modal with mood picker
+  - Chapter/Scene CRUD, narration/illustration triggers, lightbox viewer
+- **`style.css`** — Story-specific CSS:
+  - Story grid, chapter blocks, scene items, reader typography
+  - Mood badges, entity chips, metadata chips, lightbox overlay
+
+### Design Decisions
+
+1. **Story -> Chapter -> Scene hierarchy** — Mirrors traditional book structure. Scenes are the atomic unit for narration and illustration.
+2. **Per-scene LLM narration** — Each scene generates prose using rich context from story synopsis, chapter context, preceding scenes, character/location data, and mood directives.
+3. **Per-scene illustration** — Uses the existing GenerationPipeline (F-037f) with auto-determined template from TemplateAssignments (F-039).
+4. **Dual-mode UI** — Editor mode for content management; Reader mode for immersive book-like consumption.
+5. **Entity reference tracking** — `entity_refs` on StoryRecord tracks all characters and locations referenced across scenes.
+
+### Test Results
+
+- **86 tests** (53 unit in test_story.py + 33 API in test_web_api_stories.py)
+- **Full suite: 2813 passed, 12 skipped, 0 failed** — zero regressions
+
+### Advice for Next Agent
+
+1. **Story narration requires an LLM provider** — The `/narrate` endpoint calls an LLM via APIClient.
+2. **Story illustration requires ComfyUI** — The `/illustrate` endpoint uses the GenerationPipeline.
+3. **`grep_search` does not work on `app.js` or `style.css`** — use `view_file` with specific line ranges. Story code is at lines 11024-11550 in app.js.
+4. **The story file format is one JSON file per story** — `data/stories/ST-XXXX.json` containing the full chapter/scene hierarchy.
+5. **All entity IDs are auto-sequential** — ST-XXXX for stories, CHP-XXXX for chapters, SCE-XXXX for scenes.

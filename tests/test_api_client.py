@@ -98,6 +98,7 @@ def client() -> APIClient:
     return APIClient(
         openrouter_api_key="test-openrouter-key",
         mancer_api_key="test-mancer-key",
+        lmstudio_api_key="test-lmstudio-key",
         max_retries=2,
         retry_delay=0.01,
         timeout=5.0,
@@ -235,6 +236,42 @@ class TestEndpointResolution:
         member = _make_member(api_provider="unknown_llm")
         with pytest.raises(ValueError, match="Unknown API provider"):
             client._resolve_endpoint(member)
+
+    def test_lmstudio_url_and_headers(
+        self, client: APIClient,
+    ) -> None:
+        member = _make_member(
+            name="Local", api_provider="lmstudio", model="Loaded Model",
+        )
+        url, headers = client._resolve_endpoint(member)
+        assert "/chat/completions" in url
+        assert "localhost:1234" in url
+        assert headers["Authorization"] == "Bearer test-lmstudio-key"
+
+    def test_lmstudio_no_key_still_works(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """LM Studio should work without an API key (local server)."""
+        monkeypatch.delenv("JERICHO_LMSTUDIO_API_KEY", raising=False)
+        c = APIClient(
+            openrouter_api_key="k", mancer_api_key="k", lmstudio_api_key="",
+        )
+        member = _make_member(
+            name="Local", api_provider="lmstudio", model="Loaded Model",
+        )
+        url, headers = c._resolve_endpoint(member)
+        assert "/chat/completions" in url
+        assert "Authorization" not in headers
+
+    def test_lmstudio_custom_base_url(
+        self, client: APIClient, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """LM Studio base URL can be overridden via env var."""
+        monkeypatch.setenv("JERICHO_LMSTUDIO_BASE_URL", "http://192.168.1.100:9999/v1")
+        member = _make_member(
+            name="Remote", api_provider="lmstudio", model="Loaded Model",
+        )
+        url, headers = client._resolve_endpoint(member)
+        assert "192.168.1.100:9999" in url
+        assert "/chat/completions" in url
 
     def test_missing_openrouter_key_raises(
         self, openrouter_member: CouncilMember, monkeypatch: pytest.MonkeyPatch,
@@ -399,6 +436,34 @@ class TestModelPrecedence:
             temperature=0.7, max_tokens=100,
         )
         assert body["model"] == "magnum-72b-v4"
+
+    def test_lmstudio_member_model_used_when_specific(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """LM Studio member with specific model ignores env var."""
+        monkeypatch.setenv("JERICHO_LMSTUDIO_MODEL", "some-lmstudio-fallback")
+        member = _make_member(
+            api_provider="lmstudio", model="Loaded Model",
+        )
+        body = APIClient._build_request_body(
+            member, [ChatMessage(role="user", content="Hi")],
+            temperature=0.7, max_tokens=100,
+        )
+        assert body["model"] == "Loaded Model"
+
+    def test_lmstudio_default_falls_back_to_env_var(
+        self, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """LM Studio member with 'Default' model uses env var."""
+        monkeypatch.setenv("JERICHO_LMSTUDIO_MODEL", "my-local-model")
+        member = _make_member(
+            api_provider="lmstudio", model="Default",
+        )
+        body = APIClient._build_request_body(
+            member, [ChatMessage(role="user", content="Hi")],
+            temperature=0.7, max_tokens=100,
+        )
+        assert body["model"] == "my-local-model"
 
 
 # ─── Response Parsing Tests ───────────────────────────────────

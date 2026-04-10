@@ -463,10 +463,13 @@ class TestBuildContext:
         mem_dir.mkdir()
         loc_dir = tmp_path / "locations"
         loc_dir.mkdir()
+        items_dir = tmp_path / "items"
+        items_dir.mkdir()
 
         mi = MemoryInfluence()
         ctx = mi.build_context(
             "newmember", ["ethics"], memories_dir=mem_dir, locations_dir=loc_dir,
+            items_dir=items_dir,
         )
 
         assert ctx.has_content is False
@@ -803,7 +806,7 @@ class TestHumanChatIntegration:
             MemoryEntry.create("S-001", "human_chat", "Human asked about ethics")
         )
 
-        mi = MemoryInfluence(min_relevance=0.0)
+        mi = MemoryInfluence(min_relevance=0.0, embedding_provider=None)
         ctx = mi.build_context(
             "sage",
             MemoryInfluence.extract_keywords("Ethics discussion with human"),
@@ -811,3 +814,171 @@ class TestHumanChatIntegration:
         )
 
         assert len(ctx.memories) >= 1
+
+
+# ─── Semantic Scoring ─────────────────────────────────────────
+
+
+class TestSemanticScoring:
+    """Tests for semantic (embedding-based) scoring."""
+
+    def _get_provider(self):
+        from core.embeddings import EmbeddingProvider
+        provider = EmbeddingProvider()
+        if not provider.is_available:
+            pytest.skip("sentence-transformers not installed")
+        return provider
+
+    def test_semantic_similarity_catches_conceptual_match(self):
+        """Embeddings should match conceptually related but keyword-divergent text."""
+        provider = self._get_provider()
+        mi = MemoryInfluence(min_relevance=0.0, embedding_provider=provider)
+        entries = [
+            _make_entry(content="moral responsibility in autonomous systems"),
+        ]
+        result = mi.score_memories(entries, ["AI ethics", "accountability"])
+        assert len(result) >= 1
+        # Embedding-based score should be meaningful (not near-zero like Jaccard)
+        assert result[0].relevance_score > 0.15
+
+    def test_jaccard_only_misses_conceptual_match(self):
+        """Pure Jaccard (no embeddings) should score near zero for keyword-divergent text."""
+        mi = MemoryInfluence(min_relevance=0.0, embedding_provider=None)
+        entries = [
+            _make_entry(content="moral responsibility in autonomous systems"),
+        ]
+        result = mi.score_memories(entries, ["AI ethics", "accountability"])
+        # With Jaccard only, score should be very low (no keyword overlap)
+        if result:
+            assert result[0].relevance_score < 0.1
+
+    def test_hybrid_scoring_ranks_correctly(self):
+        """Hybrid scoring should rank semantically related entries above unrelated ones."""
+        provider = self._get_provider()
+        mi = MemoryInfluence(min_relevance=0.0, embedding_provider=provider)
+        entries = [
+            _make_entry(content="Weather forecast sunny day tomorrow"),
+            _make_entry(content="Ethical implications of machine learning decisions"),
+            _make_entry(content="Chocolate cake recipe with buttercream"),
+        ]
+        result = mi.score_memories(entries, ["AI ethics", "responsible AI"])
+        # The ML/ethics entry should rank first
+        assert len(result) >= 2
+        assert "ethical" in result[0].entry.content.lower() or "machine" in result[0].entry.content.lower()
+
+    def test_semantic_belief_matching(self):
+        """Beliefs should benefit from semantic scoring too."""
+        provider = self._get_provider()
+        mi = MemoryInfluence(
+            min_relevance=0.0, belief_boost=1.5,
+            embedding_provider=provider,
+        )
+        beliefs = [
+            _make_belief(
+                topic="responsible AI",
+                content="Autonomous systems must be held accountable for their decisions",
+            ),
+            _make_belief(
+                topic="cooking",
+                content="Italian cuisine is the best in the world",
+            ),
+        ]
+        result = mi.score_beliefs(beliefs, ["ethics", "moral duty"])
+        assert len(result) >= 1
+        # The AI-related belief should score highest
+        assert result[0].belief.topic == "responsible AI"
+
+    def test_embeddings_available_property(self):
+        """The embeddings_available property should reflect provider status."""
+        provider = self._get_provider()
+        mi = MemoryInfluence(embedding_provider=provider)
+        assert mi.embeddings_available is True
+
+    def test_embeddings_unavailable_with_none(self):
+        """Passing None as provider forces Jaccard-only mode."""
+        mi = MemoryInfluence(embedding_provider=None)
+        assert mi.embeddings_available is False
+
+    def test_reason_includes_semantic_label(self):
+        """When embeddings produce a high score, reason should mention 'Semantic match'."""
+        provider = self._get_provider()
+        mi = MemoryInfluence(min_relevance=0.0, embedding_provider=provider)
+        entries = [
+            _make_entry(content="ethical implications of artificial intelligence"),
+        ]
+        result = mi.score_memories(entries, ["AI ethics", "moral responsibility"])
+        assert len(result) >= 1
+        assert "Semantic match" in result[0].reason or "Keywords" in result[0].reason
+
+    def test_fallback_reason_format(self):
+        """When using Jaccard only, reason should mention 'Matched keywords'."""
+        mi = MemoryInfluence(min_relevance=0.0, embedding_provider=None)
+        entries = [_make_entry(content="ethics and safety are important")]
+        result = mi.score_memories(entries, ["ethics", "safety"])
+        assert len(result) >= 1
+        assert "Matched keywords" in result[0].reason
+
+
+class TestHybridBuildContext:
+    """Tests for build_context with hybrid scoring."""
+
+    def test_build_context_with_embeddings(self, tmp_path: Path):
+        """build_context should work seamlessly with embedding provider."""
+        from core.embeddings import EmbeddingProvider
+        provider = EmbeddingProvider()
+        if not provider.is_available:
+            pytest.skip("sentence-transformers not installed")
+
+        mem_dir = tmp_path / "memories"
+        mem_dir.mkdir()
+        agent_mem = AgentMemory("sage", memories_dir=mem_dir)
+
+        agent_mem.write_core_belief(
+            CoreBelief.create(
+                "accountability",
+                "All autonomous systems must be held responsible for their impacts",
+                source="session",
+            )
+        )
+        agent_mem.append_session_event(
+            MemoryEntry.create(
+                "S-001", "discussion",
+                "Explored the moral dimensions of automated decision-making",
+            )
+        )
+
+        mi = MemoryInfluence(min_relevance=0.0, embedding_provider=provider)
+        ctx = mi.build_context(
+            "sage", ["AI ethics", "responsible technology"],
+            memories_dir=mem_dir,
+        )
+
+        assert ctx.has_content is True
+        assert len(ctx.beliefs) >= 1
+        assert len(ctx.memories) >= 1
+        # Verify scores are reasonable with embeddings
+        assert ctx.beliefs[0].relevance_score > 0.1
+        assert ctx.memories[0].relevance_score > 0.1
+
+    def test_build_context_jaccard_fallback(self, tmp_path: Path):
+        """build_context should fall back to Jaccard when embeddings are None."""
+        mem_dir = tmp_path / "memories"
+        mem_dir.mkdir()
+        agent_mem = AgentMemory("sage", memories_dir=mem_dir)
+
+        agent_mem.write_core_belief(
+            CoreBelief.create("safety", "Safety is paramount", source="test")
+        )
+        agent_mem.append_session_event(
+            MemoryEntry.create("S-001", "discussion", "Discussed safety protocols")
+        )
+
+        mi = MemoryInfluence(min_relevance=0.0, embedding_provider=None)
+        ctx = mi.build_context(
+            "sage", ["safety", "protocols"], memories_dir=mem_dir,
+        )
+
+        assert ctx.has_content is True
+        assert len(ctx.beliefs) >= 1
+        assert len(ctx.memories) >= 1
+

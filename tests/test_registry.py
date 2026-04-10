@@ -167,10 +167,9 @@ class TestRegistryQueries:
 
     def test_members_by_provider_counts_consistent(self, registry: CouncilRegistry) -> None:
         """Provider counts should sum to total member count."""
-        openrouter = registry.members_by_provider("openrouter")
-        mancer = registry.members_by_provider("mancer")
-        assert len(openrouter) + len(mancer) == len(registry)
-        assert all(m.api_provider == "mancer" for m in mancer)
+        from core.registry import VALID_API_PROVIDERS
+        total = sum(len(registry.members_by_provider(p)) for p in VALID_API_PROVIDERS)
+        assert total == len(registry)
 
 
 # ─── CouncilMember Tests ──────────────────────────────────────
@@ -184,7 +183,7 @@ class TestCouncilMember:
         member = registry.list_members()[0]
         assert len(member.name) > 0
         assert len(member.role) > 0
-        assert member.api_provider in ("openrouter", "mancer")
+        assert member.api_provider in VALID_API_PROVIDERS
         assert len(member.model) > 0
         assert member.vote_weight > 0
         assert isinstance(member.specialties, list)

@@ -66,7 +66,8 @@ class ProposalLifecycleError(ProposalError):
 
 _VALID_TRANSITIONS: dict[str, set[str]] = {
     "draft": {"open", "withdrawn"},
-    "open": {"under_review", "withdrawn"},
+    "open": {"under_review", "open_to_review", "withdrawn"},
+    "open_to_review": {"under_review", "decided", "withdrawn"},
     "under_review": {"decided", "withdrawn"},
     "decided": set(),       # terminal
     "withdrawn": set(),     # terminal
@@ -190,7 +191,7 @@ class Proposal:
 
 # ─── Helpers ───────────────────────────────────────────────────
 
-# _atomic_write is imported from core.utils
+
 
 
 # ─── Proposal Manager ─────────────────────────────────────────

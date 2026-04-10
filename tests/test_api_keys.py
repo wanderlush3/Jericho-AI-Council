@@ -62,6 +62,19 @@ class TestSaveAndLoad:
         loaded = mgr.load_key("mancer")
         assert loaded == "mn-abcdef-99"
 
+    def test_save_and_load_lmstudio(self, tmp_path):
+        env_file = tmp_path / ".env"
+        env_file.write_text("# empty\n", encoding="utf-8")
+
+        mgr = APIKeyManager(env_path=env_file)
+        result = mgr.save_key("lmstudio", "lm-key-test-42")
+
+        assert result["configured"] is True
+        assert result["provider"] == "lmstudio"
+
+        loaded = mgr.load_key("lmstudio")
+        assert loaded == "lm-key-test-42"
+
     def test_key_is_encrypted_on_disk(self, tmp_path):
         env_file = tmp_path / ".env"
         env_file.write_text("# header\n", encoding="utf-8")
@@ -170,10 +183,11 @@ class TestKeyStatus:
         mgr.save_key("openrouter", "sk-test-123")
         statuses = mgr.all_status()
 
-        assert len(statuses) == 2
+        assert len(statuses) == 3
         providers = {s["provider"] for s in statuses}
         assert "openrouter" in providers
         assert "mancer" in providers
+        assert "lmstudio" in providers
 
 
 class TestInvalidProvider:
@@ -206,7 +220,8 @@ def api_client(tmp_path):
     env_file.write_text(
         "# test keys\n"
         "JERICHO_OPENROUTER_API_KEY=your-openrouter-key-here\n"
-        "JERICHO_MANCER_API_KEY=your-mancer-key-here\n",
+        "JERICHO_MANCER_API_KEY=your-mancer-key-here\n"
+        "JERICHO_LMSTUDIO_API_KEY=your-lmstudio-key-here\n",
         encoding="utf-8",
     )
 
@@ -230,7 +245,7 @@ class TestSettingsEndpoints:
         resp = api_client.get("/api/settings/keys")
         assert resp.status_code == 200
         data = resp.json()
-        assert len(data) == 2
+        assert len(data) == 3
         assert all(not k["configured"] for k in data)
 
     def test_save_key(self, api_client):

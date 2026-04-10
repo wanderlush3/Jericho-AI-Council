@@ -374,13 +374,23 @@ class TestStatusLifecycle:
         with pytest.raises(CharacterLifecycleError):
             mgr.update_status(c.id, "archived")  # draft → archived not allowed
 
-    def test_archived_terminal(self, tmp_path):
+    def test_archived_to_active(self, tmp_path):
+        """archived → active is allowed (bidirectional)."""
         mgr = _make_manager(tmp_path)
         c = _create_sample(mgr)
         mgr.update_status(c.id, "active")
         mgr.update_status(c.id, "archived")
-        with pytest.raises(CharacterLifecycleError):
-            mgr.update_status(c.id, "active")
+        reactivated = mgr.update_status(c.id, "active")
+        assert reactivated.status == "active"
+
+    def test_archived_to_draft(self, tmp_path):
+        """archived → draft is allowed."""
+        mgr = _make_manager(tmp_path)
+        c = _create_sample(mgr)
+        mgr.update_status(c.id, "active")
+        mgr.update_status(c.id, "archived")
+        reverted = mgr.update_status(c.id, "draft")
+        assert reverted.status == "draft"
 
     def test_superseded_terminal(self, tmp_path):
         mgr = _make_manager(tmp_path)

@@ -20,6 +20,10 @@ from config.settings import (
     API_MAX_RETRIES,
     API_RETRY_DELAY_SECONDS,
     API_TIMEOUT_SECONDS,
+    LMSTUDIO_API_KEY_ENV,
+    LMSTUDIO_BASE_URL_ENV,
+    LMSTUDIO_DEFAULT_BASE_URL,
+    LMSTUDIO_MODEL_ENV,
     MANCER_API_KEY_ENV,
     MANCER_BASE_URL,
     MANCER_MODEL_ENV,
@@ -106,6 +110,7 @@ class APIClient:
         *,
         openrouter_api_key: str | None = None,
         mancer_api_key: str | None = None,
+        lmstudio_api_key: str | None = None,
         max_retries: int = API_MAX_RETRIES,
         retry_delay: float = API_RETRY_DELAY_SECONDS,
         timeout: float = API_TIMEOUT_SECONDS,
@@ -113,6 +118,7 @@ class APIClient:
     ) -> None:
         self._openrouter_key = openrouter_api_key or os.environ.get(OPENROUTER_API_KEY_ENV, "")
         self._mancer_key = mancer_api_key or os.environ.get(MANCER_API_KEY_ENV, "")
+        self._lmstudio_key = lmstudio_api_key or os.environ.get(LMSTUDIO_API_KEY_ENV, "")
         self._max_retries = max_retries
         self._retry_delay = retry_delay
         self._timeout = timeout
@@ -295,6 +301,20 @@ class APIClient:
                     "Content-Type": "application/json",
                 },
             )
+        elif member.api_provider == "lmstudio":
+            base_url = os.environ.get(LMSTUDIO_BASE_URL_ENV, "").strip()
+            if not base_url:
+                base_url = LMSTUDIO_DEFAULT_BASE_URL
+            headers: dict[str, str] = {
+                "Content-Type": "application/json",
+            }
+            # Auth is optional for LM Studio (local server)
+            if self._lmstudio_key:
+                headers["Authorization"] = f"Bearer {self._lmstudio_key}"
+            return (
+                f"{base_url}/chat/completions",
+                headers,
+            )
         else:
             raise ValueError(
                 f"Unknown API provider '{member.api_provider}' for member '{member.name}'"
@@ -305,6 +325,7 @@ class APIClient:
     _MODEL_ENV_OVERRIDES: dict[str, str] = {
         "openrouter": OPENROUTER_MODEL_ENV,
         "mancer": MANCER_MODEL_ENV,
+        "lmstudio": LMSTUDIO_MODEL_ENV,
     }
 
     @staticmethod

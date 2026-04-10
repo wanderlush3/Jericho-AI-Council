@@ -390,6 +390,13 @@ class TestStatusLifecycle:
         with pytest.raises(LocationLifecycleError):
             mgr.update_status(loc.id, "archived")  # draft → archived not allowed
 
+    def test_active_to_draft(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        loc = _create_sample(mgr)
+        mgr.update_status(loc.id, "active")
+        updated = mgr.update_status(loc.id, "draft")
+        assert updated.status == "draft"
+
     def test_archived_terminal(self, tmp_path):
         mgr = _make_manager(tmp_path)
         loc = _create_sample(mgr)
@@ -397,6 +404,8 @@ class TestStatusLifecycle:
         mgr.update_status(loc.id, "archived")
         with pytest.raises(LocationLifecycleError):
             mgr.update_status(loc.id, "active")
+        with pytest.raises(LocationLifecycleError):
+            mgr.update_status(loc.id, "draft")
 
     def test_unknown_status(self, tmp_path):
         mgr = _make_manager(tmp_path)

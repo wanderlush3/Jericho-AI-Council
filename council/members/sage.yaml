@@ -16,8 +16,8 @@ personality:
   communication_style: Careful and deliberate, weighs every word
   decision_approach: Considers second and third-order effects before supporting any
     change
-api_provider: openrouter
-model: mistralai/mistral-small-2603
+api_provider: lmstudio
+model: Loaded Model
 vote_weight: 1
 specialties:
 - ethics

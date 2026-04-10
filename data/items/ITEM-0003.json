@@ -1,0 +1,38 @@
+{
+  "id": "ITEM-0003",
+  "name": "Backroom Bargain (Smoky Amber)",
+  "description": "Backroom Bargain (Smoky Amber)\n   Trait Boost: Persuasion (0.95) / Deception (0.6) / Store Prices (-15%)\n   Duration: 1 day\n   LLM Injection: \"The smoke in your lungs tastes of bergamot and betrayal. Every compliment coats your tongue in honey that turns to ash when you speak true. You calculate the price of every smile, not because you must, but because you are terrified that if you stop moving, stop charming, stop dancing*—someone will look too close and see the hollow behind your teeth. You fear ordinariness more than death.\"",
+  "author": "Sima",
+  "status": "active",
+  "lore": "",
+  "properties": [
+    {
+      "name": "Trait Boost: Persuasion",
+      "description": "Persuasion (0.95)",
+      "property_type": "magical"
+    },
+    {
+      "name": "Trait Boost: Deception",
+      "description": "Deception (0.6)",
+      "property_type": "magical"
+    },
+    {
+      "name": "Bargain",
+      "description": "Store Price -15%",
+      "property_type": "magical"
+    }
+  ],
+  "tags": [
+    "potion"
+  ],
+  "rarity": "common",
+  "tier": "consumable",
+  "legality": "legal",
+  "owner": "",
+  "version": 1,
+  "created_at": "2026-03-25T15:52:31.718225+00:00",
+  "updated_at": "2026-04-05T00:10:45.511824+00:00",
+  "metadata": {
+    "source_proposal": "P-0014"
+  }
+}
