@@ -1,0 +1,293 @@
+/* ═══════════════════════════════════════════════════════════════
+   Council Editing — Form & Avatar
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Editable Form Layout ──────────────────────────────────── */
+.council-edit-form {
+    margin-top: var(--space-lg);
+}
+
+.council-fields-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+}
+
+@media (max-width: 768px) {
+    .council-fields-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.council-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-sm);
+}
+
+.council-field-group label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.council-field-hint {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.council-textarea {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+/* ─── Read-only Fields ──────────────────────────────────────── */
+.council-field-readonly {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.council-readonly-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.council-readonly-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* ─── Save Bar ──────────────────────────────────────────────── */
+.council-save-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-top: var(--space-xl);
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.btn-save-member {
+    padding: var(--space-sm) var(--space-xl);
+    font-size: 0.9rem;
+}
+
+.council-save-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    transition: color var(--transition-fast);
+}
+
+/* ─── Avatar Upload Area ────────────────────────────────────── */
+.avatar-upload-area {
+    position: relative;
+    overflow: hidden;
+}
+
+.avatar-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    font-size: 1.2rem;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    border-radius: var(--radius-md);
+}
+
+.avatar-upload-area:hover .avatar-overlay {
+    opacity: 1;
+}
+
+/* ─── Avatar Editor Modal ───────────────────────────────────── */
+.avatar-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    animation: fadeIn var(--transition-fast) ease-out;
+}
+
+.avatar-modal-content {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    min-width: 380px;
+    max-width: 480px;
+    box-shadow: var(--shadow-lg);
+    animation: slideDown var(--transition-normal) ease-out;
+}
+
+.avatar-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-lg);
+}
+
+.avatar-modal-header h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.avatar-modal-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-lg);
+}
+
+.avatar-drop-zone {
+    width: 100%;
+    border: 2px dashed var(--border-medium);
+    border-radius: var(--radius-md);
+    padding: var(--space-xl);
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.avatar-drop-zone:hover,
+.avatar-drop-zone.drag-over {
+    border-color: var(--accent-cyan);
+    background: rgba(6, 182, 212, 0.05);
+}
+
+.avatar-drop-label {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.avatar-preview-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.avatar-preview-canvas {
+    border-radius: 50%;
+    cursor: grab;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    transition: box-shadow var(--transition-fast);
+}
+
+.avatar-preview-canvas:active {
+    cursor: grabbing;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+}
+
+.avatar-zoom-control {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    width: 100%;
+}
+
+.avatar-zoom-label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.avatar-zoom-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: var(--border-subtle);
+    border-radius: 3px;
+    outline: none;
+}
+
+.avatar-zoom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(6, 182, 212, 0.4);
+    transition: transform var(--transition-fast);
+}
+
+.avatar-zoom-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+
+.avatar-zoom-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 6px rgba(6, 182, 212, 0.4);
+}
+
+#avatar-zoom-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    min-width: 36px;
+    text-align: right;
+}
+
+.avatar-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-sm);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border-subtle);
+}
+
+/* Secondary button style (needed for avatar modal cancel) */
+.btn-secondary {
+    background: rgba(148, 163, 184, 0.1);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+}
+
+.btn-secondary:hover {
+    background: rgba(148, 163, 184, 0.2);
+    color: var(--text-primary);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Proposal System — Form, Lifecycle, Discussion Feed, Vote
+   ═══════════════════════════════════════════════════════════════ */
+

@@ -1,0 +1,161 @@
+/* ─── Promote to Council Modal ───────────────────────────────── */
+.promote-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(6px);
+    animation: fadeIn var(--transition-fast) ease-out;
+}
+
+/* Overlay variant — shown immediately (no display:none default) */
+.promote-modal-overlay {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(6px);
+    animation: fadeIn var(--transition-fast) ease-out;
+}
+
+.promote-modal-content {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
+    width: 560px;
+    max-width: 90vw;
+    max-height: 85vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    animation: slideDown var(--transition-normal) ease-out;
+}
+
+.promote-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-lg);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.promote-modal-header h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.promote-modal-body {
+    padding: var(--space-lg);
+    overflow-y: auto;
+    flex: 1;
+}
+
+.promote-candidate-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-lg);
+}
+
+.promote-candidate-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.promote-candidate-item:last-child {
+    border-bottom: none;
+}
+
+.promote-candidate-item:hover {
+    background: rgba(59, 130, 246, 0.06);
+}
+
+.promote-candidate-item.selected {
+    background: rgba(59, 130, 246, 0.12);
+    border-left: 3px solid var(--accent-blue);
+}
+
+.promote-candidate-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.promote-candidate-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+
+.promote-form-group {
+    margin-bottom: var(--space-md);
+}
+
+.promote-form-group label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.promote-empty {
+    padding: var(--space-xl);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.promote-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-sm);
+    padding: var(--space-lg);
+    border-top: 1px solid var(--border-subtle);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Council Sessions UI
+   ═══════════════════════════════════════════════════════════════ */
+
+.session-handoff-panel {
+    border: 1px solid rgba(6, 182, 212, 0.25);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.04), rgba(59, 130, 246, 0.04));
+    padding: var(--space-lg);
+    margin-top: var(--space-md);
+}
+
+.session-handoff-panel h4 {
+    color: var(--accent-cyan);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Skin / Theme System
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Smooth skin transition */
+html[data-skin-transitioning] *,
+html[data-skin-transitioning] *::before,
+html[data-skin-transitioning] *::after {
+    transition: color 0.4s ease, background 0.4s ease, background-color 0.4s ease,
+                border-color 0.4s ease, box-shadow 0.4s ease !important;
+}
+

@@ -1,0 +1,440 @@
+/* ── Progress Bar ────────────────────────────────────────────── */
+
+.gen-progress-container {
+    text-align: center;
+    padding: var(--space-xl) 0;
+}
+
+.gen-progress-stage {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: var(--space-md);
+    color: var(--text-primary);
+    min-height: 1.5em;
+}
+
+.gen-progress-bar-bg {
+    width: 100%;
+    height: 8px;
+    background: var(--bg-input);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+    margin-bottom: var(--space-sm);
+    border: 1px solid var(--border-subtle);
+}
+
+.gen-progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent-purple, #a855f7), var(--accent-rose, #f43f5e), var(--accent-cyan));
+    border-radius: var(--radius-pill);
+    transition: width 0.5s ease-out;
+    background-size: 200% 100%;
+    animation: genProgressShimmer 2s ease-in-out infinite;
+}
+
+@keyframes genProgressShimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.gen-progress-pct {
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+}
+
+.gen-progress-prompts {
+    margin-top: var(--space-md);
+    padding: var(--space-md);
+    background: rgba(99, 102, 241, 0.04);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    text-align: left;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.gen-progress-prompts:empty {
+    display: none;
+}
+
+.gen-progress-prompt-text {
+    color: var(--text-secondary);
+    word-break: break-word;
+}
+
+.gen-progress-prompt-text strong {
+    color: var(--accent-cyan);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.gen-progress-prompt-neg {
+    color: var(--text-muted);
+    margin-top: var(--space-xs);
+    font-style: italic;
+    font-size: 0.78rem;
+}
+
+.gen-progress-prompt-neg strong {
+    font-style: normal;
+    color: var(--accent-rose);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    .gen-modal {
+        width: 98vw;
+        max-height: 95vh;
+    }
+    .gen-form-grid {
+        grid-template-columns: 1fr;
+    }
+    .gallery-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-sm);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Generation Queue Dashboard (F-037g)
+   ═══════════════════════════════════════════════════════════════ */
+
+.queue-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-lg);
+}
+
+.queue-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    transition: all var(--transition-normal);
+    position: relative;
+    overflow: hidden;
+}
+
+.queue-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.queue-card-active {
+    border-color: rgba(168, 85, 247, 0.3);
+}
+
+.queue-card-active::before {
+    background: linear-gradient(90deg, var(--accent-purple, #a855f7), var(--accent-cyan));
+    animation: queuePulse 2s ease-in-out infinite;
+}
+
+@keyframes queuePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.queue-card-done {
+    border-color: rgba(16, 185, 129, 0.25);
+}
+
+.queue-card-done::before {
+    background: var(--accent-emerald, #10b981);
+}
+
+.queue-card-error {
+    border-color: rgba(244, 63, 94, 0.25);
+}
+
+.queue-card-error::before {
+    background: var(--accent-rose, #f43f5e);
+}
+
+.queue-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-sm);
+}
+
+.queue-card-id {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-family: var(--font-mono, monospace);
+    letter-spacing: 0.04em;
+}
+
+.queue-card-stage {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: var(--radius-pill);
+    background: rgba(99, 102, 241, 0.08);
+    color: var(--text-secondary);
+}
+
+.queue-card-entity {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-xs);
+}
+
+.queue-card-mode {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: var(--space-sm);
+    text-transform: capitalize;
+}
+
+.queue-card-progress {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+}
+
+.queue-card-pct {
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent-purple, #a855f7);
+    min-width: 36px;
+    text-align: right;
+}
+
+.queue-card-prompt {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    padding: var(--space-sm);
+    background: rgba(99, 102, 241, 0.04);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-sm);
+    font-style: italic;
+    word-break: break-word;
+}
+
+.queue-card-thumb {
+    width: 100%;
+    max-height: 180px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-sm);
+    border: 1px solid var(--border-subtle);
+}
+
+.queue-card-error-msg {
+    font-size: 0.78rem;
+    color: var(--accent-rose, #f43f5e);
+    padding: var(--space-sm);
+    background: rgba(244, 63, 94, 0.06);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-sm);
+    border: 1px solid rgba(244, 63, 94, 0.15);
+}
+
+.queue-card-actions {
+    display: flex;
+    gap: var(--space-xs);
+    margin-top: var(--space-sm);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Custom Style Preset Editor (F-037g)
+   ═══════════════════════════════════════════════════════════════ */
+
+.preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-md);
+}
+
+.preset-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    transition: all var(--transition-normal);
+    position: relative;
+}
+
+.preset-card:hover {
+    border-color: var(--accent-purple, #a855f7);
+    box-shadow: 0 4px 16px rgba(168, 85, 247, 0.08);
+}
+
+.preset-card-builtin {
+    border-left: 3px solid var(--accent-cyan);
+    opacity: 0.85;
+}
+
+.preset-card-custom {
+    border-left: 3px solid var(--accent-purple, #a855f7);
+}
+
+.preset-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-sm);
+}
+
+.preset-card-header strong {
+    font-size: 0.92rem;
+}
+
+.preset-badge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+}
+
+.preset-badge-builtin {
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--accent-cyan);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+.preset-badge-custom {
+    background: rgba(168, 85, 247, 0.1);
+    color: var(--accent-purple, #a855f7);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.preset-card-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: var(--space-sm);
+    font-style: italic;
+}
+
+.preset-card-detail {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 2px;
+}
+
+.preset-card-detail strong {
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.preset-card-key {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: var(--space-sm);
+    font-family: var(--font-mono, monospace);
+}
+
+.preset-card-key code {
+    background: rgba(99, 102, 241, 0.06);
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+}
+
+.preset-card-actions {
+    display: flex;
+    gap: var(--space-xs);
+    margin-top: var(--space-sm);
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--border-subtle);
+}
+
+/* Preset preview box in modal */
+.preset-preview-box {
+    background: rgba(168, 85, 247, 0.04);
+    border: 1px solid rgba(168, 85, 247, 0.12);
+    border-radius: var(--radius-md);
+    padding: var(--space-md) var(--space-lg);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.preset-preview-box > div {
+    margin-bottom: var(--space-xs);
+}
+
+.preset-preview-box > div:last-child {
+    margin-bottom: 0;
+}
+
+/* ── Toast Notifications ─────────────────────────────────────── */
+
+.toast-notification {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
+    padding: var(--space-md) var(--space-lg);
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 10005;
+    animation: toastSlideIn 0.35s ease-out;
+    max-width: 380px;
+    backdrop-filter: blur(12px);
+}
+
+.toast-notification.toast-error {
+    border-color: rgba(244, 63, 94, 0.4);
+    border-left: 3px solid var(--accent-rose, #f43f5e);
+}
+
+.toast-notification.toast-success {
+    border-left: 3px solid var(--accent-emerald, #10b981);
+}
+
+@keyframes toastSlideIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toastFadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; transform: translateY(-10px); }
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    .queue-grid {
+        grid-template-columns: 1fr;
+    }
+    .preset-grid {
+        grid-template-columns: 1fr;
+    }
+    .toast-notification {
+        left: 16px;
+        right: 16px;
+        max-width: none;
+    }
+}
+

@@ -1,0 +1,185 @@
+/* ─── Member Grid ────────────────────────────────────────────── */
+.member-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--space-lg);
+}
+
+.member-card {
+    position: relative;
+}
+
+.member-card .member-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+.member-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-violet));
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.member-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.member-role {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 1px;
+}
+
+.member-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: var(--space-md);
+}
+
+.member-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.specialty-tag {
+    font-size: 0.68rem;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--accent-cyan);
+    font-weight: 500;
+}
+
+/* ─── Member Detail Panel ────────────────────────────────────── */
+.detail-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    margin-bottom: var(--space-xl);
+    backdrop-filter: blur(12px);
+    animation: slideDown var(--transition-normal) ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.detail-panel .detail-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-xl);
+}
+
+.detail-panel .detail-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-violet));
+    color: white;
+}
+
+.detail-panel .detail-close {
+    margin-left: auto;
+    background: none;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    font-size: 1rem;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.detail-panel .detail-close:hover {
+    color: var(--text-primary);
+    border-color: var(--border-medium);
+    background: rgba(255,255,255,0.05);
+}
+
+.detail-section {
+    margin-bottom: var(--space-lg);
+}
+
+.detail-section h4 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: var(--space-sm);
+}
+
+.detail-section p, .detail-section pre {
+    font-size: 0.87rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.detail-section pre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    background: var(--bg-input);
+    padding: var(--space-md);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    border: 1px solid var(--border-subtle);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.personality-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-sm);
+}
+
+.personality-item {
+    display: flex;
+    gap: var(--space-sm);
+    font-size: 0.82rem;
+}
+
+.personality-item .key {
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.personality-item .value {
+    color: var(--text-secondary);
+}
+

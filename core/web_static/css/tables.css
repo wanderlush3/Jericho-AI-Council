@@ -1,0 +1,81 @@
+/* ─── Data Table ─────────────────────────────────────────────── */
+.data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.85rem;
+}
+
+.data-table thead th {
+    text-align: left;
+    padding: var(--space-sm) var(--space-md);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-subtle);
+    position: sticky;
+    top: 0;
+    background: var(--bg-secondary);
+    z-index: 1;
+}
+
+.data-table tbody tr {
+    transition: background var(--transition-fast);
+    cursor: pointer;
+}
+
+.data-table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.04);
+}
+
+.data-table tbody td {
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    vertical-align: middle;
+}
+
+.data-table .col-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent-cyan);
+    font-weight: 500;
+}
+
+.data-table .col-title {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* ─── Approval Bar ───────────────────────────────────────────── */
+.approval-bar-container {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.approval-bar {
+    flex: 1;
+    height: 8px;
+    background: rgba(244, 63, 94, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    max-width: 120px;
+}
+
+.approval-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent-emerald), var(--accent-cyan));
+    transition: width var(--transition-slow);
+}
+
+.approval-text {
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    min-width: 40px;
+}
+

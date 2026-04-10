@@ -1,0 +1,154 @@
+/* ─── Status Badges ──────────────────────────────────────────── */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.badge-draft { background: rgba(100, 116, 139, 0.15); color: var(--status-draft); }
+.badge-draft::before { background: var(--status-draft); }
+.badge-open { background: rgba(16, 185, 129, 0.15); color: var(--status-open); }
+.badge-open::before { background: var(--status-open); }
+.badge-under_review { background: rgba(245, 158, 11, 0.15); color: var(--status-review); }
+.badge-under_review::before { background: var(--status-review); }
+.badge-decided { background: rgba(59, 130, 246, 0.15); color: var(--status-decided); }
+.badge-decided::before { background: var(--status-decided); }
+.badge-withdrawn { background: rgba(244, 63, 94, 0.15); color: var(--status-withdrawn); }
+.badge-withdrawn::before { background: var(--status-withdrawn); }
+.badge-active { background: rgba(16, 185, 129, 0.15); color: var(--status-active); }
+.badge-active::before { background: var(--status-active); }
+.badge-archived { background: rgba(100, 116, 139, 0.15); color: var(--status-archived); }
+.badge-archived::before { background: var(--status-archived); }
+.badge-superseded { background: rgba(245, 158, 11, 0.15); color: var(--status-superseded); }
+.badge-superseded::before { background: var(--status-superseded); }
+.badge-rejected { background: rgba(244, 63, 94, 0.15); color: var(--status-rejected); }
+.badge-rejected::before { background: var(--status-rejected); }
+.badge-applied { background: rgba(139, 92, 246, 0.15); color: var(--status-applied); }
+.badge-applied::before { background: var(--status-applied); }
+.badge-proposed { background: rgba(6, 182, 212, 0.15); color: var(--status-proposed); }
+.badge-proposed::before { background: var(--status-proposed); }
+.badge-voting { background: rgba(245, 158, 11, 0.15); color: var(--status-voting); }
+.badge-voting::before { background: var(--status-voting); }
+.badge-closed { background: rgba(100, 116, 139, 0.15); color: var(--status-archived); }
+.badge-closed::before { background: var(--status-archived); }
+.badge-evolution { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+.badge-evolution::before { background: #a855f7; }
+
+/* Evolution Handoff Banner */
+.evolution-handoff-banner {
+    background: rgba(168, 85, 247, 0.08);
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    border-radius: var(--radius-md);
+    padding: var(--space-lg);
+}
+
+/* Character Handoff Banner */
+.character-handoff-banner {
+    background: rgba(6, 182, 212, 0.08);
+    border: 1px solid rgba(6, 182, 212, 0.25);
+    border-radius: var(--radius-md);
+    padding: var(--space-lg);
+}
+
+/* Character Fields Panel (proposal form) */
+.character-fields-panel {
+    margin-top: var(--space-md);
+    padding: var(--space-lg);
+    background: rgba(6, 182, 212, 0.04);
+    border: 1px solid rgba(6, 182, 212, 0.15);
+    border-radius: var(--radius-md);
+    animation: slideDown var(--transition-normal) ease-out;
+}
+
+.char-fields-header {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    margin-bottom: var(--space-sm);
+    letter-spacing: -0.01em;
+}
+
+/* Location Badge */
+.badge-location { background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald); }
+.badge-location::before { background: var(--accent-emerald); }
+
+/* Location Handoff Banner */
+.location-handoff-banner {
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: var(--radius-md);
+    padding: var(--space-lg);
+}
+
+/* Location Fields Panel (proposal form) */
+.location-fields-panel {
+    margin-top: var(--space-md);
+    padding: var(--space-lg);
+    background: rgba(16, 185, 129, 0.04);
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    border-radius: var(--radius-md);
+    animation: slideDown var(--transition-normal) ease-out;
+}
+
+.loc-fields-header {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--accent-emerald);
+    margin-bottom: var(--space-sm);
+    letter-spacing: -0.01em;
+}
+
+.loc-feature-editor label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-xs);
+    display: block;
+}
+
+.char-trait-editor label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-xs);
+    display: block;
+}
+
+.trait-desc-small {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Provider badges */
+.badge-openrouter { background: rgba(99, 102, 241, 0.15); color: var(--accent-indigo); }
+.badge-openrouter::before { background: var(--accent-indigo); }
+.badge-mancer { background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan); }
+.badge-mancer::before { background: var(--accent-cyan); }
+
+/* Vote choice badges */
+.badge-for { background: rgba(16, 185, 129, 0.15); color: var(--status-open); }
+.badge-for::before { background: var(--status-open); }
+.badge-against { background: rgba(244, 63, 94, 0.15); color: var(--status-withdrawn); }
+.badge-against::before { background: var(--status-withdrawn); }
+.badge-abstain { background: rgba(100, 116, 139, 0.15); color: var(--status-draft); }
+.badge-abstain::before { background: var(--status-draft); }
+

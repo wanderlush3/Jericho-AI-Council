@@ -1,0 +1,348 @@
+Total lines: 12370
+
+   25: function escapeHtml(str) {
+   31: function escapeAttr(str) {
+   51: /* Background palette â€” light, airy, sky-inspired */
+   59: /* Text palette â€” dark on light */
+   65: /* Accent colors â€” vibrant, warm, nature-inspired */
+   74: /* Borders â€” glossy, translucent white */
+   79: /* Shadows â€” soft, light-mode glow */
+   92: /* Background palette â€” deep purple-navy */
+  100: /* Text palette â€” soft pastels on dark */
+  106: /* Accent colors â€” neon retro palette */
+  129: /** Track which CSS variables were last set so we can clear them. */
+  132: function applySkin(name) {
+  163: async function api(path) {
+  186: /** Toggle a sidebar accordion section open/closed. */
+  187: function toggleNavSection(sectionName) {
+  194: /** Ensure the section for the given view is open (without closing others). */
+  195: function _expandSectionForView(view) {
+  205: /** Save which sections are open to localStorage. */
+  206: function _saveAccordionState() {
+  215: /** Restore accordion state from localStorage, or default to opening the active section. */
+  216: function _restoreAccordionState(activeView) {
+  236: function navigateTo(view, detail) {
+  247: function initNavigation() {
+  270: function badge(text, type) {
+  275: function truncate(text, len) {
+  281: function formatDate(iso) {
+  289: function approvalBar(rate, showText) {
+  312: function badge(text, cssClass) {
+  316: function memberAvatar(name, idx) {
+  322: function truncate(str, max) {
+  327: function formatDate(iso) {
+  333: function showLoading() {
+  337: function showError(msg) {
+  341: function escapeHtml(text) {
+  348: function escapeAttr(text) {
+  355: async function renderView(view, detail) {
+  390: async function renderDashboard() {
+  536: /** Fetch bulletins and start the auto-cycling ticker. */
+  537: async function _initNarrativeBanner() {
+  571: function renderBulletin(idx) {
+  590: function advance(dir) {
+  596: function resetTimer() {
+  608: /** Minimal HTML escaper for bulletin text. */
+  609: function _escHtml(s) {
+  630: function memberAvatar(name, idx, size) {
+  637: function memberAvatarWithImage(name, idx, size, avatarUrl) {
+  645: async function renderCouncil() {
+  693: async function openPromoteModal() {
+  755: function selectCandidate(id, name) {
+  762: function closePromoteModal() {
+  768: async function promoteToCouncil() {
+  805: async function renderCouncilDetail(name) {
+  947: function escapeAttr(str) {
+  952: function escapeHtml(str) {
+  959: /* Swap the model field between dropdown options when the provider
+  961: function updateModelFieldForProvider() {
+  968: async function saveCouncilMember(originalName) {
+ 1022: function openAvatarEditor(name) {
+ 1056: function closeAvatarEditor() {
+ 1060: function handleAvatarFile(event) {
+ 1065: function loadAvatarImage(file) {
+ 1085: function updateAvatarPreview() {
+ 1125: async function saveAvatar(memberName) {
+ 1163: async function renderProposals() {
+ 1464: function toggleProposalCategoryFields() {
+ 1495: function toggleProposalCharFields() { toggleProposalCategoryFields(); }
+ 1499: function addProposalLocFeature() {
+ 1515: function removeProposalLocFeature(index) {
+ 1520: function renderProposalLocFeatures() {
+ 1535: function addProposalItemProperty() {
+ 1551: function removeProposalItemProperty(index) {
+ 1556: function renderProposalItemProperties() {
+ 1569: function updateProposalCharModelField() {
+ 1576: function addProposalCharTrait() {
+ 1595: function removeProposalCharTrait(index) {
+ 1600: function renderProposalCharTraits() {
+ 1614: async function createNewProposal() {
+ 1788: async function renderProposalDetail(id) {
+ 2091: async function runDiscussionRound(proposalId) {
+ 2170: async function scheduleDiscussionMessage(proposalId) {
+ 2198: async function clearScheduledMessage(proposalId) {
+ 2224: async function pauseDiscussion(proposalId) {
+ 2246: async function sendToReview(proposalId) {
+ 2272: function _buildFinalProposalForm(data) {
+ 2468: async function saveFinalProposal(proposalId) {
+ 2550: async function callProposalVote(proposalId) {
+ 2580: async function withdrawProposal(proposalId, author) {
+ 2603: async function vetoProposal(proposalId) {
+ 2627: async function liftVetoProposal(proposalId) {
+ 2648: async function handoffCharacterProposal(proposalId) {
+ 2669: async function handoffLocationProposal(proposalId) {
+ 2690: async function handoffItemProposal(proposalId) {
+ 2711: async function handoffLawProposal(proposalId) {
+ 2736: async function renderVotes() {
+ 2781: async function renderVoteDetail(proposalId) {
+ 2867: async function renderImageGallery(entityType, entityId) {
+ 2933: /* â”€â”€ Lightbox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+ 2935: function openGalleryLightbox(index) {
+ 2978: function closeGalleryLightbox() {
+ 2986: function navigateGalleryLb(index) {
+ 2991: /* â”€â”€ Upload Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â
+ 2995: function openGalleryUpload(entityType, entityId) {
+ 3042: function closeGalleryUpload() {
+ 3048: function handleGalleryFileSelect(event) {
+ 3053: function loadGalleryFile(file) {
+ 3068: async function submitGalleryUpload(entityType, entityId) {
+ 3095: /* â”€â”€ Gallery Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â
+ 3097: async function gallerySetPrimary(imageId) {
+ 3108: async function galleryDelete(imageId) {
+ 3124: function galleryDownload(imageId) {
+ 3134: async function refreshGallery() {
+ 3154: async function openGenerateModal(entityType, entityId) {
+ 3289: function closeGenerateModal() {
+ 3302: function updateGenModeFields() {
+ 3358: function _getGenMemberOptions() {
+ 3365: function _getGenParticipantCheckboxes() {
+ 3376: async function _populateGenMembers() {
+ 3406: async function previewCouncilPrompts() {
+ 3467: function selectGenPrompt(index) {
+ 3476: async function submitGeneration() {
+ 3550: function showGenerateProgress() {
+ 3569: function connectGenerateSSE(jobId) {
+ 3606: function updateGenerateProgress(data) {
+ 3647: function onGenerationComplete(data) {
+ 3664: function onGenerationError() {
+ 3677: async function cancelGeneration() {
+ 3695: function retryGeneration() {
+ 3705: async function renderExplore() {
+ 3764: async function renderExploreLocation(locationId) {
+ 3924: function _buildExploreNavPanel(nav) {
+ 3965: /* â”€â”€ F-042: Participant Selector Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+ 3967: function toggleParticipantPanel() {
+ 3976: function updateParticipantCount() {
+ 3999: function filterParticipants() {
+ 4011: function clearAllParticipants() {
+ 4017: function getSelectedParticipants() {
+ 4025: /* â”€â”€ Look Around Generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 4027: async function exploreLookAround(locationId) {
+ 4063: async function _pollExploreGeneration(jobId, locationId, fillEl, statusEl) {
+ 4126: /* â”€â”€ Scene Lightbox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+ 4128: function openExploreSceneLightbox(index) {
+ 4166: function closeExploreSceneLightbox() {
+ 4174: function navigateExploreSceneLb(index) {
+ 4179: /* â”€â”€ Delete Scene â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â
+ 4181: async function deleteExploreScene(locationId, sceneId) {
+ 4203: async function renderCharacters() {
+ 4364: async function renderCharacterDetail(id) {
+ 4586: function addPendingTrait() {
+ 4617: function removePendingTrait(index) {
+ 4622: function renderPendingTraits() {
+ 4639: async function createCharacter() {
+ 4714: async function saveCharacterEdit(characterId) {
+ 4764: async function updateCharacterStatus(characterId, newStatus) {
+ 4784: async function exportCharacterPng(characterId) {
+ 4834: async function addCharTrait(characterId) {
+ 4859: async function removeCharTrait(characterId, traitName) {
+ 4881: function openCharAvatarEditor(characterId) {
+ 4913: function closeCharAvatarEditor() {
+ 4917: function handleCharAvatarFile(event) {
+ 4922: function loadCharAvatarImage(file) {
+ 4942: function updateCharAvatarPreview() {
+ 4979: async function saveCharAvatar(characterId) {
+ 5013: async function renderLocations() {
+ 5112: async function renderLocationDetail(id) {
+ 5233: async function createLocation() {
+ 5275: async function saveLocationEdit(locationId) {
+ 5317: async function updateLocationStatus(locationId, newStatus) {
+ 5343: async function renderItems() {
+ 5462: async function renderItemDetail(id) {
+ 5583: async function createItem() {
+ 5631: async function saveItemEdit(itemId) {
+ 5676: async function updateItemStatus(itemId, newStatus) {
+ 5706: async function addItemProperty(itemId) {
+ 5747: async function removeItemProperty(itemId, propName) {
+ 5778: async function renderStores() {
+ 5853: function _storeCreateForm() {
+ 5902: async function openLocationStoreModal() {
+ 5968: function prefillLocationStore() {
+ 5975: async function submitLocationStore() {
+ 6012: async function submitNewStore() {
+ 6050: async function renderStoreDetail(storeId) {
+ 6262: async function setStoreStatus(storeId, newStatus) {
+ 6280: async function addStoreInventory(storeId) {
+ 6306: async function removeStoreInventory(storeId, itemId) {
+ 6323: async function updateStore(storeId) {
+ 6353: async function purchaseFromStore(storeId) {
+ 6388: async function renderAnalytics() {
+ 6462: async function renderChat() {
+ 6491: function chatCard(c, idx) {
+ 6591: async function createNewChat() {
+ 6634: async function renderChatDetail(chatId) {
+ 6820: function toggleAddMemberDropdown() {
+ 6825: async function addChatMember(chatId, memberName) {
+ 6839: async function removeChatMember(chatId, memberName) {
+ 6854: async function addChatCharacter(chatId, characterId) {
+ 6868: async function removeChatCharacter(chatId, characterId) {
+ 6883: async function pauseChat(chatId) {
+ 6894: async function resumeChat(chatId) {
+ 6905: async function continueChat(chatId) {
+ 6972: function escapeHtml(text) {
+ 6982: function renderMarkdown(text) {
+ 6998: function wrapPresenceContent(renderedHtml, speakerName) {
+ 7011: async function toggleSilentPass(viewType, viewId) {
+ 7023: async function toggleSilentPassa(chatId) { return toggleSilentPass('chat', chatId); }
+ 7025: function appendAgentBubble(container, speaker, content, avatarUrl) {
+ 7043: async function sendChatMessage(chatId) {
+ 7139: async function closeChatConversation(chatId) {
+ 7170: /** Eagerly fetch model option lists from the API so they're available
+ 7172: async function loadModelOptions() {
+ 7187: /** Return model options array for a given provider. */
+ 7188: function getModelOptionsForProvider(provider) {
+ 7194: /** Render a model dropdown (or LM Studio info message) for a given provider.
+ 7200: function renderModelField(selectId, provider, currentModel, includeDefault) {
+ 7214: async function renderSettings() {
+ 7387: async function saveApiKey(provider) {
+ 7409: async function deleteApiKey(provider) {
+ 7420: async function saveModel(provider) {
+ 7441: function updateCharCount() {
+ 7462: async function saveUserDescription() {
+ 7495: async function saveUserName() {
+ 7528: function escapeHtml(text) {
+ 7534: function showToast(msg, isError) {
+ 7554: async function renderMemories() {
+ 7640: async function renderMemoryDetail(memberName) {
+ 7706: async function renderSharedMemory() {
+ 7783: function toggleHistorySort() {
+ 7789: async function deleteSharedDecision(index, label) {
+ 7806: async function deleteCoreBelief(memberName, topic) {
+ 7825: function updateNavCounts(data) {
+ 7867: function obeliskBadge(balance) {
+ 7877: function obeliskTotal(balance) {
+ 7884: async function renderTreasury() {
+ 7947: async function renderTreasuryDetail(accountId) {
+ 8046: async function initializeTreasury() {
+ 8065: async function treasuryCredit(accountId) {
+ 8092: async function treasuryDebit(accountId) {
+ 8123: async function renderTaxation() {
+ 8244: async function toggleTaxEnabled(enabled) {
+ 8261: async function updateTaxRate() {
+ 8287: async function openTransferModal() {
+ 8354: function closeTransferModal() {
+ 8359: async function executeTransfer() {
+ 8397: async function renderEvolution() {
+ 8485: async function renderEvolutionDetail(evolutionId) {
+ 8650: async function updateEvoOverlayStatus(evolutionId, newStatus) {
+ 8669: function confirmRollbackEvolution(evolutionId) {
+ 8689: async function executeRollbackEvolution(evolutionId) {
+ 8715: function openRollbackToVersionModal(targetId, versions) {
+ 8740: async function executeRollbackToVersion(targetId) {
+ 8769: async function openCreateEvolutionModal(prefillProposalId) {
+ 8887: function switchEvoTargetType(type) {
+ 8906: function addEvoChangeRow() {
+ 8936: function removeEvoChangeRow(btn) {
+ 8945: async function submitCreateEvolution() {
+ 9025: async function createEvolutionFromProposal(proposalId) {
+ 9046: async function renderEvolutionTimelines() {
+ 9099: async function renderEvolutionTimelineDetail(characterId) {
+ 9191: async function renderCouncilSessions() {
+ 9278: async function createNewSession() {
+ 9315: async function renderCouncilSessionDetail(id) {
+ 9519: async function runSessionRound(sessionId) {
+ 9596: async function scheduleSessionMessage(sessionId) {
+ 9624: async function clearSessionScheduledMessage(sessionId) {
+ 9650: async function closeSession(sessionId) {
+ 9671: async function handoffSessionToProposal(sessionId) {
+ 9709: async function renderLaws() {
+ 9788: async function createLaw() {
+ 9827: async function renderLawDetail(id) {
+ 9877: async function updateLawStatus(lawId, newStatus) {
+ 9899: async function renderLawSharedMemory() {
+ 9948: async function renderSettings() {
+10120: function selectSkin(name) {
+10125: function toggleSilentPassSettings() {
+10131: async function saveSettingsKey(provider) {
+10148: async function deleteSettingsKey(provider) {
+10158: async function saveSettingsModel(provider) {
+10174: async function saveSettingsUserDesc() {
+10189: async function saveSettingsUserName() {
+10216: async function loadComfyUISettings() {
+10435: function _renderAssignmentCards(templates, assignments) {
+10475: async function saveTemplateAssignments() {
+10506: function handleComfyUIFile(event) {
+10511: function processComfyUIFile(file) {
+10543: async function saveComfyUIConfig() {
+10567: async function testComfyUIConnection() {
+10604: async function uploadComfyUITemplate() {
+10646: async function deleteComfyUITemplate(templateId, templateName) {
+10664: async function toggleComfyUITemplateDetail(templateId) {
+10674: async function loadComfyUITemplateDetail(templateId) {
+10703: function previewComfyUIPreset() {
+10730: async function saveComfyUIDefaultStyle() {
+10752: /** Swap model field in character creation form when provider changes. */
+10753: function updateCharCreateModelField() {
+10760: /** Swap model field in character detail edit form when provider changes. */
+10761: function updateCharEditModelField() {
+10773: async function renderTasks() {
+10890: async function createTask() {
+10928: async function doTasks() {
+10994: async function renderTaskDetail(taskId) {
+11079: async function setTaskStatus(taskId, newStatus) {
+11102: async function renderGenerationQueue() {
+11180: function startQueuePolling() {
+11200: function stopQueuePolling() {
+11207: async function cancelQueueJob(jobId) {
+11217: function retryQueueJob(jobId, entityType, entityId) {
+11228: async function renderPresetEditor() {
+11292: function openCreatePresetModal() {
+11343: function closePresetModal() {
+11348: function updatePresetPreview() {
+11362: async function saveCustomPreset(presetId) {
+11402: async function editCustomPreset(presetId) {
+11436: async function deleteCustomPreset(presetId, presetName) {
+11448: async function exportPresets() {
+11464: function importPresetsDialog() {
+11499: async function openBatchGenerateModal(entityType) {
+11587: function closeBatchModal() {
+11592: async function submitBatchGeneration(entityType) {
+11646: function startGenToastPoller() {
+11680: async function renderStories() {
+11721: function filterStories(status) {
+11728: function openCreateStoryModal() {
+11765: function closeStoryModal() {
+11770: async function submitCreateStory() {
+11797: async function renderStoryDetail(storyId) {
+11909: async function renderStoryReader(storyId) {
+11967: async function addChapter(storyId) {
+11980: async function editChapter(storyId, chapterId, currentTitle, currentSynopsis) {
+11994: async function deleteChapter(storyId, chapterId) {
+12004: async function addSceneToChapter(storyId, chapterId) {
+12043: async function submitAddScene(storyId, chapterId) {
+12060: async function deleteScene(storyId, chapterId, sceneId) {
+12070: async function narrateScene(storyId, chapterId, sceneId) {
+12093: async function illustrateScene(storyId, chapterId, sceneId) {
+12118: function _pollIllustrationJob(jobId, storyId, sceneId) {
+12153: async function editStory(storyId) {
+12191: async function submitEditStory(storyId) {
+12210: async function changeStoryStatus(storyId, newStatus) {
+12223: async function deleteStory(storyId) {
+12233: function openStoryLightbox(imageUrl) {
+12251: async function loadStoryParticipants() {
+12262: function renderStoryParticipantList(participants) {
+12299: function toggleStoryParticipants() {
+12308: function filterStoryParticipants() {
+12316: function toggleStoryParticipant(checkbox) {
+12340: function updateStoryParticipantCounter() {
+12349: function getSelectedStoryParticipants() {

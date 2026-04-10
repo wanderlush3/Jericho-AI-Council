@@ -1,0 +1,85 @@
+/* ─── Analytics ──────────────────────────────────────────────── */
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-lg);
+}
+
+.analytics-card h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: var(--space-lg);
+    color: var(--text-primary);
+}
+
+.analytics-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 0.85rem;
+}
+
+.analytics-row:last-child {
+    border-bottom: none;
+}
+
+.analytics-row .label {
+    color: var(--text-secondary);
+}
+
+.analytics-row .value {
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-primary);
+}
+
+.top-members-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.top-member-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.top-member-rank {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    min-width: 20px;
+}
+
+.top-member-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.top-member-bar-bg {
+    flex: 2;
+    height: 8px;
+    background: rgba(148, 163, 184, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.top-member-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue));
+    transition: width var(--transition-slow);
+}
+
+.top-member-score {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    min-width: 30px;
+    text-align: right;
+}
+

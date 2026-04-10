@@ -1,0 +1,681 @@
+/* ─── Settings Skin Selector ─────────────────────────────────── */
+
+.settings-section {
+    margin-bottom: var(--space-2xl);
+}
+
+.settings-section-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: var(--space-lg);
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-skin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-lg);
+}
+
+.skin-card {
+    background: var(--bg-card);
+    border: 2px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 0;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    overflow: hidden;
+    position: relative;
+}
+
+.skin-card:hover {
+    border-color: var(--border-medium);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-3px);
+}
+
+.skin-card.active {
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.2), 0 0 40px rgba(6, 182, 212, 0.08);
+}
+
+.skin-card.active::after {
+    content: '✓';
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--accent-cyan);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+/* Preview swatch strip — 5 color squares */
+.skin-card-preview {
+    display: flex;
+    height: 48px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.skin-card-preview .swatch {
+    flex: 1;
+    transition: background 0.3s ease;
+}
+
+/* Card body */
+.skin-card-body {
+    padding: var(--space-md);
+    text-align: center;
+}
+
+.skin-card-icon {
+    font-size: 1.6rem;
+    margin-bottom: var(--space-xs);
+}
+
+.skin-card-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.skin-card-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* ─── Settings Info Cards ────────────────────────────────────── */
+
+.settings-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--space-md);
+}
+
+.settings-info-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    text-align: center;
+    transition: all var(--transition-fast);
+}
+
+.settings-info-card:hover {
+    border-color: var(--border-medium);
+}
+
+.settings-toggle-card:hover {
+    border-color: var(--border-glow);
+    box-shadow: var(--shadow-glow);
+}
+
+.settings-info-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: var(--space-xs);
+}
+
+.settings-info-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.settings-info-hint {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    margin-top: var(--space-xs);
+}
+
+/* ─── Settings Provider Cards ────────────────────────────────── */
+
+.settings-providers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: var(--space-lg);
+}
+
+.settings-provider-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    transition: border-color var(--transition-fast);
+}
+
+.settings-provider-card:hover {
+    border-color: var(--border-medium);
+}
+
+.settings-provider-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-provider-icon {
+    font-size: 1.2rem;
+}
+
+.settings-provider-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.settings-field-group {
+    margin-bottom: var(--space-md);
+}
+
+.settings-field-group label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: var(--space-xs);
+}
+
+.settings-key-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.settings-input {
+    flex: 1;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.settings-input:focus {
+    border-color: var(--accent-cyan);
+}
+
+.settings-input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+select.settings-input {
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+}
+
+select.settings-input option {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.settings-textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 80px;
+    line-height: 1.5;
+}
+
+.settings-field-hint {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    margin-top: var(--space-xs);
+    display: inline-block;
+}
+
+.btn-sm {
+    padding: var(--space-xs) var(--space-md);
+    font-size: 0.78rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Frutiger Aero Skin — Glossy Y2K Optimism
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Sky / nature gradient behind everything */
+[data-skin="frutiger_aero"] body::before {
+    background:
+        radial-gradient(ellipse at 30% 20%, rgba(56, 189, 248, 0.18) 0%, transparent 55%),
+        radial-gradient(ellipse at 70% 70%, rgba(16, 185, 129, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 40%, rgba(249, 115, 22, 0.06) 0%, transparent 60%),
+        linear-gradient(180deg, #dbeafe 0%, #e0f2fe 30%, #ecfdf5 70%, #f0fdf4 100%);
+}
+
+/* Frosted-glass sidebar */
+[data-skin="frutiger_aero"] .sidebar {
+    background: rgba(224, 242, 254, 0.88);
+    border-right: 1px solid rgba(148, 163, 184, 0.2);
+    backdrop-filter: blur(24px) saturate(1.4);
+    box-shadow: 2px 0 20px rgba(56, 189, 248, 0.06);
+}
+
+/* Logo text gradient — sunny sky */
+[data-skin="frutiger_aero"] .sidebar-logo h1 {
+    background: linear-gradient(135deg, #0ea5e9, #06b6d4, #10b981);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+/* Nav items — dark text on light */
+[data-skin="frutiger_aero"] .nav-item {
+    color: #475569;
+}
+[data-skin="frutiger_aero"] .nav-item:hover {
+    color: #1e293b;
+    background: rgba(14, 165, 233, 0.08);
+}
+[data-skin="frutiger_aero"] .nav-item.active {
+    color: #0284c7;
+    background: rgba(14, 165, 233, 0.1);
+    border-left-color: #0ea5e9;
+}
+[data-skin="frutiger_aero"] .nav-item.active .nav-count {
+    background: rgba(14, 165, 233, 0.12);
+    color: #0284c7;
+}
+
+/* Cards — glossy frosted glass */
+[data-skin="frutiger_aero"] .card {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px) saturate(1.3);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+[data-skin="frutiger_aero"] .card:hover {
+    background: rgba(255, 255, 255, 0.78);
+    border-color: rgba(14, 165, 233, 0.25);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+[data-skin="frutiger_aero"] .card-clickable:hover {
+    border-color: rgba(14, 165, 233, 0.35);
+    box-shadow: 0 6px 24px rgba(14, 165, 233, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* Detail panels — glass */
+[data-skin="frutiger_aero"] .detail-panel {
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(16px) saturate(1.3);
+}
+
+/* Stat cards — glossy top strip */
+[data-skin="frutiger_aero"] .stat-card {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px) saturate(1.3);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* Buttons — glossy aqua gradient */
+[data-skin="frutiger_aero"] .btn-primary {
+    background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%);
+    border: 1px solid rgba(14, 165, 233, 0.3);
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    color: #fff;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+[data-skin="frutiger_aero"] .btn-primary:hover {
+    background: linear-gradient(180deg, #7dd3fc 0%, #38bdf8 100%);
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+[data-skin="frutiger_aero"] .btn-secondary {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: #475569;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+[data-skin="frutiger_aero"] .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.8);
+    color: #1e293b;
+}
+
+[data-skin="frutiger_aero"] .btn-danger {
+    background: linear-gradient(180deg, #fb7185 0%, #f43f5e 100%);
+    box-shadow: 0 2px 8px rgba(244, 63, 94, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* Inputs — light glass */
+[data-skin="frutiger_aero"] .settings-input {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: #1e293b;
+}
+[data-skin="frutiger_aero"] .settings-input:focus {
+    border-color: #0ea5e9;
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12);
+}
+[data-skin="frutiger_aero"] .settings-input::placeholder {
+    color: #94a3b8;
+}
+
+/* Code / pre blocks */
+[data-skin="frutiger_aero"] .detail-section pre {
+    background: rgba(241, 245, 249, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: #334155;
+}
+
+/* Table rows */
+[data-skin="frutiger_aero"] .data-table thead th {
+    background: rgba(241, 245, 249, 0.9);
+    color: #475569;
+}
+[data-skin="frutiger_aero"] .data-table tbody tr:hover {
+    background: rgba(14, 165, 233, 0.04);
+}
+
+/* Member avatar gradient — brighter for light mode */
+[data-skin="frutiger_aero"] .member-avatar {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Chat bubbles */
+[data-skin="frutiger_aero"] .chat-bubble-human .chat-msg-body {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(6, 182, 212, 0.1));
+    border: 1px solid rgba(14, 165, 233, 0.2);
+}
+[data-skin="frutiger_aero"] .chat-bubble-agent .chat-msg-body {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* Skin card when active — cyan glow adjusted for light bg */
+[data-skin="frutiger_aero"] .skin-card.active {
+    border-color: #0ea5e9;
+    box-shadow: 0 0 16px rgba(14, 165, 233, 0.2), 0 0 32px rgba(14, 165, 233, 0.06);
+}
+
+/* Settings cards */
+[data-skin="frutiger_aero"] .settings-provider-card {
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(12px);
+}
+
+/* Scrollbar — light themed */
+[data-skin="frutiger_aero"] ::-webkit-scrollbar {
+    width: 8px;
+}
+[data-skin="frutiger_aero"] ::-webkit-scrollbar-track {
+    background: rgba(241, 245, 249, 0.5);
+}
+[data-skin="frutiger_aero"] ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 4px;
+}
+[data-skin="frutiger_aero"] ::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.5);
+}
+
+/* Toast — glass */
+[data-skin="frutiger_aero"] .toast {
+    background: rgba(255, 255, 255, 0.9);
+    color: #1e293b;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(12px);
+}
+
+/* Settings notice — safety box */
+[data-skin="frutiger_aero"] .settings-notice {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+/* Loading spinner — darker dot for light bg */
+[data-skin="frutiger_aero"] .loading-spinner::after {
+    border-color: rgba(14, 165, 233, 0.15);
+    border-top-color: #0ea5e9;
+}
+
+/* Select dropdowns */
+[data-skin="frutiger_aero"] select.settings-input option {
+    background: #f8fafc;
+    color: #1e293b;
+}
+
+/* Smooth skin transition */
+[data-skin-transitioning] * {
+    transition: background-color 0.4s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.4s ease !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Vaporwave Skin — Retro-Futuristic Neon Glow
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Deep purple gradient with neon radials */
+[data-skin="vaporwave"] body::before {
+    background:
+        radial-gradient(ellipse at 25% 15%, rgba(255, 113, 206, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 75% 60%, rgba(1, 205, 254, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 85%, rgba(185, 103, 255, 0.08) 0%, transparent 45%),
+        linear-gradient(180deg, #0d0221 0%, #150535 30%, #1a0a2e 65%, #0d0221 100%);
+}
+
+/* Sidebar — deep purple glass with neon border */
+[data-skin="vaporwave"] .sidebar {
+    background: rgba(13, 2, 33, 0.94);
+    border-right: 1px solid rgba(185, 103, 255, 0.2);
+    backdrop-filter: blur(24px) saturate(1.3);
+    box-shadow: 2px 0 24px rgba(185, 103, 255, 0.06);
+}
+
+/* Logo text — neon pink-to-cyan gradient */
+[data-skin="vaporwave"] .sidebar-logo h1 {
+    background: linear-gradient(135deg, #ff71ce, #b967ff, #01cdfe);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+/* Nav items */
+[data-skin="vaporwave"] .nav-item {
+    color: #b8a0cc;
+}
+[data-skin="vaporwave"] .nav-item:hover {
+    color: #e8d5f5;
+    background: rgba(185, 103, 255, 0.08);
+}
+[data-skin="vaporwave"] .nav-item.active {
+    color: #ff71ce;
+    background: rgba(255, 113, 206, 0.1);
+    border-left-color: #ff71ce;
+}
+[data-skin="vaporwave"] .nav-item.active .nav-count {
+    background: rgba(255, 113, 206, 0.15);
+    color: #ff71ce;
+}
+
+/* Cards — dark frosted glass with purple tint */
+[data-skin="vaporwave"] .card {
+    background: rgba(26, 10, 46, 0.7);
+    border: 1px solid rgba(185, 103, 255, 0.12);
+    backdrop-filter: blur(16px) saturate(1.2);
+    box-shadow: 0 2px 12px rgba(185, 103, 255, 0.06), inset 0 1px 0 rgba(185, 103, 255, 0.05);
+}
+[data-skin="vaporwave"] .card:hover {
+    background: rgba(36, 15, 62, 0.8);
+    border-color: rgba(185, 103, 255, 0.25);
+    box-shadow: 0 4px 20px rgba(185, 103, 255, 0.1), inset 0 1px 0 rgba(185, 103, 255, 0.08);
+}
+[data-skin="vaporwave"] .card-clickable:hover {
+    border-color: rgba(255, 113, 206, 0.35);
+    box-shadow: 0 6px 24px rgba(255, 113, 206, 0.1), inset 0 1px 0 rgba(255, 113, 206, 0.06);
+}
+
+/* Detail panels */
+[data-skin="vaporwave"] .detail-panel {
+    background: rgba(26, 10, 46, 0.65);
+    border: 1px solid rgba(185, 103, 255, 0.15);
+    backdrop-filter: blur(16px) saturate(1.2);
+}
+
+/* Stat cards */
+[data-skin="vaporwave"] .stat-card {
+    background: rgba(26, 10, 46, 0.7);
+    border: 1px solid rgba(185, 103, 255, 0.12);
+    backdrop-filter: blur(16px) saturate(1.2);
+    box-shadow: 0 2px 10px rgba(185, 103, 255, 0.08), inset 0 1px 0 rgba(185, 103, 255, 0.05);
+}
+
+/* Buttons — neon pink gradient */
+[data-skin="vaporwave"] .btn-primary {
+    background: linear-gradient(180deg, #ff71ce 0%, #b967ff 100%);
+    border: 1px solid rgba(255, 113, 206, 0.3);
+    box-shadow: 0 2px 10px rgba(255, 113, 206, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+[data-skin="vaporwave"] .btn-primary:hover {
+    background: linear-gradient(180deg, #ff9ddb 0%, #d18fff 100%);
+    box-shadow: 0 4px 16px rgba(255, 113, 206, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+[data-skin="vaporwave"] .btn-secondary {
+    background: rgba(26, 10, 46, 0.6);
+    border: 1px solid rgba(185, 103, 255, 0.2);
+    color: #b8a0cc;
+    box-shadow: inset 0 1px 0 rgba(185, 103, 255, 0.05);
+}
+[data-skin="vaporwave"] .btn-secondary:hover {
+    background: rgba(36, 15, 62, 0.7);
+    color: #e8d5f5;
+    border-color: rgba(185, 103, 255, 0.35);
+}
+
+[data-skin="vaporwave"] .btn-danger {
+    background: linear-gradient(180deg, #ff6b9d 0%, #c44569 100%);
+    box-shadow: 0 2px 8px rgba(196, 69, 105, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Inputs — dark glass */
+[data-skin="vaporwave"] .settings-input {
+    background: rgba(22, 8, 42, 0.8);
+    border: 1px solid rgba(185, 103, 255, 0.2);
+    color: #e8d5f5;
+}
+[data-skin="vaporwave"] .settings-input:focus {
+    border-color: #ff71ce;
+    box-shadow: 0 0 0 3px rgba(255, 113, 206, 0.15);
+}
+[data-skin="vaporwave"] .settings-input::placeholder {
+    color: #8a6faa;
+}
+
+/* Code / pre blocks */
+[data-skin="vaporwave"] .detail-section pre {
+    background: rgba(13, 2, 33, 0.8);
+    border: 1px solid rgba(185, 103, 255, 0.15);
+    color: #b8a0cc;
+}
+
+/* Table rows */
+[data-skin="vaporwave"] .data-table thead th {
+    background: rgba(26, 10, 46, 0.9);
+    color: #b8a0cc;
+}
+[data-skin="vaporwave"] .data-table tbody tr:hover {
+    background: rgba(185, 103, 255, 0.06);
+}
+
+/* Member avatar */
+[data-skin="vaporwave"] .member-avatar {
+    box-shadow: 0 2px 10px rgba(185, 103, 255, 0.15);
+}
+
+/* Chat bubbles */
+[data-skin="vaporwave"] .chat-bubble-human .chat-msg-body {
+    background: linear-gradient(135deg, rgba(255, 113, 206, 0.12), rgba(185, 103, 255, 0.08));
+    border: 1px solid rgba(255, 113, 206, 0.2);
+}
+[data-skin="vaporwave"] .chat-bubble-agent .chat-msg-body {
+    background: rgba(26, 10, 46, 0.7);
+    border: 1px solid rgba(185, 103, 255, 0.15);
+}
+
+/* Skin card active — neon pink glow */
+[data-skin="vaporwave"] .skin-card.active {
+    border-color: #ff71ce;
+    box-shadow: 0 0 16px rgba(255, 113, 206, 0.25), 0 0 32px rgba(255, 113, 206, 0.08);
+}
+
+/* Settings provider cards */
+[data-skin="vaporwave"] .settings-provider-card {
+    background: rgba(26, 10, 46, 0.65);
+    border: 1px solid rgba(185, 103, 255, 0.15);
+    backdrop-filter: blur(12px);
+}
+
+/* Scrollbar — neon themed */
+[data-skin="vaporwave"] ::-webkit-scrollbar {
+    width: 8px;
+}
+[data-skin="vaporwave"] ::-webkit-scrollbar-track {
+    background: rgba(13, 2, 33, 0.5);
+}
+[data-skin="vaporwave"] ::-webkit-scrollbar-thumb {
+    background: rgba(185, 103, 255, 0.3);
+    border-radius: 4px;
+}
+[data-skin="vaporwave"] ::-webkit-scrollbar-thumb:hover {
+    background: rgba(185, 103, 255, 0.5);
+}
+
+/* Toast — dark glass */
+[data-skin="vaporwave"] .toast {
+    background: rgba(26, 10, 46, 0.92);
+    color: #e8d5f5;
+    border: 1px solid rgba(185, 103, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(185, 103, 255, 0.12);
+    backdrop-filter: blur(12px);
+}
+
+/* Settings notice */
+[data-skin="vaporwave"] .settings-notice {
+    background: rgba(185, 103, 255, 0.08);
+    border-color: rgba(185, 103, 255, 0.2);
+}
+
+/* Loading spinner — neon */
+[data-skin="vaporwave"] .loading-spinner::after {
+    border-color: rgba(255, 113, 206, 0.15);
+    border-top-color: #ff71ce;
+}
+
+/* Select dropdowns */
+[data-skin="vaporwave"] select.settings-input option {
+    background: #150535;
+    color: #e8d5f5;
+}
+

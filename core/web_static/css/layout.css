@@ -1,0 +1,184 @@
+/* ─── Layout ─────────────────────────────────────────────────── */
+.app-container {
+    display: flex;
+    min-height: 100vh;
+    position: relative;
+    z-index: 1;
+}
+
+/* ─── Sidebar ────────────────────────────────────────────────── */
+.sidebar {
+    width: 260px;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border-subtle);
+    padding: var(--space-lg) 0;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+}
+
+.sidebar-logo {
+    padding: 0 var(--space-lg);
+    margin-bottom: var(--space-lg);
+}
+
+.sidebar-logo h1 {
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue), var(--accent-violet));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.sidebar-logo p {
+    font-size: 0.73rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* ─── Sidebar Accordion Layout ───────────────────────────────── */
+
+.nav-sections-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-subtle) transparent;
+}
+
+.nav-sections-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+
+.nav-sections-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.nav-sections-scroll::-webkit-scrollbar-thumb {
+    background: var(--border-subtle);
+    border-radius: 4px;
+}
+
+.nav-section {
+    margin-bottom: var(--space-xs);
+}
+
+.nav-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: var(--space-sm) var(--space-lg);
+    margin-bottom: 0;
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--transition-fast), background var(--transition-fast);
+    border-radius: var(--radius-sm);
+}
+
+.nav-section-title:hover {
+    color: var(--text-secondary);
+    background: rgba(148, 163, 184, 0.06);
+}
+
+.nav-section.open .nav-section-title {
+    color: var(--text-secondary);
+}
+
+/* Chevron indicator */
+.nav-chevron {
+    font-size: 0.6rem;
+    transition: transform var(--transition-normal);
+    opacity: 0.6;
+}
+
+.nav-section.open .nav-chevron {
+    transform: rotate(90deg);
+    opacity: 1;
+}
+
+/* Collapsible items container */
+.nav-section-items {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height var(--transition-normal), opacity var(--transition-fast);
+    opacity: 0;
+}
+
+.nav-section.open .nav-section-items {
+    max-height: 500px; /* large enough for any section */
+    opacity: 1;
+}
+
+/* Pinned Settings at bottom */
+.nav-section-pinned {
+    margin-top: auto;
+    margin-bottom: 0;
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-lg);
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.87rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border-left: 3px solid transparent;
+    position: relative;
+}
+
+.nav-item:hover {
+    color: var(--text-primary);
+    background: rgba(59, 130, 246, 0.06);
+}
+
+.nav-item.active {
+    color: var(--accent-cyan);
+    background: rgba(6, 182, 212, 0.08);
+    border-left-color: var(--accent-cyan);
+}
+
+.nav-item .nav-icon {
+    width: 18px;
+    text-align: center;
+    font-size: 0.95rem;
+}
+
+.nav-item .nav-count {
+    margin-left: auto;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: rgba(148, 163, 184, 0.1);
+    color: var(--text-muted);
+    padding: 2px 7px;
+    border-radius: 10px;
+    min-width: 22px;
+    text-align: center;
+}
+
+.nav-item.active .nav-count {
+    background: rgba(6, 182, 212, 0.15);
+    color: var(--accent-cyan);
+}
+

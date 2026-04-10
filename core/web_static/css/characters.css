@@ -1,0 +1,164 @@
+/* ─── Character Cards ────────────────────────────────────────── */
+.character-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: var(--space-lg);
+}
+
+.character-card .char-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-md);
+}
+
+.character-card .char-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.character-card .char-author {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.character-card .char-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-md);
+    line-height: 1.5;
+}
+
+.traits-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-md);
+}
+
+.trait-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 0.8rem;
+}
+
+.trait-name {
+    color: var(--text-primary);
+    font-weight: 500;
+    min-width: 80px;
+}
+
+.trait-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: rgba(148, 163, 184, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    max-width: 100px;
+}
+
+.trait-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent-violet), var(--accent-blue));
+    transition: width var(--transition-slow);
+}
+
+.trait-intensity {
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    min-width: 30px;
+    text-align: right;
+}
+
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+}
+
+.tag {
+    font-size: 0.68rem;
+    padding: 2px 8px;
+    border-radius: 5px;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--accent-indigo);
+    font-weight: 500;
+}
+
+/* ─── Character Creation Form ────────────────────────────────── */
+.character-create-form h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: var(--space-sm);
+}
+
+.char-card-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    background: var(--bg-input);
+}
+
+.char-detail-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    overflow: hidden;
+    border: 2px solid var(--border-subtle);
+    transition: border-color var(--transition-fast);
+}
+
+.char-detail-avatar:hover {
+    border-color: var(--accent-violet);
+}
+
+.char-detail-avatar .avatar-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    font-size: 1.2rem;
+}
+
+.char-detail-avatar:hover .avatar-overlay {
+    opacity: 1;
+}
+
+.char-avatar-placeholder {
+    background: linear-gradient(135deg, var(--accent-violet), var(--accent-rose));
+    color: white;
+}
+
+.trait-desc-small {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.char-trait-editor label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+

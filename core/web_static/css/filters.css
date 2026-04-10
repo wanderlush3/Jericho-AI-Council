@@ -1,0 +1,46 @@
+/* ─── Filters Bar ────────────────────────────────────────────── */
+.filters-bar {
+    display: flex;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.filter-group label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.filter-group select,
+.filter-group input {
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    font-family: 'Inter', sans-serif;
+    min-width: 140px;
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
+    border-color: var(--accent-blue);
+}
+
+.filter-group select option {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+

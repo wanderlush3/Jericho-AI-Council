@@ -1,0 +1,494 @@
+/* ═══════════════════════════════════════════════════════════════
+   Treasury / Obelisk Styles
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Account card grid */
+.treasury-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--space-lg);
+}
+
+.treasury-card {
+    padding: var(--space-lg) !important;
+}
+
+.treasury-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+.treasury-card-icon {
+    font-size: 1.6rem;
+    flex-shrink: 0;
+}
+
+.treasury-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.treasury-card-owner {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.treasury-card-id {
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+}
+
+.treasury-card-total {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: var(--space-sm);
+    text-align: right;
+    font-style: italic;
+}
+
+/* Obelisk balance inline display */
+.obelisk-balance {
+    display: flex;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+    margin-top: var(--space-xs);
+}
+
+.obelisk-coin {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.obelisk-gold {
+    background: rgba(255, 215, 0, 0.12);
+    color: #FFD700;
+    border: 1px solid rgba(255, 215, 0, 0.25);
+}
+
+.obelisk-silver {
+    background: rgba(192, 192, 192, 0.10);
+    color: #C0C0C0;
+    border: 1px solid rgba(192, 192, 192, 0.25);
+}
+
+.obelisk-bronze {
+    background: rgba(205, 127, 50, 0.10);
+    color: #CD7F32;
+    border: 1px solid rgba(205, 127, 50, 0.25);
+}
+
+.obelisk-empty {
+    background: rgba(148, 163, 184, 0.06);
+    color: var(--text-muted);
+    border: 1px solid var(--border-subtle);
+    font-style: italic;
+}
+
+/* Detail view — balance panel */
+.treasury-balance-panel {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.03), rgba(192, 192, 192, 0.03), rgba(205, 127, 50, 0.03));
+    border: 1px solid rgba(255, 215, 0, 0.12);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+}
+
+.treasury-balance-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-lg);
+    margin-top: var(--space-md);
+}
+
+.treasury-tier {
+    text-align: center;
+    padding: var(--space-lg) var(--space-md);
+    border-radius: var(--radius-lg);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.treasury-tier:hover {
+    transform: translateY(-3px);
+}
+
+.treasury-tier-gold {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(255, 215, 0, 0.02));
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    box-shadow: 0 4px 16px rgba(255, 215, 0, 0.06);
+}
+
+.treasury-tier-gold:hover {
+    box-shadow: 0 8px 24px rgba(255, 215, 0, 0.12);
+}
+
+.treasury-tier-silver {
+    background: linear-gradient(135deg, rgba(192, 192, 192, 0.08), rgba(192, 192, 192, 0.02));
+    border: 1px solid rgba(192, 192, 192, 0.2);
+    box-shadow: 0 4px 16px rgba(192, 192, 192, 0.06);
+}
+
+.treasury-tier-silver:hover {
+    box-shadow: 0 8px 24px rgba(192, 192, 192, 0.12);
+}
+
+.treasury-tier-bronze {
+    background: linear-gradient(135deg, rgba(205, 127, 50, 0.08), rgba(205, 127, 50, 0.02));
+    border: 1px solid rgba(205, 127, 50, 0.2);
+    box-shadow: 0 4px 16px rgba(205, 127, 50, 0.06);
+}
+
+.treasury-tier-bronze:hover {
+    box-shadow: 0 8px 24px rgba(205, 127, 50, 0.12);
+}
+
+.treasury-tier-icon {
+    font-size: 2rem;
+    margin-bottom: var(--space-xs);
+}
+
+.treasury-tier-value {
+    font-size: 2rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: var(--space-xs);
+}
+
+.treasury-tier-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.treasury-total-display {
+    text-align: center;
+    margin-top: var(--space-lg);
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border-subtle);
+}
+
+/* Credit / Debit form */
+.treasury-action-form {
+    margin-top: var(--space-sm);
+}
+
+.treasury-input-row {
+    display: flex;
+    gap: var(--space-md);
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.treasury-input-group {
+    flex: 1;
+    min-width: 80px;
+}
+
+.treasury-input-group label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: var(--space-xs);
+}
+
+.treasury-input-group .settings-input {
+    width: 100%;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Badge variants for account types */
+.badge-council_member {
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--accent-blue);
+}
+
+.badge-character {
+    background: rgba(168, 85, 247, 0.12);
+    color: #a855f7;
+}
+
+.badge-user {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--accent-emerald);
+}
+
+.badge-government {
+    background: rgba(255, 215, 0, 0.12);
+    color: #FFD700;
+}
+
+/* ─── Store Section ──────────────────────────────────────────── */
+
+.store-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: var(--space-lg);
+}
+
+.store-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.store-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-amber), #fbbf24, var(--accent-emerald));
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.store-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+.store-card-icon {
+    font-size: 2rem;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(251, 191, 36, 0.1));
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+}
+
+.store-card-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.store-card-author {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.store-card-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.store-stat {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.store-stat-available {
+    color: var(--accent-emerald);
+}
+
+.store-stat-sold {
+    color: var(--accent-rose);
+}
+
+.store-card-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: var(--space-sm);
+}
+
+/* Store Item Cards */
+.store-item-card {
+    margin-bottom: var(--space-md);
+    transition: all var(--transition-normal);
+}
+
+.store-item-card:hover {
+    border-color: var(--accent-amber);
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.1);
+}
+
+.store-item-owned {
+    opacity: 0.7;
+    border-color: rgba(100, 116, 139, 0.2);
+}
+
+.store-item-owned:hover {
+    opacity: 0.85;
+    border-color: rgba(100, 116, 139, 0.3);
+    box-shadow: none;
+}
+
+.store-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-sm);
+}
+
+.store-item-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.store-item-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.store-item-price {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent-amber);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(251, 191, 36, 0.08));
+    padding: var(--space-xs) var(--space-md);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    white-space: nowrap;
+}
+
+.store-price-sold {
+    color: var(--text-muted);
+    background: rgba(100, 116, 139, 0.1);
+    border-color: rgba(100, 116, 139, 0.15);
+    font-size: 0.85rem;
+    text-decoration: line-through;
+}
+
+.store-item-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: var(--space-sm);
+}
+
+.store-item-props {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-sm);
+}
+
+.store-item-prop {
+    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-secondary);
+}
+
+.store-item-lore {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: var(--space-md);
+    padding-left: var(--space-md);
+    border-left: 2px solid rgba(245, 158, 11, 0.3);
+}
+
+.store-item-actions {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.store-purchase-btn {
+    background: linear-gradient(135deg, hsl(38, 92%, 50%), hsl(45, 93%, 47%)) !important;
+    color: #1a1a2e !important;
+    font-weight: 700 !important;
+    border: none;
+    padding: var(--space-sm) var(--space-lg) !important;
+    transition: all var(--transition-fast);
+}
+
+.store-purchase-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
+}
+
+.store-owned-badge {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(168, 85, 247, 0.15)) !important;
+    color: #a78bfa !important;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    font-weight: 600;
+}
+
+.store-owned-badge::before {
+    background: #a78bfa !important;
+}
+
+/* Store Inventory Table */
+.store-inv-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: var(--space-md);
+    font-size: 0.85rem;
+}
+
+.store-inv-table th {
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.store-inv-table td {
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: middle;
+}
+
+.store-inv-table tbody tr:hover {
+    background: rgba(245, 158, 11, 0.04);
+}
+
+.store-price-cell {
+    font-weight: 600;
+    color: var(--accent-amber);
+    white-space: nowrap;
+}
+
+/* Store type badge variants */
+.badge-general     { background: rgba(245, 158, 11, 0.12); color: var(--accent-amber); }
+.badge-blacksmith  { background: rgba(100, 116, 139, 0.14); color: #94a3b8; }
+.badge-alchemist   { background: rgba(16, 185, 129, 0.12); color: var(--accent-emerald); }
+.badge-enchanter   { background: rgba(168, 85, 247, 0.12); color: #a855f7; }
+.badge-tavern      { background: rgba(234, 179, 8, 0.12); color: #eab308; }
+.badge-custom      { background: rgba(99, 102, 241, 0.12); color: var(--accent-indigo); }
+

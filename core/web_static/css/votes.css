@@ -1,0 +1,40 @@
+/* ─── Vote Detail ────────────────────────────────────────────── */
+.votes-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+}
+
+.vote-item {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    font-size: 0.85rem;
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.vote-item:last-child {
+    border-bottom: none;
+}
+
+.vote-voter {
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 80px;
+}
+
+.vote-reason {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    flex: 1;
+}
+
+.vote-weight {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
