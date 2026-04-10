@@ -446,5 +446,25 @@
             "F-037f",
             "F-039"
         ]
+    },
+    {
+        "id": "F-042",
+        "title": "Explore Participant System",
+        "description": "Add up to 10 council members and/or characters to Explore experiences \u2014 merged participant API, collapsible selector UI with avatars/type badges/search/counter, full context injection (persona, beliefs, memories, traits, laws, locations, items) into Look Around generation, max 10 validation, backward compatible, 18 tests",
+        "status": "completed",
+        "dependencies": [
+            "F-040",
+            "F-003"
+        ]
+    },
+    {
+        "id": "F-043",
+        "title": "Story Participant System",
+        "description": "Add participant selection to Story narration/illustration — reuse _build_participant_context() from F-042, collapsible selector UI in Story editor, up to 10 participants, context injected into narration LLM prompts and illustration generation",
+        "status": "completed",
+        "dependencies": [
+            "F-041",
+            "F-042"
+        ]
     }
 ]

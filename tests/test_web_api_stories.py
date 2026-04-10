@@ -258,3 +258,184 @@ class TestSceneCRUD:
         assert len(data["chapters"][0]["scenes"]) == 1
         scene = data["chapters"][0]["scenes"][0]
         assert "image_url" in scene
+
+
+# ─── Participant Tests (F-043) ──────────────────────────────
+
+
+class TestStoryParticipants:
+    """Tests for F-043: Story Participant System integration."""
+
+    def _setup_story_with_scene(self, client):
+        """Create a story → chapter → scene, return IDs."""
+        s = client.post("/api/stories", json={"title": "Participant Test"})
+        story_id = s.json()["story_id"]
+        ch = client.post(
+            f"/api/stories/{story_id}/chapters",
+            json={"title": "Chapter 1"},
+        )
+        ch_id = ch.json()["chapter_id"]
+        sc = client.post(
+            f"/api/stories/{story_id}/chapters/{ch_id}/scenes",
+            json={"mood": "tense", "location_id": "LOC-0001"},
+        )
+        sc_id = sc.json()["scene_id"]
+        return story_id, ch_id, sc_id
+
+    # ── Narrate with participants ────────────────────────────
+
+    def test_narrate_with_participants(self, client):
+        """Narrate with participants should inject context into prompt."""
+        story_id, ch_id, sc_id = self._setup_story_with_scene(client)
+
+        mock_response = MagicMock()
+        mock_response.content = "The shadow fell."
+        mock_response.model = "mock-model"
+        mock_response.provider = "mock"
+
+        with patch("core.api_client.APIClient.chat", return_value=mock_response):
+            resp = client.post(
+                f"/api/stories/{story_id}/chapters/{ch_id}"
+                f"/scenes/{sc_id}/narrate",
+                json={
+                    "participants": [
+                        {"id": "sage", "type": "council"},
+                        {"id": "CH-0001", "type": "character"},
+                    ],
+                },
+            )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["narrative_text"] == "The shadow fell."
+
+    def test_narrate_without_participants_backward_compat(self, client):
+        """Narrate without participants should still work (backward compat)."""
+        story_id, ch_id, sc_id = self._setup_story_with_scene(client)
+
+        mock_response = MagicMock()
+        mock_response.content = "Dawn breaks over the valley."
+        mock_response.model = "mock-model"
+        mock_response.provider = "mock"
+
+        with patch("core.api_client.APIClient.chat", return_value=mock_response):
+            resp = client.post(
+                f"/api/stories/{story_id}/chapters/{ch_id}"
+                f"/scenes/{sc_id}/narrate",
+                json={},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["narrative_text"] == "Dawn breaks over the valley."
+
+    def test_narrate_with_empty_participants(self, client):
+        """Narrate with empty participants array should work."""
+        story_id, ch_id, sc_id = self._setup_story_with_scene(client)
+
+        mock_response = MagicMock()
+        mock_response.content = "Silence."
+        mock_response.model = "mock-model"
+        mock_response.provider = "mock"
+
+        with patch("core.api_client.APIClient.chat", return_value=mock_response):
+            resp = client.post(
+                f"/api/stories/{story_id}/chapters/{ch_id}"
+                f"/scenes/{sc_id}/narrate",
+                json={"participants": []},
+            )
+        assert resp.status_code == 200
+
+    def test_narrate_max_ten_participants(self, client):
+        """Narrate with exactly 10 participants should be accepted."""
+        story_id, ch_id, sc_id = self._setup_story_with_scene(client)
+
+        ten_participants = [
+            {"id": f"p{i}", "type": "council"} for i in range(10)
+        ]
+
+        mock_response = MagicMock()
+        mock_response.content = "A crowd gathers."
+        mock_response.model = "mock-model"
+        mock_response.provider = "mock"
+
+        with patch("core.api_client.APIClient.chat", return_value=mock_response):
+            resp = client.post(
+                f"/api/stories/{story_id}/chapters/{ch_id}"
+                f"/scenes/{sc_id}/narrate",
+                json={"participants": ten_participants},
+            )
+        assert resp.status_code == 200
+
+    def test_narrate_too_many_participants(self, client):
+        """Narrate with 11+ participants should return 400."""
+        story_id, ch_id, sc_id = self._setup_story_with_scene(client)
+
+        eleven_participants = [
+            {"id": f"p{i}", "type": "council"} for i in range(11)
+        ]
+
+        resp = client.post(
+            f"/api/stories/{story_id}/chapters/{ch_id}"
+            f"/scenes/{sc_id}/narrate",
+            json={"participants": eleven_participants},
+        )
+        assert resp.status_code == 400
+        assert "Too many participants" in resp.json()["detail"]
+
+    def test_narrate_invalid_participants_type(self, client):
+        """Narrate with non-list participants should return 400."""
+        story_id, ch_id, sc_id = self._setup_story_with_scene(client)
+
+        resp = client.post(
+            f"/api/stories/{story_id}/chapters/{ch_id}"
+            f"/scenes/{sc_id}/narrate",
+            json={"participants": "not-a-list"},
+        )
+        assert resp.status_code == 400
+        assert "must be a list" in resp.json()["detail"]
+
+    def test_narrate_story_not_found(self, client):
+        """Narrate on a non-existent story should return 404."""
+        resp = client.post(
+            "/api/stories/ST-9999/chapters/CHP-0001"
+            "/scenes/SCE-0001/narrate",
+            json={"participants": []},
+        )
+        assert resp.status_code == 404
+
+    # ── Illustrate with participants ─────────────────────────
+
+    def test_illustrate_too_many_participants(self, client):
+        """Illustrate with 11+ participants should return 400."""
+        story_id, ch_id, sc_id = self._setup_story_with_scene(client)
+
+        eleven_participants = [
+            {"id": f"p{i}", "type": "character"} for i in range(11)
+        ]
+
+        resp = client.post(
+            f"/api/stories/{story_id}/chapters/{ch_id}"
+            f"/scenes/{sc_id}/illustrate",
+            json={"participants": eleven_participants},
+        )
+        assert resp.status_code == 400
+        assert "Too many participants" in resp.json()["detail"]
+
+    def test_illustrate_invalid_participants_type(self, client):
+        """Illustrate with non-list participants should return 400."""
+        story_id, ch_id, sc_id = self._setup_story_with_scene(client)
+
+        resp = client.post(
+            f"/api/stories/{story_id}/chapters/{ch_id}"
+            f"/scenes/{sc_id}/illustrate",
+            json={"participants": {"not": "a list"}},
+        )
+        assert resp.status_code == 400
+        assert "must be a list" in resp.json()["detail"]
+
+    def test_illustrate_story_not_found(self, client):
+        """Illustrate on a non-existent story should return 404."""
+        resp = client.post(
+            "/api/stories/ST-9999/chapters/CHP-0001"
+            "/scenes/SCE-0001/illustrate",
+            json={"participants": []},
+        )
+        assert resp.status_code == 404

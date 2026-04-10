@@ -3042,3 +3042,35 @@ Implemented the complete Story Illustration System: LLM-narrated story segments 
 3. **`grep_search` does not work on `app.js` or `style.css`** — use `view_file` with specific line ranges. Story code is at lines 11024-11550 in app.js.
 4. **The story file format is one JSON file per story** — `data/stories/ST-XXXX.json` containing the full chapter/scene hierarchy.
 5. **All entity IDs are auto-sequential** — ST-XXXX for stories, CHP-XXXX for chapters, SCE-XXXX for scenes.
+
+---
+
+## Session — F-042: Explore Participant System
+
+**Date**: 2026-04-10
+**Status**: ✅ Complete
+**Feature ID**: F-042
+
+### Summary
+
+Added council member and character participant support to the Explore section. Users can select up to 10 participants (any combination of council members and characters) whose full identity context — persona, beliefs, memories, traits, laws, locations, items — is injected into the "Look Around" scene generation prompt.
+
+### Changes
+
+- **core/web_api.py** — Backend additions: GET /api/participants/available, _build_participant_context() helper, enhanced look-around endpoint with participants
+- **core/web_static/app.js** — Collapsible participant selector panel with avatars, type badges, search, counter (N/10)
+- **core/web_static/style.css** — Participant selector styling
+- **tests/test_participants.py** — 18 new tests
+
+### Test Results
+
+- **18 new tests** in test_participants.py
+- **Full suite: 2831 passed, 12 skipped, 0 failed**
+
+### Advice for Next Agent
+
+1. Story section participants (next task) — Apply the same _build_participant_context() helper to the Story narration flow.
+2. Participant selector UI code in app.js at renderExploreLocation — look for F-042 markers.
+3. _build_participant_context() is defined inside create_app() in web_api.py as a closure-scoped helper.
+4. Council member IDs are lowercase names; character IDs use CH-XXXX format.
+5. Participant context truncates system prompts to 500 chars to manage prompt size.

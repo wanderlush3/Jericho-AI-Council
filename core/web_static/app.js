@@ -3766,6 +3766,12 @@ async function renderExploreLocation(locationId) {
         return;
     }
 
+    // F-042: Fetch available participants
+    let availableParticipants = [];
+    try {
+        availableParticipants = await api('/api/participants/available');
+    } catch { /* optional */ }
+
     // Hero image
     const heroImageUrl = data.primary_image_url || '';
     const heroStyle = heroImageUrl
@@ -3795,6 +3801,54 @@ async function renderExploreLocation(locationId) {
 
     // Tags
     const tagsHtml = (data.tags || []).map(t => `<span class="tag">#${escapeHtml(t)}</span>`).join('');
+
+    // F-042: Build participant selector HTML
+    const participantListHtml = availableParticipants.map(p => {
+        const typeIcon = p.type === 'council' ? '🏛️' : '🎭';
+        const typeBadge = p.type === 'council' ? 'Council' : 'Character';
+        const avatarStyle = p.avatar_url
+            ? `background: url('${p.avatar_url}') center/cover no-repeat`
+            : `background: linear-gradient(135deg, hsl(${p.type === 'council' ? '260,40%,30%' : '200,40%,30%'}), hsl(${p.type === 'council' ? '280,30%,20%' : '220,30%,20%'}))`;
+        return `
+            <label class="participant-item" data-pid="${escapeAttr(p.id)}" data-ptype="${escapeAttr(p.type)}">
+                <input type="checkbox" class="participant-cb" value="${escapeAttr(p.id)}"
+                       data-ptype="${escapeAttr(p.type)}" data-pname="${escapeAttr(p.name)}"
+                       onchange="updateParticipantCount()" />
+                <div class="participant-avatar" style="${avatarStyle}">
+                    ${!p.avatar_url ? `<span>${typeIcon}</span>` : ''}
+                </div>
+                <div class="participant-info">
+                    <div class="participant-name">${escapeHtml(p.name)}</div>
+                    <div class="participant-desc">${truncate(p.description || p.role || '', 60)}</div>
+                </div>
+                <span class="participant-type-badge participant-type-${p.type}">${typeBadge}</span>
+            </label>`;
+    }).join('');
+
+    const participantSectionHtml = availableParticipants.length ? `
+        <div class="explore-section explore-participants-section">
+            <div class="explore-participants-header" onclick="toggleParticipantPanel()">
+                <h4>👥 Participants</h4>
+                <div class="explore-participants-meta">
+                    <span class="participant-counter" id="participant-counter">0 / 10</span>
+                    <span class="participant-toggle-icon" id="participant-toggle-icon">▶</span>
+                </div>
+            </div>
+            <div class="explore-participants-body" id="explore-participants-body" style="display:none">
+                <div class="participant-search-row">
+                    <input type="text" class="settings-input participant-search" id="participant-search"
+                           placeholder="Search participants…" oninput="filterParticipants()" />
+                    <button class="btn btn-secondary btn-sm" onclick="clearAllParticipants()" title="Clear all">✕ Clear</button>
+                </div>
+                <div class="participant-list" id="participant-list">
+                    ${participantListHtml}
+                </div>
+                <div class="participant-hint">
+                    Select up to 10 council members or characters to join this exploration.
+                    Their identity, memories, and world knowledge will enrich the scene.
+                </div>
+            </div>
+        </div>` : '';
 
     $main().innerHTML = `
         <div class="view-enter">
@@ -3826,6 +3880,8 @@ async function renderExploreLocation(locationId) {
                 <div class="explore-gen-status" id="explore-gen-status">Generating scene…</div>
             </div>
 
+            ${participantSectionHtml}
+
             ${data.lore ? `
                 <div class="explore-section">
                     <h4>📜 Lore</h4>
@@ -3856,6 +3912,8 @@ async function renderExploreLocation(locationId) {
 
     // Store scenes data for lightbox
     window._exploreScenes = data.scenes || [];
+    // F-042: Reset participant selections
+    window._exploreParticipants = [];
 }
 
 function _buildExploreNavPanel(nav) {
@@ -3899,6 +3957,66 @@ function _buildExploreNavPanel(nav) {
         </div>`;
 }
 
+/* ── F-042: Participant Selector Helpers ───────────────────── */
+
+function toggleParticipantPanel() {
+    const body = document.getElementById('explore-participants-body');
+    const icon = document.getElementById('participant-toggle-icon');
+    if (!body) return;
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : 'block';
+    if (icon) icon.textContent = isOpen ? '▶' : '▼';
+}
+
+function updateParticipantCount() {
+    const checked = document.querySelectorAll('.participant-cb:checked');
+    const counter = document.getElementById('participant-counter');
+    const count = checked.length;
+    if (counter) {
+        counter.textContent = `${count} / 10`;
+        counter.classList.toggle('participant-counter-full', count >= 10);
+        counter.classList.toggle('participant-counter-active', count > 0 && count < 10);
+    }
+
+    // Disable unchecked checkboxes when at max
+    const allCbs = document.querySelectorAll('.participant-cb');
+    allCbs.forEach(cb => {
+        if (!cb.checked) {
+            cb.disabled = count >= 10;
+            cb.closest('.participant-item')?.classList.toggle('participant-disabled', count >= 10);
+        } else {
+            cb.disabled = false;
+            cb.closest('.participant-item')?.classList.remove('participant-disabled');
+        }
+    });
+}
+
+function filterParticipants() {
+    const query = (document.getElementById('participant-search')?.value || '').toLowerCase();
+    const items = document.querySelectorAll('.participant-item');
+    items.forEach(item => {
+        const name = (item.querySelector('.participant-name')?.textContent || '').toLowerCase();
+        const desc = (item.querySelector('.participant-desc')?.textContent || '').toLowerCase();
+        const type = item.dataset.ptype || '';
+        const match = !query || name.includes(query) || desc.includes(query) || type.includes(query);
+        item.style.display = match ? '' : 'none';
+    });
+}
+
+function clearAllParticipants() {
+    const cbs = document.querySelectorAll('.participant-cb:checked');
+    cbs.forEach(cb => { cb.checked = false; });
+    updateParticipantCount();
+}
+
+function getSelectedParticipants() {
+    const checked = document.querySelectorAll('.participant-cb:checked');
+    return Array.from(checked).map(cb => ({
+        id: cb.value,
+        type: cb.dataset.ptype || 'character',
+    }));
+}
+
 /* ── Look Around Generation ────────────────────────────────── */
 
 async function exploreLookAround(locationId) {
@@ -3910,18 +4028,23 @@ async function exploreLookAround(locationId) {
     const statusEl = document.getElementById('explore-gen-status');
     if (progressEl) progressEl.style.display = 'block';
 
+    // F-042: Gather selected participants
+    const participants = getSelectedParticipants();
+
     try {
         const resp = await fetch(`/api/explore/${encodeURIComponent(locationId)}/look-around`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({}),
+            body: JSON.stringify({ participants }),
         });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({ detail: 'Generation failed' }));
             throw new Error(err.detail);
         }
         const data = await resp.json();
-        showToast(`Scene generation started (${data.job_id}) 🎨`);
+        const pCount = participants.length;
+        const pLabel = pCount > 0 ? ` with ${pCount} participant${pCount !== 1 ? 's' : ''}` : '';
+        showToast(`Scene generation started${pLabel} (${data.job_id}) 🎨`);
 
         // Poll for job status
         _pollExploreGeneration(data.job_id, locationId, fillEl, statusEl);
@@ -11231,12 +11354,33 @@ async function renderStoryDetail(storyId) {
                 </div>
             </div>
 
+            <!-- F-043: Participant Selector -->
+            <div class="story-participant-panel" id="story-participant-panel">
+                <div class="participant-header" onclick="toggleStoryParticipants()">
+                    <span class="participant-header-label">👥 Participants</span>
+                    <span class="participant-counter" id="story-part-counter">0/10</span>
+                    <span class="participant-chevron" id="story-part-chevron">▸</span>
+                </div>
+                <div class="participant-body" id="story-part-body" style="display:none">
+                    <div class="participant-search">
+                        <input type="text" class="settings-input" id="story-part-search"
+                               placeholder="Search participants…" oninput="filterStoryParticipants()" />
+                    </div>
+                    <div class="participant-list" id="story-part-list">
+                        <div style="color:var(--text-muted);padding:0.5rem">Loading…</div>
+                    </div>
+                </div>
+            </div>
+
             <div class="story-add-chapter-bar">
                 <button class="btn btn-primary" onclick="addChapter('${storyId}')">➕ Add Chapter</button>
             </div>
 
             <div class="story-chapters-container">${chaptersHtml}</div>
         </div>`;
+
+    // F-043: Load available participants
+    loadStoryParticipants();
 }
 
 // ─── Story Reader (Immersive Read Mode) ─────────────────────
@@ -11408,10 +11552,12 @@ async function narrateScene(storyId, chapterId, sceneId) {
         const narrateBtn = sceneEl.querySelector('button[onclick*="narrateScene"]');
         if (narrateBtn) { narrateBtn.disabled = true; narrateBtn.textContent = '⏳ Narrating…'; }
     }
+    // F-043: Include selected participants
+    const participants = getSelectedStoryParticipants();
     try {
         const resp = await fetch(`/api/stories/${storyId}/chapters/${chapterId}/scenes/${sceneId}/narrate`, {
             method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({}),
+            body: JSON.stringify({ participants }),
         });
         if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || 'Narration failed'); }
         const result = await resp.json();
@@ -11429,10 +11575,12 @@ async function illustrateScene(storyId, chapterId, sceneId) {
         const illustrateBtn = sceneEl.querySelector('button[onclick*="illustrateScene"]');
         if (illustrateBtn) { illustrateBtn.disabled = true; illustrateBtn.textContent = '⏳ Generating…'; }
     }
+    // F-043: Include selected participants
+    const participants = getSelectedStoryParticipants();
     try {
         const resp = await fetch(`/api/stories/${storyId}/chapters/${chapterId}/scenes/${sceneId}/illustrate`, {
             method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({}),
+            body: JSON.stringify({ participants }),
         });
         if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || 'Illustration failed'); }
         const result = await resp.json();
@@ -11532,6 +11680,115 @@ function openStoryLightbox(imageUrl) {
     lb.onclick = () => lb.remove();
     lb.innerHTML = `<img src="${imageUrl}" alt="Illustration" />`;
     document.body.appendChild(lb);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Story Participant Selector (F-043)
+// ═══════════════════════════════════════════════════════════════
+
+window._storyParticipants = [];
+window._storyAvailableParticipants = [];
+
+async function loadStoryParticipants() {
+    try {
+        const participants = await api('/api/participants/available');
+        window._storyAvailableParticipants = participants;
+        renderStoryParticipantList(participants);
+    } catch {
+        const list = document.getElementById('story-part-list');
+        if (list) list.innerHTML = '<div style="color:var(--text-muted);padding:0.5rem">Failed to load participants.</div>';
+    }
+}
+
+function renderStoryParticipantList(participants) {
+    const list = document.getElementById('story-part-list');
+    if (!list) return;
+
+    if (!participants.length) {
+        list.innerHTML = '<div style="color:var(--text-muted);padding:0.5rem">No participants available.</div>';
+        return;
+    }
+
+    list.innerHTML = participants.map(p => {
+        const isSelected = window._storyParticipants.some(
+            sel => sel.id === p.id && sel.type === p.type
+        );
+        const typeBadge = p.type === 'council'
+            ? '<span class="participant-type-badge participant-type-council">🏛️ Council</span>'
+            : '<span class="participant-type-badge participant-type-character">🎭 Character</span>';
+        const avatarHtml = p.avatar_url
+            ? `<img class="participant-avatar" src="${p.avatar_url}" alt="" />`
+            : `<div class="participant-avatar participant-avatar-placeholder">${escapeHtml(p.name.charAt(0))}</div>`;
+        return `
+            <label class="participant-item ${isSelected ? 'participant-item-selected' : ''}"
+                   data-name="${escapeAttr(p.name.toLowerCase())}"
+                   data-id="${escapeAttr(p.id)}">
+                <input type="checkbox" class="story-part-cb"
+                       data-pid="${escapeAttr(p.id)}" data-ptype="${escapeAttr(p.type)}"
+                       ${isSelected ? 'checked' : ''}
+                       onchange="toggleStoryParticipant(this)" />
+                ${avatarHtml}
+                <div class="participant-info">
+                    <span class="participant-name">${escapeHtml(p.name)}</span>
+                    ${typeBadge}
+                </div>
+                ${p.description ? `<span class="participant-desc">${escapeHtml(truncate(p.description, 60))}</span>` : ''}
+            </label>`;
+    }).join('');
+}
+
+function toggleStoryParticipants() {
+    const body = document.getElementById('story-part-body');
+    const chev = document.getElementById('story-part-chevron');
+    if (!body) return;
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : 'block';
+    if (chev) chev.textContent = isOpen ? '▸' : '▾';
+}
+
+function filterStoryParticipants() {
+    const query = (document.getElementById('story-part-search')?.value || '').toLowerCase();
+    document.querySelectorAll('#story-part-list .participant-item').forEach(el => {
+        const name = el.dataset.name || '';
+        el.style.display = name.includes(query) ? '' : 'none';
+    });
+}
+
+function toggleStoryParticipant(checkbox) {
+    const pid = checkbox.dataset.pid;
+    const ptype = checkbox.dataset.ptype;
+    const label = checkbox.closest('.participant-item');
+
+    if (checkbox.checked) {
+        if (window._storyParticipants.length >= 10) {
+            checkbox.checked = false;
+            showToast('Maximum 10 participants allowed.', true);
+            return;
+        }
+        if (!window._storyParticipants.some(p => p.id === pid && p.type === ptype)) {
+            window._storyParticipants.push({ id: pid, type: ptype });
+        }
+        if (label) label.classList.add('participant-item-selected');
+    } else {
+        window._storyParticipants = window._storyParticipants.filter(
+            p => !(p.id === pid && p.type === ptype)
+        );
+        if (label) label.classList.remove('participant-item-selected');
+    }
+    updateStoryParticipantCounter();
+}
+
+function updateStoryParticipantCounter() {
+    const counter = document.getElementById('story-part-counter');
+    if (counter) {
+        const n = window._storyParticipants.length;
+        counter.textContent = `${n}/10`;
+        counter.style.color = n > 0 ? 'var(--accent)' : '';
+    }
+}
+
+function getSelectedStoryParticipants() {
+    return window._storyParticipants.length ? [...window._storyParticipants] : [];
 }
 
 
