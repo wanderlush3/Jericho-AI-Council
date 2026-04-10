@@ -597,6 +597,121 @@ def _expand_subgraph(
     return result
 
 
+# ─── Standard Output Node Detection ──────────────────────────
+
+
+# Node class_types whose return values populate the ``outputs`` dict
+# in ComfyUI's ``/history`` response via the standard ``ui`` mechanism.
+_STANDARD_OUTPUT_NODE_TYPES = frozenset({
+    "SaveImage",
+    "PreviewImage",
+    "SaveAnimatedWEBP",
+    "SaveAnimatedPNG",
+    "SaveImageWebsocket",
+})
+
+# Node class_types that save images but do NOT populate ``outputs``.
+# We look for an ``images`` input on these to find the image source.
+_CUSTOM_SAVE_KEYWORDS = ("save", "preview")
+
+
+def ensure_preview_output(workflow_json: dict[str, Any]) -> dict[str, Any]:
+    """Ensure the workflow has a standard output node for image retrieval.
+
+    Many custom ComfyUI save nodes (e.g. ``Save Image (LoraManager)``) do
+    not populate the ``outputs`` dict in ComfyUI's ``/history`` response.
+    When Jericho's pipeline polls history, it finds an empty ``outputs``
+    and can't download the image.
+
+    This function detects whether the workflow lacks a standard output
+    node (``SaveImage`` or ``PreviewImage``).  If so, it finds the image
+    source from whatever custom save node is present and injects a
+    ``PreviewImage`` node connected to the same source.
+
+    The injected node uses a high numeric ID (``_jericho_preview``) to
+    avoid collisions with existing nodes.
+
+    Args:
+        workflow_json: API-format workflow dict (node-id → node).
+
+    Returns:
+        The workflow dict, potentially with an added ``PreviewImage`` node.
+    """
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+
+    # Check if any standard output node already exists
+    for node_id, node in workflow_json.items():
+        if not isinstance(node, dict):
+            continue
+        class_type = node.get("class_type", "")
+        if class_type in _STANDARD_OUTPUT_NODE_TYPES:
+            _log.debug(
+                "Workflow already has standard output node %s (%s)",
+                node_id, class_type,
+            )
+            return workflow_json
+
+    # No standard output node — find a custom save/preview node with
+    # an ``images`` input to discover the image source.
+    image_source: list[str | int] | None = None
+    save_node_class = ""
+
+    for node_id, node in workflow_json.items():
+        if not isinstance(node, dict):
+            continue
+        class_type = node.get("class_type", "")
+        ct_lower = class_type.lower()
+        if not any(kw in ct_lower for kw in _CUSTOM_SAVE_KEYWORDS):
+            continue
+
+        inputs = node.get("inputs", {})
+        images_input = inputs.get("images")
+        if isinstance(images_input, list) and len(images_input) == 2:
+            image_source = images_input
+            save_node_class = class_type
+            break
+
+    if image_source is None:
+        # No image-producing save node found anywhere — look for any
+        # node that outputs IMAGE and has no downstream consumer.
+        # As a last resort we can't do anything.
+        _log.warning(
+            "Workflow has no standard output node and no custom save "
+            "node with an 'images' input.  Image retrieval may fail.",
+        )
+        return workflow_json
+
+    # Generate a unique high node ID to avoid collisions
+    existing_numeric_ids = []
+    for nid in workflow_json:
+        # Handle namespaced IDs like "13:59"
+        parts = nid.split(":")
+        for part in parts:
+            try:
+                existing_numeric_ids.append(int(part))
+            except ValueError:
+                pass
+    preview_id = str(max(existing_numeric_ids, default=0) + 9000)
+
+    # Inject PreviewImage node
+    workflow_json[preview_id] = {
+        "class_type": "PreviewImage",
+        "inputs": {
+            "images": image_source,
+        },
+        "_meta": {"title": "Jericho Preview (auto-injected)"},
+    }
+
+    _log.info(
+        "Injected PreviewImage node %s (source from %s node, "
+        "images input=%s) for reliable history output retrieval.",
+        preview_id, save_node_class, image_source,
+    )
+
+    return workflow_json
+
+
 # ─── ComfyUI Client ──────────────────────────────────────────
 
 
@@ -705,6 +820,9 @@ class ComfyUIClient:
         # Auto-convert web-format workflows to API format
         if is_web_format(workflow_json):
             workflow_json = convert_web_to_api_format(workflow_json)
+
+        # Ensure we have a standard output node for reliable image retrieval
+        workflow_json = ensure_preview_output(workflow_json)
 
         payload: dict[str, Any] = {"prompt": workflow_json}
         if client_id:

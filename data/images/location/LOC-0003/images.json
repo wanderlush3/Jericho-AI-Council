@@ -1,0 +1,24 @@
+[
+  {
+    "id": "IMG-0005",
+    "entity_type": "location",
+    "entity_id": "LOC-0003",
+    "filename": "img_0001.png",
+    "original_filename": "ComfyUI_temp_oteyn_00006_.png",
+    "prompt": "A majestic silver dragon with iridescent scales shimmering under moonlight, perched atop a crystal mountain peak, wings partially unfurled, glowing blue eyes piercing through mist, ancient runes etched into stone, fantasy art style, cinematic lighting, epic composition, ultra-detailed, 8K resolution, digital painting",
+    "negative_prompt": "cartoonish, poorly drawn, blurry, low resolution, bad anatomy, disfigured, oversaturated, flat colors, amateur art, simple background, mundane lighting, generic composition, pixelated, artifacts, watermark, text, signature",
+    "is_primary": true,
+    "file_size": 5955553,
+    "width": 512,
+    "height": 512,
+    "template_id": "TPL-0001",
+    "generation_job_id": "GEN-0002",
+    "created_at": "2026-04-10T20:47:30.832575+00:00",
+    "metadata": {
+      "prompt_mode": "system",
+      "style_preset": "",
+      "seed": 1954736295,
+      "member_name": ""
+    }
+  }
+]

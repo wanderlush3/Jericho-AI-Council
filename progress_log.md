@@ -3119,3 +3119,35 @@ Performed project-wide technical debt cleanup and metadata hygiene pass. All 43 
 3. **`features.json` is now fully consistent** — every entry has `id`, `title`, `description`, `status`, `dependencies` in that order. All statuses are `"completed"`.
 4. **The biggest remaining debt is file size** — `web_api.py` (274KB), `app.js` (165KB), and `style.css` (74KB) are all single monolithic files. Splitting these would improve maintainability but is a significant refactoring effort.
 5. **`grep_search` still does not work on `app.js` or `style.css`** — use `view_file` with the section map from `.agents/workflows/project-reference.md`.
+
+---
+
+## Session: S-BUGFIX-00000006
+**Timestamp:** 2026-04-10 19:50:00
+**Feature:** `BUGFIX` — ComfyUI Integration Fixes
+**Status:** completed
+
+### Summary
+Fixed two bugs in the ComfyUI generation pipeline:
+
+1. **"No template specified" error** — `TemplateAssignmentManager()` was instantiated without a `template_manager` parameter in both the explore "Look Around" handler and the story scene illustration handler. Without it, the fallback chain (find template by entity_type match → first template overall) was broken because `self._template_manager is None`. Only explicit user assignments (step 1) could work, but if no assignment was configured, the manager returned an empty string, triggering the error.
+
+2. **Port 8188 test failures** — The default ComfyUI port was changed from 8188 to 8007 in a previous session (S-BUGFIX-00000004), but multiple test files still asserted the old default. Updated all default-port assertions across `test_comfyui_client.py` and `test_web_api_comfyui_settings.py`.
+
+3. **Frontend fallback port** — The ComfyUI settings page had a hardcoded fallback of `port: 8188` in its error handler, which would show the wrong default if the API endpoint failed. Updated to `8007`.
+
+### Files Changed
+- `core/web_api.py` — Added `template_manager=WorkflowTemplateManager()` to both `TemplateAssignmentManager()` instantiations (lines ~6314 and ~7088)
+- `core/web_static/app.js` — Updated frontend catch fallback port from 8188 to 8007
+- `tests/test_comfyui_client.py` — Updated 5 default-port assertions from 8188 to 8007
+- `tests/test_web_api_comfyui_settings.py` — Updated 1 default-port assertion from 8188 to 8007
+
+### Root Cause Analysis
+The `TemplateAssignmentManager` class has an optional `template_manager` parameter that enables its smart fallback chain. The settings API endpoints (GET/POST/DELETE assignments) correctly passed `WorkflowTemplateManager()`, but the generation endpoints that actually *use* the recommendation did not. This is a classic "works in settings, fails in production" integration gap.
+
+### Test Results
+- **2849 passed, 12 skipped, 0 failed** — all tests pass including the previously-failing default port assertions
+
+### Advice for Next Agent
+1. The ComfyUI server connection persistence was investigated — the `.env` file correctly stores `JERICHO_COMFYUI_HOST=127.0.0.1` and `JERICHO_COMFYUI_PORT=8007`. The `save_env_value` method writes to `.env` and `load_dotenv` reads at startup. If the user reports the issue again, check whether `load_dotenv(override=False)` is being preempted by system-level env vars.
+2. When adding new generation endpoints that need template recommendations, always pass `template_manager=WorkflowTemplateManager()` to `TemplateAssignmentManager()`.

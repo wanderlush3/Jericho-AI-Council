@@ -16,7 +16,7 @@
           "scene_id": "SCE-0001",
           "chapter_id": "CHP-0001",
           "scene_number": 1,
-          "narrative_text": "",
+          "narrative_text": "The fog rolls in like a thief over the Gilded Cage, swallowing the neon glow of the market stalls and the guttural cough of the smokestacks. The air tastes of salt and rust, thick enough to chew. Somewhere in the belly of the city, a ship’s horn bellows, but the sound is swallowed before it can echo. The Keeper of Reflections stands at the threshold of her labyrinth, her fingers trailing along the cold glass of the nearest mirror. The surface ripples like water, but her reflection doesn’t mimic her movements—it lags, a ghost trailing behind her by three heartbeats.\n\nShe doesn’t turn when the footsteps approach, but the whisper of fabric against stone betrays the intruder long before they speak. “You know why I’m here,” the voice rasps, rough as gravel under boots. A man, his silhouette sharp against the dim light of the alley, his coat damp with fog. His eyes flick to the mirrors, then back to her. “I need to see.” The Keeper’s lips curl, not quite a smile. “Truths for truths,” she murmurs, and the words slither into the damp air, clinging to the man’s skin like a second layer of fog. He swallows hard, but doesn’t hesitate. The first choice is always the hardest.",
           "image_id": "",
           "prompt_used": "",
           "characters": [],
@@ -44,6 +44,6 @@
   "style_preset_key": "",
   "template_id": "",
   "created_at": "2026-04-09T11:10:52.478725+00:00",
-  "updated_at": "2026-04-09T11:12:58.716298+00:00",
+  "updated_at": "2026-04-10T20:48:26.790389+00:00",
   "metadata": {}
 }

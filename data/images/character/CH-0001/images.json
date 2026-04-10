@@ -1,0 +1,24 @@
+[
+  {
+    "id": "IMG-0003",
+    "entity_type": "character",
+    "entity_id": "CH-0001",
+    "filename": "img_0001.png",
+    "original_filename": "ComfyUI_temp_oteyn_00004_.png",
+    "prompt": "ethereal figure standing in a vast labyrinth of ancient mirrors, her form partially translucent and shimmering like fractured glass, surrounded by reflections showing different moments of time - a child, an elderly figure on a deathbed, and delayed versions of herself, soft mystical lighting filtering through ornate glass windows, dust motes dancing in the air, mirrors of various sizes and ornate frames creating an infinite recursive effect, her eyes hollow and searching, hands reaching out as if to touch her own reflection, gothic architecture, cinematic fantasy art, hyperdetailed, emotional atmosphere, chiaroscuro lighting, digital painting, dark fantasy aesthetic",
+    "negative_prompt": "bright lighting, cheerful atmosphere, modern mirrors, simple maze structure, solid opaque figure, smiling expression, colorful palette, cartoon style, low detail, flat lighting, mundane setting, ordinary architecture, boring composition, lack of emotion, clean environment",
+    "is_primary": true,
+    "file_size": 6327154,
+    "width": 1024,
+    "height": 1024,
+    "template_id": "TPL-0001",
+    "generation_job_id": "GEN-0003",
+    "created_at": "2026-04-10T19:27:11.638939+00:00",
+    "metadata": {
+      "prompt_mode": "system",
+      "style_preset": "",
+      "seed": 988384764,
+      "member_name": ""
+    }
+  }
+]

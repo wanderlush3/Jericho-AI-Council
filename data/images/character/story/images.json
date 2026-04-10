@@ -1,0 +1,24 @@
+[
+  {
+    "id": "IMG-0006",
+    "entity_type": "character",
+    "entity_id": "story",
+    "filename": "img_0001.png",
+    "original_filename": "ComfyUI_temp_oteyn_00007_.png",
+    "prompt": "Illustrate: The fog rolls in like a thief over the Gilded Cage, swallowing the neon glow of the market stalls and the guttural cough of the smokestacks. The air tastes of salt and rust, thick enough to chew. Somewhere in the belly of the city, a ship’s horn bellows, but the sound is swallowed before it can echo. The Keeper of Reflections stands at the threshold of her labyrinth, her fingers trailing along the cold glass of the nearest mirror. The surface ripples like water, but her reflection doesn’t mimic  | Mood: dramatic\n\n\n## Present Participants\n\n### 🎭 Character: The Keeper of Reflections\n**Description:** Labyrinth: Not a maze of mirrors. A sanctuary where mirrors show {{user}} three seconds behind themself, where one corridor always shows {{user}} as a child, where another shows {{user}} as you will be on your deathbed. Each reflection is a choice. Each choice changes the path.\nTrade: Truths for truths. A fragment of the viewer's soul in exchange for a fragment of their own. But if {{user}} lies? {{char}} takes the lie anyway—and the cost is doubled.\n**Backstory:** Voice: A whisper that carries the weight of secrets. The kind that makes humans lean in closer. When she's angry, {{char}} voice drops to a frequency that vibrates in {{user}} chest.\n**Traits:** Reflection (personality, 80%)\n\n\n## World Context\n\n### Known Locations\n- **The Gilded Cage**: A coastal city where industry and nature fight for dominance.  It’s gritty—full of smoke, noise, and the struggle for survival—but it’s also teeming w — In the Gilded Cage, the Queen's favorites are lulled into complacency by the trappings of their own \n- **The Unicorn and Potion**: At Old dockside, plenty of foot traffic from the market, the fog hides a lot of… unsavory details. A sign  flickers like a dying bulb. A backroom for…\n- **Stifle's House**: Home with a Black Jaguar 2021 ftype and Black Breakout 2024 117 Harley parked in the drive way.  It is the tallest building in the vicinity, and next  — A small plaque is written at the door: The home of Vita and Stifle.\n\n### Known Items\n- **Liquid Luck (Gold) Potion**: 1. Liquid Luck (Gold)\n   Trait Boost: Luck (0.9) / Risk-Taking (0.7) / Salary Bonus (+20%)\n   Duration: 1 day\n   LLM Injection: \"Randomly favor high-r [common]\n- **Fog Veil (Misty Blue)**: 3. Fog Veil (Misty Blue)\n   Trait Boost: Stealth (0.9) / Mystery (0.75)\n   Duration: 1 day (Lowlands-only: \"Obfuscate details only* below the fog line [common]\n- **Backroom Bargain (Smoky Amber)**: Backroom Bargain (Smoky Amber)\n   Trait Boost: Persuasion (0.95) / Deception (0.6) / Store Prices (-15%)\n   Duration: 1 day\n   LLM Injection: \"The smo [common]\n- **Dragon’s Tongue (Amber, metallic sheen)**: Dragon’s Tongue (Amber, metallic sheen)\nTrait Boost: Boldness (0.85) / Charisma (0.8)\nDuration: 1 day\nLLM Injection: \"Speak as though you are the last [common]",
+    "negative_prompt": "",
+    "is_primary": true,
+    "file_size": 7018749,
+    "width": 768,
+    "height": 512,
+    "template_id": "TPL-0001",
+    "generation_job_id": "GEN-0003",
+    "created_at": "2026-04-10T20:49:38.460217+00:00",
+    "metadata": {
+      "prompt_mode": "raw_user",
+      "style_preset": "",
+      "seed": 1496057900,
+      "member_name": ""
+    }
+  }
+]

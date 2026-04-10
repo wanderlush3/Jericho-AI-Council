@@ -2351,6 +2351,310 @@ class TestApiEvolutions:
         assert resp.status_code == 404
 
 
+# ─── Evolution Expansion Tests ───────────────────────────────
+
+
+class TestApiEvolutionExpansion:
+    """Tests for Evolution Expansion endpoints (overlay, rollback, naming)."""
+
+    # ── Naming / Sequence Number ──────────────────────────────
+
+    def test_create_includes_name_and_sequence(self, evo_client):
+        """POST /api/evolutions with name returns named evolution."""
+        resp = evo_client.post("/api/evolutions", json={
+            "character_id": "CH-0001",
+            "author": "Sage",
+            "name": "Courage Boost",
+            "changes": [
+                {
+                    "change_type": "field_update",
+                    "field_name": "backstory",
+                    "new_value": "Updated backstory",
+                    "rationale": "Test naming",
+                },
+            ],
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["name"] == "Courage Boost"
+        assert data["sequence_number"] == 1
+        assert data["target_type"] == "character"
+        assert data["target_id"] == "CH-0001"
+        assert data["overlay_status"] == "draft"
+
+    def test_create_auto_names_when_no_name(self, evo_client):
+        """POST /api/evolutions without name auto-generates a name."""
+        resp = evo_client.post("/api/evolutions", json={
+            "character_id": "CH-0001",
+            "author": "Sage",
+            "changes": [
+                {
+                    "change_type": "field_update",
+                    "field_name": "system_prompt",
+                    "new_value": "Updated prompt",
+                    "rationale": "Auto name test",
+                },
+            ],
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["name"]  # not empty
+        assert "Evolution #" in data["name"]
+
+    def test_sequence_number_increments(self, evo_client):
+        """Sequence numbers auto-increment per target entity."""
+        for i in range(3):
+            resp = evo_client.post("/api/evolutions", json={
+                "character_id": "CH-0001",
+                "author": "Sage",
+                "changes": [
+                    {
+                        "change_type": "field_update",
+                        "field_name": "backstory",
+                        "new_value": f"Version {i+1}",
+                        "rationale": "Sequence test",
+                    },
+                ],
+            })
+            assert resp.status_code == 200
+            assert resp.json()["sequence_number"] == i + 1
+
+    # ── Overlay Status Transitions ────────────────────────────
+
+    def test_overlay_status_draft_to_active(self, evo_client, evolutions_dir):
+        """PUT /api/evolutions/{id}/overlay-status transitions draft → active."""
+        rec = _make_evolution_record("EV-0001")
+        rec["overlay_status"] = "draft"
+        rec["target_type"] = "character"
+        rec["target_id"] = "CH-0001"
+        (evolutions_dir / "EV-0001.json").write_text(
+            json.dumps(rec, indent=2), encoding="utf-8",
+        )
+        resp = evo_client.put(
+            "/api/evolutions/EV-0001/overlay-status",
+            json={"overlay_status": "active"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["overlay_status"] == "active"
+
+    def test_overlay_status_active_to_archived(self, evo_client, evolutions_dir):
+        """PUT transitions active → archived."""
+        rec = _make_evolution_record("EV-0001")
+        rec["overlay_status"] = "active"
+        rec["target_type"] = "character"
+        rec["target_id"] = "CH-0001"
+        (evolutions_dir / "EV-0001.json").write_text(
+            json.dumps(rec, indent=2), encoding="utf-8",
+        )
+        resp = evo_client.put(
+            "/api/evolutions/EV-0001/overlay-status",
+            json={"overlay_status": "archived"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["overlay_status"] == "archived"
+
+    def test_overlay_mutual_exclusion(self, evo_client, evolutions_dir):
+        """Activating one evolution archives the previous active."""
+        # Create two evolutions for the same target
+        for evo_id in ("EV-0001", "EV-0002"):
+            rec = _make_evolution_record(evo_id)
+            rec["overlay_status"] = "draft"
+            rec["target_type"] = "character"
+            rec["target_id"] = "CH-0001"
+            (evolutions_dir / f"{evo_id}.json").write_text(
+                json.dumps(rec, indent=2), encoding="utf-8",
+            )
+
+        # Activate the first one
+        evo_client.put(
+            "/api/evolutions/EV-0001/overlay-status",
+            json={"overlay_status": "active"},
+        )
+
+        # Activate the second one — first should get archived
+        evo_client.put(
+            "/api/evolutions/EV-0002/overlay-status",
+            json={"overlay_status": "active"},
+        )
+
+        # Verify EV-0001 is now archived
+        resp = evo_client.get("/api/evolutions/EV-0001")
+        assert resp.json()["overlay_status"] == "archived"
+
+        # Verify EV-0002 is active
+        resp = evo_client.get("/api/evolutions/EV-0002")
+        assert resp.json()["overlay_status"] == "active"
+
+    def test_overlay_invalid_transition(self, evo_client, evolutions_dir):
+        """Invalid overlay transition returns 400."""
+        rec = _make_evolution_record("EV-0001")
+        rec["overlay_status"] = "active"
+        rec["target_type"] = "character"
+        rec["target_id"] = "CH-0001"
+        (evolutions_dir / "EV-0001.json").write_text(
+            json.dumps(rec, indent=2), encoding="utf-8",
+        )
+        resp = evo_client.put(
+            "/api/evolutions/EV-0001/overlay-status",
+            json={"overlay_status": "draft"},  # active→draft is invalid
+        )
+        assert resp.status_code == 400
+
+    # ── Active Overlay Query ──────────────────────────────────
+
+    def test_get_active_overlay(self, evo_client, evolutions_dir):
+        """GET /api/evolutions/active-overlay/{target_id} returns the overlay."""
+        rec = _make_evolution_record("EV-0001")
+        rec["overlay_status"] = "active"
+        rec["target_type"] = "character"
+        rec["target_id"] = "CH-0001"
+        (evolutions_dir / "EV-0001.json").write_text(
+            json.dumps(rec, indent=2), encoding="utf-8",
+        )
+        resp = evo_client.get(
+            "/api/evolutions/active-overlay/CH-0001?target_type=character",
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["active_overlay"] is not None
+        assert data["active_overlay"]["evolution_id"] == "EV-0001"
+
+    def test_get_active_overlay_none(self, evo_client):
+        """GET returns null when no active overlay."""
+        resp = evo_client.get(
+            "/api/evolutions/active-overlay/CH-9999?target_type=character",
+        )
+        assert resp.status_code == 200
+        assert resp.json()["active_overlay"] is None
+
+    def test_active_overlays_list(self, evo_client, evolutions_dir):
+        """GET /api/evolutions/active-overlays lists all active targets."""
+        rec = _make_evolution_record("EV-0001")
+        rec["overlay_status"] = "active"
+        rec["target_type"] = "character"
+        rec["target_id"] = "CH-0001"
+        (evolutions_dir / "EV-0001.json").write_text(
+            json.dumps(rec, indent=2), encoding="utf-8",
+        )
+        resp = evo_client.get("/api/evolutions/active-overlays")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["target_id"] == "CH-0001"
+
+    # ── Rollback ──────────────────────────────────────────────
+
+    def test_rollback_creates_reverse_evolution(self, evo_client, evolutions_dir):
+        """POST /api/evolutions/{id}/rollback creates a reversal."""
+        rec = _make_evolution_record("EV-0001", status="applied")
+        rec["overlay_status"] = "active"
+        rec["target_type"] = "character"
+        rec["target_id"] = "CH-0001"
+        (evolutions_dir / "EV-0001.json").write_text(
+            json.dumps(rec, indent=2), encoding="utf-8",
+        )
+        resp = evo_client.post(
+            "/api/evolutions/EV-0001/rollback",
+            json={"author": "Sage"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["rollback_of"] == "EV-0001"
+        assert data["changes"][0]["change_type"] == "rollback"
+        # Source should now be archived
+        resp2 = evo_client.get("/api/evolutions/EV-0001")
+        assert resp2.json()["overlay_status"] == "archived"
+
+    def test_rollback_rejects_draft(self, evo_client, evolutions_dir):
+        """POST rollback on a draft evolution returns 400."""
+        rec = _make_evolution_record("EV-0001", status="draft")
+        rec["overlay_status"] = "draft"
+        rec["target_type"] = "character"
+        rec["target_id"] = "CH-0001"
+        (evolutions_dir / "EV-0001.json").write_text(
+            json.dumps(rec, indent=2), encoding="utf-8",
+        )
+        resp = evo_client.post(
+            "/api/evolutions/EV-0001/rollback",
+            json={"author": "Sage"},
+        )
+        assert resp.status_code == 400
+
+    # ── List Filters ──────────────────────────────────────────
+
+    def test_list_filter_by_target_type(self, evo_client, evolutions_dir):
+        """GET /api/evolutions?target_type=council_member filters correctly."""
+        r1 = _make_evolution_record("EV-0001")
+        r1["target_type"] = "character"
+        r1["target_id"] = "CH-0001"
+        r2 = _make_evolution_record("EV-0002")
+        r2["target_type"] = "council_member"
+        r2["target_id"] = "CM-Sage"
+        (evolutions_dir / "EV-0001.json").write_text(
+            json.dumps(r1, indent=2), encoding="utf-8",
+        )
+        (evolutions_dir / "EV-0002.json").write_text(
+            json.dumps(r2, indent=2), encoding="utf-8",
+        )
+        resp = evo_client.get("/api/evolutions?target_type=council_member")
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["target_type"] == "council_member"
+
+    def test_list_filter_by_overlay_status(self, evo_client, evolutions_dir):
+        """GET /api/evolutions?overlay_status=active filters correctly."""
+        r1 = _make_evolution_record("EV-0001")
+        r1["overlay_status"] = "active"
+        r1["target_id"] = "CH-0001"
+        r2 = _make_evolution_record("EV-0002")
+        r2["overlay_status"] = "draft"
+        r2["target_id"] = "CH-0001"
+        (evolutions_dir / "EV-0001.json").write_text(
+            json.dumps(r1, indent=2), encoding="utf-8",
+        )
+        (evolutions_dir / "EV-0002.json").write_text(
+            json.dumps(r2, indent=2), encoding="utf-8",
+        )
+        resp = evo_client.get("/api/evolutions?overlay_status=active")
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["evolution_id"] == "EV-0001"
+
+    # ── New Fields in Existing Records ────────────────────────
+
+    def test_existing_records_backward_compat(self, evo_client, evolutions_dir):
+        """Old records without new fields still load correctly."""
+        # This is a minimal old-style record (no new fields)
+        old_rec = {
+            "evolution_id": "EV-0001",
+            "character_id": "CH-0001",
+            "author": "Sage",
+            "changes": [],
+            "proposal_id": "",
+            "vote_record_id": "",
+            "status": "draft",
+            "applied_character_id": "",
+            "summary": "",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+            "metadata": {},
+        }
+        (evolutions_dir / "EV-0001.json").write_text(
+            json.dumps(old_rec, indent=2), encoding="utf-8",
+        )
+        resp = evo_client.get("/api/evolutions/EV-0001")
+        assert resp.status_code == 200
+        data = resp.json()
+        # New fields should have sensible defaults
+        assert data["name"] == ""
+        assert data["sequence_number"] == 0
+        assert data["target_type"] == "character"
+        assert data["target_id"] == "CH-0001"  # inferred from character_id
+        assert data["overlay_status"] == "draft"
+        assert data["rollback_of"] == ""
+
+
 # ─── Council Promotion Endpoints ─────────────────────────────
 
 

@@ -35,6 +35,7 @@ from core.comfyui_client import (
     WorkflowTemplate,
     WorkflowTemplateManager,
     detect_placeholders,
+    ensure_preview_output,
     fill_placeholders,
 )
 
@@ -120,7 +121,7 @@ class TestComfyUIConfig:
     def test_defaults(self) -> None:
         cfg = ComfyUIConfig()
         assert cfg.host == "127.0.0.1"
-        assert cfg.port == 8188
+        assert cfg.port == 8007
 
     def test_base_url(self) -> None:
         cfg = ComfyUIConfig(host="10.0.0.1", port=8200)
@@ -161,7 +162,7 @@ class TestComfyUIConfig:
     def test_from_dict_defaults(self) -> None:
         cfg = ComfyUIConfig.from_dict({})
         assert cfg.host == "127.0.0.1"
-        assert cfg.port == 8188
+        assert cfg.port == 8007
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -764,8 +765,8 @@ class TestComfyUIClientInit:
     def test_defaults(self) -> None:
         client = ComfyUIClient()
         assert client.config.host == "127.0.0.1"
-        assert client.config.port == 8188
-        assert client.base_url == "http://127.0.0.1:8188"
+        assert client.config.port == 8007
+        assert client.base_url == "http://127.0.0.1:8007"
 
     def test_custom_config(self) -> None:
         cfg = ComfyUIConfig(host="10.0.0.1", port=9000)
@@ -777,7 +778,7 @@ class TestComfyUIClientInit:
         client = ComfyUIClient()
         r = repr(client)
         assert "ComfyUIClient" in r
-        assert "127.0.0.1:8188" in r
+        assert "127.0.0.1:8007" in r
 
     def test_not_entered_raises(self) -> None:
         client = ComfyUIClient()
@@ -842,7 +843,7 @@ class TestComfyUIClientTestConnection:
             await client.test_connection()
         assert "Cannot connect" in str(exc_info.value)
         assert exc_info.value.host == "127.0.0.1"
-        assert exc_info.value.port == 8188
+        assert exc_info.value.port == 8007
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1108,6 +1109,110 @@ class TestExtractOutputImages:
     def test_no_images_key(self) -> None:
         history = {"outputs": {"9": {"text": "hello"}}}
         assert ComfyUIClient.extract_output_images(history) == []
+
+
+# ═══════════════════════════════════════════════════════════════
+# ensure_preview_output
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestEnsurePreviewOutput:
+    """Tests for the automatic PreviewImage node injection."""
+
+    def test_standard_save_node_unchanged(self) -> None:
+        """Workflow with a standard SaveImage should not be modified."""
+        wf = {
+            "1": {"class_type": "KSampler", "inputs": {}},
+            "2": {"class_type": "VAEDecode", "inputs": {"samples": ["1", 0]}},
+            "3": {
+                "class_type": "SaveImage",
+                "inputs": {"images": ["2", 0], "filename_prefix": "test"},
+            },
+        }
+        result = ensure_preview_output(wf)
+        assert len(result) == 3  # No new nodes
+        assert "SaveImage" in [n.get("class_type") for n in result.values()]
+
+    def test_preview_image_node_unchanged(self) -> None:
+        """Workflow with PreviewImage should not be modified."""
+        wf = {
+            "1": {"class_type": "VAEDecode", "inputs": {}},
+            "2": {
+                "class_type": "PreviewImage",
+                "inputs": {"images": ["1", 0]},
+            },
+        }
+        result = ensure_preview_output(wf)
+        assert len(result) == 2
+
+    def test_custom_save_node_gets_preview_injected(self) -> None:
+        """Workflow with only a custom save node should get PreviewImage."""
+        wf = {
+            "1": {"class_type": "KSampler", "inputs": {}},
+            "2": {"class_type": "VAEDecode", "inputs": {"samples": ["1", 0]}},
+            "3": {
+                "class_type": "Save Image (LoraManager)",
+                "inputs": {"images": ["2", 0], "filename_prefix": "test"},
+            },
+        }
+        original_keys = set(wf.keys())
+        result = ensure_preview_output(wf)
+        assert len(result) == 4  # One new node
+        new_nodes = {k: v for k, v in result.items() if k not in original_keys}
+        assert len(new_nodes) == 1
+        preview = list(new_nodes.values())[0]
+        assert preview["class_type"] == "PreviewImage"
+        assert preview["inputs"]["images"] == ["2", 0]  # Same source
+
+    def test_injected_node_has_high_id(self) -> None:
+        """Injected node ID should be far above existing IDs."""
+        wf = {
+            "20": {"class_type": "VAEDecode", "inputs": {}},
+            "30": {
+                "class_type": "Save Image (Custom)",
+                "inputs": {"images": ["20", 0]},
+            },
+        }
+        original_keys = set(wf.keys())
+        result = ensure_preview_output(wf)
+        new_ids = [k for k in result if k not in original_keys]
+        assert len(new_ids) == 1
+        assert int(new_ids[0]) >= 9000  # High offset
+
+    def test_namespaced_ids_handled(self) -> None:
+        """Subgraph-namespaced IDs like '13:59' should be parsed."""
+        wf = {
+            "11": {"class_type": "UltimateSDUpscale", "inputs": {}},
+            "13:59": {
+                "class_type": "Save Image (LoraManager)",
+                "inputs": {"images": ["11", 0]},
+            },
+        }
+        original_keys = set(wf.keys())
+        result = ensure_preview_output(wf)
+        new_ids = [k for k in result if k not in original_keys]
+        assert len(new_ids) == 1
+        # Should be >= max(11, 13, 59) + 9000
+        assert int(new_ids[0]) >= 9059
+
+    def test_no_save_node_unchanged(self) -> None:
+        """Workflow with no save/preview node at all returns unchanged."""
+        wf = {
+            "1": {"class_type": "KSampler", "inputs": {}},
+            "2": {"class_type": "VAEDecode", "inputs": {}},
+        }
+        result = ensure_preview_output(wf)
+        assert len(result) == 2  # No injection
+
+    def test_non_dict_values_skipped(self) -> None:
+        """Non-dict values (malformed workflow) shouldn't crash."""
+        wf: dict[str, Any] = {"bad": True, "also_bad": "string"}
+        result = ensure_preview_output(wf)
+        assert result == wf  # Unchanged
+
+    def test_empty_workflow(self) -> None:
+        result = ensure_preview_output({})
+        assert result == {}
 
 
 # ═══════════════════════════════════════════════════════════════

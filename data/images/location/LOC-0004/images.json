@@ -1,0 +1,24 @@
+[
+  {
+    "id": "IMG-0004",
+    "entity_type": "location",
+    "entity_id": "LOC-0004",
+    "filename": "img_0001.png",
+    "original_filename": "ComfyUI_temp_oteyn_00005_.png",
+    "prompt": "Epic architectural photograph of a towering modern dark gray house with white and black accents, cube-shaped design, standing as the tallest building in the area, a sleek 2021 black Jaguar F-Type and a black 2024 Harley-Davidson Breakout 117 parked in the driveway, golden hour lighting casting long shadows, view overlooking a nearby beach and municipal building in the distance, hyper-detailed, cinematic, shot on a 50mm lens, dramatic contrast, ultra-realistic, 8K resolution",
+    "negative_prompt": "cartoon, anime, painting, blurry, low quality, distorted, ugly, deformed, oversaturated, unrealistic lighting, people, text, watermark, signature, cluttered frame, bad architecture, flat lighting",
+    "is_primary": true,
+    "file_size": 6179137,
+    "width": 512,
+    "height": 512,
+    "template_id": "TPL-0001",
+    "generation_job_id": "GEN-0001",
+    "created_at": "2026-04-10T20:44:28.979074+00:00",
+    "metadata": {
+      "prompt_mode": "system",
+      "style_preset": "",
+      "seed": 371549717,
+      "member_name": ""
+    }
+  }
+]

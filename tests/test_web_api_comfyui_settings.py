@@ -58,7 +58,7 @@ class TestComfyUIConfig:
         assert resp.status_code == 200
         data = resp.json()
         assert data["host"] == "127.0.0.1"
-        assert data["port"] == 8188
+        assert data["port"] == 8007
 
     def test_save_config(self, client):
         resp = client.post(

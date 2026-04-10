@@ -1,0 +1,24 @@
+[
+  {
+    "id": "IMG-0001",
+    "entity_type": "location",
+    "entity_id": "LOC-0001",
+    "filename": "img_0001.png",
+    "original_filename": "ComfyUI_temp_oteyn_00002_.png",
+    "prompt": "A sprawling coastal metropolis divided vertically, smog-belching factories and gleaming towers on highland cliffs above a thick ethereal fog bank, while below, gritty lowland streets with fishermen and workers struggle through misty harbors, polluted water lapping at rusted piers, dramatic contrast between sunlit elite spires and shadowed working quarters, volumetric fog rolling through valleys like a living creature, oil painting style, atmospheric perspective, cinematic lighting, moody and gritty aesthetic, detailed industrial architecture, art by Zdzisław Beksiński and Moebius",
+    "negative_prompt": "clean city, bright sunny day, no fog, utopian, pristine, cartoon, anime, flat lighting, cheerful atmosphere, no pollution, simplistic architecture, boring composition",
+    "is_primary": true,
+    "file_size": 8023038,
+    "width": 1024,
+    "height": 1024,
+    "template_id": "TPL-0001",
+    "generation_job_id": "GEN-0001",
+    "created_at": "2026-04-10T19:20:57.743923+00:00",
+    "metadata": {
+      "prompt_mode": "system",
+      "style_preset": "",
+      "seed": 637599786,
+      "member_name": ""
+    }
+  }
+]

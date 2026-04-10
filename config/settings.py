@@ -195,9 +195,13 @@ MAX_DESIGN_CONTRIBUTORS = 9            # Full council
 
 # ─── Character Evolution Settings ─────────────────────────────
 EVOLUTION_DIR = DATA_DIR / "character_evolutions"
-EVOLUTION_TYPES = ("trait_add", "trait_remove", "trait_modify", "field_update", "version_bump")
+EVOLUTION_TYPES = ("trait_add", "trait_remove", "trait_modify", "field_update", "version_bump",
+                   "system_prompt_update", "personality_update", "rollback")
 EVOLUTION_STATUSES = ("draft", "proposed", "voting", "decided", "applied", "rejected")
+EVOLUTION_OVERLAY_STATUSES = ("draft", "active", "archived")
+EVOLUTION_TARGETS = ("character", "council_member")
 MAX_EVOLUTION_CHANGES = 10              # Max changes per evolution proposal
+MAX_EVOLUTION_HISTORY = 50              # Max rollback chain depth per target
 
 # ─── Task Settings ────────────────────────────────────────────
 TASKS_DIR = DATA_DIR / "tasks"

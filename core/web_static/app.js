@@ -4070,7 +4070,7 @@ async function _pollExploreGeneration(jobId, locationId, fillEl, statusEl) {
 
     const poll = async () => {
         try {
-            const data = await api(`/api/generate/job/${encodeURIComponent(jobId)}`);
+            const data = await api(`/api/generate/jobs/${encodeURIComponent(jobId)}`);
             if (fillEl) fillEl.style.width = `${data.progress_pct || 0}%`;
             if (statusEl) statusEl.textContent = stageLabels[data.stage] || data.stage;
 
@@ -9704,7 +9704,7 @@ async function loadComfyUISettings() {
 
     try {
         const [cfg, tpls, prsts, ds, assigns] = await Promise.all([
-            api('/api/settings/comfyui').catch(() => ({ host: '127.0.0.1', port: 8188 })),
+            api('/api/settings/comfyui').catch(() => ({ host: '127.0.0.1', port: 8007 })),
             api('/api/settings/comfyui/templates').catch(() => []),
             api('/api/settings/comfyui/style-presets').catch(() => []),
             api('/api/settings/comfyui/default-style').catch(() => ({ style_key: '' })),
@@ -11585,10 +11585,48 @@ async function illustrateScene(storyId, chapterId, sceneId) {
         if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || 'Illustration failed'); }
         const result = await resp.json();
         showToast(`🎨 Illustration queued! Job: ${result.job_id}`);
+
+        // Poll job status until completion, then refresh the view
+        _pollIllustrationJob(result.job_id, storyId, sceneId);
     } catch (err) {
         showToast('Illustration error: ' + err.message, true);
         renderStoryDetail(storyId);
     }
+}
+
+function _pollIllustrationJob(jobId, storyId, sceneId) {
+    const POLL_INTERVAL = 3000;
+    const MAX_POLLS = 200; // ~10 min max
+    let polls = 0;
+    const timer = setInterval(async () => {
+        polls++;
+        if (polls > MAX_POLLS) {
+            clearInterval(timer);
+            showToast('Illustration timed out — check Generation Queue.', true);
+            return;
+        }
+        try {
+            const job = await api(`/api/generate/jobs/${jobId}`);
+            // Update the button text with progress if scene element still exists
+            const sceneEl = document.getElementById(`scene-${sceneId}`);
+            if (sceneEl) {
+                const btn = sceneEl.querySelector('button[onclick*="illustrateScene"]');
+                if (btn) btn.textContent = `⏳ ${job.progress_pct || 0}%`;
+            }
+            if (job.stage === 'completed') {
+                clearInterval(timer);
+                showToast(`🎨 Illustration complete!`);
+                renderStoryDetail(storyId);
+            } else if (job.stage === 'failed' || job.stage === 'cancelled') {
+                clearInterval(timer);
+                showToast(`❌ Illustration ${job.stage}: ${job.error || 'Unknown error'}`, true);
+                renderStoryDetail(storyId);
+            }
+        } catch {
+            // If polling fails (e.g. page navigated away), stop silently
+            clearInterval(timer);
+        }
+    }, POLL_INTERVAL);
 }
 
 async function editStory(storyId) {

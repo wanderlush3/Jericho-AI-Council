@@ -1,0 +1,24 @@
+[
+  {
+    "id": "IMG-0002",
+    "entity_type": "item",
+    "entity_id": "ITEM-0001",
+    "filename": "img_0001.png",
+    "original_filename": "ComfyUI_temp_oteyn_00003_.png",
+    "prompt": "A majestic, ancient redwood forest at twilight, towering trees with gnarled bark and moss-covered branches, ethereal god rays piercing through the dense canopy, illuminating a carpet of ferns and glowing bioluminescent mushrooms, mist swirling around the massive trunks, hyperrealistic, cinematic lighting, atmospheric, fantasy art, detailed, 8k resolution",
+    "negative_prompt": "cartoon, blurry, low quality, oversaturated, flat lighting, no depth, humans, animals, urban elements, artificial structures, text, watermark, signature, ugly, deformed, poorly drawn hands",
+    "is_primary": true,
+    "file_size": 8234955,
+    "width": 1024,
+    "height": 1024,
+    "template_id": "TPL-0001",
+    "generation_job_id": "GEN-0002",
+    "created_at": "2026-04-10T19:24:37.481805+00:00",
+    "metadata": {
+      "prompt_mode": "system",
+      "style_preset": "",
+      "seed": 958935436,
+      "member_name": ""
+    }
+  }
+]

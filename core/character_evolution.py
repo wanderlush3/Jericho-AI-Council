@@ -7,6 +7,13 @@ system.  Each evolution goes through a structured lifecycle:
     draft → proposed → voting → decided → applied
                                         ↘ rejected
 
+Overlay lifecycle (independent from governance):
+
+    draft → active → archived
+
+When overlay_status is "active", the evolution's changes override
+the target entity's base system prompts at query time.
+
 Storage: one JSON file per evolution in ``data/character_evolutions/``,
 named ``EV-XXXX.json``.
 """
@@ -22,9 +29,12 @@ from typing import Any
 
 from config.settings import (
     EVOLUTION_DIR,
+    EVOLUTION_OVERLAY_STATUSES,
     EVOLUTION_STATUSES,
+    EVOLUTION_TARGETS,
     EVOLUTION_TYPES,
     MAX_EVOLUTION_CHANGES,
+    MAX_EVOLUTION_HISTORY,
 )
 from core.characters import CharacterManager, CharacterTemplate, Trait
 from core.memory import SharedMemory
@@ -66,6 +76,10 @@ class EvolutionStateError(EvolutionError):
         )
 
 
+class EvolutionOverlayError(EvolutionError):
+    """Raised when an overlay operation fails (e.g. multiple active overlays)."""
+
+
 # ─── Valid Lifecycle Transitions ───────────────────────────────
 
 _VALID_TRANSITIONS: dict[str, set[str]] = {
@@ -75,6 +89,13 @@ _VALID_TRANSITIONS: dict[str, set[str]] = {
     "decided": {"applied"},
     "applied": set(),      # terminal
     "rejected": set(),     # terminal
+}
+
+# Overlay lifecycle transitions (independent from governance lifecycle)
+_OVERLAY_TRANSITIONS: dict[str, set[str]] = {
+    "draft": {"active", "archived"},
+    "active": {"archived"},
+    "archived": {"draft", "active"},    # allows re-activation
 }
 
 
@@ -139,7 +160,7 @@ class EvolutionRecord:
     """Persistent record of a character evolution proposal."""
 
     evolution_id: str
-    character_id: str
+    character_id: str              # backward-compat alias for target_id
     author: str
     changes: list[CharacterChange] = field(default_factory=list)
     proposal_id: str = ""          # links to ProposalManager
@@ -150,6 +171,13 @@ class EvolutionRecord:
     created_at: str = ""
     updated_at: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
+    # ── New fields (Evolution Expansion) ──
+    name: str = ""                     # user-friendly evolution name
+    sequence_number: int = 0          # auto-incremented per target
+    target_type: str = "character"    # "character" or "council_member"
+    target_id: str = ""               # canonical target identifier
+    overlay_status: str = "draft"     # "draft" / "active" / "archived"
+    rollback_of: str = ""             # ID of evolution this rolls back (if rollback)
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -162,9 +190,11 @@ class EvolutionRecord:
             CharacterChange.from_dict(c)
             for c in data.get("changes", [])
         ]
+        # Backward-compat: use character_id as target_id if target_id not set
+        target_id = data.get("target_id", "") or data.get("character_id", "")
         return cls(
             evolution_id=data["evolution_id"],
-            character_id=data["character_id"],
+            character_id=data.get("character_id", target_id),
             author=data["author"],
             changes=changes,
             proposal_id=data.get("proposal_id", ""),
@@ -175,6 +205,12 @@ class EvolutionRecord:
             created_at=data.get("created_at", ""),
             updated_at=data.get("updated_at", ""),
             metadata=data.get("metadata", {}),
+            name=data.get("name", ""),
+            sequence_number=data.get("sequence_number", 0),
+            target_type=data.get("target_type", "character"),
+            target_id=target_id,
+            overlay_status=data.get("overlay_status", "draft"),
+            rollback_of=data.get("rollback_of", ""),
         )
 
     @classmethod
@@ -185,6 +221,11 @@ class EvolutionRecord:
         author: str,
         changes: list[CharacterChange] | None = None,
         metadata: dict[str, Any] | None = None,
+        *,
+        name: str = "",
+        sequence_number: int = 0,
+        target_type: str = "character",
+        target_id: str = "",
     ) -> EvolutionRecord:
         """Factory that auto-fills timestamps."""
         if not evolution_id.strip():
@@ -199,6 +240,7 @@ class EvolutionRecord:
             raise EvolutionValidationError(
                 ["Author must not be empty"]
             )
+        effective_target_id = (target_id or character_id).strip()
         now = datetime.now(timezone.utc).isoformat()
         return cls(
             evolution_id=evolution_id.strip(),
@@ -213,6 +255,12 @@ class EvolutionRecord:
             created_at=now,
             updated_at=now,
             metadata=metadata or {},
+            name=name.strip(),
+            sequence_number=sequence_number,
+            target_type=target_type,
+            target_id=effective_target_id,
+            overlay_status="draft",
+            rollback_of="",
         )
 
 
@@ -307,6 +355,8 @@ class CharacterEvolution:
         author: str,
         changes: list[CharacterChange] | None = None,
         metadata: dict[str, Any] | None = None,
+        name: str = "",
+        target_type: str = "character",
     ) -> EvolutionRecord:
         """
         Create a new character evolution in *draft* status.
@@ -346,13 +396,21 @@ class CharacterEvolution:
                 ]
             )
 
+        target_id = character_id.strip()
         next_id = self._next_id()
+        seq_num = self._next_sequence_number(target_id, target_type)
+        evo_name = name or f"Evolution #{seq_num} for {character.name}"
+
         record = EvolutionRecord.create(
             evolution_id=next_id,
             character_id=character_id.strip(),
             author=author.strip(),
             changes=effective_changes,
             metadata=metadata,
+            name=evo_name,
+            sequence_number=seq_num,
+            target_type=target_type,
+            target_id=target_id,
         )
         self._save(record)
         return record
@@ -405,20 +463,10 @@ class CharacterEvolution:
         # Transition proposal to open
         self._proposals.update_status(proposal.id, "open")
 
-        now = datetime.now(timezone.utc).isoformat()
-        updated = EvolutionRecord(
-            evolution_id=record.evolution_id,
-            character_id=record.character_id,
-            author=record.author,
-            changes=list(record.changes),
+        updated = self._rebuild(
+            record,
             proposal_id=proposal.id,
-            vote_record_id=record.vote_record_id,
             status="proposed",
-            applied_character_id=record.applied_character_id,
-            summary=record.summary,
-            created_at=record.created_at,
-            updated_at=now,
-            metadata=dict(record.metadata),
         )
         self._save(updated)
         return updated
@@ -454,20 +502,10 @@ class CharacterEvolution:
             },
         )
 
-        now = datetime.now(timezone.utc).isoformat()
-        updated = EvolutionRecord(
-            evolution_id=record.evolution_id,
-            character_id=record.character_id,
-            author=record.author,
-            changes=list(record.changes),
-            proposal_id=record.proposal_id,
+        updated = self._rebuild(
+            record,
             vote_record_id=vote_record.proposal_id,
             status="voting",
-            applied_character_id=record.applied_character_id,
-            summary=record.summary,
-            created_at=record.created_at,
-            updated_at=now,
-            metadata=dict(record.metadata),
         )
         self._save(updated)
         return updated
@@ -513,18 +551,10 @@ class CharacterEvolution:
             f"{', VETOED' if tally.vetoed else ''})"
         )
 
-        updated = EvolutionRecord(
-            evolution_id=record.evolution_id,
-            character_id=record.character_id,
-            author=record.author,
-            changes=list(record.changes),
-            proposal_id=record.proposal_id,
-            vote_record_id=record.vote_record_id,
+        updated = self._rebuild(
+            record,
             status=new_status,
-            applied_character_id=record.applied_character_id,
             summary=summary,
-            created_at=record.created_at,
-            updated_at=now,
             metadata={
                 **record.metadata,
                 "tally": tally.to_dict(),
@@ -572,18 +602,10 @@ class CharacterEvolution:
         new_template = self._characters.update_status(new_template.id, "active")
 
         now = datetime.now(timezone.utc).isoformat()
-        updated = EvolutionRecord(
-            evolution_id=record.evolution_id,
-            character_id=record.character_id,
-            author=record.author,
-            changes=list(record.changes),
-            proposal_id=record.proposal_id,
-            vote_record_id=record.vote_record_id,
+        updated = self._rebuild(
+            record,
             status="applied",
             applied_character_id=new_template.id,
-            summary=record.summary,
-            created_at=record.created_at,
-            updated_at=now,
             metadata={
                 **record.metadata,
                 "applied_at": now,
@@ -632,6 +654,8 @@ class CharacterEvolution:
         character_id: str | None = None,
         status: str | None = None,
         author: str | None = None,
+        target_type: str | None = None,
+        overlay_status: str | None = None,
     ) -> list[EvolutionRecord]:
         """
         Return evolutions sorted by ID, with optional filters.
@@ -647,6 +671,10 @@ class CharacterEvolution:
             if status is not None and rec.status != status:
                 continue
             if author is not None and rec.author.lower() != author.strip().lower():
+                continue
+            if target_type is not None and rec.target_type != target_type:
+                continue
+            if overlay_status is not None and rec.overlay_status != overlay_status:
                 continue
             evolutions.append(rec)
         return evolutions
@@ -725,6 +753,487 @@ class CharacterEvolution:
                 f"Cannot transition from '{record.status}' to '{new_status}'",
             )
 
+    # ── Internal: Record Rebuilder ────────────────────────────
+
+    def _rebuild(
+        self,
+        record: EvolutionRecord,
+        **overrides: Any,
+    ) -> EvolutionRecord:
+        """Create a new EvolutionRecord from an existing one with overrides.
+
+        Since EvolutionRecord is frozen, this is the canonical way to
+        update fields.  Automatically bumps ``updated_at``.
+        """
+        base = record.to_dict()
+        base["updated_at"] = datetime.now(timezone.utc).isoformat()
+        base.update(overrides)
+        # Preserve changes list from the original if not overridden
+        if "changes" not in overrides:
+            base["changes"] = [c.to_dict() for c in record.changes]
+        return EvolutionRecord.from_dict(base)
+
+    # ── Overlay Status Management ─────────────────────────────
+
+    def update_overlay_status(
+        self,
+        evolution_id: str,
+        new_overlay_status: str,
+    ) -> EvolutionRecord:
+        """
+        Transition the overlay status of an evolution.
+
+        Only one evolution can be ``active`` per target at a time.
+        Activating an evolution automatically archives any previously
+        active evolution for the same target.
+
+        Raises:
+            EvolutionNotFoundError: if evolution doesn't exist.
+            EvolutionOverlayError: if the transition is invalid.
+        """
+        if new_overlay_status not in EVOLUTION_OVERLAY_STATUSES:
+            raise EvolutionOverlayError(
+                f"Unknown overlay status '{new_overlay_status}' — "
+                f"must be one of {EVOLUTION_OVERLAY_STATUSES}"
+            )
+
+        record = self.get(evolution_id)
+
+        allowed = _OVERLAY_TRANSITIONS.get(record.overlay_status, set())
+        if new_overlay_status not in allowed:
+            raise EvolutionOverlayError(
+                f"Cannot transition overlay from '{record.overlay_status}' "
+                f"to '{new_overlay_status}'"
+            )
+
+        # Mutual exclusion: archive the current active overlay for this target
+        if new_overlay_status == "active":
+            target_id = record.target_id or record.character_id
+            target_type = record.target_type
+            current_active = self.get_active_overlay(target_id, target_type)
+            if current_active and current_active.evolution_id != evolution_id:
+                self._save(self._rebuild(
+                    current_active,
+                    overlay_status="archived",
+                ))
+
+        updated = self._rebuild(record, overlay_status=new_overlay_status)
+        self._save(updated)
+        return updated
+
+    def get_active_overlay(
+        self,
+        target_id: str,
+        target_type: str = "character",
+    ) -> EvolutionRecord | None:
+        """
+        Return the single active overlay for a target, or ``None``.
+        """
+        for filepath in self._dir.glob("EV-*.json"):
+            try:
+                rec = self._load(filepath)
+            except (json.JSONDecodeError, KeyError):
+                continue
+            effective_target = rec.target_id or rec.character_id
+            if (
+                effective_target == target_id
+                and rec.target_type == target_type
+                and rec.overlay_status == "active"
+            ):
+                return rec
+        return None
+
+    # ── Rollback ──────────────────────────────────────────────
+
+    def rollback(self, evolution_id: str, *, author: str = "") -> EvolutionRecord:
+        """
+        Create a new rollback evolution that reverses a previous one.
+
+        The rolled-back evolution gets its overlay archived.
+        Returns the new rollback evolution record in ``draft`` status.
+
+        Raises:
+            EvolutionNotFoundError: if evolution doesn't exist.
+            EvolutionStateError: if evolution was never applied/active.
+        """
+        source = self.get(evolution_id)
+
+        if source.status not in ("applied", "decided") and source.overlay_status != "active":
+            raise EvolutionStateError(
+                evolution_id,
+                "Can only roll back evolutions that are applied/decided "
+                "or have an active overlay",
+            )
+
+        # Build reverse changes
+        reverse_changes: list[CharacterChange] = []
+        for c in source.changes:
+            reverse_changes.append(CharacterChange(
+                change_type="rollback",
+                field_name=c.field_name,
+                old_value=c.new_value,     # flip old/new
+                new_value=c.old_value,
+                rationale=f"Rollback of {evolution_id}: {c.rationale}",
+            ))
+
+        target_id = source.target_id or source.character_id
+        target_type = source.target_type
+
+        next_id = self._next_id()
+        seq_num = self._next_sequence_number(target_id, target_type)
+        rollback_author = author or source.author
+
+        record = EvolutionRecord.create(
+            evolution_id=next_id,
+            character_id=source.character_id,
+            author=rollback_author,
+            changes=reverse_changes,
+            metadata={"rollback_source": evolution_id},
+            name=f"Rollback of {evolution_id}",
+            sequence_number=seq_num,
+            target_type=target_type,
+            target_id=target_id,
+        )
+        # Mark the rollback_of field
+        record = self._rebuild(record, rollback_of=evolution_id)
+        self._save(record)
+
+        # Archive the source evolution's overlay
+        if source.overlay_status == "active":
+            self._save(self._rebuild(source, overlay_status="archived"))
+
+        return record
+
+    def rollback_to_version(
+        self,
+        target_id: str,
+        version_id: str,
+        *,
+        author: str = "system",
+        target_type: str = "character",
+    ) -> EvolutionRecord:
+        """
+        Roll back a target to a specific character version by archiving
+        all overlays and creating a field_update evolution that snapshots
+        the version's key fields.
+
+        Returns the new evolution record.
+        """
+        # Archive all active overlays for this target
+        for filepath in self._dir.glob("EV-*.json"):
+            try:
+                rec = self._load(filepath)
+            except (json.JSONDecodeError, KeyError):
+                continue
+            effective_target = rec.target_id or rec.character_id
+            if (
+                effective_target == target_id
+                and rec.target_type == target_type
+                and rec.overlay_status == "active"
+            ):
+                self._save(self._rebuild(rec, overlay_status="archived"))
+
+        # For character targets, load the version to capture its state
+        changes: list[CharacterChange] = []
+        if target_type == "character":
+            version = self._characters.get(version_id)
+            changes.append(CharacterChange(
+                change_type="field_update",
+                field_name="system_prompt",
+                old_value="",
+                new_value=version.system_prompt,
+                rationale=f"Restore system_prompt from version {version_id}",
+            ))
+            if version.backstory:
+                changes.append(CharacterChange(
+                    change_type="field_update",
+                    field_name="backstory",
+                    old_value="",
+                    new_value=version.backstory,
+                    rationale=f"Restore backstory from version {version_id}",
+                ))
+
+        if not changes:
+            # Minimal rollback marker
+            changes.append(CharacterChange(
+                change_type="rollback",
+                field_name="version_rollback",
+                old_value="",
+                new_value=version_id,
+                rationale=f"Rollback to version {version_id}",
+            ))
+
+        next_id = self._next_id()
+        seq_num = self._next_sequence_number(target_id, target_type)
+
+        record = EvolutionRecord.create(
+            evolution_id=next_id,
+            character_id=target_id,
+            author=author,
+            changes=changes,
+            metadata={"rollback_to_version": version_id},
+            name=f"Rollback to {version_id}",
+            sequence_number=seq_num,
+            target_type=target_type,
+            target_id=target_id,
+        )
+        self._save(record)
+        return record
+
+    # ── Council Member Evolution ──────────────────────────────
+
+    def create_council_evolution(
+        self,
+        member_name: str,
+        *,
+        author: str,
+        changes: list[CharacterChange] | None = None,
+        name: str = "",
+        metadata: dict[str, Any] | None = None,
+    ) -> EvolutionRecord:
+        """
+        Create a new evolution for a council member (direct, no governance).
+
+        Council member evolutions use ``target_type="council_member"``
+        and are tracked/rollbackable but do not require proposals or votes.
+
+        Raises:
+            EvolutionValidationError: if inputs are invalid.
+        """
+        errors: list[str] = []
+        if not member_name.strip():
+            errors.append("Member name must not be empty")
+        if not author.strip():
+            errors.append("Author must not be empty")
+
+        effective_changes = changes or []
+        if not effective_changes:
+            errors.append("At least one change is required")
+        if len(effective_changes) > MAX_EVOLUTION_CHANGES:
+            errors.append(
+                f"Change count {len(effective_changes)} exceeds "
+                f"maximum of {MAX_EVOLUTION_CHANGES}"
+            )
+        if errors:
+            raise EvolutionValidationError(errors)
+
+        # Validate council member exists
+        from core.registry import CouncilRegistry, MemberNotFoundError
+        registry = CouncilRegistry().load()
+        try:
+            member = registry.get(member_name)
+        except MemberNotFoundError:
+            raise EvolutionValidationError(
+                [f"Council member '{member_name}' not found"]
+            )
+
+        target_id = f"CM-{member.name}"
+        next_id = self._next_id()
+        seq_num = self._next_sequence_number(target_id, "council_member")
+
+        record = EvolutionRecord.create(
+            evolution_id=next_id,
+            character_id=target_id,
+            author=author.strip(),
+            changes=effective_changes,
+            metadata={
+                **(metadata or {}),
+                "member_name": member.name,
+                "member_role": member.role,
+            },
+            name=name or f"Evolution #{seq_num} for {member.name}",
+            sequence_number=seq_num,
+            target_type="council_member",
+            target_id=target_id,
+        )
+        self._save(record)
+        return record
+
+    # ── Create from Proposal (Auto-fill) ──────────────────────
+
+    def create_from_proposal(
+        self,
+        proposal_id: str,
+        *,
+        author: str = "",
+    ) -> EvolutionRecord:
+        """
+        Auto-create an evolution from an approved evolution-category proposal.
+
+        Reads the proposal body (expected to be a JSON list of change dicts)
+        and pre-populates an EvolutionRecord in ``draft`` status.
+
+        Raises:
+            EvolutionValidationError: if proposal not found, not approved,
+                or body is unparseable.
+        """
+        try:
+            proposal = self._proposals.get(proposal_id)
+        except Exception:
+            raise EvolutionValidationError(
+                [f"Proposal '{proposal_id}' not found"]
+            )
+
+        if proposal.status != "decided":
+            raise EvolutionValidationError(
+                [f"Proposal '{proposal_id}' is not in 'decided' status "
+                 f"(current: '{proposal.status}')"]
+            )
+
+        # Parse changes from proposal body
+        changes: list[CharacterChange] = []
+        if proposal.body:
+            try:
+                raw_changes = json.loads(proposal.body)
+                if isinstance(raw_changes, list):
+                    for rc in raw_changes:
+                        changes.append(CharacterChange.from_dict(rc))
+            except (json.JSONDecodeError, KeyError, TypeError):
+                pass  # body wasn't a changes list — that's OK
+
+        # Extract character_id from proposal metadata
+        prop_meta = proposal.metadata if hasattr(proposal, "metadata") else {}
+        if isinstance(prop_meta, dict):
+            character_id = prop_meta.get("character_id", "")
+        else:
+            character_id = ""
+
+        evo_author = author or proposal.author
+        evo_name = f"From proposal: {proposal.title}"
+
+        next_id = self._next_id()
+
+        if character_id:
+            target_id = character_id
+        else:
+            target_id = "PENDING"
+
+        seq_num = self._next_sequence_number(target_id, "character") if target_id != "PENDING" else 0
+
+        record = EvolutionRecord.create(
+            evolution_id=next_id,
+            character_id=character_id or "PENDING",
+            author=evo_author,
+            changes=changes,
+            metadata={
+                "source_proposal_id": proposal_id,
+                "source_proposal_title": proposal.title,
+            },
+            name=evo_name,
+            sequence_number=seq_num,
+            target_type="character",
+            target_id=target_id,
+        )
+        self._save(record)
+        return record
+
+    # ── Enhanced create_evolution (with naming) ───────────────
+
+    def create_named_evolution(
+        self,
+        character_id: str,
+        *,
+        author: str,
+        name: str = "",
+        changes: list[CharacterChange] | None = None,
+        metadata: dict[str, Any] | None = None,
+        target_type: str = "character",
+    ) -> EvolutionRecord:
+        """
+        Enhanced create that includes naming and sequence tracking.
+
+        Same validation as ``create_evolution`` but also assigns a
+        human-friendly name and sequence number.
+        """
+        errors: list[str] = []
+        if not character_id.strip():
+            errors.append("Character ID must not be empty")
+        if not author.strip():
+            errors.append("Author must not be empty")
+
+        effective_changes = changes or []
+        if not effective_changes:
+            errors.append("At least one change is required")
+        if len(effective_changes) > MAX_EVOLUTION_CHANGES:
+            errors.append(
+                f"Change count {len(effective_changes)} exceeds "
+                f"maximum of {MAX_EVOLUTION_CHANGES}"
+            )
+        if errors:
+            raise EvolutionValidationError(errors)
+
+        # Validate character exists and is active
+        character = self._characters.get(character_id)
+        if character.status != "active":
+            raise EvolutionValidationError(
+                [
+                    f"Character '{character_id}' must be in 'active' status "
+                    f"to evolve, current status: '{character.status}'"
+                ]
+            )
+
+        target_id = character_id.strip()
+        next_id = self._next_id()
+        seq_num = self._next_sequence_number(target_id, target_type)
+        evo_name = name or f"Evolution #{seq_num} for {character.name}"
+
+        record = EvolutionRecord.create(
+            evolution_id=next_id,
+            character_id=character_id.strip(),
+            author=author.strip(),
+            changes=effective_changes,
+            metadata=metadata,
+            name=evo_name,
+            sequence_number=seq_num,
+            target_type=target_type,
+            target_id=target_id,
+        )
+        self._save(record)
+        return record
+
+    # ── Query (enhanced) ──────────────────────────────────────
+
+    def list_targets_with_active_overlays(self) -> list[dict[str, Any]]:
+        """
+        Return a list of targets that have an active evolution overlay.
+
+        Each entry contains ``target_id``, ``target_type``, ``evolution_id``,
+        and ``name``.
+        """
+        results: list[dict[str, Any]] = []
+        for filepath in sorted(self._dir.glob("EV-*.json")):
+            try:
+                rec = self._load(filepath)
+            except (json.JSONDecodeError, KeyError):
+                continue
+            if rec.overlay_status == "active":
+                results.append({
+                    "target_id": rec.target_id or rec.character_id,
+                    "target_type": rec.target_type,
+                    "evolution_id": rec.evolution_id,
+                    "name": rec.name,
+                })
+        return results
+
+    # ── Internal: Sequence Numbering ──────────────────────────
+
+    def _next_sequence_number(
+        self,
+        target_id: str,
+        target_type: str,
+    ) -> int:
+        """Return the next sequence number for a target entity."""
+        max_seq = 0
+        for filepath in self._dir.glob("EV-*.json"):
+            try:
+                rec = self._load(filepath)
+            except (json.JSONDecodeError, KeyError):
+                continue
+            effective_target = rec.target_id or rec.character_id
+            if effective_target == target_id and rec.target_type == target_type:
+                max_seq = max(max_seq, rec.sequence_number)
+        return max_seq + 1
+
     # ── Internal: Persistence ─────────────────────────────────
 
     def _filepath(self, evolution_id: str) -> Path:
@@ -753,3 +1262,4 @@ class CharacterEvolution:
     def __repr__(self) -> str:
         count = len(list(self._dir.glob("EV-*.json")))
         return f"CharacterEvolution(records={count}, dir={self._dir})"
+
