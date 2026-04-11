@@ -465,6 +465,11 @@ async function continueChat(chatId) {
         // Remove typing indicator once stream starts
         if (typingEl.parentNode) typingEl.remove();
 
+        // Start live response timer
+        let responseTimer = startResponseTimer();
+        msgContainer.appendChild(responseTimer.el);
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+
         const reader = resp.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
@@ -488,17 +493,25 @@ async function continueChat(chatId) {
                 const data = JSON.parse(dataMatch[1]);
 
                 if (eventType === 'message') {
+                    responseTimer.stop();
                     const avatarUrl = state.chatAvatarMap && state.chatAvatarMap[data.speaker.toLowerCase()];
-                    appendAgentBubble(msgContainer, data.speaker, data.content, avatarUrl);
+                    appendAgentBubble(msgContainer, data.speaker, data.content, avatarUrl, data.response_time_ms);
+                    // Start a new timer for the next participant
+                    responseTimer = startResponseTimer();
+                    msgContainer.appendChild(responseTimer.el);
+                    msgContainer.scrollTop = msgContainer.scrollHeight;
                 } else if (eventType === 'done') {
+                    responseTimer.stop();
                     await renderChatDetail(chatId);
                     return;
                 } else if (eventType === 'error') {
+                    responseTimer.stop();
                     throw new Error(data.detail);
                 }
             }
         }
 
+        responseTimer.stop();
         // Fallback re-render
         await renderChatDetail(chatId);
     } catch (err) {
@@ -561,22 +574,53 @@ async function toggleSilentPass(viewType, viewId) {
 // Legacy alias
 async function toggleSilentPassa(chatId) { return toggleSilentPass('chat', chatId); }
 
-function appendAgentBubble(container, speaker, content, avatarUrl) {
+function appendAgentBubble(container, speaker, content, avatarUrl, responseTimeMs) {
     if (!container) return;
     const bubble = document.createElement('div');
     bubble.className = 'chat-message chat-bubble-agent';
     const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const responseTimeBadge = (responseTimeMs != null)
+        ? `<span class="chat-response-time" title="Response time from LLM">${formatResponseTime(responseTimeMs)}</span>`
+        : '';
     bubble.innerHTML = `
         <div class="chat-msg-avatar">${memberAvatarWithImage(speaker, 0, null, avatarUrl)}</div>
         <div class="chat-msg-body">
             <div class="chat-msg-header">
                 <span class="chat-msg-speaker">${escapeHtml(speaker)}</span>
-                <span class="chat-msg-time">${time}</span>
+                <span class="chat-msg-time">${time}${responseTimeBadge}</span>
             </div>
             <div class="chat-msg-content">${state.silentpassaEnabled ? wrapPresenceContent(renderMarkdown(content), speaker) : renderMarkdown(content)}</div>
         </div>`;
     container.appendChild(bubble);
     container.scrollTop = container.scrollHeight;
+}
+
+/**
+ * Format milliseconds into a human-readable response time string.
+ * e.g. 1234 -> "1.2s", 45678 -> "45.7s", 500 -> "0.5s"
+ */
+function formatResponseTime(ms) {
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
+}
+
+/**
+ * Start a live response timer element. Returns an object with stop() and el.
+ */
+function startResponseTimer() {
+    const el = document.createElement('div');
+    el.className = 'chat-response-timer';
+    el.innerHTML = '<span class="timer-icon">⏱</span> <span class="timer-value">0.0s</span>';
+    const startTime = performance.now();
+    const interval = setInterval(() => {
+        const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+        const valueEl = el.querySelector('.timer-value');
+        if (valueEl) valueEl.textContent = `${elapsed}s`;
+    }, 100);
+    return {
+        el,
+        stop() { clearInterval(interval); if (el.parentNode) el.remove(); },
+    };
 }
 
 async function sendChatMessage(chatId) {
@@ -629,6 +673,11 @@ async function sendChatMessage(chatId) {
         // Remove typing indicator once first response arrives
         if (typingEl.parentNode) typingEl.remove();
 
+        // Start live response timer
+        let responseTimer = startResponseTimer();
+        msgContainer.appendChild(responseTimer.el);
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+
         const reader = resp.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
@@ -652,18 +701,27 @@ async function sendChatMessage(chatId) {
                 const data = JSON.parse(dataMatch[1]);
 
                 if (eventType === 'message') {
+                    // Stop the current timer before appending the bubble
+                    responseTimer.stop();
                     const avatarUrl = state.chatAvatarMap && state.chatAvatarMap[data.speaker.toLowerCase()];
-                    appendAgentBubble(msgContainer, data.speaker, data.content, avatarUrl);
+                    appendAgentBubble(msgContainer, data.speaker, data.content, avatarUrl, data.response_time_ms);
+                    // Start a new timer for the next participant
+                    responseTimer = startResponseTimer();
+                    msgContainer.appendChild(responseTimer.el);
+                    msgContainer.scrollTop = msgContainer.scrollHeight;
                 } else if (eventType === 'done') {
+                    responseTimer.stop();
                     // Re-render with full server state
                     await renderChatDetail(chatId);
                     return;
                 } else if (eventType === 'error') {
+                    responseTimer.stop();
                     throw new Error(data.detail);
                 }
             }
         }
 
+        responseTimer.stop();
         // Fallback re-render
         await renderChatDetail(chatId);
     } catch (err) {

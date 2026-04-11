@@ -3191,3 +3191,43 @@ Implemented the full frontend UI for the Evolution expansion system (backend com
 3. Browser verification was not possible (server not running). The UI should be manually tested before considering this feature shipped.
 4. The `createEvolutionFromProposal()` function in the proposal handoff banner constructs the URL using `${data.id}` which requires the proposal to have the expected `id` field — this is standard for all proposal objects.
 
+---
+
+## Session: Chat Response Timer Feature
+**Timestamp:** 2026-04-11
+**Feature:** Ad-hoc — Chat Response Timer for World Chat
+**Status:** completed
+
+### Summary
+Added per-participant response timing to the World Chat section, allowing human operators to gauge LLM response times across different models and providers.
+
+**Backend changes** (`core/routes/chat.py`):
+- Added `import time` for monotonic timing
+- Both `/api/chat/{chat_id}/send-stream` and `/api/chat/{chat_id}/continue-stream` SSE endpoints now include `response_time_ms` in each `message` event
+- Timer uses `time.monotonic()` for accurate, monotonically-increasing measurement
+- Timer resets between participants so each agent/character gets their own individual timing
+- Timing measures from when the request is dispatched to when the response is received (includes network + LLM inference time)
+
+**Frontend changes** (`js/chat.js`):
+- `appendAgentBubble()` now accepts optional `responseTimeMs` parameter
+- When present, a styled badge (e.g. "3.2s") is displayed next to the message timestamp
+- `formatResponseTime(ms)` utility: shows milliseconds for <1s, seconds with 1 decimal otherwise
+- `startResponseTimer()` utility: creates a live counting timer element (updates at 100ms intervals) with a pulsing animation
+- Both `sendChatMessage()` and `continueChat()` now show a live ⏱ timer while waiting for each participant's response, which is replaced by the agent's message bubble (with final time badge) when the response arrives
+
+**CSS changes** (`css/chat.css`):
+- `.chat-response-time` — inline badge with blue accent, monospace font, pill shape
+- `.chat-response-timer` — live timer with dashed border, pulsing opacity animation
+- Timer value in accent blue for visibility
+
+### Technical Debt
+- None introduced. Feature is purely additive.
+
+### Test Results
+- **2859 passed, 6 failed (pre-existing), 12 skipped** — zero regressions
+
+### Advice for Next Agent
+1. The response timer is only in the World Chat section as requested — not in proposals, sessions, or other discussion views.
+2. The `response_time_ms` is server-side measured using `time.monotonic()` — it includes async I/O wait time for the LLM API call. The frontend live timer is client-side via `performance.now()` and will differ slightly due to network latency.
+3. The timer resets between participants in multi-member chats, so each agent's time is individually measured.
+4. If you need to add response time tracking to the non-streaming endpoints (`/api/chat/{chat_id}/send` and `/api/chat/{chat_id}/continue`), the same pattern can be applied there.

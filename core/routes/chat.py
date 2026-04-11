@@ -6,6 +6,7 @@ from __future__ import annotations
 
 
 import json as json_module
+import time
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
@@ -305,7 +306,10 @@ async def api_chat_send_stream(chat_id: str, body: dict[str, Any]):
             hc.send_human_message(chat_id, content)
 
             last_record = None
+            t_start = time.monotonic()
             async for member_name, response, record in hc.get_agent_response_streaming(chat_id):
+                t_end = time.monotonic()
+                response_time_ms = round((t_end - t_start) * 1000)
                 last_record = record
                 content_text = response.content or ""
                 event_data = json_module.dumps({
@@ -313,8 +317,11 @@ async def api_chat_send_stream(chat_id: str, body: dict[str, Any]):
                     "content": content_text,
                     "model": response.model,
                     "provider": response.provider,
+                    "response_time_ms": response_time_ms,
                 })
                 yield f"event: message\ndata: {event_data}\n\n"
+                # Reset timer for the next participant
+                t_start = time.monotonic()
 
             # Send final state
             final_record = hc.get(chat_id)
@@ -347,15 +354,21 @@ async def api_chat_continue_stream(chat_id: str):
         try:
             hc = _make_human_chat()
 
+            t_start = time.monotonic()
             async for member_name, response, record in hc.continue_conversation_streaming(chat_id):
+                t_end = time.monotonic()
+                response_time_ms = round((t_end - t_start) * 1000)
                 content_text = response.content or ""
                 event_data = json_module.dumps({
                     "speaker": member_name,
                     "content": content_text,
                     "model": response.model,
                     "provider": response.provider,
+                    "response_time_ms": response_time_ms,
                 })
                 yield f"event: message\ndata: {event_data}\n\n"
+                # Reset timer for the next participant
+                t_start = time.monotonic()
 
             # Send final state
             final_record = hc.get(chat_id)
