@@ -429,7 +429,7 @@ async function removeItemProperty(itemId, propName) {
 // ═══════════════════════════════════════════════════════════════
 
 const STORE_TYPE_ICONS = {
-    general: '🏪', blacksmith: 'âš'️', alchemist: '⚗️',
+    general: '🏪', blacksmith: '⚒️', alchemist: '⚗️',
     enchanter: '✨', tavern: '🍺', custom: '🏷️',
 };
 

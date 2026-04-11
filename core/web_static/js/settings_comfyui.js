@@ -489,7 +489,7 @@ function _renderAssignmentCards(templates, assignments) {
     const entityTypes = [
         { key: 'character', label: 'Character', icon: '🎭' },
         { key: 'location', label: 'Location', icon: '🏰' },
-        { key: 'item', label: 'Item', icon: 'âš"️' },
+        { key: 'item', label: 'Item', icon: '⚔️' },
         { key: 'store', label: 'Store', icon: '🏪' },
     ];
 
