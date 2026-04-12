@@ -124,11 +124,10 @@ async def api_tasks_do_tasks() -> StreamingResponse:
     transitions to 'completed'.
     """
     from core.tasks import TaskManager, Task, TaskMessage
-    from core.api_client import APIClient, ChatMessage
-    from core.registry import CouncilRegistry
-    from core.characters import CharacterManager
+    from core.api_client import ChatMessage
     from core.memory_influence import MemoryInfluence
     from core.memory import AgentMemory, MemoryEntry
+    from core.manager_cache import get_registry, get_api_client, get_character_manager
     from config.settings import TASK_MAX_ROUNDS
     import asyncio
 
@@ -142,13 +141,13 @@ async def api_tasks_do_tasks() -> StreamingResponse:
                 yield f"event: error\ndata: {err}\n\n"
                 return
 
-            registry = CouncilRegistry().load()
-            client = APIClient()
+            registry = get_registry()
+            client = get_api_client()
             mi = MemoryInfluence()
 
             # Pre-load characters for character assignees
             try:
-                cmgr = CharacterManager()
+                cmgr = get_character_manager()
                 all_chars = cmgr.list_characters(status="active")
                 char_map = {c.name.lower(): c for c in all_chars}
             except Exception:

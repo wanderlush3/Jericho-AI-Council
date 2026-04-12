@@ -9,8 +9,25 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+from core.manager_cache import (
+    get_character_manager,
+    get_proposal_manager,
+    get_voting_engine,
+)
+
 
 router = APIRouter()
+
+
+def _get_evo():
+    """Build a CharacterEvolution wired to cached managers."""
+    from core.character_evolution import CharacterEvolution
+    return CharacterEvolution(
+        character_manager=get_character_manager(),
+        proposal_manager=get_proposal_manager(),
+        voting_engine=get_voting_engine(),
+    )
+
 
 @router.get("/api/evolutions")
 def api_evolutions_list(
@@ -21,16 +38,7 @@ def api_evolutions_list(
     overlay_status: str | None = Query(None),
 ) -> list[dict[str, Any]]:
     """List evolution records with optional filters."""
-    from core.characters import CharacterManager
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
-    from core.character_evolution import CharacterEvolution
-
-    evo = CharacterEvolution(
-        character_manager=CharacterManager(),
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    evo = _get_evo()
     items = evo.list_evolutions(
         character_id=character_id, status=status, author=author,
         target_type=target_type, overlay_status=overlay_status,
@@ -40,18 +48,10 @@ def api_evolutions_list(
 @router.get("/api/evolutions/timelines")
 def api_evolutions_timelines() -> list[dict[str, Any]]:
     """List evolution timelines for all head characters."""
-    from core.characters import CharacterManager
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
-    from core.character_evolution import CharacterEvolution
     from core.evolution_history import EvolutionHistory
 
-    chars = CharacterManager()
-    evo = CharacterEvolution(
-        character_manager=chars,
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    chars = get_character_manager()
+    evo = _get_evo()
     history = EvolutionHistory(
         character_manager=chars,
         evolution_manager=evo,
@@ -62,18 +62,11 @@ def api_evolutions_timelines() -> list[dict[str, Any]]:
 @router.get("/api/evolutions/timelines/{character_id}")
 def api_evolutions_timeline_detail(character_id: str) -> dict[str, Any]:
     """Get evolution timeline for a specific character."""
-    from core.characters import CharacterManager, CharacterNotFoundError
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
-    from core.character_evolution import CharacterEvolution
+    from core.characters import CharacterNotFoundError
     from core.evolution_history import EvolutionHistory
 
-    chars = CharacterManager()
-    evo = CharacterEvolution(
-        character_manager=chars,
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    chars = get_character_manager()
+    evo = _get_evo()
     history = EvolutionHistory(
         character_manager=chars,
         evolution_manager=evo,
@@ -93,18 +86,11 @@ def api_evolutions_diff(
     new: str = Query(...),
 ) -> dict[str, Any]:
     """Diff two character versions."""
-    from core.characters import CharacterManager, CharacterNotFoundError
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
-    from core.character_evolution import CharacterEvolution
+    from core.characters import CharacterNotFoundError
     from core.evolution_history import EvolutionHistory
 
-    chars = CharacterManager()
-    evo = CharacterEvolution(
-        character_manager=chars,
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    chars = get_character_manager()
+    evo = _get_evo()
     history = EvolutionHistory(
         character_manager=chars,
         evolution_manager=evo,
@@ -118,16 +104,7 @@ def api_evolutions_diff(
 @router.get("/api/evolutions/active-overlays")
 def api_evolution_active_overlays_list() -> list[dict[str, Any]]:
     """List all targets with active evolution overlays."""
-    from core.characters import CharacterManager
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
-    from core.character_evolution import CharacterEvolution
-
-    evo = CharacterEvolution(
-        character_manager=CharacterManager(),
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    evo = _get_evo()
     return evo.list_targets_with_active_overlays()
 
 @router.get("/api/evolutions/active-overlay/{target_id}")
@@ -136,16 +113,7 @@ def api_evolution_active_overlay(
     target_type: str = Query("character"),
 ) -> dict[str, Any] | None:
     """Get the active overlay for a target entity."""
-    from core.characters import CharacterManager
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
-    from core.character_evolution import CharacterEvolution
-
-    evo = CharacterEvolution(
-        character_manager=CharacterManager(),
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    evo = _get_evo()
     overlay = evo.get_active_overlay(target_id, target_type)
     if overlay is None:
         return {"active_overlay": None}
@@ -154,18 +122,9 @@ def api_evolution_active_overlay(
 @router.get("/api/evolutions/{evolution_id}")
 def api_evolution_detail(evolution_id: str) -> dict[str, Any]:
     """Get a single evolution record."""
-    from core.characters import CharacterManager
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
-    from core.character_evolution import (
-        CharacterEvolution, EvolutionNotFoundError,
-    )
+    from core.character_evolution import EvolutionNotFoundError
 
-    evo = CharacterEvolution(
-        character_manager=CharacterManager(),
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    evo = _get_evo()
     try:
         record = evo.get(evolution_id)
     except EvolutionNotFoundError:
@@ -183,12 +142,9 @@ def api_evolution_create(body: dict[str, Any]) -> dict[str, Any]:
            "changes": [{"change_type": "trait_add", "field_name": "brave",
                          "new_value": {...}, "rationale": "..."}]}
     """
-    from core.characters import CharacterManager, CharacterNotFoundError
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
+    from core.characters import CharacterNotFoundError
     from core.character_evolution import (
-        CharacterEvolution, CharacterChange,
-        EvolutionValidationError,
+        CharacterChange, EvolutionValidationError,
     )
 
     character_id = body.get("character_id", "").strip()
@@ -215,11 +171,7 @@ def api_evolution_create(body: dict[str, Any]) -> dict[str, Any]:
         except EvolutionValidationError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
-    evo = CharacterEvolution(
-        character_manager=CharacterManager(),
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    evo = _get_evo()
 
     # Support target_type: council_member uses a different code path
     target_type = body.get("target_type", "character")
@@ -257,18 +209,11 @@ def api_evolution_create(body: dict[str, Any]) -> dict[str, Any]:
 @router.post("/api/evolutions/{evolution_id}/submit")
 def api_evolution_submit(evolution_id: str) -> dict[str, Any]:
     """Submit evolution for governance review (draft → proposed)."""
-    from core.characters import CharacterManager
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
     from core.character_evolution import (
-        CharacterEvolution, EvolutionNotFoundError, EvolutionStateError,
+        EvolutionNotFoundError, EvolutionStateError,
     )
 
-    evo = CharacterEvolution(
-        character_manager=CharacterManager(),
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    evo = _get_evo()
     try:
         record = evo.submit_for_review(evolution_id)
     except EvolutionNotFoundError:
@@ -283,18 +228,11 @@ def api_evolution_submit(evolution_id: str) -> dict[str, Any]:
 @router.post("/api/evolutions/{evolution_id}/open-voting")
 def api_evolution_open_voting(evolution_id: str) -> dict[str, Any]:
     """Open voting on evolution (proposed → voting)."""
-    from core.characters import CharacterManager
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
     from core.character_evolution import (
-        CharacterEvolution, EvolutionNotFoundError, EvolutionStateError,
+        EvolutionNotFoundError, EvolutionStateError,
     )
 
-    evo = CharacterEvolution(
-        character_manager=CharacterManager(),
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    evo = _get_evo()
     try:
         record = evo.open_voting(evolution_id)
     except EvolutionNotFoundError:
@@ -309,18 +247,11 @@ def api_evolution_open_voting(evolution_id: str) -> dict[str, Any]:
 @router.post("/api/evolutions/{evolution_id}/resolve")
 def api_evolution_resolve(evolution_id: str) -> dict[str, Any]:
     """Resolve voting (voting → decided/rejected)."""
-    from core.characters import CharacterManager
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
     from core.character_evolution import (
-        CharacterEvolution, EvolutionNotFoundError, EvolutionStateError,
+        EvolutionNotFoundError, EvolutionStateError,
     )
 
-    evo = CharacterEvolution(
-        character_manager=CharacterManager(),
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    evo = _get_evo()
     try:
         record = evo.resolve(evolution_id)
     except EvolutionNotFoundError:
@@ -335,18 +266,11 @@ def api_evolution_resolve(evolution_id: str) -> dict[str, Any]:
 @router.post("/api/evolutions/{evolution_id}/apply")
 def api_evolution_apply(evolution_id: str) -> dict[str, Any]:
     """Apply approved evolution (decided → applied)."""
-    from core.characters import CharacterManager
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
     from core.character_evolution import (
-        CharacterEvolution, EvolutionNotFoundError, EvolutionStateError,
+        EvolutionNotFoundError, EvolutionStateError,
     )
 
-    evo = CharacterEvolution(
-        character_manager=CharacterManager(),
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    evo = _get_evo()
     try:
         template = evo.apply_evolution(evolution_id)
     except EvolutionNotFoundError:
@@ -370,11 +294,8 @@ def api_evolution_overlay_status(
     evolution_id: str, body: dict[str, Any],
 ) -> dict[str, Any]:
     """Set the overlay status (draft/active/archived) for an evolution."""
-    from core.characters import CharacterManager
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
     from core.character_evolution import (
-        CharacterEvolution, EvolutionNotFoundError, EvolutionOverlayError,
+        EvolutionNotFoundError, EvolutionOverlayError,
     )
 
     new_status = body.get("overlay_status", "").strip()
@@ -384,11 +305,7 @@ def api_evolution_overlay_status(
             detail="Field 'overlay_status' is required.",
         )
 
-    evo = CharacterEvolution(
-        character_manager=CharacterManager(),
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    evo = _get_evo()
     try:
         record = evo.update_overlay_status(evolution_id, new_status)
     except EvolutionNotFoundError:
@@ -405,21 +322,14 @@ def api_evolution_rollback(
     evolution_id: str, body: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Create a rollback evolution that reverses the specified evolution."""
-    from core.characters import CharacterManager
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
     from core.character_evolution import (
-        CharacterEvolution, EvolutionNotFoundError, EvolutionStateError,
+        EvolutionNotFoundError, EvolutionStateError,
     )
 
     body = body or {}
     author = body.get("author", "")
 
-    evo = CharacterEvolution(
-        character_manager=CharacterManager(),
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    evo = _get_evo()
     try:
         record = evo.rollback(evolution_id, author=author)
     except EvolutionNotFoundError:
@@ -438,20 +348,13 @@ def api_evolution_rollback_to_version(
     body: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Rollback a target to a specific historical version."""
-    from core.characters import CharacterManager, CharacterNotFoundError
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
-    from core.character_evolution import CharacterEvolution
+    from core.characters import CharacterNotFoundError
 
     body = body or {}
     author = body.get("author", "system")
     target_type = body.get("target_type", "character")
 
-    evo = CharacterEvolution(
-        character_manager=CharacterManager(),
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    evo = _get_evo()
     try:
         record = evo.rollback_to_version(
             target_id, version_id, author=author, target_type=target_type,
@@ -469,21 +372,12 @@ def api_evolution_from_proposal(
     body: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Auto-create an evolution from an approved proposal."""
-    from core.characters import CharacterManager
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
-    from core.character_evolution import (
-        CharacterEvolution, EvolutionValidationError,
-    )
+    from core.character_evolution import EvolutionValidationError
 
     body = body or {}
     author = body.get("author", "")
 
-    evo = CharacterEvolution(
-        character_manager=CharacterManager(),
-        proposal_manager=ProposalManager(),
-        voting_engine=VotingEngine(),
-    )
+    evo = _get_evo()
     try:
         record = evo.create_from_proposal(proposal_id, author=author)
     except EvolutionValidationError as exc:
@@ -491,4 +385,3 @@ def api_evolution_from_proposal(
     return record.to_dict()
 
 # ── Council Sessions ──────────────────────────────────────
-

@@ -11,6 +11,15 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 from starlette.responses import StreamingResponse
 
+from core.manager_cache import (
+    get_api_client,
+    get_character_manager,
+    get_item_manager,
+    get_location_manager,
+    get_registry,
+    get_store_manager,
+)
+
 
 router = APIRouter()
 
@@ -52,11 +61,11 @@ def _get_pipeline():
 
         # Build a fully-wired PromptBuilder so all prompt modes work
         try:
-            registry = CouncilRegistry().load()
+            registry = get_registry()
         except Exception:
             registry = None
         try:
-            api_client = APIClient()
+            api_client = get_api_client()
         except Exception:
             api_client = None
 
@@ -131,22 +140,15 @@ async def api_generate_prompts(body: dict[str, Any]) -> dict[str, Any]:
     except PromptValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    # Build prompt builder with live connections
+    # Build prompt builder with live connections (cached)
     try:
-        from core.character_manager import CharacterManager
-        from core.location_manager import LocationManager
-        from core.items import ItemManager
-        from core.stores import StoreManager
-
-        registry = CouncilRegistry().load()
-        client = APIClient()
         builder = PromptBuilder(
-            api_client=client,
-            registry=registry,
-            character_manager=CharacterManager(),
-            location_manager=LocationManager(),
-            item_manager=ItemManager(),
-            store_manager=StoreManager(),
+            api_client=get_api_client(),
+            registry=get_registry(),
+            character_manager=get_character_manager(),
+            location_manager=get_location_manager(),
+            item_manager=get_item_manager(),
+            store_manager=get_store_manager(),
         )
     except Exception as exc:
         raise HTTPException(
@@ -425,19 +427,20 @@ def api_participants_available() -> list[dict[str, Any]]:
     description, avatar_url.  Used by Explore and Story UIs
     to populate the participant selector.
     """
-    from core.registry import CouncilRegistry
-    from core.characters import CharacterManager
     from config.settings import COUNCIL_AVATARS_DIR, CHARACTER_AVATARS_DIR
 
     result: list[dict[str, Any]] = []
 
     # Council members
     try:
-        registry = CouncilRegistry().load()
+        registry = get_registry()
+        # Single directory scan for avatar existence (Category 5)
+        existing_council_avatars = {
+            f.stem.lower() for f in COUNCIL_AVATARS_DIR.glob("*.png")
+        } if COUNCIL_AVATARS_DIR.exists() else set()
         for m in registry.list_members():
             avatar_url = ""
-            avatar_file = COUNCIL_AVATARS_DIR / f"{m.name.lower()}.png"
-            if avatar_file.exists():
+            if m.name.lower() in existing_council_avatars:
                 avatar_url = f"/api/council/{m.name}/avatar"
             result.append({
                 "id": m.name.lower(),
@@ -452,11 +455,14 @@ def api_participants_available() -> list[dict[str, Any]]:
 
     # Active characters
     try:
-        cmgr = CharacterManager()
+        cmgr = get_character_manager()
+        # Single directory scan for avatar existence (Category 5)
+        existing_char_avatars = {
+            f.stem for f in CHARACTER_AVATARS_DIR.glob("*.png")
+        } if CHARACTER_AVATARS_DIR.exists() else set()
         for c in cmgr.list_characters(status="active"):
             avatar_url = ""
-            avatar_file = CHARACTER_AVATARS_DIR / f"{c.id}.png"
-            if avatar_file.exists():
+            if c.id in existing_char_avatars:
                 avatar_url = f"/api/characters/{c.id}/avatar"
             result.append({
                 "id": c.id,

@@ -9,6 +9,18 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+from core.manager_cache import (
+    get_registry,
+    get_character_manager,
+    get_item_manager,
+    get_law_manager,
+    get_location_manager,
+    get_proposal_manager,
+    get_store_manager,
+    get_treasury_manager,
+    get_voting_engine,
+)
+
 
 router = APIRouter()
 
@@ -18,8 +30,7 @@ def api_status() -> dict[str, Any]:
     data: dict[str, Any] = {}
 
     try:
-        from core.registry import CouncilRegistry
-        registry = CouncilRegistry().load()
+        registry = get_registry()
         members = registry.list_members()
         providers: dict[str, int] = {}
         for m in members:
@@ -32,8 +43,7 @@ def api_status() -> dict[str, Any]:
         data["members"] = {"count": 0, "providers": {}}
 
     try:
-        from core.proposals import ProposalManager
-        pmgr = ProposalManager()
+        pmgr = get_proposal_manager()
         proposals = pmgr.list_proposals()
         by_status: dict[str, int] = {}
         by_category: dict[str, int] = {}
@@ -49,8 +59,7 @@ def api_status() -> dict[str, Any]:
         data["proposals"] = {"count": 0, "by_status": {}, "by_category": {}}
 
     try:
-        from core.voting import VotingEngine
-        engine = VotingEngine()
+        engine = get_voting_engine()
         records = engine.list_records()
         vote_statuses: dict[str, int] = {}
         for r in records:
@@ -63,8 +72,7 @@ def api_status() -> dict[str, Any]:
         data["votes"] = {"count": 0, "by_status": {}}
 
     try:
-        from core.characters import CharacterManager
-        cmgr = CharacterManager()
+        cmgr = get_character_manager()
         chars = cmgr.list_characters()
         char_statuses: dict[str, int] = {}
         for c in chars:
@@ -77,8 +85,7 @@ def api_status() -> dict[str, Any]:
         data["characters"] = {"count": 0, "by_status": {}}
 
     try:
-        from core.locations import LocationManager
-        lmgr = LocationManager()
+        lmgr = get_location_manager()
         locs = lmgr.list_locations()
         loc_statuses: dict[str, int] = {}
         for loc in locs:
@@ -91,8 +98,7 @@ def api_status() -> dict[str, Any]:
         data["locations"] = {"count": 0, "by_status": {}}
 
     try:
-        from core.items import ItemManager
-        imgr = ItemManager()
+        imgr = get_item_manager()
         items_list = imgr.list_items()
         item_statuses: dict[str, int] = {}
         for it in items_list:
@@ -105,8 +111,7 @@ def api_status() -> dict[str, Any]:
         data["items"] = {"count": 0, "by_status": {}}
 
     try:
-        from core.laws import LawManager
-        lawmgr = LawManager()
+        lawmgr = get_law_manager()
         law_list = lawmgr.list_laws()
         law_statuses: dict[str, int] = {}
         for lw in law_list:
@@ -120,13 +125,10 @@ def api_status() -> dict[str, Any]:
 
     try:
         from core.character_evolution import CharacterEvolution
-        from core.characters import CharacterManager
-        from core.proposals import ProposalManager
-        from core.voting import VotingEngine
         evo_mgr = CharacterEvolution(
-            character_manager=CharacterManager(),
-            proposal_manager=ProposalManager(),
-            voting_engine=VotingEngine(),
+            character_manager=get_character_manager(),
+            proposal_manager=get_proposal_manager(),
+            voting_engine=get_voting_engine(),
         )
         evo_list = evo_mgr.list_evolutions()
         evo_statuses: dict[str, int] = {}
@@ -141,8 +143,8 @@ def api_status() -> dict[str, Any]:
 
     try:
         from core.memory import AgentMemory, SharedMemory
-        from core.registry import CouncilRegistry
-        registry = CouncilRegistry().load()
+        # Reuse the registry already loaded above (no double-load)
+        registry = get_registry()
         member_names = registry.list_names()
         total_beliefs = 0
         total_events = 0
@@ -167,8 +169,7 @@ def api_status() -> dict[str, Any]:
         }
 
     try:
-        from core.treasury import TreasuryManager
-        tmgr = TreasuryManager()
+        tmgr = get_treasury_manager()
         accounts = tmgr.list_accounts()
         gov_accounts = [a for a in accounts if a.account_type == "government"]
         gov_balance = gov_accounts[0].balance.to_dict() if gov_accounts else {"gold": 0, "silver": 0, "bronze": 0}
@@ -180,8 +181,7 @@ def api_status() -> dict[str, Any]:
         data["treasury"] = {"total_accounts": 0, "government_balance": {"gold": 0, "silver": 0, "bronze": 0}}
 
     try:
-        from core.stores import StoreManager
-        smgr = StoreManager()
+        smgr = get_store_manager()
         store_list = smgr.list_stores()
         store_statuses: dict[str, int] = {}
         for st in store_list:
@@ -209,4 +209,3 @@ def api_narrative_bulletins() -> list[dict[str, Any]]:
     )
     bulletins = engine.generate_bulletins()
     return [b.to_dict() for b in bulletins]
-

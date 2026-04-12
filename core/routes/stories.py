@@ -11,6 +11,13 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 from starlette.responses import StreamingResponse
 
+from core.manager_cache import (
+    get_api_client,
+    get_character_manager,
+    get_location_manager,
+    get_registry,
+    get_story_manager,
+)
 from core.routes._helpers import (
     _get_pipeline,
     _build_participant_context,
@@ -29,7 +36,7 @@ def api_stories_list(
     """List all stories, optionally filtered by status."""
     from core.story import StoryManager
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
     stories = smgr.list_stories(status=status)
     result = []
     for s in stories:
@@ -70,7 +77,7 @@ def api_stories_create(body: dict[str, Any]) -> dict[str, Any]:
             status_code=400, detail="'title' is required.",
         )
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
     try:
         story = smgr.create(
             title,
@@ -90,7 +97,7 @@ def api_stories_detail(story_id: str) -> dict[str, Any]:
     """Get a full story with chapters and scenes."""
     from core.story import StoryManager, StoryNotFoundError
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
     try:
         story = smgr.get(story_id)
     except StoryNotFoundError:
@@ -123,7 +130,7 @@ def api_stories_update(
         StoryManager, StoryNotFoundError, StoryValidationError,
     )
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
     try:
         updated = smgr.update(
             story_id,
@@ -163,7 +170,7 @@ def api_stories_update_status(
             status_code=400, detail="'status' is required.",
         )
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
     try:
         updated = smgr.update_status(story_id, new_status)
     except StoryNotFoundError:
@@ -183,7 +190,7 @@ def api_stories_delete(story_id: str) -> dict[str, Any]:
     """Delete a story."""
     from core.story import StoryManager, StoryNotFoundError
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
     try:
         smgr.delete(story_id)
     except StoryNotFoundError:
@@ -208,7 +215,7 @@ def api_stories_add_chapter(
         StoryManager, StoryNotFoundError, StoryValidationError,
     )
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
     try:
         chapter = smgr.add_chapter(
             story_id,
@@ -240,7 +247,7 @@ def api_stories_update_chapter(
         StoryManager, StoryNotFoundError, ChapterNotFoundError,
     )
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
     try:
         chapter = smgr.update_chapter(
             story_id, chapter_id,
@@ -270,7 +277,7 @@ def api_stories_delete_chapter(
         StoryManager, StoryNotFoundError, ChapterNotFoundError,
     )
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
     try:
         smgr.delete_chapter(story_id, chapter_id)
     except StoryNotFoundError:
@@ -305,7 +312,7 @@ def api_stories_add_scene(
         ChapterNotFoundError, StoryValidationError,
     )
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
     try:
         scene = smgr.add_scene(
             story_id, chapter_id,
@@ -349,7 +356,7 @@ def api_stories_update_scene(
         ChapterNotFoundError, SceneNotFoundError,
     )
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
     try:
         scene = smgr.update_scene(
             story_id, chapter_id, scene_id,
@@ -395,7 +402,7 @@ def api_stories_delete_scene(
         ChapterNotFoundError, SceneNotFoundError,
     )
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
     try:
         smgr.delete_scene(story_id, chapter_id, scene_id)
     except StoryNotFoundError:
@@ -447,9 +454,7 @@ async def api_stories_narrate_scene(
         StoryManager, StoryNotFoundError,
         ChapterNotFoundError, SceneNotFoundError,
     )
-    from core.api_client import APIClient, ChatMessage
-    from core.characters import CharacterManager
-    from core.locations import LocationManager
+    from core.api_client import ChatMessage
 
     body = body or {}
 
@@ -468,7 +473,7 @@ async def api_stories_narrate_scene(
                        f"Maximum is {_PARTICIPANT_MAX}.",
             )
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
 
     try:
         story = smgr.get(story_id)
@@ -504,8 +509,8 @@ async def api_stories_narrate_scene(
     # Build the narration prompt with entity context
     prompt = StoryManager.build_scene_narration_prompt(
         story, chapter, scene,
-        character_manager=CharacterManager(),
-        location_manager=LocationManager(),
+        character_manager=get_character_manager(),
+        location_manager=get_location_manager(),
     )
 
     # F-043: Enrich prompt with participant context
@@ -515,7 +520,7 @@ async def api_stories_narrate_scene(
             prompt = prompt + "\n\n" + participant_context
 
     # Call LLM
-    client = APIClient()
+    client = get_api_client()
     from core.registry import CouncilMember
 
     provider = body.get("provider", "openrouter")
@@ -600,7 +605,7 @@ async def api_stories_illustrate_scene(
                        f"Maximum is {_PARTICIPANT_MAX}.",
             )
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
 
     try:
         story = smgr.get(story_id)
@@ -867,7 +872,7 @@ def api_story_chat_create(
     chapter_id = body.get("chapter_id", "")
     scene_id = body.get("scene_id", "")
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
     try:
         story = smgr.get(story_id)
     except StoryNotFoundError:
@@ -1285,7 +1290,7 @@ async def api_story_chat_narrate_round(
     chapter_id = meta.get("chapter_id", "")
     scene_id = meta.get("scene_id", "")
 
-    smgr = StoryManager()
+    smgr = get_story_manager()
     try:
         story = smgr.get(story_id)
     except StoryNotFoundError:

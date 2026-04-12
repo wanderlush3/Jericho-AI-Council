@@ -9,6 +9,8 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+from core.manager_cache import get_registry
+
 
 router = APIRouter()
 
@@ -16,11 +18,14 @@ router = APIRouter()
 def api_memories_list() -> list[dict[str, Any]]:
     """List all council members with their memory statistics."""
     from core.memory import AgentMemory
-    from core.registry import CouncilRegistry
     from config.settings import COUNCIL_AVATARS_DIR
 
-    registry = CouncilRegistry().load()
+    registry = get_registry()
     members = registry.list_members()
+    # Single directory scan for avatar existence (Category 5)
+    existing_avatars = {
+        f.stem.lower() for f in COUNCIL_AVATARS_DIR.glob("*.png")
+    } if COUNCIL_AVATARS_DIR.exists() else set()
     result = []
     for m in members:
         amem = AgentMemory(m.name)
@@ -32,8 +37,7 @@ def api_memories_list() -> list[dict[str, Any]]:
             "belief_count": len(beliefs),
             "event_count": len(events),
         }
-        avatar_file = COUNCIL_AVATARS_DIR / f"{m.name.lower()}.png"
-        if avatar_file.exists():
+        if m.name.lower() in existing_avatars:
             d["avatar_url"] = f"/api/council/{m.name}/avatar"
         result.append(d)
     return result
@@ -76,9 +80,9 @@ def api_memory_detail(
 ) -> dict[str, Any]:
     """Get a council member's core beliefs and recent session events."""
     from core.memory import AgentMemory
-    from core.registry import CouncilRegistry, MemberNotFoundError
+    from core.registry import MemberNotFoundError
 
-    registry = CouncilRegistry().load()
+    registry = get_registry()
     try:
         m = registry.get(member)
     except MemberNotFoundError:
@@ -106,7 +110,7 @@ def api_memory_delete_belief(
 ) -> dict[str, Any]:
     """Remove a core belief by topic."""
     from core.memory import AgentMemory
-    from core.registry import CouncilRegistry, MemberNotFoundError
+    from core.registry import MemberNotFoundError
 
     if not topic:
         raise HTTPException(
@@ -114,7 +118,7 @@ def api_memory_delete_belief(
             detail="Query parameter 'topic' is required.",
         )
 
-    registry = CouncilRegistry().load()
+    registry = get_registry()
     try:
         m = registry.get(member)
     except MemberNotFoundError:

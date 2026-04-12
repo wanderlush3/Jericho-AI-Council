@@ -40,12 +40,11 @@ def api_treasury_detail(account_id: str) -> dict[str, Any]:
 def api_treasury_initialize() -> dict[str, Any]:
     """Create default accounts for all known entities."""
     from core.treasury import TreasuryManager
-    from core.registry import CouncilRegistry
-    from core.characters import CharacterManager
+    from core.manager_cache import get_registry, get_character_manager
 
     tmgr = TreasuryManager()
-    registry = CouncilRegistry().load()
-    cmgr = CharacterManager()
+    registry = get_registry()
+    cmgr = get_character_manager()
     created = tmgr.initialize_defaults(
         registry=registry, character_manager=cmgr
     )

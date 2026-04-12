@@ -16,10 +16,26 @@ import pytest
 from core.api_client import ChatResponse
 from core.characters import CharacterManager, CharacterTemplate, Trait
 from core.locations import LocationManager
+from core.manager_cache import invalidate_all
 from core.memory import AgentMemory, SharedMemory
 from core.proposals import ProposalManager
 from core.registry import CouncilMember, CouncilRegistry
 from core.voting import VotingEngine
+
+
+# ─── Cache Invalidation ───────────────────────────────────────
+
+
+@pytest.fixture(autouse=True)
+def _clear_manager_cache():
+    """Invalidate the manager singleton cache before every test.
+
+    This ensures test-provided mocks and tmp-directory managers
+    are not bypassed by a stale singleton from a previous test.
+    """
+    invalidate_all()
+    yield
+    invalidate_all()
 
 
 # ─── Directory Fixtures ────────────────────────────────────────

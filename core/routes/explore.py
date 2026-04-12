@@ -13,6 +13,13 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 from starlette.responses import StreamingResponse
 
+from core.manager_cache import (
+    get_character_manager,
+    get_item_manager,
+    get_law_manager,
+    get_location_manager,
+    get_registry,
+)
 from core.routes._helpers import (
     _get_pipeline,
     _explore_primary_image,
@@ -56,8 +63,7 @@ def _build_participant_context(
     # ── Council Members ──
     if council_ids:
         try:
-            from core.registry import CouncilRegistry
-            registry = CouncilRegistry().load()
+            registry = get_registry()
             members_map = {
                 m.name.lower(): m for m in registry.list_members()
             }
@@ -123,8 +129,7 @@ def _build_participant_context(
     # ── Characters ──
     if character_ids:
         try:
-            from core.characters import CharacterManager
-            cmgr = CharacterManager()
+            cmgr = get_character_manager()
         except Exception:
             cmgr = None
 
@@ -170,9 +175,7 @@ def _build_participant_context(
 
     # Active Laws
     try:
-        from core.laws import LawManager
-        lmgr = LawManager()
-        active_laws = lmgr.list_laws(status="active")
+        active_laws = get_law_manager().list_laws(status="active")
         if active_laws:
             parts.append("### Active Laws")
             for law in active_laws[:10]:
@@ -185,9 +188,7 @@ def _build_participant_context(
 
     # Active Locations
     try:
-        from core.locations import LocationManager
-        loc_mgr = LocationManager()
-        active_locs = loc_mgr.list_locations(status="active")
+        active_locs = get_location_manager().list_locations(status="active")
         if active_locs:
             parts.append("### Known Locations")
             for loc in active_locs[:10]:
@@ -201,9 +202,7 @@ def _build_participant_context(
 
     # Active Items
     try:
-        from core.items import ItemManager
-        imr = ItemManager()
-        active_items = imr.list_items(status="active")
+        active_items = get_item_manager().list_items(status="active")
         if active_items:
             parts.append("### Known Items")
             for item in active_items[:10]:
@@ -225,11 +224,10 @@ def api_explore_list() -> list[dict[str, Any]]:
 
     Returns location info, scene counts, and primary image URLs.
     """
-    from core.locations import LocationManager
     from core.exploration import ExplorationManager
     from core.image_manager import ImageManager
 
-    lmgr = LocationManager()
+    lmgr = get_location_manager()
     emgr = ExplorationManager()
     imgr = ImageManager()
 
@@ -268,11 +266,11 @@ def api_explore_detail(location_id: str) -> dict[str, Any]:
 
     Returns location info, all scenes, navigation targets, and images.
     """
-    from core.locations import LocationManager, LocationNotFoundError
+    from core.locations import LocationNotFoundError
     from core.exploration import ExplorationManager
     from core.image_manager import ImageManager
 
-    lmgr = LocationManager()
+    lmgr = get_location_manager()
     emgr = ExplorationManager()
     imgr = ImageManager()
 
@@ -371,7 +369,7 @@ async def api_explore_look_around(
     Returns: {"job_id": "GEN-XXXX", "status": "queued",
               "location_id": "LOC-XXXX"}
     """
-    from core.locations import LocationManager, LocationNotFoundError
+    from core.locations import LocationNotFoundError
     from core.exploration import ExplorationManager
     from core.generation_pipeline import (
         GenerationRequest, GenerationValidationError,
@@ -395,7 +393,7 @@ async def api_explore_look_around(
                        f"Maximum is {_PARTICIPANT_MAX}.",
             )
 
-    lmgr = LocationManager()
+    lmgr = get_location_manager()
     try:
         loc = lmgr.get(location_id)
     except LocationNotFoundError:
@@ -623,13 +621,13 @@ def api_explore_chat_create(
 
     Returns: the created chat record.
     """
-    from core.locations import LocationManager, LocationNotFoundError
+    from core.locations import LocationNotFoundError
     from core.human_chat import HumanChatValidationError
 
     body = body or {}
     participants = body.get("participants", [])
 
-    lmgr = LocationManager()
+    lmgr = get_location_manager()
     try:
         loc = lmgr.get(location_id)
     except LocationNotFoundError:

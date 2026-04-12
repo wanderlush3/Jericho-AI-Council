@@ -10,6 +10,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
 
+from core.manager_cache import get_character_manager
+
 
 router = APIRouter()
 
@@ -22,7 +24,7 @@ def api_characters_list(
     """List characters with optional filters."""
     from core.characters import CharacterManager
     from config.settings import CHARACTER_AVATARS_DIR
-    mgr = CharacterManager()
+    mgr = get_character_manager()
     items = mgr.list_characters(status=status, author=author, tag=tag)
     result = []
     for c in items:
@@ -38,7 +40,7 @@ def api_character_detail(character_id: str) -> dict[str, Any]:
     """Get a single character template."""
     from core.characters import CharacterManager, CharacterNotFoundError
     from config.settings import CHARACTER_AVATARS_DIR
-    mgr = CharacterManager()
+    mgr = get_character_manager()
     try:
         c = mgr.get(character_id)
     except CharacterNotFoundError:
@@ -97,7 +99,7 @@ def api_character_create(body: dict[str, Any]) -> dict[str, Any]:
         except CharacterValidationError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
-    mgr = CharacterManager()
+    mgr = get_character_manager()
     try:
         char = mgr.create(
             name, description, author=author, backstory=backstory,
@@ -123,7 +125,7 @@ def api_character_update(
     from core.characters import (
         CharacterManager, CharacterNotFoundError, CharacterValidationError,
     )
-    mgr = CharacterManager()
+    mgr = get_character_manager()
     try:
         char = mgr.update(character_id, **body)
     except CharacterNotFoundError:
@@ -152,7 +154,7 @@ def api_character_status(
     if not new_status:
         raise HTTPException(status_code=400, detail="'status' is required.")
 
-    mgr = CharacterManager()
+    mgr = get_character_manager()
     try:
         char = mgr.update_status(character_id, new_status)
     except CharacterNotFoundError:
@@ -176,7 +178,7 @@ def api_character_avatar_upload(
     from config.settings import CHARACTER_AVATARS_DIR
     from core.characters import CharacterManager, CharacterNotFoundError
 
-    mgr = CharacterManager()
+    mgr = get_character_manager()
     try:
         mgr.get(character_id)
     except CharacterNotFoundError:
@@ -212,7 +214,7 @@ def api_character_avatar_get(character_id: str):
     from config.settings import CHARACTER_AVATARS_DIR
     from core.characters import CharacterManager, CharacterNotFoundError
 
-    mgr = CharacterManager()
+    mgr = get_character_manager()
     try:
         mgr.get(character_id)
     except CharacterNotFoundError:
@@ -242,7 +244,7 @@ def api_character_export_png(character_id: str):
         embed_character_in_png, create_minimal_png,
     )
 
-    mgr = CharacterManager()
+    mgr = get_character_manager()
     try:
         char = mgr.get(character_id)
     except CharacterNotFoundError:
@@ -284,7 +286,7 @@ def api_character_export_png_upload(
     from core.characters import CharacterManager, CharacterNotFoundError
     from core.png_embed import embed_character_in_png
 
-    mgr = CharacterManager()
+    mgr = get_character_manager()
     try:
         char = mgr.get(character_id)
     except CharacterNotFoundError:
@@ -336,7 +338,7 @@ def api_character_add_trait(
         CharacterValidationError, Trait,
     )
 
-    mgr = CharacterManager()
+    mgr = get_character_manager()
     try:
         trait = Trait.create(
             trait_type=body.get("trait_type", "personality"),
@@ -364,7 +366,7 @@ def api_character_remove_trait(
         CharacterValidationError,
     )
 
-    mgr = CharacterManager()
+    mgr = get_character_manager()
     try:
         char = mgr.remove_trait(character_id, trait_name)
     except CharacterNotFoundError:

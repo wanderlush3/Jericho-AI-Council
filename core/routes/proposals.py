@@ -11,6 +11,16 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 from starlette.responses import StreamingResponse
 
+from core.manager_cache import (
+    get_api_client,
+    get_character_manager,
+    get_item_manager,
+    get_law_manager,
+    get_location_manager,
+    get_proposal_manager,
+    get_registry,
+    get_voting_engine,
+)
 
 from core.routes._helpers import _make_discussion_manager
 
@@ -26,7 +36,7 @@ def api_proposals_list(
 ) -> list[dict[str, Any]]:
     """List proposals with optional filters."""
     from core.proposals import ProposalManager
-    mgr = ProposalManager()
+    mgr = get_proposal_manager()
     items = mgr.list_proposals(status=status, category=category, author=author)
     return [p.to_dict() for p in items]
 
@@ -34,7 +44,7 @@ def api_proposals_list(
 def api_proposal_detail(proposal_id: str) -> dict[str, Any]:
     """Get a single proposal."""
     from core.proposals import ProposalManager, ProposalNotFoundError
-    mgr = ProposalManager()
+    mgr = get_proposal_manager()
     try:
         p = mgr.get(proposal_id)
     except ProposalNotFoundError:
@@ -84,7 +94,7 @@ def api_proposal_create(body: dict[str, Any]) -> dict[str, Any]:
     if category == "law" and law_data and isinstance(law_data, dict):
         metadata = {"law_data": law_data}
 
-    pmgr = ProposalManager()
+    pmgr = get_proposal_manager()
     try:
         proposal = pmgr.create(
             title, description, author=author, category=category,
@@ -102,7 +112,7 @@ def api_proposal_create(body: dict[str, Any]) -> dict[str, Any]:
         from core.registry import CouncilRegistry
 
         dmgr = _make_discussion_manager(pmgr)
-        participants = CouncilRegistry().load().list_names()
+        participants = get_registry().list_names()
         disc_id = proposal.id  # use proposal ID as discussion ID
         disc = dmgr.create_discussion(
             disc_id, proposal.id, f"Discussion: {title}",
@@ -129,7 +139,7 @@ async def api_proposal_discuss_stream(proposal_id: str):
 
     async def event_generator():
         try:
-            pmgr = ProposalManager()
+            pmgr = get_proposal_manager()
             dmgr = _make_discussion_manager(pmgr)
 
             # Load the discussion and proposal
@@ -153,10 +163,8 @@ async def api_proposal_discuss_stream(proposal_id: str):
                 f"{proposal.title} {proposal.description}"
             )
 
-            from core.registry import CouncilRegistry
-            from core.api_client import APIClient
-            registry = CouncilRegistry().load()
-            client = APIClient()
+            registry = get_registry()
+            client = get_api_client()
 
             # Inject scheduled user message if present
             meta = dict(record.metadata)
@@ -280,7 +288,7 @@ def api_proposal_discuss_pause(proposal_id: str) -> dict[str, Any]:
         DiscussionManager, DiscussionNotFoundError, DiscussionStateError,
     )
 
-    pmgr = ProposalManager()
+    pmgr = get_proposal_manager()
     dmgr = _make_discussion_manager(pmgr)
 
     try:
@@ -307,7 +315,7 @@ def api_proposal_scheduled_message_get(proposal_id: str) -> dict[str, Any]:
     from core.proposals import ProposalManager
     from core.discussion import DiscussionNotFoundError
 
-    pmgr = ProposalManager()
+    pmgr = get_proposal_manager()
     dmgr = _make_discussion_manager(pmgr)
 
     try:
@@ -335,7 +343,7 @@ def api_proposal_scheduled_message_set(
         DiscussionNotFoundError, DiscussionStateError, DiscussionRecord,
     )
 
-    pmgr = ProposalManager()
+    pmgr = get_proposal_manager()
     dmgr = _make_discussion_manager(pmgr)
 
     try:
@@ -396,7 +404,7 @@ def api_proposal_send_to_review(proposal_id: str) -> dict[str, Any]:
         DiscussionManager, DiscussionNotFoundError, DiscussionStateError,
     )
 
-    pmgr = ProposalManager()
+    pmgr = get_proposal_manager()
 
     # Close the discussion first
     try:
@@ -432,7 +440,7 @@ def api_proposal_final_proposal(
         ProposalValidationError,
     )
 
-    pmgr = ProposalManager()
+    pmgr = get_proposal_manager()
     try:
         proposal = pmgr.get(proposal_id)
     except ProposalNotFoundError:
@@ -476,13 +484,12 @@ async def api_proposal_vote(proposal_id: str) -> dict[str, Any]:
     from core.proposals import ProposalManager, ProposalNotFoundError
     from core.voting import VotingEngine, Vote, VotingStateError
     from core.discussion import DiscussionNotFoundError
-    from core.registry import CouncilRegistry
-    from core.api_client import APIClient, ChatMessage
+    from core.api_client import ChatMessage
 
-    pmgr = ProposalManager()
-    registry = CouncilRegistry().load()
-    client = APIClient()
-    engine = VotingEngine()
+    pmgr = get_proposal_manager()
+    registry = get_registry()
+    client = get_api_client()
+    engine = get_voting_engine()
 
     try:
         proposal = pmgr.get(proposal_id)
@@ -674,7 +681,7 @@ def api_proposal_withdraw(
             status_code=400, detail="'author' is required.",
         )
 
-    pmgr = ProposalManager()
+    pmgr = get_proposal_manager()
     try:
         proposal = pmgr.withdraw(proposal_id, author)
     except ProposalNotFoundError:
@@ -703,7 +710,7 @@ def api_proposal_handoff_character(proposal_id: str) -> dict[str, Any]:
         CharacterManager, CharacterValidationError, Trait,
     )
 
-    pmgr = ProposalManager()
+    pmgr = get_proposal_manager()
     try:
         proposal = pmgr.get(proposal_id)
     except ProposalNotFoundError:
@@ -804,7 +811,7 @@ def api_proposal_handoff_location(proposal_id: str) -> dict[str, Any]:
         LocationManager, LocationValidationError, LocationFeature,
     )
 
-    pmgr = ProposalManager()
+    pmgr = get_proposal_manager()
     try:
         proposal = pmgr.get(proposal_id)
     except ProposalNotFoundError:
@@ -894,7 +901,7 @@ def api_proposal_handoff_item(proposal_id: str) -> dict[str, Any]:
         ItemManager, ItemValidationError, ItemProperty,
     )
 
-    pmgr = ProposalManager()
+    pmgr = get_proposal_manager()
     try:
         proposal = pmgr.get(proposal_id)
     except ProposalNotFoundError:
@@ -985,7 +992,7 @@ def api_proposal_handoff_law(proposal_id: str) -> dict[str, Any]:
     from core.voting import VotingEngine, VoteNotFoundError
     from core.laws import LawManager, LawValidationError
 
-    pmgr = ProposalManager()
+    pmgr = get_proposal_manager()
     try:
         proposal = pmgr.get(proposal_id)
     except ProposalNotFoundError:

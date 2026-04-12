@@ -10,6 +10,14 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
 
+from core.manager_cache import (
+    get_character_manager,
+    get_proposal_manager,
+    get_registry,
+    get_voting_engine,
+    invalidate_registry,
+)
+
 
 router = APIRouter()
 
@@ -18,22 +26,18 @@ router = APIRouter()
 @router.get("/api/council")
 def api_council_list() -> list[dict[str, Any]]:
     """List all council members."""
-    from core.registry import CouncilRegistry
     from config.settings import COUNCIL_AVATARS_DIR
-    registry = CouncilRegistry().load()
+    registry = get_registry()
     members = registry.list_members()
 
     # Build a lookup of active evolution overlays for council members
     active_evolutions: dict[str, dict[str, str]] = {}
     try:
-        from core.characters import CharacterManager
-        from core.proposals import ProposalManager
-        from core.voting import VotingEngine
         from core.character_evolution import CharacterEvolution
         evo = CharacterEvolution(
-            character_manager=CharacterManager(),
-            proposal_manager=ProposalManager(),
-            voting_engine=VotingEngine(),
+            character_manager=get_character_manager(),
+            proposal_manager=get_proposal_manager(),
+            voting_engine=get_voting_engine(),
         )
         for overlay in evo.list_targets_with_active_overlays():
             if overlay.get("target_type") == "council_member":
@@ -43,6 +47,11 @@ def api_council_list() -> list[dict[str, Any]]:
                 }
     except Exception:
         pass  # graceful fallback if evolution system is unavailable
+
+    # Single directory scan for avatar existence (Category 5)
+    existing_avatars = {
+        f.stem.lower() for f in COUNCIL_AVATARS_DIR.glob("*.png")
+    } if COUNCIL_AVATARS_DIR.exists() else set()
 
     result = []
     for m in members:
@@ -57,8 +66,7 @@ def api_council_list() -> list[dict[str, Any]]:
             "specialties": m.specialties,
             "system_prompt": m.system_prompt,
         }
-        avatar_file = COUNCIL_AVATARS_DIR / f"{m.name.lower()}.png"
-        if avatar_file.exists():
+        if m.name.lower() in existing_avatars:
             d["avatar_url"] = f"/api/council/{m.name}/avatar"
         # Attach active evolution info if present
         evo_key = f"CM-{m.name}"
@@ -75,16 +83,19 @@ def api_council_candidates() -> list[dict[str, Any]]:
     Only active characters whose names don't match an existing
     council member (case-insensitive) are included.
     """
-    from core.registry import CouncilRegistry
-    from core.characters import CharacterManager
     from config.settings import CHARACTER_AVATARS_DIR
 
-    registry = CouncilRegistry().load()
-    cmgr = CharacterManager()
+    registry = get_registry()
+    cmgr = get_character_manager()
     active_chars = cmgr.list_characters(status="active")
 
     # Build set of existing council member names (lowercase)
     council_names = {m.name.lower() for m in registry.list_members()}
+
+    # Single directory scan for avatar existence (Category 5)
+    existing_char_avatars = {
+        f.stem for f in CHARACTER_AVATARS_DIR.glob("*.png")
+    } if CHARACTER_AVATARS_DIR.exists() else set()
 
     candidates = []
     for c in active_chars:
@@ -98,8 +109,7 @@ def api_council_candidates() -> list[dict[str, Any]]:
                 "model": c.model,
                 "system_prompt": c.system_prompt,
             }
-            avatar_file = CHARACTER_AVATARS_DIR / f"{c.id}.png"
-            if avatar_file.exists():
+            if c.id in existing_char_avatars:
                 d["avatar_url"] = f"/api/characters/{c.id}/avatar"
             candidates.append(d)
     return candidates
@@ -154,7 +164,7 @@ def api_council_promote(body: dict[str, Any]) -> dict[str, Any]:
         )
 
     # Check not already on council
-    registry = CouncilRegistry().load()
+    registry = get_registry()
     if character.name.lower() in {m.name.lower() for m in registry.list_members()}:
         raise HTTPException(
             status_code=400,
@@ -193,6 +203,9 @@ def api_council_promote(body: dict[str, Any]) -> dict[str, Any]:
         f.write(comment)
         f.write(yaml_body)
 
+    # Invalidate cached registry so the new member is picked up
+    invalidate_registry()
+
     return {
         "status": "ok",
         "name": character.name,
@@ -210,7 +223,7 @@ def api_council_detail(name: str) -> dict[str, Any]:
     """Get a single council member by name."""
     from core.registry import CouncilRegistry, MemberNotFoundError
     from config.settings import COUNCIL_AVATARS_DIR
-    registry = CouncilRegistry().load()
+    registry = get_registry()
     try:
         m = registry.get(name)
     except MemberNotFoundError:
@@ -259,7 +272,7 @@ def api_council_update(name: str, body: dict[str, Any]) -> dict[str, Any]:
     Read-only fields (role, description, specialties) are rejected.
     """
     from core.registry import CouncilRegistry, MemberNotFoundError
-    registry = CouncilRegistry().load()
+    registry = get_registry()
     try:
         updated = registry.update_member(name, body)
     except MemberNotFoundError:
@@ -294,7 +307,7 @@ async def api_council_avatar_upload(name: str) -> dict[str, Any]:
     import base64
 
     # Verify the member exists
-    registry = CouncilRegistry().load()
+    registry = get_registry()
     try:
         member = registry.get(name)
     except MemberNotFoundError:
@@ -314,7 +327,7 @@ def api_council_avatar_upload_json(name: str, body: dict[str, Any]) -> dict[str,
     from config.settings import COUNCIL_AVATARS_DIR
     from core.registry import CouncilRegistry, MemberNotFoundError
 
-    registry = CouncilRegistry().load()
+    registry = get_registry()
     try:
         member = registry.get(name)
     except MemberNotFoundError:
@@ -361,7 +374,7 @@ def api_council_avatar_get(name: str):
     from config.settings import COUNCIL_AVATARS_DIR
     from core.registry import CouncilRegistry, MemberNotFoundError
 
-    registry = CouncilRegistry().load()
+    registry = get_registry()
     try:
         member = registry.get(name)
     except MemberNotFoundError:
@@ -379,7 +392,7 @@ def api_council_avatar_meta(name: str) -> dict[str, Any]:
     from config.settings import COUNCIL_AVATARS_DIR
     from core.registry import CouncilRegistry, MemberNotFoundError
 
-    registry = CouncilRegistry().load()
+    registry = get_registry()
     try:
         member = registry.get(name)
     except MemberNotFoundError:

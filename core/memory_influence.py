@@ -430,16 +430,55 @@ class MemoryInfluence:
         relevance, filtered to those above min_relevance, limited
         to memory_limit results.
         """
+        if not entries:
+            return []
+
         context_text = " ".join(context_keywords)
         context_tokens = _tokenise(context_text)
         scored: list[ScoredMemory] = []
 
-        for entry in entries:
-            entry_text = f"{entry.content} {entry.event_type} {entry.source}"
-            entry_tokens = _tokenise(entry_text)
-            raw_score, reason = self._hybrid_score(
-                context_text, entry_text, context_tokens, entry_tokens,
+        # Pre-compute all entry texts
+        entry_texts = [
+            f"{entry.content} {entry.event_type} {entry.source}"
+            for entry in entries
+        ]
+
+        # Batch compute embedding similarities (one encode pass)
+        emb_scores: list[float] | None = None
+        if self.embeddings_available:
+            emb_scores = self._embeddings.batch_similarity(
+                context_text, entry_texts,
             )
+
+        for idx, entry in enumerate(entries):
+            entry_text = entry_texts[idx]
+            entry_tokens = _tokenise(entry_text)
+            jaccard_sim = _jaccard(context_tokens, entry_tokens)
+            overlap = context_tokens & entry_tokens
+
+            if emb_scores is not None:
+                emb_sim = max(0.0, min(emb_scores[idx], 1.0))
+                raw_score = (
+                    EMBEDDING_SIMILARITY_WEIGHT * emb_sim
+                    + EMBEDDING_JACCARD_WEIGHT * jaccard_sim
+                )
+                reason_parts: list[str] = []
+                if emb_sim >= 0.3:
+                    reason_parts.append(f"Semantic match ({emb_sim:.2f})")
+                if overlap:
+                    reason_parts.append(
+                        f"Keywords: {', '.join(sorted(overlap))}"
+                    )
+                reason = "; ".join(reason_parts) if reason_parts else "General relevance"
+            else:
+                raw_score = jaccard_sim
+                reason = (
+                    f"Matched keywords: {', '.join(sorted(overlap))}"
+                    if overlap
+                    else "General relevance"
+                )
+
+            raw_score = round(raw_score, 4)
 
             # Apply time decay
             decay = self._compute_decay_factor(entry.timestamp)
@@ -478,16 +517,54 @@ class MemoryInfluence:
         stance.  Returns scored beliefs sorted by descending
         relevance, filtered and limited.
         """
+        if not beliefs:
+            return []
+
         context_text = " ".join(context_keywords)
         context_tokens = _tokenise(context_text)
         scored: list[ScoredBelief] = []
 
-        for belief in beliefs:
-            belief_text = f"{belief.topic} {belief.content}"
-            belief_tokens = _tokenise(belief_text)
-            raw_score, raw_reason = self._hybrid_score(
-                context_text, belief_text, context_tokens, belief_tokens,
+        # Pre-compute all belief texts
+        belief_texts = [
+            f"{belief.topic} {belief.content}" for belief in beliefs
+        ]
+
+        # Batch compute embedding similarities (one encode pass)
+        emb_scores: list[float] | None = None
+        if self.embeddings_available:
+            emb_scores = self._embeddings.batch_similarity(
+                context_text, belief_texts,
             )
+
+        for idx, belief in enumerate(beliefs):
+            belief_text = belief_texts[idx]
+            belief_tokens = _tokenise(belief_text)
+            jaccard_sim = _jaccard(context_tokens, belief_tokens)
+            overlap = context_tokens & belief_tokens
+
+            if emb_scores is not None:
+                emb_sim = max(0.0, min(emb_scores[idx], 1.0))
+                raw_score = (
+                    EMBEDDING_SIMILARITY_WEIGHT * emb_sim
+                    + EMBEDDING_JACCARD_WEIGHT * jaccard_sim
+                )
+                reason_parts: list[str] = []
+                if emb_sim >= 0.3:
+                    reason_parts.append(f"Semantic match ({emb_sim:.2f})")
+                if overlap:
+                    reason_parts.append(
+                        f"Keywords: {', '.join(sorted(overlap))}"
+                    )
+                raw_reason = "; ".join(reason_parts) if reason_parts else "General relevance"
+            else:
+                raw_score = jaccard_sim
+                raw_reason = (
+                    f"Matched keywords: {', '.join(sorted(overlap))}"
+                    if overlap
+                    else "General relevance"
+                )
+
+            raw_score = round(raw_score, 4)
             boosted = min(raw_score * self._belief_boost, 1.0)
 
             if boosted >= self._min_relevance:

@@ -11,6 +11,11 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 from starlette.responses import StreamingResponse
 
+from core.manager_cache import (
+    get_api_client,
+    get_proposal_manager,
+    get_registry,
+)
 
 from core.routes._helpers import _make_discussion_manager
 
@@ -67,7 +72,7 @@ def api_council_session_create(body: dict[str, Any]) -> dict[str, Any]:
         )
 
     # Get all council members as default participants
-    registry = CouncilRegistry().load()
+    registry = get_registry()
     participants = registry.list_names()
 
     mgr = CouncilSessionManager()
@@ -117,9 +122,8 @@ async def api_council_session_discuss_stream(session_id: str):
                 f"{record.title} {record.topic}"
             )
 
-            from core.registry import CouncilRegistry
-            registry = CouncilRegistry().load()
-            client = APIClient()
+            registry = get_registry()
+            client = get_api_client()
 
             # Inject scheduled user message if present
             meta = dict(record.metadata)
@@ -384,7 +388,7 @@ def api_council_session_handoff(
         # Use the first participant as default author
         author = session.participants[0] if session.participants else "Council"
 
-    pmgr = ProposalManager()
+    pmgr = get_proposal_manager()
     try:
         proposal = pmgr.create(
             proposal_data["title"],
@@ -402,9 +406,8 @@ def api_council_session_handoff(
     # Create a discussion for the new proposal
     discussion_info = None
     try:
-        from core.registry import CouncilRegistry
         dmgr = _make_discussion_manager(pmgr)
-        participants = CouncilRegistry().load().list_names()
+        participants = get_registry().list_names()
         disc = dmgr.create_discussion(
             proposal.id, proposal.id,
             f"Discussion: {proposal.title}",

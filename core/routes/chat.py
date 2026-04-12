@@ -7,10 +7,18 @@ from __future__ import annotations
 
 import json as json_module
 import time
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from starlette.responses import StreamingResponse
+
+from core.manager_cache import (
+    get_api_client,
+    get_memory_influence,
+    get_proposal_manager,
+    get_registry,
+)
 
 
 router = APIRouter()
@@ -30,39 +38,28 @@ def _next_chat_id() -> str:
 def _make_human_chat(
     conversations_dir: Path | None = None,
 ) -> "HumanChat":
-    """Instantiate HumanChat with a real registry, API client, and memory influence."""
-    from core.api_client import APIClient
+    """Instantiate HumanChat with cached registry, API client, and memory influence."""
     from core.human_chat import HumanChat
-    from core.memory_influence import MemoryInfluence
-    from core.registry import CouncilRegistry
 
-    registry = CouncilRegistry().load()
-    client = APIClient()
     return HumanChat(
-        registry=registry,
-        api_client=client,
+        registry=get_registry(),
+        api_client=get_api_client(),
         conversations_dir=conversations_dir,
-        memory_influence=MemoryInfluence(),
+        memory_influence=get_memory_influence(),
     )
 
 def _make_discussion_manager(
     proposal_manager: "ProposalManager | None" = None,
 ) -> "DiscussionManager":
-    """Instantiate DiscussionManager with memory influence."""
-    from core.api_client import APIClient
+    """Instantiate DiscussionManager with cached dependencies."""
     from core.discussion import DiscussionManager
-    from core.memory_influence import MemoryInfluence
-    from core.proposals import ProposalManager
-    from core.registry import CouncilRegistry
 
-    registry = CouncilRegistry().load()
-    client = APIClient()
-    pmgr = proposal_manager if proposal_manager is not None else ProposalManager()
+    pmgr = proposal_manager if proposal_manager is not None else get_proposal_manager()
     return DiscussionManager(
-        registry=registry,
-        api_client=client,
+        registry=get_registry(),
+        api_client=get_api_client(),
         proposal_manager=pmgr,
-        memory_influence=MemoryInfluence(),
+        memory_influence=get_memory_influence(),
     )
 
 @router.get("/api/chat")
