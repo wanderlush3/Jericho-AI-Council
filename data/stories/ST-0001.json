@@ -16,8 +16,8 @@
           "scene_id": "SCE-0001",
           "chapter_id": "CHP-0001",
           "scene_number": 1,
-          "narrative_text": "The fog rolls in like a thief over the Gilded Cage, swallowing the neon glow of the market stalls and the guttural cough of the smokestacks. The air tastes of salt and rust, thick enough to chew. Somewhere in the belly of the city, a ship’s horn bellows, but the sound is swallowed before it can echo. The Keeper of Reflections stands at the threshold of her labyrinth, her fingers trailing along the cold glass of the nearest mirror. The surface ripples like water, but her reflection doesn’t mimic her movements—it lags, a ghost trailing behind her by three heartbeats.\n\nShe doesn’t turn when the footsteps approach, but the whisper of fabric against stone betrays the intruder long before they speak. “You know why I’m here,” the voice rasps, rough as gravel under boots. A man, his silhouette sharp against the dim light of the alley, his coat damp with fog. His eyes flick to the mirrors, then back to her. “I need to see.” The Keeper’s lips curl, not quite a smile. “Truths for truths,” she murmurs, and the words slither into the damp air, clinging to the man’s skin like a second layer of fog. He swallows hard, but doesn’t hesitate. The first choice is always the hardest.",
-          "image_id": "",
+          "narrative_text": "The docks of the Gilded Cage groan under the weight of the morning fog, a thick, cloying mist that clings to skin and soul alike. Maricela moves through it like a ghost, her boots splashing in the brackish water that laps against the rotting planks. The Unicorn and Potion looms ahead, its flickering sign casting eerie shadows that dance in the gloom. The air is thick with the scent of salt and something darker—oil, sweat, the metallic tang of old blood. She can hear the murmur of deals being made in the backroom, the clink of glasses, the occasional laugh that rings hollow in the damp.\n\nInside, the heat is a shock after the cold bite of the fog. The barkeep, a grizzled man with a scar running from temple to jaw, nods at her without a word. Maricela slides onto a stool, her fingers brushing the grain of the wood as if reading its history. The potion on the counter is amber with a metallic sheen, swirling as if alive. She picks it up, and the weight of it hums in her palm. *Dragon’s Tongue*, it whispers in her mind. *Speak as though you are the last.* The words settle in her bones like a promise—or a threat. She takes a deep breath, tasting the air, and knows the time for hesitation is over. The past has claws, and they are sinking in.",
+          "image_id": "IMG-0010",
           "prompt_used": "",
           "characters": [],
           "location_id": "",
@@ -44,6 +44,6 @@
   "style_preset_key": "",
   "template_id": "",
   "created_at": "2026-04-09T11:10:52.478725+00:00",
-  "updated_at": "2026-04-10T20:48:26.790389+00:00",
+  "updated_at": "2026-04-12T16:12:01.864851+00:00",
   "metadata": {}
 }

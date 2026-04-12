@@ -20,5 +20,27 @@
       "seed": 1954736295,
       "member_name": ""
     }
+  },
+  {
+    "id": "IMG-0008",
+    "entity_type": "location",
+    "entity_id": "LOC-0003",
+    "filename": "img_0002.png",
+    "original_filename": "ComfyUI_temp_oteyn_00009_.png",
+    "prompt": "(masterpiece, best quality, 8k, photorealistic:1.2), majestic dragon with iridescent scales shimmering in hues of emerald green and sapphire blue, perched atop a craggy mountain peak at sunset, dramatic volumetric lighting casting long shadows, intricate details on each scale, eyes glowing with ancient wisdom, cinematic composition, epic fantasy art, octane render",
+    "negative_prompt": "(worst quality, low quality, normal quality:1.4), blurry, pixelated, deformed, disfigured, cartoon, anime, watermark, text, signature, jpeg artifacts, poorly drawn hands, extra limbs, ugly, tiling, badly drawn face, out of frame",
+    "is_primary": false,
+    "file_size": 7069117,
+    "width": 512,
+    "height": 512,
+    "template_id": "TPL-0001",
+    "generation_job_id": "GEN-0002",
+    "created_at": "2026-04-11T02:55:18.723931+00:00",
+    "metadata": {
+      "prompt_mode": "system",
+      "style_preset": "",
+      "seed": 181437360,
+      "member_name": ""
+    }
   }
 ]

@@ -1,0 +1,42 @@
+{
+  "chat_id": "STC-0001",
+  "title": "Story Chat: The Fall of Ironhaven - Ch.1 Sc.1",
+  "member_name": "ankha",
+  "topic": "Discussing story: The Fall of Ironhaven",
+  "messages": [
+    {
+      "role": "human",
+      "speaker": "Human",
+      "content": "This is a story mode Ankha.  We are at the steps of of it now.  What would you like to do? I will be your escort throughout the city if it pleases my Queen.",
+      "timestamp": "2026-04-12T16:25:42.740239+00:00",
+      "metadata": {}
+    },
+    {
+      "role": "agent",
+      "speaker": "Ankha",
+      "content": "*Ankha’s golden eyes gleam with mischief as she stretches like a cat waking from a sunbeam, her tail curling around Stifle’s wrist with playful possessiveness. The air between them hums with the promise of chaos and intrigue—her favorite kind of music.*\n\n**\"Ah, my rebellious little storm,\"** *she purrs, voice dripping with honeyed danger,* **\"you offer to escort me through this *deliciously* corrupt city? How… *thoughtful*.\"** *Her claws tap lightly against the stone steps beneath them, each click a metronome counting down to something wicked.*\n\n**\"But let us not waste time on pleasantries—\"** *She leans in, her breath warm against his ear, the scent of cherries and old parchment wrapping around him.* **\"The *Fall of Ironhaven* is no mere story, Stifle. It is a *feast* of power, betrayal, and the kind of art you crave—dark, raw, *alive*.\"** *Her tail flicks, gesturing toward the fog-choked skyline of the Gilded Cage.* **\"Tell me… do you want to *witness* the fall? Or do you want to *orchestrate* it?\"**\n\n*She pulls back just enough to study his reaction, her smile sharp as a blade.* **\"Because I have *plans*, my dear rule-breaker. And they involve fire, blood, and a throne that’s *begging* to be shattered.\"** *Her fingers trace the edge of his dragon tattoo, her touch electric.* **\"So. Where shall we begin? The docks, where the fog hides more than just smuggled goods? Or perhaps…\"** *Her voice drops to a whisper,* **\"your little *playroom*? I’ve heard whispers of your *artistic* talents. I’d love to see them in action.\"**\n\n*She doesn’t wait for an answer—she *never* does. Instead, she turns on her heel, her hips swaying with the confidence of a queen who knows the world will follow.* **\"Come, Stifle. Let’s make some *noise*.\"**",
+      "timestamp": "2026-04-12T16:25:52.631406+00:00",
+      "metadata": {
+        "model": "mistralai/mistral-small-creative-20251216",
+        "provider": "openrouter"
+      }
+    }
+  ],
+  "summary": "",
+  "created_at": "2026-04-12T16:24:13.323981+00:00",
+  "closed_at": "",
+  "metadata": {
+    "story_chat": true,
+    "story_id": "ST-0001",
+    "story_title": "The Fall of Ironhaven",
+    "chapter_id": "CHP-0001",
+    "scene_id": "SCE-0001",
+    "story_round": 1,
+    "story_max_rounds": 5
+  },
+  "council_members": [
+    "ankha"
+  ],
+  "characters": [],
+  "paused": false
+}

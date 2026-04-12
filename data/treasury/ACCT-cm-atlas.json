@@ -1,0 +1,13 @@
+{
+  "account_id": "ACCT-cm-atlas",
+  "account_type": "council_member",
+  "owner_name": "Atlas",
+  "balance": {
+    "gold": 400,
+    "silver": 0,
+    "bronze": 0
+  },
+  "created_at": "2026-04-11T22:39:48.033647+00:00",
+  "updated_at": "2026-04-11T22:39:48.036646+00:00",
+  "metadata": {}
+}

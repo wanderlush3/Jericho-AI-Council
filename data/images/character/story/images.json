@@ -20,5 +20,49 @@
       "seed": 1496057900,
       "member_name": ""
     }
+  },
+  {
+    "id": "IMG-0009",
+    "entity_type": "character",
+    "entity_id": "story",
+    "filename": "img_0002.png",
+    "original_filename": "ComfyUI_temp_oteyn_00010_.png",
+    "prompt": "Illustrate: The fog rolls in like a thief over the Gilded Cage, swallowing the neon glow of the market stalls and the guttural cough of the smokestacks. The air tastes of salt and rust, thick enough to chew. Somewhere in the belly of the city, a ship’s horn bellows, but the sound is swallowed before it can echo. The Keeper of Reflections stands at the threshold of her labyrinth, her fingers trailing along the cold glass of the nearest mirror. The surface ripples like water, but her reflection doesn’t mimic  | Mood: dramatic",
+    "negative_prompt": "",
+    "is_primary": false,
+    "file_size": 7875344,
+    "width": 768,
+    "height": 512,
+    "template_id": "TPL-0001",
+    "generation_job_id": "GEN-0004",
+    "created_at": "2026-04-11T02:58:02.746064+00:00",
+    "metadata": {
+      "prompt_mode": "raw_user",
+      "style_preset": "",
+      "seed": 672689129,
+      "member_name": ""
+    }
+  },
+  {
+    "id": "IMG-0010",
+    "entity_type": "character",
+    "entity_id": "story",
+    "filename": "img_0003.png",
+    "original_filename": "ComfyUI_temp_ndmeo_00001_.png",
+    "prompt": "Illustrate: The storm howls through the jagged peaks of Ironhaven like a wounded beast, its icy breath rattling the shutters of the fortress. Below, the village clings to the mountainside like a desperate child, its flickering lanterns lost in the swirling dark. Eamon Duskbane stands at the battlements, his cloak whipping around him like the wings of a carrion crow. His breath fogs in the cold, but his gaze is sharp, scanning the treacherous path from the mines. The message had been clear: *the ore runs red | Mood: dramatic",
+    "negative_prompt": "",
+    "is_primary": false,
+    "file_size": 7432799,
+    "width": 768,
+    "height": 512,
+    "template_id": "TPL-0001",
+    "generation_job_id": "GEN-0001",
+    "created_at": "2026-04-12T11:35:15.745764+00:00",
+    "metadata": {
+      "prompt_mode": "raw_user",
+      "style_preset": "",
+      "seed": 582464432,
+      "member_name": ""
+    }
   }
 ]

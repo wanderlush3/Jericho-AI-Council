@@ -16,5 +16,41 @@
     "description": "Scene generated via Look Around",
     "generated_at": "2026-04-10T20:47:30.857880+00:00",
     "metadata": {}
+  },
+  {
+    "scene_id": "SCN-a712bc61",
+    "location_id": "LOC-0001",
+    "image_id": "IMG-0007",
+    "scene_type": "overview",
+    "description": "Scene generated via Look Around",
+    "generated_at": "2026-04-11T02:50:39.491614+00:00",
+    "metadata": {}
+  },
+  {
+    "scene_id": "SCN-4bcaf872",
+    "location_id": "LOC-0003",
+    "image_id": "IMG-0008",
+    "scene_type": "overview",
+    "description": "Scene generated via Look Around",
+    "generated_at": "2026-04-11T02:55:20.126200+00:00",
+    "metadata": {}
+  },
+  {
+    "scene_id": "SCN-5a2795f2",
+    "location_id": "LOC-0001",
+    "image_id": "IMG-0013",
+    "scene_type": "overview",
+    "description": "Scene generated via Look Around",
+    "generated_at": "2026-04-12T12:59:27.059223+00:00",
+    "metadata": {}
+  },
+  {
+    "scene_id": "SCN-e0e50df2",
+    "location_id": "LOC-0001",
+    "image_id": "IMG-0014",
+    "scene_type": "overview",
+    "description": "Scene generated via Look Around",
+    "generated_at": "2026-04-12T13:09:44.348563+00:00",
+    "metadata": {}
   }
 ]

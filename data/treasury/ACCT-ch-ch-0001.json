@@ -3,11 +3,11 @@
   "account_type": "character",
   "owner_name": "The Keeper of Reflections",
   "balance": {
-    "gold": 400,
+    "gold": 500,
     "silver": 0,
     "bronze": 0
   },
   "created_at": "2026-03-22T14:39:09.907738+00:00",
-  "updated_at": "2026-04-04T20:48:40.459542+00:00",
+  "updated_at": "2026-04-11T22:39:48.067225+00:00",
   "metadata": {}
 }
