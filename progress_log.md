@@ -3474,3 +3474,31 @@ Add dedicated unit tests for `core/utils.py` — cover `atomic_write` and `atomi
 3. The `test_cleanup_on_write_failure` test uses a custom `exploding_fdopen` wrapper because `os.fdopen` can't be simply side-effected — `mkstemp` creates the fd before fdopen wraps it.
 4. The `sw` CLI tool is NOT available. Use direct Python commands instead.
 5. **All features F-001 through F-047 are now completed.** The backlog has no remaining `pending` features — new features need to be added to `features.json` before the next session.
+
+---
+
+## Session — F-048: README Documentation Update (2026-04-12)
+
+### Summary
+Comprehensive README update to reflect the current state of the project after 47 features of development. The README was significantly out of date, still referencing the monolithic `web_api.py` (7,000+ lines) architecture and monolithic `app.js`/`style.css` frontend files.
+
+### Changes
+
+#### README.md — Major Rewrite
+
+| Section | Update |
+|---|---|
+| Overview | Added LM Studio as third supported provider alongside OpenRouter and Mancer |
+| Features | Changed from 8 to 9 domains; added Manager Cache, Chat Response Timers, Explore Participants, Explore Chat, Story Participants, Story Chat, Evolution Traits Display, LM Studio Provider Badge |
+| Web Dashboard | Updated capabilities list with participant selection, interactive scene chat, response time tracking |
+| Project Structure | Completely rewritten: `web_api.py` now shown as thin compositor (~145 lines), added `routes/` directory with 20 route modules, added `manager_cache.py`, replaced monolithic `app.js`.`style.css` with modular `js/` (26 modules, ~13,500 lines) and `css/` (33 modules, ~9,400 lines) |
+| Tests | Updated from 2,813+ to 3,072 tests, 47 to 52 test suites, ~70s to ~90s runtime |
+| Appearance | Updated Frutiger Aero description to include Y2K |
+
+#### features.json — Added F-048
+
+### Advice for Next Agent
+1. The `features.json` backlog now has no remaining `pending` features again — F-048 was added and immediately completed.
+2. The README `Features` count still says 47 — this is correct because F-048 is a documentation task, not a system feature. Update the count if you add actual system features.
+3. The `sw` CLI tool is NOT available. Use direct Python commands instead.
+4. All test counts and line counts in the README are accurate as of this session.

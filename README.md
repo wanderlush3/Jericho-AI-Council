@@ -6,7 +6,7 @@
 
 ## Overview
 
-Jericho is a **human-orchestrated AI council system** where LLM agents (powered by [OpenRouter](https://openrouter.ai/) and [Mancer](https://mancer.tech/) APIs) work together to govern a living world. Council members debate proposals, pass laws, manage a monetary economy, create characters and locations, and design items — all through democratic governance with human oversight.
+Jericho is a **human-orchestrated AI council system** where LLM agents (powered by [OpenRouter](https://openrouter.ai/), [Mancer](https://mancer.tech/), and [LM Studio](https://lmstudio.ai/) APIs) work together to govern a living world. Council members debate proposals, pass laws, manage a monetary economy, create characters and locations, and design items — all through democratic governance with human oversight.
 
 The key architectural principle is simple: the **Python orchestrator** handles all filesystem operations and API calls while agents interact purely through structured natural language. Agents never need tool access or filesystem capabilities — this design sidesteps LLM tool-use reliability problems entirely.
 
@@ -39,12 +39,13 @@ Council member profiles are defined as YAML files in `council/members/`. Each pr
 
 ## Features
 
-Jericho ships with **47 implemented features** organized across eight domains, plus a narrative engine, semantic embeddings, image generation pipeline, and a comprehensive web dashboard:
+Jericho ships with **47 implemented features** organized across nine domains, plus a narrative engine, semantic embeddings, image generation pipeline, and a comprehensive web dashboard:
 
 ### Core Infrastructure
-- **API Client** — Unified async client for OpenRouter & Mancer with retry, rate limiting, structured response parsing
+- **API Client** — Unified async client for OpenRouter, Mancer & LM Studio with retry, rate limiting, structured response parsing
 - **Council Registry** — Load, list, validate, and edit YAML council member profiles with avatar management
 - **Memory System** — Per‑agent memories (core beliefs + session log) and shared council memory (decisions + narrative history)
+- **Manager Cache** — Centralized singleton cache for all manager instances, reducing redundant filesystem I/O across route modules
 - **Shared Utilities** — Atomic file writes, common helpers
 - **Embedding Provider** — Optional semantic text embeddings via `sentence-transformers` for advanced relevance scoring (falls back to keyword Jaccard similarity when unavailable)
 
@@ -84,6 +85,7 @@ Jericho ships with **47 implemented features** organized across eight domains, p
 - **Human‑to‑Agent Chat** — Direct conversations with individual council members, with user description context injection
 - **Multi‑Party AI Chat** — Autonomous multi-member conversations with sequential turn-taking
 - **Presence Wrappers (SilentPassa)** — `[PRESENT]`/`[SILENCE]` display wrappers for chat messages with toggleable UI
+- **Chat Response Timers** — Per-message response time tracking with live pulsing timer during generation and permanent duration badges
 - **Task System** — Assign tasks to council members/characters with automated multi-round narrative execution via SSE streaming
 
 ### Image Generation (ComfyUI Integration)
@@ -98,7 +100,11 @@ Jericho ships with **47 implemented features** organized across eight domains, p
 
 ### Exploration & Stories
 - **Exploration Image Galleries** — Visual location exploration with "Look Around" scene generation, hero image overlays, scene gallery strips, and hierarchical location navigation (parent/children/siblings)
+- **Explore Participant System** — Add up to 10 council members and/or characters to exploration experiences with full context injection (persona, beliefs, memories, traits, laws, locations, items)
+- **Explore Chat** — Interactive round-based chat within exploration scenes; participants discuss locations via SSE streaming with round management and narration injection
 - **Story Illustration System** — LLM-narrated story segments with inline generated illustrations; hierarchical Story → Chapter → Scene management with immersive book-like reader UI
+- **Story Participant System** — Add up to 10 participants to narration and illustration with shared `_build_participant_context()` infrastructure
+- **Story Chat** — Interactive round-based chat within story scenes; council members and characters discuss scenes via SSE streaming with 5-round limits and inline chat UI
 
 ### User Interfaces
 - **CLI Interface** — Click‑based `jericho` command with rich subcommands
@@ -107,7 +113,9 @@ Jericho ships with **47 implemented features** organized across eight domains, p
 - **Sidebar Accordion Navigation** — Collapsible section headers with chevron indicators, CSS transitions, and localStorage persistence
 - **Governance Reports** — Export council activity as structured Markdown documents
 - **Secure API Key Management** — Web-based API key configuration with Fernet AES encryption at rest
-- **Appearance Skins** — Multiple UI themes including default dark mode, Frutiger Aero, and Vaporwave
+- **Appearance Skins** — Multiple UI themes including default dark mode, Frutiger Aero, Y2K, and Vaporwave
+- **Evolution Traits Display** — Active evolution traits shown in council member badges and detail views
+- **LM Studio Provider Badge** — Provider badge support for locally-hosted LM Studio models
 
 ---
 
@@ -186,9 +194,10 @@ Then open **http://127.0.0.1:8080** in your browser. The dashboard provides a da
 - **Store Commerce** — Create stores, manage inventory, purchase items with Obelisk currency
 - **Task Execution** — Assign and execute tasks with SSE-streamed narrative responses
 - **Image Generation** — Generate & manage images for any entity via ComfyUI (5 prompt modes, style presets, batch generation, queue monitoring)
-- **Exploration Mode** — Visual "Look Around" at locations with hero images, scene galleries, and hierarchical navigation
-- **Story System** — Create illustrated stories with LLM narration and inline image generation; editor and immersive reader modes
+- **Exploration Mode** — Visual "Look Around" at locations with hero images, scene galleries, participant selection, and interactive chat
+- **Story System** — Create illustrated stories with LLM narration, inline image generation, participant context, and interactive scene chat
 - **Appearance Themes** — Default dark mode, Frutiger Aero (glossy Y2K), and more via Settings
+- **Response Time Tracking** — Live timer and duration badges on chat messages for monitoring AI model performance
 
 The backend API is also available directly at `/api/*` for programmatic access.
 
@@ -312,8 +321,8 @@ jericho/
 │   ├── .env.example           # API key template
 │   └── .env                   # Your API keys (git-ignored, encrypted at rest)
 │
-├── core/                      # All Python modules (~42 files)
-│   ├── api_client.py          # Async OpenRouter / Mancer client
+├── core/                      # All Python modules (43 files)
+│   ├── api_client.py          # Async OpenRouter / Mancer / LM Studio client
 │   ├── api_keys.py            # Fernet-encrypted API key management
 │   ├── registry.py            # Council member loading, validation, editing
 │   ├── memory.py              # Per-agent & shared memory stores
@@ -350,14 +359,48 @@ jericho/
 │   ├── template_assignments.py # Per-entity-type workflow defaults
 │   ├── exploration.py         # Visual location exploration & scenes
 │   ├── story.py               # Story → Chapter → Scene management
+│   ├── manager_cache.py       # Centralized singleton cache for managers
 │   ├── cli.py                 # Click CLI entry point
 │   ├── dashboard.py           # Rich terminal renderer
-│   ├── web_api.py             # FastAPI backend (~7,000+ lines)
+│   ├── web_api.py             # Thin FastAPI compositor (~145 lines)
 │   ├── utils.py               # Shared utilities (atomic writes)
+│   ├── routes/                # Backend route modules (20 files)
+│   │   ├── _helpers.py        # Shared cross-module helpers
+│   │   ├── council.py         # /api/council endpoints
+│   │   ├── proposals.py       # /api/proposals endpoints
+│   │   ├── characters.py      # /api/characters endpoints
+│   │   ├── chat.py            # /api/chat endpoints
+│   │   ├── sessions.py        # /api/sessions endpoints
+│   │   ├── votes.py           # /api/votes endpoints
+│   │   ├── evolutions.py      # /api/evolutions endpoints
+│   │   ├── explore.py         # /api/explore endpoints
+│   │   ├── stories.py         # /api/stories endpoints
+│   │   ├── generation.py      # /api/generate endpoints
+│   │   ├── settings.py        # /api/settings endpoints
+│   │   ├── locations.py       # /api/locations endpoints
+│   │   ├── items.py           # /api/items endpoints
+│   │   ├── stores.py          # /api/stores endpoints
+│   │   ├── treasury.py        # /api/treasury endpoints
+│   │   ├── memories.py        # /api/memories endpoints
+│   │   ├── laws.py            # /api/laws endpoints
+│   │   ├── images.py          # /api/images endpoints
+│   │   ├── tasks.py           # /api/tasks endpoints
+│   │   └── status.py          # /api/status endpoint
 │   └── web_static/            # SPA frontend
 │       ├── index.html         # HTML shell with accordion nav sidebar
-│       ├── app.js             # All frontend JS (~11,500+ lines)
-│       └── style.css          # All CSS (~7,500+ lines)
+│       ├── css/               # 33 CSS modules (~9,400 lines)
+│       │   ├── tokens.css     # Design tokens (:root variables)
+│       │   ├── base.css       # Reset & base styles
+│       │   ├── layout.css     # Layout + sidebar
+│       │   ├── skins.css      # Theme skins (Frutiger Aero, Y2K, Vaporwave)
+│       │   └── [feature].css  # Per-feature styles (council, chat, explore, etc.)
+│       └── js/                # 26 JS modules (~13,500 lines)
+│           ├── core.js        # api(), navigateTo(), renderView(), showToast()
+│           ├── dashboard.js   # renderDashboard(), narrative banner
+│           ├── council.js     # renderCouncil(), renderCouncilDetail()
+│           ├── explore.js     # renderExplore(), participant selection, chat
+│           ├── stories.js     # renderStories(), reader, scene chat
+│           └── ...            # 21 additional feature modules
 │
 ├── council/
 │   ├── members/               # 9+ YAML profiles
@@ -392,10 +435,10 @@ jericho/
 │   ├── exploration/           # Exploration scene metadata
 │   └── stories/               # ST-XXXX.json story files
 │
-├── tests/                     # 2,813+ tests (pytest)
-│   ├── conftest.py            # Shared fixtures
+├── tests/                     # 3,072 tests (pytest)
+│   ├── conftest.py            # Shared fixtures & manager cache invalidation
 │   ├── test_integration.py    # Cross-module integration tests
-│   └── test_*.py              # 47 per-module test suites
+│   └── test_*.py              # 52 per-module test suites
 │
 ├── features.json              # Feature backlog tracker (47 features)
 ├── progress_log.md            # Institutional memory (session history)
@@ -419,7 +462,7 @@ python -m pytest tests/ -q
 python -m pytest tests/ --cov=core --cov-report=term-missing
 ```
 
-The full suite of **2,813+ tests** should pass in approximately 70 seconds.
+The full suite of **3,072 tests** should pass in approximately 90 seconds.
 
 ---
 
