@@ -243,7 +243,7 @@ class TestExchange:
 
     def test_basic_exchange(self, agent_chat):
         self._create_active_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         rec, response = loop.run_until_complete(
             agent_chat.exchange("C-001", "Sage")
         )
@@ -253,7 +253,7 @@ class TestExchange:
 
     def test_records_messages(self, agent_chat):
         self._create_active_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(agent_chat.exchange("C-001", "Sage"))
         rec, _ = loop.run_until_complete(
             agent_chat.exchange("C-001", "Logic")
@@ -264,13 +264,13 @@ class TestExchange:
 
     def test_api_called(self, agent_chat, api_client):
         self._create_active_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(agent_chat.exchange("C-001", "Sage"))
         api_client.chat.assert_called_once()
 
     def test_memory_recorded(self, agent_chat, tmp_dirs):
         self._create_active_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
 
         with patch("core.agent_chat.AgentMemory") as MockMem:
             mock_mem_instance = MagicMock()
@@ -286,7 +286,7 @@ class TestExchange:
 
     def test_wrong_participant_raises(self, agent_chat):
         self._create_active_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         with pytest.raises(ChatValidationError) as exc_info:
             loop.run_until_complete(
                 agent_chat.exchange("C-001", "Spark")
@@ -296,7 +296,7 @@ class TestExchange:
     def test_closed_conversation_raises(self, agent_chat):
         self._create_active_convo(agent_chat)
         agent_chat.close_conversation("C-001")
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         with pytest.raises(ChatError) as exc_info:
             loop.run_until_complete(
                 agent_chat.exchange("C-001", "Sage")
@@ -304,7 +304,7 @@ class TestExchange:
         assert "closed" in str(exc_info.value)
 
     def test_not_found_raises(self, agent_chat):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         with pytest.raises(ChatNotFoundError):
             loop.run_until_complete(
                 agent_chat.exchange("MISSING", "Sage")
@@ -324,7 +324,7 @@ class TestConverse:
 
     def test_two_members_one_round(self, agent_chat):
         self._create_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         rec = loop.run_until_complete(
             agent_chat.converse("C-001", ["Sage", "Logic"], "Ethics")
         )
@@ -334,7 +334,7 @@ class TestConverse:
 
     def test_multiple_rounds(self, agent_chat):
         self._create_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         rec = loop.run_until_complete(
             agent_chat.converse("C-001", ["Sage", "Logic"], "Ethics", rounds=2)
         )
@@ -346,7 +346,7 @@ class TestConverse:
 
     def test_records_all_exchanges(self, agent_chat, tmp_dirs):
         self._create_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(
             agent_chat.converse("C-001", ["Sage", "Logic"], "Ethics")
         )
@@ -356,7 +356,7 @@ class TestConverse:
 
     def test_api_calls_match_members(self, agent_chat, api_client):
         self._create_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(
             agent_chat.converse("C-001", ["Sage", "Logic"], "Ethics", rounds=2)
         )
@@ -364,7 +364,7 @@ class TestConverse:
 
     def test_memory_per_member(self, agent_chat):
         self._create_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
 
         with patch("core.agent_chat.AgentMemory") as MockMem:
             mock_mem_instance = MagicMock()
@@ -378,7 +378,7 @@ class TestConverse:
     def test_closed_conversation_raises(self, agent_chat):
         self._create_convo(agent_chat)
         agent_chat.close_conversation("C-001")
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         with pytest.raises(ChatError) as exc_info:
             loop.run_until_complete(
                 agent_chat.converse("C-001", ["Sage", "Logic"], "Ethics")
@@ -387,7 +387,7 @@ class TestConverse:
 
     def test_empty_members_raises(self, agent_chat):
         self._create_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         with pytest.raises(ChatValidationError) as exc_info:
             loop.run_until_complete(
                 agent_chat.converse("C-001", [], "Ethics")
@@ -502,7 +502,7 @@ class TestQueryMethods:
         agent_chat.create_conversation(
             "C-001", "Test", participants=["Sage", "Logic"]
         )
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(
             agent_chat.converse("C-001", ["Sage", "Logic"], "Ethics")
         )
@@ -617,7 +617,7 @@ class TestEdgeCases:
             "C-001", "Long Test",
             participants=["Sage", "Logic"],
         )
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         rec, resp = loop.run_until_complete(
             agent_chat.exchange("C-001", "Sage")
         )
@@ -629,7 +629,7 @@ class TestEdgeCases:
             participants=["Sage", "Logic", "Spark"],
             topic="Ethics",
         )
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         rec = loop.run_until_complete(
             agent_chat.converse(
                 "C-001", ["Sage", "Logic", "Spark"], "Ethics"
@@ -646,7 +646,7 @@ class TestEdgeCases:
             participants=["Sage", "Logic"],
             topic="Test",
         )
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(
             agent_chat.converse("C-001", ["Sage", "Logic"], "Test")
         )
@@ -666,7 +666,7 @@ class TestEdgeCases:
         assert rec.closed_at == ""
 
         # Converse
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         rec = loop.run_until_complete(
             agent_chat.converse("C-001", ["Sage", "Logic"], "Ethics", rounds=2)
         )
@@ -698,7 +698,7 @@ class TestMemoryIntegration:
 
     def test_each_speaker_recorded(self, agent_chat):
         self._create_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
 
         with patch("core.agent_chat.AgentMemory") as MockMem:
             mock_mem_instance = MagicMock()
@@ -710,7 +710,7 @@ class TestMemoryIntegration:
 
     def test_both_sides_recorded(self, agent_chat):
         self._create_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
 
         member_names_used = []
         with patch("core.agent_chat.AgentMemory") as MockMem:
@@ -726,7 +726,7 @@ class TestMemoryIntegration:
 
     def test_memory_content(self, agent_chat):
         self._create_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
 
         with patch("core.agent_chat.AgentMemory") as MockMem:
             mock_mem_instance = MagicMock()
@@ -741,7 +741,7 @@ class TestMemoryIntegration:
 
     def test_session_id_in_memory(self, agent_chat):
         self._create_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
 
         with patch("core.agent_chat.AgentMemory") as MockMem:
             mock_mem_instance = MagicMock()
@@ -755,7 +755,7 @@ class TestMemoryIntegration:
 
     def test_memory_source(self, agent_chat):
         self._create_convo(agent_chat)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
 
         with patch("core.agent_chat.AgentMemory") as MockMem:
             mock_mem_instance = MagicMock()

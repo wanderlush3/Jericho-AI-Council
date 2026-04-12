@@ -496,5 +496,26 @@
             "F-041",
             "F-024"
         ]
+    },
+    {
+        "id": "F-045",
+        "title": "Council Session Unit Tests",
+        "description": "Add dedicated unit tests for core/council_session.py — verify session orchestration lifecycle, phase transitions, and prompt builders if not already covered by test_session.py or test_integration.py",
+        "status": "pending",
+        "dependencies": []
+    },
+    {
+        "id": "F-046",
+        "title": "Explore & Story Route Test Coverage",
+        "description": "Increase endpoint test coverage for core/routes/explore.py (31KB, 10 tests) and core/routes/stories.py (46KB, 29 tests) — the two largest route files with the thinnest test coverage. Focus on SSE streaming endpoints, chat flows, and error paths",
+        "status": "pending",
+        "dependencies": []
+    },
+    {
+        "id": "F-047",
+        "title": "Utils Edge-Case Tests",
+        "description": "Add dedicated unit tests for core/utils.py — cover atomic_write and atomic_append edge cases including concurrent writes, permission errors, empty content, and Unicode handling",
+        "status": "pending",
+        "dependencies": []
     }
 ]
