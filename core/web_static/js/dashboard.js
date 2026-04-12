@@ -227,7 +227,7 @@ async function _initNarrativeBanner() {
                 <span class="narrative-icon">${b.icon}</span>
                 <div class="narrative-content">
                     <div class="narrative-headline">${_escHtml(b.headline)}</div>
-                    <div class="narrative-body">${_escHtml(b.body)}</div>
+                    <div class="narrative-body">${_escHtml(_truncateToSentence(b.body, 2000))}</div>
                 </div>
             </div>`;
         if (counter) counter.textContent = (idx + 1) + ' / ' + bulletins.length;
@@ -249,6 +249,40 @@ async function _initNarrativeBanner() {
 
     renderBulletin(0);
     resetTimer();
+}
+
+/**
+ * Truncate text to a maximum character limit, ending at the last
+ * sentence boundary (. ! ?) before the limit. If no sentence boundary
+ * is found in the first 500 characters, falls back to the last space.
+ */
+function _truncateToSentence(text, maxLen) {
+    if (!text || text.length <= maxLen) return text;
+    // Search for the last sentence-ending punctuation within the limit
+    const slice = text.slice(0, maxLen);
+    // Find last '. ' or '! ' or '? ' or sentence-ender at end of slice
+    let lastSentenceEnd = -1;
+    for (let i = slice.length - 1; i >= 0; i--) {
+        const ch = slice[i];
+        if (ch === '.' || ch === '!' || ch === '?') {
+            // Accept if it's followed by a space, end of slice, or a quote
+            const next = slice[i + 1];
+            if (!next || next === ' ' || next === '"' || next === "'" || next === '\n') {
+                lastSentenceEnd = i + 1;
+                break;
+            }
+        }
+    }
+    if (lastSentenceEnd > 500) {
+        return slice.slice(0, lastSentenceEnd).trimEnd();
+    }
+    // Fallback: break at last space to avoid cutting a word
+    const lastSpace = slice.lastIndexOf(' ');
+    if (lastSpace > 500) {
+        return slice.slice(0, lastSpace).trimEnd() + '…';
+    }
+    // Final fallback: hard cut with ellipsis
+    return slice.trimEnd() + '…';
 }
 
 /** Minimal HTML escaper for bulletin text. */
