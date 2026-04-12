@@ -515,7 +515,7 @@
         "id": "F-047",
         "title": "Utils Edge-Case Tests",
         "description": "Add dedicated unit tests for core/utils.py — cover atomic_write and atomic_append edge cases including concurrent writes, permission errors, empty content, and Unicode handling",
-        "status": "pending",
+        "status": "completed",
         "dependencies": []
     }
 ]

@@ -3434,3 +3434,43 @@ Increase endpoint test coverage for the two largest route files with the thinnes
 2. `CONVERSATIONS_DIR` is imported lazily from `config.settings`. To mock it, patch `config.settings.CONVERSATIONS_DIR` — NOT the route module attribute.
 3. Valid scene types for ExplorationManager are `overview`, `feature`, `transition` — NOT `detail`.
 4. The `sw` CLI tool is NOT available. Use direct Python commands instead.
+
+---
+
+## Session — F-047: Utils Edge-Case Tests (2026-04-12)
+
+### Objective
+Add dedicated unit tests for `core/utils.py` — cover `atomic_write` and `atomic_append` edge cases including concurrent writes, permission errors, empty content, and Unicode handling.
+
+### Changes
+
+#### tests/test_utils.py (NEW) — 32 tests across 11 test classes
+
+| Test Class | Tests | Coverage |
+|---|---|---|
+| TestAtomicWriteBasic | 6 | Creates file, overwrite, nested dirs, no temp leftovers, empty content, multiline |
+| TestAtomicWriteUnicode | 4 | CJK/Arabic, emoji, mixed scripts, null/control chars |
+| TestAtomicWriteLargeContent | 2 | 1 MiB single file, 10K lines |
+| TestAtomicWriteErrors | 3 | Cleanup on write failure, cleanup on replace failure, preserves original on failure |
+| TestAtomicWriteConcurrent | 2 | 20-thread concurrent writes (no corruption), no temp file leftovers |
+| TestAtomicAppendBasic | 4 | Creates file, appends to existing, nested dirs, multiple appends |
+| TestAtomicAppendNewlines | 3 | Auto-adds newline, preserves existing newline, empty string append |
+| TestAtomicAppendUnicode | 2 | Unicode lines, emoji |
+| TestAtomicAppendConcurrent | 1 | 50-thread serialized appends (no data loss) |
+| TestAtomicAppendLarge | 2 | 512 KiB single line, 1000 small appends |
+| TestWriteAppendInteraction | 3 | Write-then-append, append-then-write replaces, empty-write-then-append |
+
+### Windows-Specific Notes
+- `\r` is excluded from control character tests — Python text-mode on Windows translates `\r` → `\n`
+- Concurrent `os.replace` tests tolerate `PermissionError` (Windows file-locking under contention)
+- Concurrent append test uses a threading lock to test logic without OS-level interleaving noise
+
+### Test Results
+- **3072 passed, 12 skipped** — zero regressions (+32 new tests)
+
+### Advice for Next Agent
+1. `core/utils.py` is only 39 lines — `atomic_write` and `atomic_append`. All other modules import from here (DRY refactor completed earlier).
+2. The concurrent write tests deliberately tolerate `PermissionError` on Windows — this is a known `os.replace` limitation, not a utils bug. On Linux, those errors will not occur.
+3. The `test_cleanup_on_write_failure` test uses a custom `exploding_fdopen` wrapper because `os.fdopen` can't be simply side-effected — `mkstemp` creates the fd before fdopen wraps it.
+4. The `sw` CLI tool is NOT available. Use direct Python commands instead.
+5. **All features F-001 through F-047 are now completed.** The backlog has no remaining `pending` features — new features need to be added to `features.json` before the next session.
