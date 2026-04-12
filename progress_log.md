@@ -3231,3 +3231,127 @@ Added per-participant response timing to the World Chat section, allowing human 
 2. The `response_time_ms` is server-side measured using `time.monotonic()` — it includes async I/O wait time for the LLM API call. The frontend live timer is client-side via `performance.now()` and will differ slightly due to network latency.
 3. The timer resets between participants in multi-member chats, so each agent's time is individually measured.
 4. If you need to add response time tracking to the non-streaming endpoints (`/api/chat/{chat_id}/send` and `/api/chat/{chat_id}/continue`), the same pattern can be applied there.
+
+---
+
+## Session: S-EVO-SYSPROMPT-00000001
+**Timestamp:** 2026-04-12 00:00:00
+**Agent ID:** Antigravity
+**Feature:** Evolution System Prompt Auto-Fill (F-013 Enhancement)
+**Status:** ✅ Complete
+
+### What Was Done
+Enhanced the evolution creation modal to support a streamlined workflow for updating the **system_prompt** of a character or council member. When the user selects `system_prompt_update` from the change type dropdown, the system now:
+
+1. **Auto-fills the field name** to `system_prompt`
+2. **Automatically loads the current system prompt** of the selected target (character or council member) into the "Old Value" textarea
+3. **Expands the textareas** to 8+ rows for comfortable prompt editing
+4. **Shows a "📋 Load Current System Prompt" button** for manual re-loading (e.g., after switching targets)
+
+### Files Modified
+
+#### `core/web_static/js/evolutions.js`
+- Added `_evoCharactersCache` and `_evoCouncilCache` module-level variables to store fetched entity data for auto-fill access
+- Added `onchange="onEvoChangeTypeSelect(this)"` to all change-type `<select>` elements (both initial row and dynamically added rows)
+- Added `evo-change-row-autofill` div with load button to each change row (hidden by default)
+- New function `onEvoChangeTypeSelect(selectEl)` — handles change type selection, auto-fills field name, toggles autofill UI, auto-loads prompt
+- New function `loadCurrentSystemPrompt(btn)` — reads the current target's system prompt from the cached data and populates the Old Value textarea
+
+#### `core/web_static/css/evolutions.css`
+- Added `.evo-change-row-autofill` styles — gradient background, flex layout, smooth animation
+- Added `.evo-load-prompt-btn` styles — pill-shaped button with cyan gradient accent
+
+### Design Decisions
+- **Cached data approach**: Entity data is fetched once when the modal opens and stored in module-level variables. This avoids redundant API calls when switching change types or clicking the load button.
+- **Auto-load on select**: When `system_prompt_update` is selected, the prompt loads immediately without requiring a button click, reducing friction. The button remains available for manual re-loading if the user switches targets.
+- **Textarea expansion**: Rows expand from 2 to 8+ rows when dealing with system prompts, which are typically multi-paragraph.
+
+### Test Results
+- **2859 passed, 6 failed (pre-existing), 12 skipped** — zero regressions
+
+### Advice for Next Agent
+1. The `_evoCharactersCache` and `_evoCouncilCache` are populated when `openCreateEvolutionModal` is called. If the user creates a new character while the modal is open, they would need to reopen the modal to see it.
+2. The `personality_update` change type also auto-fills the field name but does NOT show the load button — personality data is structured differently.
+3. The backend `_apply_change` method in `character_evolution.py` already handles `field_update` with `field_name="system_prompt"`, so no backend changes were needed.
+4. For council member evolutions, the system prompt update creates an evolution record but does not directly modify the YAML file — it creates an overlay. Direct YAML modification would require the `apply_evolution` flow for council members, which is not yet implemented.
+
+---
+
+## Session: S-UI-COUNCIL-EVO-BADGE
+**Timestamp:** 2026-04-12
+**Feature:** Council Page — Evolution Badge & LM Studio Provider Bubble
+**Status:** completed
+
+### Summary
+Enhanced the Council page UI with two improvements:
+1. **Evolution trait badge**: Council members with an active evolution overlay now display a distinctive purple "✦ {name} Evolution" bubble on both the card grid and detail views.
+2. **LM Studio provider badge**: Added `badge-lmstudio` CSS styling (amber color) so LM Studio members get a provider bubble matching the treatment that Mancer (cyan) and OpenRouter (indigo) already receive.
+
+### Files Modified
+
+#### `core/routes/council.py`
+- **List endpoint** (`/api/council`): Queries active evolution overlays for `council_member` target types and attaches `active_evolution: {evolution_id, name}` to each council member's response data.
+- **Detail endpoint** (`/api/council/{name}`): Same lookup for individual member detail views.
+- Both use try/except fallback so the feature degrades gracefully if the evolution system is unavailable.
+
+#### `core/web_static/css/badges.css`
+- Added `.badge-lmstudio` — amber background/text matching the existing provider badge pattern.
+- Added `.badge-evolution-trait` — distinctive purple gradient with border, glow, `✦` prefix character, and a subtle `evoTraitShimmer` animation for a premium feel.
+
+#### `core/web_static/js/council.js`
+- **Card grid** (`renderCouncil`): Renders the evolution trait badge below the member description if `active_evolution` is present.
+- **Detail view** (`renderCouncilDetail`): Shows the evolution trait badge under the description field.
+
+### Design Decisions
+- **Backend enrichment over frontend fetch**: Rather than making a separate API call from the frontend, we enriched the existing council endpoints with evolution data. This avoids an extra network roundtrip and keeps the frontend simple.
+- **Evolution badge uses a standalone class**: Instead of reusing the generic `badge()` helper, the evolution trait uses a dedicated `badge-evolution-trait` class with a gradient, border, and shimmer animation to make it visually distinct from status/provider badges.
+- **Graceful degradation**: If the evolution system fails (missing data dir, etc.), the council endpoints still return all member data — just without the `active_evolution` field.
+
+### Test Results
+- **2859 passed, 6 failed (pre-existing), 12 skipped** — zero regressions
+
+### Advice for Next Agent
+1. The council member evolution target_id convention is `CM-{MemberName}` (e.g., `CM-Araushnee`). This is set in `create_council_evolution()` in `character_evolution.py`.
+2. If no evolution overlay is active for a council member, the `active_evolution` field is simply absent from the API response — the frontend checks for its presence.
+3. The evolution badge text is `"{name} Evolution"` where `name` comes from the evolution record (e.g., "Brave" → "Brave Evolution"). It does NOT include the word "Evolution" in the data; the frontend appends it.
+
+---
+
+## Session: S-STORY-CHAT-00000001
+**Timestamp:** 2026-04-12 16:00:00
+**Feature:** `F-044` — Story Chat (Interactive Discussion within Scenes)
+**Status:** completed
+
+### Summary
+Added interactive conversational chat to the story system, mirroring the explore chat pattern. Council members and characters can discuss story scenes with a 5-round conversation limit.
+
+### Changes
+
+**Backend** (`core/routes/stories.py`):
+- Added 6 new endpoints: `GET .../chat/active`, `POST .../chat`, `POST .../inject-narration`, `POST .../send-stream`, `POST .../continue-stream`, `POST .../narrate-round`
+- Added 5 helper functions for chat instantiation, ID generation, and round tracking
+- Chat metadata stores `story_chat: true`, `story_id`, `chapter_id`, `scene_id`, and `story_round`
+- `narrate-round` generates LLM narration incorporating recent chat context, saves to scene, and injects into chat log
+- All SSE streams emit `message`, `done`, `error` events with round tracking and auto-close at limit
+
+**Frontend** (`core/web_static/js/stories.js`):
+- Added ~490 lines: chat state management, SSE streaming, bubble rendering, narration injection
+- 💬 Chat button in each scene's action bar
+- Chat section renders inline below scenes with message container, input bar, and controls
+- Controls: Send message, Continue Discussion, Narrate Next Round, End Chat
+- Round badge with amber/rose styling and auto-close behavior
+- Auto-creates chat and injects narration when Narrate is clicked with participants selected
+
+**CSS** (`core/web_static/css/stories.css`):
+- Added ~200 lines of chat styling: section card, round badge, system/narration bubbles, input bar, controls, responsive overrides
+
+### Test Results
+- **2826 passed, 12 skipped** — 1 pre-existing failure in test_registry.py (member count mismatch)
+- Zero regressions from story chat changes
+
+### Advice for Next Agent
+1. Story chat IDs use the prefix `STC-XXXX` and files are stored as `H-STC-XXXX.json` in `CONVERSATIONS_DIR`.
+2. Round tracking is in `chat.metadata.story_round`. The limit is `_STORY_CHAT_MAX_ROUNDS = 5` in `stories.py`.
+3. The `narrate-round` endpoint reuses `StoryManager.build_scene_narration_prompt` and appends recent chat messages as context for the LLM.
+4. Chat uses the existing `HumanChat` infrastructure from `human_chat.py` — no new data models were needed.
+5. The frontend state uses `window._storyChatId` and `window._storyChatSceneId` to track the active chat.
