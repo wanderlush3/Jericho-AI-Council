@@ -25,6 +25,7 @@ core/image_manager.py
 core/items.py
 core/laws.py
 core/locations.py
+core/manager_cache.py
 core/memory.py
 core/memory_influence.py
 core/narrative_engine.py
