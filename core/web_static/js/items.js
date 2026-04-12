@@ -78,11 +78,20 @@ async function renderItems() {
     const drafts = statusFilter('draft');
     const archived = statusFilter('archived');
 
-    const itemCard = (item) => `
+    const itemCard = (item) => {
+        const avatarHtml = item.primary_image_url
+            ? `<div class="item-avatar" style="background-image:url('${item.primary_image_url}')"></div>`
+            : `<div class="item-avatar item-avatar-placeholder"><span>?</span></div>`;
+
+        return `
         <div class="card proposal-card" onclick="navigateTo('items', '${item.id}')" style="cursor:pointer">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-                <h3 style="margin:0">${item.name}</h3>
-                <div style="display:flex;gap:var(--space-xs);align-items:center">
+            <div class="item-header">
+                ${avatarHtml}
+                <div class="item-header-text">
+                    <div class="item-name">${item.name}</div>
+                    <div class="item-author">by ${item.author} · v${item.version || 1}</div>
+                </div>
+                <div style="display:flex;gap:var(--space-xs);align-items:center;flex-wrap:wrap">
                     ${item.tier ? `<span class="badge badge-tier-${item.tier}" style="background:linear-gradient(135deg,hsl(${item.tier==='permanent'?'210,60%,50%':item.tier==='consumable'?'40,70%,50%':'0,55%,50%'}),hsl(${item.tier==='permanent'?'230,55%,45%':item.tier==='consumable'?'55,65%,45%':'15,50%,45%'}));font-size:0.7rem;padding:2px 8px">${item.tier.charAt(0).toUpperCase()+item.tier.slice(1)}</span>` : ''}
                     ${item.legality ? `<span class="badge" style="background:linear-gradient(135deg,${item.legality==='legal'?'hsl(150,55%,42%),hsl(160,50%,38%)':'hsl(0,60%,48%),hsl(10,55%,43%)'});font-size:0.7rem;padding:2px 8px">${item.legality.charAt(0).toUpperCase()+item.legality.slice(1)}</span>` : ''}
                     ${item.owner ? `<span class="badge store-owned-badge">Owned by ${escapeHtml(item.owner)}</span>` : ''}
@@ -96,9 +105,10 @@ async function renderItems() {
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:var(--space-sm);font-size:0.78rem;color:var(--text-muted)">
                 <span>📦 ${item.properties ? item.properties.length : 0} properties</span>
-                <span>by ${item.author} · ${formatDate(item.created_at)}</span>
+                <span>${formatDate(item.created_at)}</span>
             </div>
         </div>`;
+    };
 
     $main().innerHTML = `
         <div class="view-enter">

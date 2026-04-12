@@ -20,9 +20,29 @@ def api_items_list(
 ) -> list[dict[str, Any]]:
     """List items with optional filters."""
     from core.items import ItemManager
+    from core.image_manager import ImageManager
     mgr = ItemManager()
+    imgr = ImageManager()
     results = mgr.list_items(status=status, author=author, tag=tag)
-    return [item.to_dict() for item in results]
+    out = []
+    for item in results:
+        d = item.to_dict()
+        # Attach primary image URL if available
+        primary_url = ""
+        try:
+            images = imgr.list_images("item", item.id)
+            primary = next(
+                (img for img in images if img.is_primary), None,
+            )
+            if primary:
+                primary_url = f"/api/images/file/{primary.id}"
+            elif images:
+                primary_url = f"/api/images/file/{images[0].id}"
+        except Exception:
+            pass
+        d["primary_image_url"] = primary_url
+        out.append(d)
+    return out
 
 @router.get("/api/items/{item_id}")
 def api_item_detail(item_id: str) -> dict[str, Any]:
