@@ -487,3 +487,40 @@
     color: var(--text-muted);
     margin-top: 2px;
 }
+
+/* ── Change Type Auto-Fill ───────────────────────────────────── */
+
+.evo-change-row-autofill {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.06), rgba(99, 102, 241, 0.06));
+    border: 1px solid rgba(6, 182, 212, 0.15);
+    border-radius: var(--radius-md);
+    animation: fadeIn 0.2s ease-out;
+}
+
+.evo-load-prompt-btn {
+    white-space: nowrap;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(99, 102, 241, 0.12));
+    border: 1px solid rgba(6, 182, 212, 0.25);
+    color: var(--accent-cyan, #06b6d4);
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.evo-load-prompt-btn:hover {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(99, 102, 241, 0.2));
+    border-color: rgba(6, 182, 212, 0.4);
+    box-shadow: 0 2px 8px rgba(6, 182, 212, 0.15);
+}
+
+.evo-change-row-autofill .evo-form-hint {
+    margin: 0;
+}

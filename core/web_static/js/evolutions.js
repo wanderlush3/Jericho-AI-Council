@@ -370,6 +370,10 @@ async function executeRollbackToVersion(targetId) {
 
 // ── Create Evolution Modal ──────────────────────────────────────
 
+// Module-level cache for entity data used by change-type auto-fill
+let _evoCharactersCache = [];
+let _evoCouncilCache = [];
+
 async function openCreateEvolutionModal(prefillProposalId) {
     const existing = document.getElementById('evo-create-modal');
     if (existing) existing.remove();
@@ -399,6 +403,10 @@ async function openCreateEvolutionModal(prefillProposalId) {
     let characters = [], council = [];
     try { characters = await api('/api/characters?status=active'); } catch { /* empty */ }
     try { council = await api('/api/council'); } catch { /* empty */ }
+
+    // Cache for auto-fill access
+    _evoCharactersCache = characters;
+    _evoCouncilCache = council;
 
     const charOptions = characters.map(c =>
         `<option value="${c.id}">${escapeHtml(c.name)} (${c.id})</option>`
@@ -457,8 +465,12 @@ async function openCreateEvolutionModal(prefillProposalId) {
                         <div class="evo-change-row" data-idx="0">
                             <button class="evo-change-remove" onclick="removeEvoChangeRow(this)" title="Remove">✕</button>
                             <div class="evo-change-row-header">
-                                <select class="settings-input evo-ct-select">${changeTypeOptions}</select>
+                                <select class="settings-input evo-ct-select" onchange="onEvoChangeTypeSelect(this)">${changeTypeOptions}</select>
                                 <input class="settings-input evo-fn-input" placeholder="Field name (e.g. courage, backstory)" />
+                            </div>
+                            <div class="evo-change-row-autofill" style="display:none">
+                                <button class="btn btn-sm evo-load-prompt-btn" type="button" onclick="loadCurrentSystemPrompt(this)">📋 Load Current System Prompt</button>
+                                <span class="evo-form-hint">Auto-fills Old Value with the selected target's current system prompt</span>
                             </div>
                             <div class="evo-change-row-fields">
                                 <div>
@@ -517,8 +529,12 @@ function addEvoChangeRow() {
     row.innerHTML = `
         <button class="evo-change-remove" onclick="removeEvoChangeRow(this)" title="Remove">✕</button>
         <div class="evo-change-row-header">
-            <select class="settings-input evo-ct-select">${changeTypeOptions}</select>
+            <select class="settings-input evo-ct-select" onchange="onEvoChangeTypeSelect(this)">${changeTypeOptions}</select>
             <input class="settings-input evo-fn-input" placeholder="Field name" />
+        </div>
+        <div class="evo-change-row-autofill" style="display:none">
+            <button class="btn btn-sm evo-load-prompt-btn" type="button" onclick="loadCurrentSystemPrompt(this)">📋 Load Current System Prompt</button>
+            <span class="evo-form-hint">Auto-fills Old Value with the selected target's current system prompt</span>
         </div>
         <div class="evo-change-row-fields">
             <div>
@@ -544,6 +560,79 @@ function removeEvoChangeRow(btn) {
         return;
     }
     btn.closest('.evo-change-row').remove();
+}
+
+// ── Change Type Auto-Fill ───────────────────────────────────────
+
+function onEvoChangeTypeSelect(selectEl) {
+    const row = selectEl.closest('.evo-change-row');
+    const ct = selectEl.value;
+    const autofillDiv = row.querySelector('.evo-change-row-autofill');
+    const fnInput = row.querySelector('.evo-fn-input');
+    const ovInput = row.querySelector('.evo-ov-input');
+    const nvInput = row.querySelector('.evo-nv-input');
+
+    if (ct === 'system_prompt_update') {
+        // Auto-set field name and show the load button
+        fnInput.value = 'system_prompt';
+        if (autofillDiv) autofillDiv.style.display = '';
+        // Expand textareas for system prompt editing
+        ovInput.rows = 8;
+        nvInput.rows = 8;
+        // Auto-load immediately
+        loadCurrentSystemPrompt(autofillDiv ? autofillDiv.querySelector('.evo-load-prompt-btn') : null);
+    } else if (ct === 'personality_update') {
+        fnInput.value = 'personality';
+        if (autofillDiv) autofillDiv.style.display = 'none';
+        ovInput.rows = 2;
+        nvInput.rows = 2;
+    } else if (ct === 'field_update') {
+        // Show auto-fill for field_update too (in case they type system_prompt manually)
+        if (autofillDiv) autofillDiv.style.display = 'none';
+        ovInput.rows = 2;
+        nvInput.rows = 2;
+    } else {
+        if (autofillDiv) autofillDiv.style.display = 'none';
+        ovInput.rows = 2;
+        nvInput.rows = 2;
+    }
+}
+
+function loadCurrentSystemPrompt(btn) {
+    const targetType = document.querySelector('input[name="evo-target-type"]:checked')?.value || 'character';
+    let currentPrompt = '';
+
+    if (targetType === 'council_member') {
+        const memberName = document.getElementById('evo-target-council')?.value;
+        if (memberName) {
+            const member = _evoCouncilCache.find(m => m.name === memberName);
+            if (member) currentPrompt = member.system_prompt || '';
+        }
+    } else {
+        const charId = document.getElementById('evo-target-char')?.value;
+        if (charId) {
+            const char = _evoCharactersCache.find(c => c.id === charId);
+            if (char) currentPrompt = char.system_prompt || '';
+        }
+    }
+
+    if (!currentPrompt) {
+        showToast('No system prompt found for the selected target.', true);
+        return;
+    }
+
+    // Find the row and set the old value
+    if (btn) {
+        const row = btn.closest('.evo-change-row');
+        if (row) {
+            const ovInput = row.querySelector('.evo-ov-input');
+            if (ovInput) {
+                ovInput.value = currentPrompt;
+                ovInput.rows = Math.max(8, Math.min(20, currentPrompt.split('\n').length + 2));
+                showToast('Current system prompt loaded into Old Value ✅');
+            }
+        }
+    }
 }
 
 async function submitCreateEvolution() {
