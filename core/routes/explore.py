@@ -5,9 +5,13 @@ Jericho — Explore Routes
 from __future__ import annotations
 
 
+import json as json_module
+import time
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
+from starlette.responses import StreamingResponse
 
 from core.routes._helpers import (
     _get_pipeline,
@@ -566,5 +570,344 @@ def api_explore_add_scene(
     result["image_url"] = f"/api/images/file/{scene.image_id}"
     return result
 
-# ── Stories (F-041) ──────────────────────────────────────
+# ── Explore Chat (Location Discussion) ────────────────────
 
+def _make_explore_chat() -> "HumanChat":
+    """Instantiate HumanChat for explore chat sessions."""
+    from core.routes.chat import _make_human_chat
+    return _make_human_chat()
+
+
+def _next_explore_chat_id() -> str:
+    """Generate the next sequential EC-XXXX chat ID."""
+    from config.settings import CONVERSATIONS_DIR
+    existing = sorted(CONVERSATIONS_DIR.glob("H-EC-*.json"))
+    if not existing:
+        return "EC-0001"
+    last = existing[-1].stem  # e.g. "H-EC-0042"
+    num = int(last.split("-")[-1]) + 1
+    return f"EC-{num:04d}"
+
+
+@router.get("/api/explore/{location_id}/chat/active")
+def api_explore_chat_active(location_id: str) -> dict[str, Any]:
+    """Find the active (non-closed) explore chat for a location.
+
+    Returns: {"chat_id": "EC-XXXX", "chat": {...}} or {"chat_id": null}
+    """
+    hc = _make_explore_chat()
+    chats = hc.list_chats(closed=False)
+    for c in chats:
+        meta = c.metadata or {}
+        if (
+            meta.get("explore_location_id") == location_id
+            and not c.closed_at
+        ):
+            return {"chat_id": c.chat_id, "chat": c.to_dict()}
+    return {"chat_id": None}
+
+
+@router.post("/api/explore/{location_id}/chat")
+def api_explore_chat_create(
+    location_id: str,
+    body: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Create an explore chat session for a location.
+
+    Body: {
+        "participants": [
+            {"id": "sage", "type": "council"},
+            {"id": "CH-0001", "type": "character"}
+        ]
+    }
+
+    Returns: the created chat record.
+    """
+    from core.locations import LocationManager, LocationNotFoundError
+    from core.human_chat import HumanChatValidationError
+
+    body = body or {}
+    participants = body.get("participants", [])
+
+    lmgr = LocationManager()
+    try:
+        loc = lmgr.get(location_id)
+    except LocationNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Location '{location_id}' not found.",
+        )
+
+    if not participants:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one participant is required.",
+        )
+
+    # Separate council members and characters
+    council_ids = [
+        p["id"] for p in participants if p.get("type") == "council"
+    ]
+    character_ids = [
+        p["id"] for p in participants if p.get("type") == "character"
+    ]
+
+    # Need at least one council member or character
+    first_member = ""
+    first_character = ""
+    if council_ids:
+        first_member = council_ids[0]
+    if character_ids:
+        first_character = character_ids[0]
+
+    hc = _make_explore_chat()
+    chat_id = _next_explore_chat_id()
+
+    try:
+        rec = hc.create_chat(
+            chat_id,
+            title=f"Exploring {loc.name}",
+            member_name=first_member,
+            character_id=first_character,
+            topic=f"Exploring location: {loc.name}",
+            metadata={
+                "explore_location_id": location_id,
+                "location_name": loc.name,
+                "location_description": loc.description or "",
+                "location_lore": loc.lore or "",
+            },
+        )
+    except HumanChatValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    # Add remaining council members beyond the first
+    for cid in council_ids[1:]:
+        try:
+            rec = hc.add_council_member(chat_id, cid)
+        except Exception:
+            pass  # skip invalid, non-blocking
+
+    # Add remaining characters beyond the first
+    for chid in character_ids[1 if not first_member else 0:]:
+        if chid == first_character:
+            continue
+        try:
+            rec = hc.add_character(chat_id, chid)
+        except Exception:
+            pass  # skip invalid, non-blocking
+
+    return rec.to_dict()
+
+
+@router.post("/api/explore/{location_id}/chat/{chat_id}/inject-scene")
+async def api_explore_chat_inject_scene(
+    location_id: str,
+    chat_id: str,
+    body: dict[str, Any] | None = None,
+):
+    """Inject the Look Around prompt into the chat and trigger discussion.
+
+    Body: {
+        "prompt_text": "...",   // the prompt used for scene generation
+        "image_url": "..."      // optional: URL of the generated image
+    }
+
+    Returns: SSE stream of participant responses, same format as chat.
+    """
+    from core.human_chat import HumanChatNotFoundError, HumanChatError
+
+    body = body or {}
+    prompt_text = (body.get("prompt_text") or "").strip()
+    image_url = (body.get("image_url") or "").strip()
+
+    if not prompt_text:
+        raise HTTPException(
+            status_code=400,
+            detail="'prompt_text' is required.",
+        )
+
+    async def event_generator():
+        try:
+            hc = _make_explore_chat()
+
+            # Inject the scene description as a narrator message
+            narrator_content = f"🌍 **Scene Description:**\n\n{prompt_text}"
+            if image_url:
+                narrator_content += f"\n\n![Scene]({image_url})"
+
+            hc.send_human_message(
+                chat_id,
+                narrator_content,
+                metadata={
+                    "type": "scene_inject",
+                    "location_id": location_id,
+                    "image_url": image_url,
+                },
+            )
+
+            # Auto-resume if paused
+            rec = hc.get(chat_id)
+            if rec.paused:
+                hc.resume_chat(chat_id)
+
+            # Stream participant responses
+            t_start = time.monotonic()
+            async for member_name, response, record in hc.get_agent_response_streaming(chat_id):
+                t_end = time.monotonic()
+                response_time_ms = round((t_end - t_start) * 1000)
+                content_text = response.content or ""
+                event_data = json_module.dumps({
+                    "speaker": member_name,
+                    "content": content_text,
+                    "model": response.model,
+                    "provider": response.provider,
+                    "response_time_ms": response_time_ms,
+                })
+                yield f"event: message\ndata: {event_data}\n\n"
+                t_start = time.monotonic()
+
+            # Send final state
+            final_record = hc.get(chat_id)
+            done_data = json_module.dumps({"chat": final_record.to_dict()})
+            yield f"event: done\ndata: {done_data}\n\n"
+
+        except HumanChatNotFoundError:
+            err = json_module.dumps({"detail": f"Chat '{chat_id}' not found."})
+            yield f"event: error\ndata: {err}\n\n"
+        except (HumanChatError, Exception) as exc:
+            err = json_module.dumps({"detail": str(exc)})
+            yield f"event: error\ndata: {err}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.post("/api/explore/{location_id}/chat/{chat_id}/send-stream")
+async def api_explore_chat_send_stream(
+    location_id: str,
+    chat_id: str,
+    body: dict[str, Any],
+):
+    """Send a human message in the explore chat and stream responses.
+
+    Body: {"content": "..."}
+
+    Returns: SSE stream of participant responses.
+    """
+    from core.human_chat import HumanChatNotFoundError, HumanChatError
+
+    content = (body.get("content") or "").strip()
+    if not content:
+        raise HTTPException(
+            status_code=400,
+            detail="'content' is required.",
+        )
+
+    async def event_generator():
+        try:
+            hc = _make_explore_chat()
+
+            # Auto-resume if paused
+            rec = hc.get(chat_id)
+            if rec.paused:
+                hc.resume_chat(chat_id)
+
+            hc.send_human_message(chat_id, content)
+
+            t_start = time.monotonic()
+            async for member_name, response, record in hc.get_agent_response_streaming(chat_id):
+                t_end = time.monotonic()
+                response_time_ms = round((t_end - t_start) * 1000)
+                content_text = response.content or ""
+                event_data = json_module.dumps({
+                    "speaker": member_name,
+                    "content": content_text,
+                    "model": response.model,
+                    "provider": response.provider,
+                    "response_time_ms": response_time_ms,
+                })
+                yield f"event: message\ndata: {event_data}\n\n"
+                t_start = time.monotonic()
+
+            final_record = hc.get(chat_id)
+            done_data = json_module.dumps({"chat": final_record.to_dict()})
+            yield f"event: done\ndata: {done_data}\n\n"
+
+        except HumanChatNotFoundError:
+            err = json_module.dumps({"detail": f"Chat '{chat_id}' not found."})
+            yield f"event: error\ndata: {err}\n\n"
+        except (HumanChatError, Exception) as exc:
+            err = json_module.dumps({"detail": str(exc)})
+            yield f"event: error\ndata: {err}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.post("/api/explore/{location_id}/chat/{chat_id}/continue-stream")
+async def api_explore_chat_continue_stream(
+    location_id: str,
+    chat_id: str,
+):
+    """Trigger one round of AI-to-AI discussion in explore chat.
+
+    Returns: SSE stream of participant responses.
+    """
+    from core.human_chat import HumanChatNotFoundError, HumanChatError
+
+    async def event_generator():
+        try:
+            hc = _make_explore_chat()
+
+            t_start = time.monotonic()
+            async for member_name, response, record in hc.continue_conversation_streaming(chat_id):
+                t_end = time.monotonic()
+                response_time_ms = round((t_end - t_start) * 1000)
+                content_text = response.content or ""
+                event_data = json_module.dumps({
+                    "speaker": member_name,
+                    "content": content_text,
+                    "model": response.model,
+                    "provider": response.provider,
+                    "response_time_ms": response_time_ms,
+                })
+                yield f"event: message\ndata: {event_data}\n\n"
+                t_start = time.monotonic()
+
+            final_record = hc.get(chat_id)
+            done_data = json_module.dumps({"chat": final_record.to_dict()})
+            yield f"event: done\ndata: {done_data}\n\n"
+
+        except HumanChatNotFoundError:
+            err = json_module.dumps({"detail": f"Chat '{chat_id}' not found."})
+            yield f"event: error\ndata: {err}\n\n"
+        except (HumanChatError, Exception) as exc:
+            err = json_module.dumps({"detail": str(exc)})
+            yield f"event: error\ndata: {err}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+# ── Stories (F-041) ──────────────────────────────────────

@@ -208,6 +208,25 @@ async function renderExploreLocation(locationId) {
                 }
             </div>
 
+            <div class="explore-section explore-chat-section" id="explore-chat-section">
+                <div class="explore-section-header">
+                    <h4>💬 Location Discussion</h4>
+                    <div class="explore-chat-controls" id="explore-chat-controls"></div>
+                </div>
+                <div class="explore-chat-messages" id="explore-chat-messages">
+                    <div class="chat-empty">Select participants above and click <strong>"Look Around"</strong> to start a discussion about this location.</div>
+                </div>
+                <div class="explore-chat-input-bar" id="explore-chat-input-bar" style="display:none">
+                    <input id="explore-chat-input" class="chat-input" type="text"
+                           placeholder="Type your message…" autocomplete="off"
+                           onkeydown="if(event.key==='Enter')sendExploreChatMessage('${locationId}')" />
+                    <button class="btn btn-primary chat-send-btn" id="explore-chat-send-btn"
+                            onclick="sendExploreChatMessage('${locationId}')">
+                        Send ➤
+                    </button>
+                </div>
+            </div>
+
             ${navHtml}
         </div>`;
 
@@ -215,6 +234,12 @@ async function renderExploreLocation(locationId) {
     window._exploreScenes = data.scenes || [];
     // F-042: Reset participant selections
     window._exploreParticipants = [];
+    // Explore chat state
+    window._exploreChatId = null;
+    window._exploreChatAvatarMap = {};
+
+    // Check if there's an active explore chat for this location
+    _loadActiveExploreChat(locationId);
 }
 
 function _buildExploreNavPanel(nav) {
@@ -331,6 +356,8 @@ async function exploreLookAround(locationId) {
 
     // F-042: Gather selected participants
     const participants = getSelectedParticipants();
+    // Save for chat creation (poll callback runs after page re-render resets checkboxes)
+    window._exploreSavedParticipants = participants;
 
     try {
         const resp = await fetch(`/api/explore/${encodeURIComponent(locationId)}/look-around`, {
@@ -379,7 +406,9 @@ async function _pollExploreGeneration(jobId, locationId, fillEl, statusEl) {
                 showToast('Scene generated! 🎨');
 
                 // Auto-add the scene to this location
+                let imageUrl = '';
                 if (data.image_id) {
+                    imageUrl = `/api/images/file/${data.image_id}`;
                     try {
                         await fetch(`/api/explore/${encodeURIComponent(locationId)}/scenes`, {
                             method: 'POST',
@@ -393,8 +422,16 @@ async function _pollExploreGeneration(jobId, locationId, fillEl, statusEl) {
                     } catch { /* scene add failed, image still exists */ }
                 }
 
-                // Refresh the explore page
-                setTimeout(() => renderExploreLocation(locationId), 500);
+                // Participants already saved in exploreLookAround() above
+
+                // Refresh the explore page to show new scene
+                await renderExploreLocation(locationId);
+
+                // Inject the scene prompt into explore chat
+                const promptText = data.prompt_positive || data.message || '';
+                if (promptText) {
+                    await _initExploreChatAndInject(locationId, promptText, imageUrl);
+                }
                 return;
             }
 
@@ -491,6 +528,486 @@ async function deleteExploreScene(locationId, sceneId) {
     }
 }
 
+
+/* ── Explore Chat Functions ─────────────────────────────────── */
+
+/**
+ * Check for and load an active explore chat for this location.
+ */
+async function _loadActiveExploreChat(locationId) {
+    try {
+        const data = await api(`/api/explore/${encodeURIComponent(locationId)}/chat/active`);
+        if (data.chat_id && data.chat) {
+            window._exploreChatId = data.chat_id;
+            _showExploreChatPanel(data.chat);
+        }
+    } catch { /* no active chat, that's fine */ }
+}
+
+/**
+ * Build avatar map from available participants for explore chat.
+ */
+async function _buildExploreChatAvatarMap() {
+    if (Object.keys(window._exploreChatAvatarMap || {}).length > 0) return;
+    try {
+        const participants = await api('/api/participants/available');
+        const map = {};
+        participants.forEach(p => {
+            if (p.avatar_url) map[p.name.toLowerCase()] = p.avatar_url;
+        });
+        window._exploreChatAvatarMap = map;
+    } catch { /* non-blocking */ }
+}
+
+/**
+ * Create explore chat (if needed) and inject the scene prompt.
+ */
+async function _initExploreChatAndInject(locationId, promptText, imageUrl) {
+    // Ensure avatar map is loaded
+    await _buildExploreChatAvatarMap();
+
+    // Create chat if we don't have one
+    if (!window._exploreChatId) {
+        // Use saved participants from before the re-render, or try current checkboxes
+        const participants = (window._exploreSavedParticipants && window._exploreSavedParticipants.length)
+            ? window._exploreSavedParticipants
+            : getSelectedParticipants();
+        // Clear saved participants after use
+        window._exploreSavedParticipants = null;
+
+        if (!participants.length) {
+            // No participants selected, skip chat
+            return;
+        }
+        try {
+            const chatData = await fetch(`/api/explore/${encodeURIComponent(locationId)}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ participants }),
+            }).then(r => { if (!r.ok) throw new Error('Failed to create chat'); return r.json(); });
+            window._exploreChatId = chatData.chat_id;
+        } catch (err) {
+            showToast(`Chat init error: ${err.message}`, true);
+            return;
+        }
+    }
+
+    const chatId = window._exploreChatId;
+    const inputBar = document.getElementById('explore-chat-input-bar');
+    if (inputBar) inputBar.style.display = 'flex';
+
+    const msgContainer = document.getElementById('explore-chat-messages');
+    if (!msgContainer) return;
+
+    // Clear empty state
+    const emptyEl = msgContainer.querySelector('.chat-empty');
+    if (emptyEl) emptyEl.remove();
+
+    // Add narrator scene inject bubble
+    _appendExploreSystemBubble(msgContainer, promptText, imageUrl);
+
+    // Show typing indicator
+    const typingEl = document.createElement('div');
+    typingEl.className = 'chat-message chat-bubble-agent chat-typing';
+    typingEl.innerHTML = `<div class="chat-msg-body"><div class="chat-msg-header"><span class="chat-msg-speaker">Participants discussing…</span></div><div class="chat-typing-dots"><span></span><span></span><span></span></div></div>`;
+    msgContainer.appendChild(typingEl);
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+
+    // Stream participant responses via inject-scene endpoint
+    try {
+        const resp = await fetch(`/api/explore/${encodeURIComponent(locationId)}/chat/${encodeURIComponent(chatId)}/inject-scene`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt_text: promptText, image_url: imageUrl }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Inject failed' }));
+            throw new Error(err.detail);
+        }
+
+        if (typingEl.parentNode) typingEl.remove();
+
+        let responseTimer = startResponseTimer();
+        msgContainer.appendChild(responseTimer.el);
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            const parts = buffer.split('\n\n');
+            buffer = parts.pop();
+
+            for (const part of parts) {
+                if (!part.trim()) continue;
+                const eventMatch = part.match(/^event:\s*(.+)$/m);
+                const dataMatch = part.match(/^data:\s*(.+)$/m);
+                if (!eventMatch || !dataMatch) continue;
+
+                const eventType = eventMatch[1].trim();
+                const data = JSON.parse(dataMatch[1]);
+
+                if (eventType === 'message') {
+                    responseTimer.stop();
+                    const avatarUrl = window._exploreChatAvatarMap[data.speaker.toLowerCase()];
+                    _appendExploreChatBubble(msgContainer, data.speaker, data.content, avatarUrl, data.response_time_ms);
+                    responseTimer = startResponseTimer();
+                    msgContainer.appendChild(responseTimer.el);
+                    msgContainer.scrollTop = msgContainer.scrollHeight;
+                } else if (eventType === 'done') {
+                    responseTimer.stop();
+                    _updateExploreChatControls(locationId, chatId);
+                    return;
+                } else if (eventType === 'error') {
+                    responseTimer.stop();
+                    throw new Error(data.detail);
+                }
+            }
+        }
+        responseTimer.stop();
+    } catch (err) {
+        if (typingEl.parentNode) typingEl.remove();
+        showToast(`Chat error: ${err.message}`, true);
+    }
+}
+
+/**
+ * Show the explore chat panel with existing messages.
+ */
+function _showExploreChatPanel(chatData) {
+    const chatSection = document.getElementById('explore-chat-section');
+    if (!chatSection) return;
+
+    // Show the input bar for active chat
+    const inputBar = document.getElementById('explore-chat-input-bar');
+    if (inputBar) inputBar.style.display = 'flex';
+
+    _buildExploreChatAvatarMap();
+
+    const msgContainer = document.getElementById('explore-chat-messages');
+    if (!msgContainer) return;
+
+    const messages = chatData.messages || [];
+    if (messages.length === 0) return;
+
+    // Clear empty state
+    msgContainer.innerHTML = '';
+
+    messages.forEach(m => {
+        const isHuman = m.role === 'human';
+        const meta = m.metadata || {};
+
+        if (meta.type === 'scene_inject') {
+            // Render as narrator/system bubble
+            const promptText = m.content.replace(/^🌍 \*\*Scene Description:\*\*\n\n/, '');
+            const imageUrl = meta.image_url || '';
+            _appendExploreSystemBubble(msgContainer, promptText, imageUrl);
+            return;
+        }
+
+        if (isHuman) {
+            _appendExploreHumanBubble(msgContainer, m.content);
+        } else {
+            const avatarUrl = (window._exploreChatAvatarMap || {})[m.speaker?.toLowerCase()];
+            _appendExploreChatBubble(msgContainer, m.speaker || 'Agent', m.content, avatarUrl);
+        }
+    });
+
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+
+    const locationId = chatData.metadata?.explore_location_id;
+    if (locationId) {
+        _updateExploreChatControls(locationId, chatData.chat_id);
+    }
+}
+
+/**
+ * Append a narrator/system message bubble for scene injection.
+ */
+function _appendExploreSystemBubble(container, promptText, imageUrl) {
+    const bubble = document.createElement('div');
+    bubble.className = 'explore-chat-system-msg';
+    let html = `<div class="explore-chat-system-icon">🌍</div><div class="explore-chat-system-body">`;
+    html += `<div class="explore-chat-system-label">Scene Description</div>`;
+    html += `<div class="explore-chat-system-text">${renderMarkdown(promptText)}</div>`;
+    if (imageUrl) {
+        html += `<img class="explore-chat-system-img" src="${imageUrl}" alt="Generated scene" />`;
+    }
+    html += '</div>';
+    bubble.innerHTML = html;
+    container.appendChild(bubble);
+    container.scrollTop = container.scrollHeight;
+}
+
+/**
+ * Append an agent response bubble (explore chat version).
+ */
+function _appendExploreChatBubble(container, speaker, content, avatarUrl, responseTimeMs) {
+    if (!container) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-message chat-bubble-agent';
+    const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const responseTimeBadge = (responseTimeMs != null)
+        ? `<span class="chat-response-time" title="Response time">${formatResponseTime(responseTimeMs)}</span>`
+        : '';
+    const avatarHtml = avatarUrl
+        ? `<div class="member-avatar" style="background:url('${avatarUrl}') center/cover no-repeat;width:36px;height:36px;border-radius:50%"></div>`
+        : memberAvatar(speaker, 0);
+    bubble.innerHTML = `
+        <div class="chat-msg-avatar">${avatarHtml}</div>
+        <div class="chat-msg-body">
+            <div class="chat-msg-header">
+                <span class="chat-msg-speaker">${escapeHtml(speaker)}</span>
+                <span class="chat-msg-time">${time}${responseTimeBadge}</span>
+            </div>
+            <div class="chat-msg-content">${renderMarkdown(content)}</div>
+        </div>`;
+    container.appendChild(bubble);
+    container.scrollTop = container.scrollHeight;
+}
+
+/**
+ * Append a human message bubble.
+ */
+function _appendExploreHumanBubble(container, content) {
+    if (!container) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-message chat-bubble-human';
+    const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    bubble.innerHTML = `
+        <div class="chat-msg-body">
+            <div class="chat-msg-header">
+                <span class="chat-msg-speaker">You</span>
+                <span class="chat-msg-time">${time}</span>
+            </div>
+            <div class="chat-msg-content">${renderMarkdown(content)}</div>
+        </div>`;
+    container.appendChild(bubble);
+    container.scrollTop = container.scrollHeight;
+}
+
+/**
+ * Update the explore chat header controls (continue/pause buttons).
+ */
+function _updateExploreChatControls(locationId, chatId) {
+    const controls = document.getElementById('explore-chat-controls');
+    if (!controls) return;
+    controls.innerHTML = `
+        <button class="btn btn-primary btn-sm" id="explore-chat-continue-btn" onclick="continueExploreChat('${locationId}', '${chatId}')">
+            🔄 Continue Discussion
+        </button>
+        <button class="btn btn-danger-subtle btn-sm" onclick="closeExploreChat('${locationId}', '${chatId}')" title="End chat">
+            End Chat
+        </button>
+    `;
+}
+
+/**
+ * Send a human message in the explore chat.
+ */
+async function sendExploreChatMessage(locationId) {
+    const chatId = window._exploreChatId;
+    if (!chatId) {
+        showToast('No active chat. Generate a scene first!', true);
+        return;
+    }
+    const input = document.getElementById('explore-chat-input');
+    const btn = document.getElementById('explore-chat-send-btn');
+    const content = input.value.trim();
+    if (!content) { input.focus(); return; }
+
+    input.disabled = true;
+    btn.disabled = true;
+    btn.textContent = '⏳ Thinking…';
+
+    const msgContainer = document.getElementById('explore-chat-messages');
+
+    // Immediately show human bubble
+    _appendExploreHumanBubble(msgContainer, content);
+    input.value = '';
+
+    // Show typing indicator
+    const typingEl = document.createElement('div');
+    typingEl.className = 'chat-message chat-bubble-agent chat-typing';
+    typingEl.innerHTML = `<div class="chat-msg-body"><div class="chat-typing-dots"><span></span><span></span><span></span></div></div>`;
+    msgContainer.appendChild(typingEl);
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+
+    try {
+        const resp = await fetch(`/api/explore/${encodeURIComponent(locationId)}/chat/${encodeURIComponent(chatId)}/send-stream`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Send failed' }));
+            throw new Error(err.detail);
+        }
+
+        if (typingEl.parentNode) typingEl.remove();
+
+        let responseTimer = startResponseTimer();
+        msgContainer.appendChild(responseTimer.el);
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            const parts = buffer.split('\n\n');
+            buffer = parts.pop();
+
+            for (const part of parts) {
+                if (!part.trim()) continue;
+                const eventMatch = part.match(/^event:\s*(.+)$/m);
+                const dataMatch = part.match(/^data:\s*(.+)$/m);
+                if (!eventMatch || !dataMatch) continue;
+
+                const eventType = eventMatch[1].trim();
+                const data = JSON.parse(dataMatch[1]);
+
+                if (eventType === 'message') {
+                    responseTimer.stop();
+                    const avatarUrl = (window._exploreChatAvatarMap || {})[data.speaker.toLowerCase()];
+                    _appendExploreChatBubble(msgContainer, data.speaker, data.content, avatarUrl, data.response_time_ms);
+                    responseTimer = startResponseTimer();
+                    msgContainer.appendChild(responseTimer.el);
+                    msgContainer.scrollTop = msgContainer.scrollHeight;
+                } else if (eventType === 'done') {
+                    responseTimer.stop();
+                    input.disabled = false;
+                    btn.disabled = false;
+                    btn.textContent = 'Send ➤';
+                    input.focus();
+                    return;
+                } else if (eventType === 'error') {
+                    responseTimer.stop();
+                    throw new Error(data.detail);
+                }
+            }
+        }
+        responseTimer.stop();
+        input.disabled = false;
+        btn.disabled = false;
+        btn.textContent = 'Send ➤';
+    } catch (err) {
+        if (typingEl.parentNode) typingEl.remove();
+        showToast(`Error: ${err.message}`, true);
+        input.disabled = false;
+        btn.disabled = false;
+        btn.textContent = 'Send ➤';
+    }
+}
+
+/**
+ * Trigger one round of AI-to-AI discussion in explore chat.
+ */
+async function continueExploreChat(locationId, chatId) {
+    const msgContainer = document.getElementById('explore-chat-messages');
+    const continueBtn = document.getElementById('explore-chat-continue-btn');
+    if (continueBtn) continueBtn.disabled = true;
+
+    const typingEl = document.createElement('div');
+    typingEl.className = 'chat-message chat-bubble-agent chat-typing';
+    typingEl.innerHTML = `<div class="chat-msg-body"><div class="chat-msg-header"><span class="chat-msg-speaker">Participants deliberating…</span></div><div class="chat-typing-dots"><span></span><span></span><span></span></div></div>`;
+    if (msgContainer) {
+        msgContainer.appendChild(typingEl);
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+    }
+
+    try {
+        const resp = await fetch(`/api/explore/${encodeURIComponent(locationId)}/chat/${encodeURIComponent(chatId)}/continue-stream`, { method: 'POST' });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Continue failed' }));
+            throw new Error(err.detail);
+        }
+
+        if (typingEl.parentNode) typingEl.remove();
+
+        let responseTimer = startResponseTimer();
+        msgContainer.appendChild(responseTimer.el);
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            const parts = buffer.split('\n\n');
+            buffer = parts.pop();
+
+            for (const part of parts) {
+                if (!part.trim()) continue;
+                const eventMatch = part.match(/^event:\s*(.+)$/m);
+                const dataMatch = part.match(/^data:\s*(.+)$/m);
+                if (!eventMatch || !dataMatch) continue;
+
+                const eventType = eventMatch[1].trim();
+                const data = JSON.parse(dataMatch[1]);
+
+                if (eventType === 'message') {
+                    responseTimer.stop();
+                    const avatarUrl = (window._exploreChatAvatarMap || {})[data.speaker.toLowerCase()];
+                    _appendExploreChatBubble(msgContainer, data.speaker, data.content, avatarUrl, data.response_time_ms);
+                    responseTimer = startResponseTimer();
+                    msgContainer.appendChild(responseTimer.el);
+                    msgContainer.scrollTop = msgContainer.scrollHeight;
+                } else if (eventType === 'done') {
+                    responseTimer.stop();
+                    _updateExploreChatControls(locationId, chatId);
+                    return;
+                } else if (eventType === 'error') {
+                    responseTimer.stop();
+                    throw new Error(data.detail);
+                }
+            }
+        }
+        responseTimer.stop();
+    } catch (err) {
+        if (typingEl.parentNode) typingEl.remove();
+        showToast(`Error: ${err.message}`, true);
+        if (continueBtn) continueBtn.disabled = false;
+    }
+}
+
+/**
+ * Close / end the explore chat.
+ */
+async function closeExploreChat(locationId, chatId) {
+    if (!confirm('End this exploration discussion?')) return;
+    try {
+        await fetch(`/api/chat/${encodeURIComponent(chatId)}/close`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
+        showToast('Exploration chat ended ✅');
+        window._exploreChatId = null;
+        // Reset to placeholder state
+        const inputBar = document.getElementById('explore-chat-input-bar');
+        if (inputBar) inputBar.style.display = 'none';
+        const controls = document.getElementById('explore-chat-controls');
+        if (controls) controls.innerHTML = '';
+        const msgContainer = document.getElementById('explore-chat-messages');
+        if (msgContainer) msgContainer.innerHTML = '<div class="chat-empty">Chat ended. Generate a new scene to start a new discussion.</div>';
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
 
 // ═══════════════════════════════════════════════════════════════
 // Characters View
