@@ -1,0 +1,24 @@
+[
+  {
+    "id": "IMG-0016",
+    "entity_type": "item",
+    "entity_id": "ITEM-0002",
+    "filename": "img_0001.png",
+    "original_filename": "ComfyUI_temp_ndmeo_00007_.png",
+    "prompt": "A majestic griffin perched atop a craggy mountain peak at sunrise, its eagle head turned to observe the viewer with intelligent amber eyes, feathers of burnished gold and bronze catching the first light, powerful lion body covered in tawny fur, massive wings unfurled with intricate feather patterns, dramatic cinematic lighting casting long shadows, volumetric mist swirling around the rocks below, hyperdetailed, fantasy art, digital painting, epic composition, 8k resolution.",
+    "negative_prompt": "blurry, low quality, jpeg artifacts, poorly drawn anatomy, extra limbs, disfigured, cartoon, simplistic, flat lighting, boring composition, cropped, watermark, signature, text.",
+    "is_primary": true,
+    "file_size": 6831121,
+    "width": 1024,
+    "height": 1024,
+    "template_id": "TPL-0001",
+    "generation_job_id": "GEN-0001",
+    "created_at": "2026-04-12T18:49:47.975348+00:00",
+    "metadata": {
+      "prompt_mode": "system",
+      "style_preset": "",
+      "seed": 287318269,
+      "member_name": ""
+    }
+  }
+]

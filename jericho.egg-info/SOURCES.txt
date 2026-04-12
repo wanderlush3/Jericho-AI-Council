@@ -45,7 +45,6 @@ core/treasury.py
 core/utils.py
 core/voting.py
 core/web_api.py
-core/web_api_original.py
 core/routes/__init__.py
 core/routes/_helpers.py
 core/routes/characters.py
@@ -84,6 +83,7 @@ tests/test_characters.py
 tests/test_cli.py
 tests/test_comfyui_client.py
 tests/test_council_expansion.py
+tests/test_council_session.py
 tests/test_dashboard.py
 tests/test_discussion.py
 tests/test_embeddings.py
@@ -96,6 +96,7 @@ tests/test_integration.py
 tests/test_items.py
 tests/test_laws.py
 tests/test_locations.py
+tests/test_manager_cache.py
 tests/test_memory.py
 tests/test_memory_decay.py
 tests/test_memory_influence.py
@@ -114,6 +115,7 @@ tests/test_style_preset_manager.py
 tests/test_taxation.py
 tests/test_template_assignments.py
 tests/test_treasury.py
+tests/test_utils.py
 tests/test_voting.py
 tests/test_web_api.py
 tests/test_web_api_comfyui_settings.py

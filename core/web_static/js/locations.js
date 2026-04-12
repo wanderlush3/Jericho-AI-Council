@@ -70,10 +70,16 @@ async function renderLocations() {
         const tagsHtml = (loc.tags || []).map(t => `<span class="tag">#${t}</span>`).join('');
         const moreFeats = (loc.features || []).length > 3 ? `<span class="location-feature-chip">+${loc.features.length - 3} more</span>` : '';
 
+        // Avatar: show primary image or question mark placeholder
+        const avatarHtml = loc.primary_image_url
+            ? `<div class="loc-avatar" style="background-image:url('${loc.primary_image_url}')"></div>`
+            : `<div class="loc-avatar loc-avatar-placeholder"><span>?</span></div>`;
+
         return `
         <div class="card card-clickable location-card" onclick="navigateTo('locations','${loc.id}')">
             <div class="loc-header">
-                <div>
+                ${avatarHtml}
+                <div class="loc-header-text">
                     <div class="loc-name">${escapeHtml(loc.name)}</div>
                     <div class="loc-author">by ${escapeHtml(loc.author)} · v${loc.version || 1}</div>
                 </div>

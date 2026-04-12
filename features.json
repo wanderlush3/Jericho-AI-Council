@@ -524,5 +524,15 @@
         "description": "Comprehensive README update — reflect modular routes architecture (20 files), modular frontend (26 JS + 33 CSS modules), LM Studio provider support, participant systems (Explore/Story), interactive chat in Explore/Story scenes, chat response timers, manager cache singleton, updated test counts (3,072 tests across 52 files)",
         "status": "completed",
         "dependencies": []
+    },
+    {
+        "id": "F-049",
+        "title": "Item Image Prompt Context Refinement",
+        "description": "Refine item entity context for image generation prompts — prioritize tags first, then name, description, lore. Include rarity, tier, and detailed property descriptions. Fix pipeline PromptBuilder to wire item_manager and store_manager for full entity context resolution",
+        "status": "completed",
+        "dependencies": [
+            "F-037c",
+            "F-035"
+        ]
     }
 ]

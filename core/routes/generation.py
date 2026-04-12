@@ -78,6 +78,8 @@ def _get_pipeline():
                 registry=registry,
                 character_manager=CharacterManager(),
                 location_manager=LocationManager(),
+                item_manager=get_item_manager(),
+                store_manager=get_store_manager(),
             ),
         )
     return _generation_pipeline

@@ -21,12 +21,32 @@ def api_locations_list(
 ) -> list[dict[str, Any]]:
     """List locations with optional filters."""
     from core.locations import LocationManager
+    from core.image_manager import ImageManager
     mgr = LocationManager()
+    imgr = ImageManager()
     items = mgr.list_locations(
         status=status, author=author, tag=tag,
         parent_location_id=parent_location_id,
     )
-    return [loc.to_dict() for loc in items]
+    result = []
+    for loc in items:
+        d = loc.to_dict()
+        # Attach primary image URL if available
+        primary_url = ""
+        try:
+            images = imgr.list_images("location", loc.id)
+            primary = next(
+                (img for img in images if img.is_primary), None,
+            )
+            if primary:
+                primary_url = f"/api/images/file/{primary.id}"
+            elif images:
+                primary_url = f"/api/images/file/{images[0].id}"
+        except Exception:
+            pass
+        d["primary_image_url"] = primary_url
+        result.append(d)
+    return result
 
 @router.get("/api/locations/{location_id}")
 def api_location_detail(location_id: str) -> dict[str, Any]:

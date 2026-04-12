@@ -628,19 +628,43 @@ class TestBuildEntityContext:
         assert "natural" in ctx
 
     def test_item_context(self):
+        from core.items import Item, ItemProperty
+
         mock_item = MagicMock()
-        item_obj = MagicMock()
-        item_obj.name = "Dragon Scale Shield"
-        item_obj.description = "A shield made from dragon scales"
-        item_obj.item_type = "equipment"
-        item_obj.properties = [{"name": "fire_resist"}]
-        mock_item.get.return_value = item_obj
+        mock_item.get.return_value = Item(
+            id="ITEM-0001",
+            name="Dragon Scale Shield",
+            description="A shield made from dragon scales",
+            author="Forge",
+            lore="Forged in the Dragon Wars by the legendary smith Kaelen",
+            tags=["shield", "dragon", "fire-resistant"],
+            rarity="legendary",
+            tier="epic",
+            properties=[
+                ItemProperty(name="Fire Resist", description="Absorbs fire damage", property_type="enchantment"),
+                ItemProperty(name="Dragon Bond", description="Grows stronger near dragons", property_type="passive"),
+            ],
+        )
 
         ctx = build_entity_context(
-            "item", "ITM-0001", item_manager=mock_item,
+            "item", "ITEM-0001", item_manager=mock_item,
         )
+        # Tags come first as highest priority visual signal
+        lines = ctx.split("\n")
+        assert lines[0].startswith("Tags:")
+        assert "shield" in lines[0]
+        assert "dragon" in lines[0]
+        assert "fire-resistant" in lines[0]
+        # Then name, description, lore
         assert "Entity: Item — Dragon Scale Shield" in ctx
-        assert "equipment" in ctx
+        assert "A shield made from dragon scales" in ctx
+        assert "Forged in the Dragon Wars" in ctx
+        # Rarity and tier
+        assert "Rarity: legendary" in ctx
+        assert "Tier: epic" in ctx
+        # Properties with detail
+        assert "Fire Resist (enchantment): Absorbs fire damage" in ctx
+        assert "Dragon Bond (passive): Grows stronger near dragons" in ctx
 
     def test_store_context(self):
         mock_store = MagicMock()

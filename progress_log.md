@@ -3502,3 +3502,43 @@ Comprehensive README update to reflect the current state of the project after 47
 2. The README `Features` count still says 47 — this is correct because F-048 is a documentation task, not a system feature. Update the count if you add actual system features.
 3. The `sw` CLI tool is NOT available. Use direct Python commands instead.
 4. All test counts and line counts in the README are accurate as of this session.
+
+
+---
+
+## Session — F-049: Item Image Prompt Context Refinement (2026-04-12)
+
+### Objective
+Refine how item entity context is built for LLM-driven image generation prompts. Prioritize item features in the order: Tags -> Name -> Description -> Lore. Include rich detail (rarity, tier, individual property descriptions) for ComfyUI generation.
+
+### Changes
+
+#### core/prompt_builder.py — uild_entity_context() item block rewritten
+- **Before**: Minimal context — just name + description, dead item_type reference (items never had this attribute), properties shown as count only
+- **After**: Full priority-ordered context:
+  1. **Tags** (first line — strongest visual/categorical signal)
+  2. **Entity name**
+  3. **Description**
+  4. **Lore** (if present)
+  5. **Rarity** (if present)
+  6. **Tier** (if present)
+  7. **Properties** (each with name, type, and description)
+- Removed dead item_type check that would never match actual Item objects
+
+#### core/routes/generation.py — _get_pipeline() fixed
+- **Bug fix**: Added item_manager=get_item_manager() and store_manager=get_store_manager() to the PromptBuilder initialization inside the pipeline singleton
+- Previously, item and store entity context was silently returning empty strings when generating through the pipeline route (only the /api/generate/prompts preview endpoint had them wired)
+
+#### tests/test_prompt_builder.py — 	est_item_context overhauled
+- Replaced MagicMock item with real Item and ItemProperty dataclass instances
+- Now validates: tag priority ordering (first line), name, description, lore, rarity, tier, and individual property detail strings
+- Fixed item ID format from ITM-0001 to ITEM-0001 (matches actual ID scheme)
+
+### Test Results
+- **3072 passed, 12 skipped** — zero regressions
+
+### Advice for Next Agent
+1. The item context block now outputs tags as the **first line** — this is intentional for prompt priority. If you need to change the order, update both uild_entity_context() and 	est_item_context.
+2. The _get_pipeline() singleton now wires all 4 entity managers (character, location, item, store). If a new entity type is added, remember to wire its manager here too.
+3. The sw CLI tool is NOT available. Use direct Python commands instead.
+4. Store context still uses the old minimal format (name + description + type). If store image generation needs similar enrichment, follow the same pattern used here for items.

@@ -704,14 +704,26 @@ def build_entity_context(
 
         elif entity_type == "item" and item_manager is not None:
             item = item_manager.get(entity_id)
-            lines = [
-                f"Entity: Item — {item.name}",
-                f"Description: {item.description}",
-            ]
-            if hasattr(item, "item_type") and item.item_type:
-                lines.append(f"Type: {item.item_type}")
+            # Priority order: tags → name → description → lore
+            # Tags come first as the strongest visual/categorical signal
+            lines = []
+            if hasattr(item, "tags") and item.tags:
+                lines.append(f"Tags: {', '.join(item.tags)}")
+            lines.append(f"Entity: Item — {item.name}")
+            lines.append(f"Description: {item.description}")
+            if hasattr(item, "lore") and item.lore:
+                lines.append(f"Lore: {item.lore}")
+            if hasattr(item, "rarity") and item.rarity:
+                lines.append(f"Rarity: {item.rarity}")
+            if hasattr(item, "tier") and item.tier:
+                lines.append(f"Tier: {item.tier}")
             if hasattr(item, "properties") and item.properties:
-                lines.append(f"Properties: {len(item.properties)} defined")
+                prop_strs = [
+                    f"  - {p.name} ({p.property_type}): {p.description}"
+                    for p in item.properties
+                ]
+                lines.append("Properties:")
+                lines.extend(prop_strs)
             return "\n".join(lines)
 
         elif entity_type == "store" and store_manager is not None:
