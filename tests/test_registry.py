@@ -16,6 +16,9 @@ from core.registry import (
 )
 from config.settings import COUNCIL_MEMBERS_DIR
 
+# Count actual YAML files so tests survive council promotions
+_EXPECTED_MEMBER_COUNT = len(list(COUNCIL_MEMBERS_DIR.glob("*.yaml")))
+
 
 # ─── Fixtures ──────────────────────────────────────────────────
 
@@ -61,8 +64,8 @@ class TestRegistryLoading:
     """Tests for loading council members from YAML files."""
 
     def test_load_real_members(self, registry: CouncilRegistry) -> None:
-        """The real council/members/ directory should have 9 members."""
-        assert len(registry) == 9
+        """The real council/members/ directory should load all members."""
+        assert len(registry) == _EXPECTED_MEMBER_COUNT
 
     def test_load_returns_self(self) -> None:
         """load() returns self for chaining."""
@@ -71,10 +74,10 @@ class TestRegistryLoading:
         assert result is reg
 
     def test_all_expected_names_present(self, registry: CouncilRegistry) -> None:
-        """All 9 council members should be present with unique names."""
+        """All council members should be present with unique names."""
         names = registry.list_names()
-        assert len(names) == 9
-        assert len(set(names)) == 9  # All unique
+        assert len(names) == _EXPECTED_MEMBER_COUNT
+        assert len(set(names)) == _EXPECTED_MEMBER_COUNT  # All unique
 
     def test_load_empty_directory(self, empty_registry: CouncilRegistry) -> None:
         """Loading from an empty directory yields zero members."""
@@ -287,7 +290,7 @@ class TestDunderMethods:
     """Tests for __len__, __contains__, __iter__, __repr__."""
 
     def test_len(self, registry: CouncilRegistry) -> None:
-        assert len(registry) == 9
+        assert len(registry) == _EXPECTED_MEMBER_COUNT
 
     def test_contains_case_insensitive(self, registry: CouncilRegistry) -> None:
         first_name = registry.list_names()[0]
@@ -300,10 +303,10 @@ class TestDunderMethods:
 
     def test_iter(self, registry: CouncilRegistry) -> None:
         members = list(registry)
-        assert len(members) == 9
+        assert len(members) == _EXPECTED_MEMBER_COUNT
         assert all(isinstance(m, CouncilMember) for m in members)
 
     def test_repr(self, registry: CouncilRegistry) -> None:
         r = repr(registry)
         assert "CouncilRegistry" in r
-        assert "9" in r
+        assert str(_EXPECTED_MEMBER_COUNT) in r

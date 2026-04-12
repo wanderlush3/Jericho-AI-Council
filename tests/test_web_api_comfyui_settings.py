@@ -37,10 +37,12 @@ def client(tmp_path, tmp_templates, monkeypatch):
     """Create a test client with isolated directories."""
     monkeypatch.setattr("config.settings.COMFYUI_TEMPLATES_DIR", tmp_templates)
     monkeypatch.setattr("core.comfyui_client.COMFYUI_TEMPLATES_DIR", tmp_templates)
-    monkeypatch.setattr("config.settings.ENV_FILE", tmp_path / ".env")
+    env_file = tmp_path / ".env"
+    monkeypatch.setattr("config.settings.ENV_FILE", env_file)
+    monkeypatch.setattr("core.api_keys.ENV_FILE", env_file)
 
     # Create minimal .env
-    (tmp_path / ".env").write_text("", encoding="utf-8")
+    env_file.write_text("", encoding="utf-8")
 
     from core.web_api import create_app
     app = create_app()
