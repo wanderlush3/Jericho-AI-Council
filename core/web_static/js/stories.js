@@ -138,6 +138,7 @@ async function renderStoryDetail(storyId) {
                     <div class="story-scene-actions">
                         <button class="btn btn-sm" onclick="narrateScene('${storyId}','${ch.chapter_id}','${sc.scene_id}')" title="Generate narration">✍️ Narrate</button>
                         <button class="btn btn-sm" onclick="illustrateScene('${storyId}','${ch.chapter_id}','${sc.scene_id}')" title="Generate illustration">🎨 Illustrate</button>
+                        <button class="btn btn-sm" onclick="initStoryChat('${storyId}','${ch.chapter_id}','${sc.scene_id}')" title="Start story discussion">💬 Chat</button>
                         <button class="btn btn-sm btn-danger-subtle" onclick="deleteScene('${storyId}','${ch.chapter_id}','${sc.scene_id}')" title="Delete scene">🗑️</button>
                     </div>
                 </div>
@@ -146,6 +147,7 @@ async function renderStoryDetail(storyId) {
                     ${hasImage ? `<div class="story-scene-illustration"><img src="${sc.image_url}" alt="Scene illustration" onclick="openStoryLightbox('${sc.image_url}')" /></div>` : ''}
                     ${hasText ? `<div class="story-scene-narrative">${escapeHtml(sc.narrative_text)}</div>` : '<div class="story-scene-empty">No narration yet. Click ✍️ Narrate to generate.</div>'}
                 </div>
+                <div id="story-chat-${sc.scene_id}"></div>
             </div>`;
         }).join('');
 
@@ -223,6 +225,9 @@ async function renderStoryDetail(storyId) {
 
     // F-043: Load available participants
     loadStoryParticipants();
+
+    // Load active story chat if exists
+    _loadActiveStoryChat(storyId);
 }
 
 // ─── Story Reader (Immersive Read Mode) ─────────────────────
@@ -404,6 +409,12 @@ async function narrateScene(storyId, chapterId, sceneId) {
         if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || 'Narration failed'); }
         const result = await resp.json();
         showToast(`✍️ Narration generated! (${result.model})`);
+
+        // If participants are selected and no active chat, create one and inject narration
+        if (participants.length > 0 && !window._storyChatId) {
+            await _initStoryChatWithNarration(storyId, chapterId, sceneId, result.narrative_text, participants);
+        }
+
         renderStoryDetail(storyId);
     } catch (err) {
         showToast('Narration error: ' + err.message, true);
@@ -568,6 +579,496 @@ function openStoryLightbox(imageUrl) {
 
 window._storyParticipants = [];
 window._storyAvailableParticipants = [];
+
+// ═══════════════════════════════════════════════════════════════
+// Story Chat — Interactive Discussion within Scenes
+// ═══════════════════════════════════════════════════════════════
+
+window._storyChatId = null;
+window._storyChatSceneId = null;
+window._storyChatAvatarMap = {};
+
+/**
+ * Check for and load an active story chat for this story.
+ */
+async function _loadActiveStoryChat(storyId) {
+    try {
+        const data = await api(`/api/stories/${encodeURIComponent(storyId)}/chat/active`);
+        if (data.chat_id && data.chat) {
+            window._storyChatId = data.chat_id;
+            window._storyChatSceneId = (data.chat.metadata || {}).scene_id || '';
+            _showStoryChatPanel(data.chat, data.round, data.max_rounds);
+        }
+    } catch { /* no active chat, that's fine */ }
+}
+
+/**
+ * Build avatar map from available participants.
+ */
+async function _buildStoryChatAvatarMap() {
+    if (Object.keys(window._storyChatAvatarMap || {}).length > 0) return;
+    try {
+        const participants = await api('/api/participants/available');
+        const map = {};
+        participants.forEach(p => {
+            if (p.avatar_url) map[p.name.toLowerCase()] = p.avatar_url;
+        });
+        window._storyChatAvatarMap = map;
+    } catch { /* non-blocking */ }
+}
+
+/**
+ * Create a story chat session and inject the narration as the first message.
+ */
+async function _initStoryChatWithNarration(storyId, chapterId, sceneId, narrationText, participants) {
+    await _buildStoryChatAvatarMap();
+
+    try {
+        const chatData = await fetch(`/api/stories/${encodeURIComponent(storyId)}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ participants, chapter_id: chapterId, scene_id: sceneId }),
+        }).then(r => { if (!r.ok) throw new Error('Failed to create chat'); return r.json(); });
+
+        window._storyChatId = chatData.chat_id;
+        window._storyChatSceneId = sceneId;
+
+        // Inject narration and trigger discussion
+        await _injectStoryChatNarration(storyId, chatData.chat_id, narrationText, chapterId, sceneId);
+    } catch (err) {
+        showToast(`Chat init error: ${err.message}`, true);
+    }
+}
+
+/**
+ * Init story chat from the Chat button.
+ */
+async function initStoryChat(storyId, chapterId, sceneId) {
+    // If chat already exists for this scene, just scroll to it
+    if (window._storyChatId && window._storyChatSceneId === sceneId) {
+        const chatEl = document.getElementById(`story-chat-${sceneId}`);
+        if (chatEl) chatEl.scrollIntoView({ behavior: 'smooth' });
+        return;
+    }
+
+    const participants = getSelectedStoryParticipants();
+    if (!participants.length) {
+        showToast('Select at least one participant in the Participants panel first.', true);
+        return;
+    }
+
+    await _buildStoryChatAvatarMap();
+
+    try {
+        const chatData = await fetch(`/api/stories/${encodeURIComponent(storyId)}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ participants, chapter_id: chapterId, scene_id: sceneId }),
+        }).then(r => { if (!r.ok) throw new Error('Failed to create chat'); return r.json(); });
+
+        window._storyChatId = chatData.chat_id;
+        window._storyChatSceneId = sceneId;
+
+        // Show empty chat panel
+        _renderStoryChatSection(storyId, sceneId, chatData.chat_id, 0, chatData.max_rounds || 5);
+        showToast('💬 Story chat created!');
+
+    } catch (err) {
+        showToast(`Chat init error: ${err.message}`, true);
+    }
+}
+
+/**
+ * Render the story chat section inside a scene item.
+ */
+function _renderStoryChatSection(storyId, sceneId, chatId, round, maxRounds, closed) {
+    const container = document.getElementById(`story-chat-${sceneId}`);
+    if (!container) return;
+
+    const atLimit = round >= maxRounds || closed;
+    const roundBadgeClass = atLimit ? 'story-chat-round-badge at-limit' : 'story-chat-round-badge';
+    const roundLabel = closed ? 'Closed' : `Round ${round}/${maxRounds}`;
+
+    container.innerHTML = `
+        <div class="story-chat-section">
+            <div class="story-chat-header">
+                <h4>💬 Story Discussion</h4>
+                <span class="${roundBadgeClass}" id="story-chat-round-badge">${roundLabel}</span>
+            </div>
+            <div class="story-chat-messages" id="story-chat-messages"></div>
+            ${!atLimit ? `
+            <div class="story-chat-input-bar" id="story-chat-input-bar">
+                <input type="text" class="chat-input" id="story-chat-input"
+                       placeholder="Join the discussion…" autocomplete="off"
+                       onkeydown="if(event.key==='Enter')sendStoryChatMessage('${storyId}')" />
+                <button class="btn btn-primary btn-sm" id="story-chat-send-btn"
+                        onclick="sendStoryChatMessage('${storyId}')">Send</button>
+            </div>
+            <div class="story-chat-controls" id="story-chat-controls">
+                <button class="btn btn-sm" onclick="continueStoryChat('${storyId}', '${chatId}')"
+                        id="story-chat-continue-btn">🔄 Continue Discussion</button>
+                <button class="btn btn-sm" onclick="narrateStoryRound('${storyId}', '${chatId}')"
+                        id="story-chat-narrate-btn">📖 Narrate Next Round</button>
+                <button class="btn btn-danger-subtle btn-sm"
+                        onclick="closeStoryChat('${storyId}', '${chatId}')" title="End chat">End Chat</button>
+            </div>` : `
+            <div class="story-chat-controls" id="story-chat-controls">
+                <span style="color:var(--text-muted);font-size:0.82rem;font-style:italic">Chat closed${round >= maxRounds ? ' (round limit reached)' : ''}.</span>
+            </div>`}
+        </div>`;
+}
+
+/**
+ * Show the story chat panel with existing messages.
+ */
+function _showStoryChatPanel(chatData, round, maxRounds) {
+    const meta = chatData.metadata || {};
+    const sceneId = meta.scene_id || '';
+    const storyId = meta.story_id || '';
+    const chatId = chatData.chat_id;
+    const closed = !!chatData.closed_at;
+
+    _renderStoryChatSection(storyId, sceneId, chatId, round, maxRounds, closed);
+    _buildStoryChatAvatarMap();
+
+    const msgContainer = document.getElementById('story-chat-messages');
+    if (!msgContainer) return;
+
+    const messages = chatData.messages || [];
+    if (messages.length === 0) {
+        msgContainer.innerHTML = '<div class="story-chat-empty">No messages yet. Send a message or click a narration action to start.</div>';
+        return;
+    }
+
+    messages.forEach(m => {
+        const isHuman = m.role === 'human';
+        const mmeta = m.metadata || {};
+
+        if (mmeta.type === 'narration_inject') {
+            const text = m.content.replace(/^📖 \*\*Narration:\*\*\n\n/, '');
+            _appendStorySystemBubble(msgContainer, text);
+            return;
+        }
+
+        if (isHuman) {
+            _appendStoryHumanBubble(msgContainer, m.content);
+        } else {
+            const avatarUrl = (window._storyChatAvatarMap || {})[m.speaker?.toLowerCase()];
+            _appendStoryChatBubble(msgContainer, m.speaker || 'Agent', m.content, avatarUrl);
+        }
+    });
+
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+}
+
+/**
+ * Inject narration into the chat and stream participant responses.
+ */
+async function _injectStoryChatNarration(storyId, chatId, narrationText, chapterId, sceneId) {
+    const msgContainer = document.getElementById('story-chat-messages');
+    if (!msgContainer) return;
+
+    // Clear empty state
+    const emptyEl = msgContainer.querySelector('.story-chat-empty');
+    if (emptyEl) emptyEl.remove();
+
+    // Add narration bubble
+    _appendStorySystemBubble(msgContainer, narrationText);
+
+    // Typing indicator
+    const typingEl = document.createElement('div');
+    typingEl.className = 'chat-message chat-bubble-agent chat-typing';
+    typingEl.innerHTML = `<div class="chat-msg-body"><div class="chat-msg-header"><span class="chat-msg-speaker">Participants discussing…</span></div><div class="chat-typing-dots"><span></span><span></span><span></span></div></div>`;
+    msgContainer.appendChild(typingEl);
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+
+    try {
+        const resp = await fetch(`/api/stories/${encodeURIComponent(storyId)}/chat/${encodeURIComponent(chatId)}/inject-narration`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ narration_text: narrationText, chapter_id: chapterId, scene_id: sceneId }),
+        });
+        if (!resp.ok) throw new Error('Inject failed');
+
+        if (typingEl.parentNode) typingEl.remove();
+
+        await _processStoryChatStream(resp, msgContainer, storyId);
+    } catch (err) {
+        if (typingEl.parentNode) typingEl.remove();
+        showToast(`Chat error: ${err.message}`, true);
+    }
+}
+
+/**
+ * Send human message in the story chat + stream responses.
+ */
+async function sendStoryChatMessage(storyId) {
+    const chatId = window._storyChatId;
+    if (!chatId) {
+        showToast('No active chat. Create one first!', true);
+        return;
+    }
+    const input = document.getElementById('story-chat-input');
+    const btn = document.getElementById('story-chat-send-btn');
+    const content = input.value.trim();
+    if (!content) { input.focus(); return; }
+
+    input.disabled = true;
+    btn.disabled = true;
+    btn.textContent = '⏳';
+
+    const msgContainer = document.getElementById('story-chat-messages');
+    _appendStoryHumanBubble(msgContainer, content);
+    input.value = '';
+
+    const typingEl = document.createElement('div');
+    typingEl.className = 'chat-message chat-bubble-agent chat-typing';
+    typingEl.innerHTML = `<div class="chat-msg-body"><div class="chat-typing-dots"><span></span><span></span><span></span></div></div>`;
+    msgContainer.appendChild(typingEl);
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+
+    try {
+        const resp = await fetch(`/api/stories/${encodeURIComponent(storyId)}/chat/${encodeURIComponent(chatId)}/send-stream`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content }),
+        });
+        if (!resp.ok) throw new Error('Send failed');
+
+        if (typingEl.parentNode) typingEl.remove();
+
+        await _processStoryChatStream(resp, msgContainer, storyId);
+    } catch (err) {
+        if (typingEl.parentNode) typingEl.remove();
+        showToast(`Chat error: ${err.message}`, true);
+    } finally {
+        input.disabled = false;
+        btn.disabled = false;
+        btn.textContent = 'Send';
+        input.focus();
+    }
+}
+
+/**
+ * Continue AI-to-AI discussion.
+ */
+async function continueStoryChat(storyId, chatId) {
+    const btn = document.getElementById('story-chat-continue-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Discussing…'; }
+
+    const msgContainer = document.getElementById('story-chat-messages');
+
+    const typingEl = document.createElement('div');
+    typingEl.className = 'chat-message chat-bubble-agent chat-typing';
+    typingEl.innerHTML = `<div class="chat-msg-body"><div class="chat-msg-header"><span class="chat-msg-speaker">Participants continuing…</span></div><div class="chat-typing-dots"><span></span><span></span><span></span></div></div>`;
+    if (msgContainer) { msgContainer.appendChild(typingEl); msgContainer.scrollTop = msgContainer.scrollHeight; }
+
+    try {
+        const resp = await fetch(`/api/stories/${encodeURIComponent(storyId)}/chat/${encodeURIComponent(chatId)}/continue-stream`, {
+            method: 'POST',
+        });
+        if (!resp.ok) throw new Error('Continue failed');
+
+        if (typingEl.parentNode) typingEl.remove();
+
+        await _processStoryChatStream(resp, msgContainer, storyId);
+    } catch (err) {
+        if (typingEl.parentNode) typingEl.remove();
+        showToast(`Chat error: ${err.message}`, true);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 Continue Discussion'; }
+    }
+}
+
+/**
+ * Trigger mid-conversation narration.
+ */
+async function narrateStoryRound(storyId, chatId) {
+    const btn = document.getElementById('story-chat-narrate-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Narrating…'; }
+
+    try {
+        const resp = await fetch(`/api/stories/${encodeURIComponent(storyId)}/chat/${encodeURIComponent(chatId)}/narrate-round`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
+        if (!resp.ok) { const e = await resp.json().catch(() => ({})); throw new Error(e.detail || 'Narration failed'); }
+        const result = await resp.json();
+
+        // Show the narration in the chat
+        const msgContainer = document.getElementById('story-chat-messages');
+        if (msgContainer && result.narrative_text) {
+            _appendStorySystemBubble(msgContainer, result.narrative_text);
+        }
+
+        // Update round badge
+        _updateStoryRoundBadge(result.round, result.max_rounds);
+
+        showToast(`📖 Narration generated! (${result.model})`);
+    } catch (err) {
+        showToast('Narration error: ' + err.message, true);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📖 Narrate Next Round'; }
+    }
+}
+
+/**
+ * Close story chat early.
+ */
+async function closeStoryChat(storyId, chatId) {
+    if (!confirm('End this story discussion?')) return;
+    try {
+        await fetch(`/api/chat/${encodeURIComponent(chatId)}/close`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ summary: 'Story chat closed by user.' }),
+        });
+        window._storyChatId = null;
+        window._storyChatSceneId = null;
+        showToast('💬 Story chat ended.');
+        renderStoryDetail(storyId);
+    } catch (err) {
+        showToast(`Error closing chat: ${err.message}`, true);
+    }
+}
+
+/**
+ * Process an SSE response stream from story chat endpoints.
+ */
+async function _processStoryChatStream(resp, msgContainer, storyId) {
+    let responseTimer = startResponseTimer();
+    if (msgContainer) {
+        msgContainer.appendChild(responseTimer.el);
+        msgContainer.scrollTop = msgContainer.scrollHeight;
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop();
+
+        for (const part of parts) {
+            if (!part.trim()) continue;
+            const eventMatch = part.match(/^event:\s*(.+)$/m);
+            const dataMatch = part.match(/^data:\s*(.+)$/m);
+            if (!eventMatch || !dataMatch) continue;
+
+            const eventType = eventMatch[1].trim();
+            const data = JSON.parse(dataMatch[1]);
+
+            if (eventType === 'message') {
+                responseTimer.stop();
+                const avatarUrl = (window._storyChatAvatarMap || {})[data.speaker.toLowerCase()];
+                _appendStoryChatBubble(msgContainer, data.speaker, data.content, avatarUrl, data.response_time_ms);
+                responseTimer = startResponseTimer();
+                msgContainer.appendChild(responseTimer.el);
+                msgContainer.scrollTop = msgContainer.scrollHeight;
+            } else if (eventType === 'done') {
+                responseTimer.stop();
+                _updateStoryRoundBadge(data.round, data.max_rounds, data.at_limit);
+                if (data.at_limit) {
+                    // Disable input and controls
+                    const inputBar = document.getElementById('story-chat-input-bar');
+                    if (inputBar) inputBar.style.display = 'none';
+                    const controls = document.getElementById('story-chat-controls');
+                    if (controls) {
+                        controls.innerHTML = `<span style="color:var(--text-muted);font-size:0.82rem;font-style:italic">Chat closed (round limit reached).</span>`;
+                    }
+                    window._storyChatId = null;
+                    window._storyChatSceneId = null;
+                }
+                return;
+            } else if (eventType === 'error') {
+                responseTimer.stop();
+                throw new Error(data.detail);
+            }
+        }
+    }
+    responseTimer.stop();
+}
+
+/**
+ * Update round badge display.
+ */
+function _updateStoryRoundBadge(round, maxRounds, atLimit) {
+    const badge = document.getElementById('story-chat-round-badge');
+    if (!badge) return;
+    const isAtLimit = atLimit || round >= maxRounds;
+    badge.textContent = isAtLimit ? 'Closed' : `Round ${round}/${maxRounds}`;
+    badge.className = isAtLimit ? 'story-chat-round-badge at-limit' : 'story-chat-round-badge';
+}
+
+/**
+ * Append a narration system bubble.
+ */
+function _appendStorySystemBubble(container, text) {
+    if (!container) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'story-chat-system-msg';
+    bubble.innerHTML = `
+        <div class="story-chat-system-icon">📖</div>
+        <div class="story-chat-system-body">
+            <div class="story-chat-system-label">Narration</div>
+            <div class="story-chat-system-text">${renderMarkdown(text)}</div>
+        </div>`;
+    container.appendChild(bubble);
+    container.scrollTop = container.scrollHeight;
+}
+
+/**
+ * Append an agent response bubble.
+ */
+function _appendStoryChatBubble(container, speaker, content, avatarUrl, responseTimeMs) {
+    if (!container) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-message chat-bubble-agent';
+    const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const responseTimeBadge = (responseTimeMs != null)
+        ? `<span class="chat-response-time" title="Response time">${formatResponseTime(responseTimeMs)}</span>`
+        : '';
+    const avatarHtml = avatarUrl
+        ? `<div class="member-avatar" style="background:url('${avatarUrl}') center/cover no-repeat;width:36px;height:36px;border-radius:50%"></div>`
+        : memberAvatar(speaker, 0);
+    bubble.innerHTML = `
+        <div class="chat-msg-avatar">${avatarHtml}</div>
+        <div class="chat-msg-body">
+            <div class="chat-msg-header">
+                <span class="chat-msg-speaker">${escapeHtml(speaker)}</span>
+                <span class="chat-msg-time">${time}${responseTimeBadge}</span>
+            </div>
+            <div class="chat-msg-content">${renderMarkdown(content)}</div>
+        </div>`;
+    container.appendChild(bubble);
+    container.scrollTop = container.scrollHeight;
+}
+
+/**
+ * Append a human message bubble.
+ */
+function _appendStoryHumanBubble(container, content) {
+    if (!container) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-message chat-bubble-human';
+    const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    bubble.innerHTML = `
+        <div class="chat-msg-body">
+            <div class="chat-msg-header">
+                <span class="chat-msg-speaker">You</span>
+                <span class="chat-msg-time">${time}</span>
+            </div>
+            <div class="chat-msg-content">${renderMarkdown(content)}</div>
+        </div>`;
+    container.appendChild(bubble);
+    container.scrollTop = container.scrollHeight;
+}
 
 async function loadStoryParticipants() {
     try {

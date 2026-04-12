@@ -4,10 +4,12 @@ Jericho — Stories Routes
 
 from __future__ import annotations
 
-
+import json as json_module
+import time
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
+from starlette.responses import StreamingResponse
 
 from core.routes._helpers import (
     _get_pipeline,
@@ -18,6 +20,7 @@ from core.routes._helpers import (
 router = APIRouter()
 
 _PARTICIPANT_MAX = 10
+_STORY_CHAT_MAX_ROUNDS = 5
 
 @router.get("/api/stories")
 def api_stories_list(
@@ -764,3 +767,648 @@ async def api_stories_illustrate_scene(
         "scene_id": scene_id,
     }
 
+
+# ── Story Chat ───────────────────────────────────────────
+
+
+def _make_story_chat() -> "HumanChat":
+    """Instantiate HumanChat for story chat sessions."""
+    from core.routes.chat import _make_human_chat
+    return _make_human_chat()
+
+
+def _next_story_chat_id() -> str:
+    """Generate the next sequential STC-XXXX chat ID."""
+    from config.settings import CONVERSATIONS_DIR
+    existing = sorted(CONVERSATIONS_DIR.glob("H-STC-*.json"))
+    if not existing:
+        return "STC-0001"
+    last = existing[-1].stem  # e.g. "H-STC-0042"
+    num = int(last.split("-")[-1]) + 1
+    return f"STC-{num:04d}"
+
+
+def _get_story_round(chat_record) -> int:
+    """Get the current round number from chat metadata."""
+    return (chat_record.metadata or {}).get("story_round", 0)
+
+
+def _increment_story_round(hc, chat_id: str) -> int:
+    """Increment and return the new round number."""
+    rec = hc.get(chat_id)
+    meta = dict(rec.metadata or {})
+    current = meta.get("story_round", 0)
+    meta["story_round"] = current + 1
+    # Update metadata by replacing the record
+    from core.human_chat import HumanChatRecord
+    d = rec.to_dict()
+    d["metadata"] = meta
+    updated = HumanChatRecord.from_dict(d)
+    hc._save(updated)
+    return current + 1
+
+
+def _is_story_chat_at_limit(chat_record) -> bool:
+    """Check if the story chat has reached its round limit."""
+    meta = chat_record.metadata or {}
+    current = meta.get("story_round", 0)
+    max_rounds = meta.get("story_max_rounds", _STORY_CHAT_MAX_ROUNDS)
+    return current >= max_rounds
+
+
+@router.get("/api/stories/{story_id}/chat/active")
+def api_story_chat_active(story_id: str) -> dict[str, Any]:
+    """Find the active (non-closed) story chat for a story.
+
+    Returns: {"chat_id": "STC-XXXX", "chat": {...}, "round": N, "max_rounds": 5}
+             or {"chat_id": null}
+    """
+    hc = _make_story_chat()
+    chats = hc.list_chats(closed=False)
+    for c in chats:
+        meta = c.metadata or {}
+        if (
+            meta.get("story_chat") is True
+            and meta.get("story_id") == story_id
+            and not c.closed_at
+        ):
+            return {
+                "chat_id": c.chat_id,
+                "chat": c.to_dict(),
+                "round": meta.get("story_round", 0),
+                "max_rounds": meta.get("story_max_rounds", _STORY_CHAT_MAX_ROUNDS),
+            }
+    return {"chat_id": None}
+
+
+@router.post("/api/stories/{story_id}/chat")
+def api_story_chat_create(
+    story_id: str,
+    body: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Create a story chat session.
+
+    Body: {
+        "participants": [
+            {"id": "sage", "type": "council"},
+            {"id": "CH-0001", "type": "character"}
+        ],
+        "chapter_id": "CHP-0001",
+        "scene_id": "SCE-0001"
+    }
+
+    Returns: the created chat record with round info.
+    """
+    from core.story import StoryManager, StoryNotFoundError
+    from core.human_chat import HumanChatValidationError
+
+    body = body or {}
+    participants = body.get("participants", [])
+    chapter_id = body.get("chapter_id", "")
+    scene_id = body.get("scene_id", "")
+
+    smgr = StoryManager()
+    try:
+        story = smgr.get(story_id)
+    except StoryNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Story '{story_id}' not found.",
+        )
+
+    if not participants:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one participant is required.",
+        )
+
+    # Separate council members and characters
+    council_ids = [
+        p["id"] for p in participants if p.get("type") == "council"
+    ]
+    character_ids = [
+        p["id"] for p in participants if p.get("type") == "character"
+    ]
+
+    first_member = ""
+    first_character = ""
+    if council_ids:
+        first_member = council_ids[0]
+    if character_ids:
+        first_character = character_ids[0]
+
+    hc = _make_story_chat()
+    chat_id = _next_story_chat_id()
+
+    # Build scene context for topic
+    scene_label = ""
+    if chapter_id and scene_id:
+        for ch in story.chapters:
+            if ch.chapter_id == chapter_id:
+                for sc in ch.scenes:
+                    if sc.scene_id == scene_id:
+                        scene_label = f" - Ch.{ch.chapter_number} Sc.{sc.scene_number}"
+                        break
+                break
+
+    try:
+        rec = hc.create_chat(
+            chat_id,
+            title=f"Story Chat: {story.title}{scene_label}",
+            member_name=first_member,
+            character_id=first_character,
+            topic=f"Discussing story: {story.title}",
+            metadata={
+                "story_chat": True,
+                "story_id": story_id,
+                "story_title": story.title,
+                "chapter_id": chapter_id,
+                "scene_id": scene_id,
+                "story_round": 0,
+                "story_max_rounds": _STORY_CHAT_MAX_ROUNDS,
+            },
+        )
+    except HumanChatValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    # Add remaining council members beyond the first
+    for cid in council_ids[1:]:
+        try:
+            rec = hc.add_council_member(chat_id, cid)
+        except Exception:
+            pass  # skip invalid, non-blocking
+
+    # Add remaining characters beyond the first
+    for chid in character_ids[1 if not first_member else 0:]:
+        if chid == first_character:
+            continue
+        try:
+            rec = hc.add_character(chat_id, chid)
+        except Exception:
+            pass  # skip invalid, non-blocking
+
+    result = rec.to_dict()
+    result["round"] = 0
+    result["max_rounds"] = _STORY_CHAT_MAX_ROUNDS
+    return result
+
+
+@router.post("/api/stories/{story_id}/chat/{chat_id}/inject-narration")
+async def api_story_chat_inject_narration(
+    story_id: str,
+    chat_id: str,
+    body: dict[str, Any] | None = None,
+):
+    """Inject a narration into the story chat and trigger participant discussion.
+
+    Body: {
+        "narration_text": "...",   // the narration text to inject
+        "chapter_id": "CHP-0001",
+        "scene_id": "SCE-0001"
+    }
+
+    Returns: SSE stream of participant responses.
+    """
+    from core.human_chat import HumanChatNotFoundError, HumanChatError
+
+    body = body or {}
+    narration_text = (body.get("narration_text") or "").strip()
+
+    if not narration_text:
+        raise HTTPException(
+            status_code=400,
+            detail="'narration_text' is required.",
+        )
+
+    async def event_generator():
+        try:
+            hc = _make_story_chat()
+
+            # Inject the narration as a narrator message
+            narrator_content = f"📖 **Narration:**\n\n{narration_text}"
+
+            hc.send_human_message(
+                chat_id,
+                narrator_content,
+                metadata={
+                    "type": "narration_inject",
+                    "story_id": story_id,
+                    "chapter_id": body.get("chapter_id", ""),
+                    "scene_id": body.get("scene_id", ""),
+                },
+            )
+
+            # Auto-resume if paused
+            rec = hc.get(chat_id)
+            if rec.paused:
+                hc.resume_chat(chat_id)
+
+            # Increment round
+            new_round = _increment_story_round(hc, chat_id)
+            max_rounds = (rec.metadata or {}).get(
+                "story_max_rounds", _STORY_CHAT_MAX_ROUNDS,
+            )
+
+            # Stream participant responses
+            t_start = time.monotonic()
+            async for member_name, response, record in hc.get_agent_response_streaming(chat_id):
+                t_end = time.monotonic()
+                response_time_ms = round((t_end - t_start) * 1000)
+                content_text = response.content or ""
+                event_data = json_module.dumps({
+                    "speaker": member_name,
+                    "content": content_text,
+                    "model": response.model,
+                    "provider": response.provider,
+                    "response_time_ms": response_time_ms,
+                })
+                yield f"event: message\ndata: {event_data}\n\n"
+                t_start = time.monotonic()
+
+            # Check if at limit and auto-close
+            final_record = hc.get(chat_id)
+            at_limit = new_round >= max_rounds
+            if at_limit:
+                try:
+                    hc.close_chat(chat_id, summary="Story chat reached round limit.")
+                    final_record = hc.get(chat_id)
+                except Exception:
+                    pass
+
+            done_data = json_module.dumps({
+                "chat": final_record.to_dict(),
+                "round": new_round,
+                "max_rounds": max_rounds,
+                "at_limit": at_limit,
+            })
+            yield f"event: done\ndata: {done_data}\n\n"
+
+        except HumanChatNotFoundError:
+            err = json_module.dumps({"detail": f"Chat '{chat_id}' not found."})
+            yield f"event: error\ndata: {err}\n\n"
+        except (HumanChatError, Exception) as exc:
+            err = json_module.dumps({"detail": str(exc)})
+            yield f"event: error\ndata: {err}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.post("/api/stories/{story_id}/chat/{chat_id}/send-stream")
+async def api_story_chat_send_stream(
+    story_id: str,
+    chat_id: str,
+    body: dict[str, Any] | None = None,
+):
+    """Send a human message in the story chat.
+
+    Body: {"content": "..."}
+
+    Returns: SSE stream of participant responses.
+    """
+    from core.human_chat import HumanChatNotFoundError, HumanChatError
+
+    body = body or {}
+    content = (body.get("content") or "").strip()
+    if not content:
+        raise HTTPException(
+            status_code=400,
+            detail="'content' is required.",
+        )
+
+    async def event_generator():
+        try:
+            hc = _make_story_chat()
+
+            # Check round limit before proceeding
+            rec = hc.get(chat_id)
+            if _is_story_chat_at_limit(rec):
+                err = json_module.dumps({
+                    "detail": "Story chat has reached the maximum number of rounds.",
+                })
+                yield f"event: error\ndata: {err}\n\n"
+                return
+
+            # Auto-resume if paused
+            if rec.paused:
+                hc.resume_chat(chat_id)
+
+            hc.send_human_message(chat_id, content)
+
+            # Increment round
+            new_round = _increment_story_round(hc, chat_id)
+            max_rounds = (rec.metadata or {}).get(
+                "story_max_rounds", _STORY_CHAT_MAX_ROUNDS,
+            )
+
+            t_start = time.monotonic()
+            async for member_name, response, record in hc.get_agent_response_streaming(chat_id):
+                t_end = time.monotonic()
+                response_time_ms = round((t_end - t_start) * 1000)
+                content_text = response.content or ""
+                event_data = json_module.dumps({
+                    "speaker": member_name,
+                    "content": content_text,
+                    "model": response.model,
+                    "provider": response.provider,
+                    "response_time_ms": response_time_ms,
+                })
+                yield f"event: message\ndata: {event_data}\n\n"
+                t_start = time.monotonic()
+
+            final_record = hc.get(chat_id)
+            at_limit = new_round >= max_rounds
+            if at_limit:
+                try:
+                    hc.close_chat(chat_id, summary="Story chat reached round limit.")
+                    final_record = hc.get(chat_id)
+                except Exception:
+                    pass
+
+            done_data = json_module.dumps({
+                "chat": final_record.to_dict(),
+                "round": new_round,
+                "max_rounds": max_rounds,
+                "at_limit": at_limit,
+            })
+            yield f"event: done\ndata: {done_data}\n\n"
+
+        except HumanChatNotFoundError:
+            err = json_module.dumps({"detail": f"Chat '{chat_id}' not found."})
+            yield f"event: error\ndata: {err}\n\n"
+        except (HumanChatError, Exception) as exc:
+            err = json_module.dumps({"detail": str(exc)})
+            yield f"event: error\ndata: {err}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.post("/api/stories/{story_id}/chat/{chat_id}/continue-stream")
+async def api_story_chat_continue_stream(
+    story_id: str,
+    chat_id: str,
+):
+    """Trigger one round of AI-to-AI discussion in story chat.
+
+    Returns: SSE stream of participant responses.
+    """
+    from core.human_chat import HumanChatNotFoundError, HumanChatError
+
+    async def event_generator():
+        try:
+            hc = _make_story_chat()
+
+            # Check round limit
+            rec = hc.get(chat_id)
+            if _is_story_chat_at_limit(rec):
+                err = json_module.dumps({
+                    "detail": "Story chat has reached the maximum number of rounds.",
+                })
+                yield f"event: error\ndata: {err}\n\n"
+                return
+
+            # Increment round
+            new_round = _increment_story_round(hc, chat_id)
+            max_rounds = (rec.metadata or {}).get(
+                "story_max_rounds", _STORY_CHAT_MAX_ROUNDS,
+            )
+
+            t_start = time.monotonic()
+            async for member_name, response, record in hc.continue_conversation_streaming(chat_id):
+                t_end = time.monotonic()
+                response_time_ms = round((t_end - t_start) * 1000)
+                content_text = response.content or ""
+                event_data = json_module.dumps({
+                    "speaker": member_name,
+                    "content": content_text,
+                    "model": response.model,
+                    "provider": response.provider,
+                    "response_time_ms": response_time_ms,
+                })
+                yield f"event: message\ndata: {event_data}\n\n"
+                t_start = time.monotonic()
+
+            final_record = hc.get(chat_id)
+            at_limit = new_round >= max_rounds
+            if at_limit:
+                try:
+                    hc.close_chat(chat_id, summary="Story chat reached round limit.")
+                    final_record = hc.get(chat_id)
+                except Exception:
+                    pass
+
+            done_data = json_module.dumps({
+                "chat": final_record.to_dict(),
+                "round": new_round,
+                "max_rounds": max_rounds,
+                "at_limit": at_limit,
+            })
+            yield f"event: done\ndata: {done_data}\n\n"
+
+        except HumanChatNotFoundError:
+            err = json_module.dumps({"detail": f"Chat '{chat_id}' not found."})
+            yield f"event: error\ndata: {err}\n\n"
+        except (HumanChatError, Exception) as exc:
+            err = json_module.dumps({"detail": str(exc)})
+            yield f"event: error\ndata: {err}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.post("/api/stories/{story_id}/chat/{chat_id}/narrate-round")
+async def api_story_chat_narrate_round(
+    story_id: str,
+    chat_id: str,
+    body: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Generate a mid-conversation narration that incorporates chat context.
+
+    Calls the LLM narrator with story context + recent chat messages,
+    saves the narration to the scene, and injects it into the chat log.
+
+    Optional body: {
+        "provider": "openrouter",
+        "model": "..."
+    }
+
+    Returns: {"narrative_text": "...", "model": "...", "round": N, "max_rounds": 5}
+    """
+    from core.story import (
+        StoryManager, StoryNotFoundError,
+        ChapterNotFoundError, SceneNotFoundError,
+    )
+    from core.api_client import APIClient, ChatMessage
+    from core.characters import CharacterManager
+    from core.locations import LocationManager
+    from core.human_chat import HumanChatNotFoundError, HumanChatError
+
+    body = body or {}
+
+    hc = _make_story_chat()
+
+    # Get chat record to find story/chapter/scene context
+    try:
+        rec = hc.get(chat_id)
+    except HumanChatNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Chat '{chat_id}' not found.")
+
+    meta = rec.metadata or {}
+    if meta.get("story_id") != story_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Chat does not belong to this story.",
+        )
+
+    chapter_id = meta.get("chapter_id", "")
+    scene_id = meta.get("scene_id", "")
+
+    smgr = StoryManager()
+    try:
+        story = smgr.get(story_id)
+    except StoryNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Story '{story_id}' not found.",
+        )
+
+    # Find chapter and scene
+    chapter = None
+    scene = None
+    for ch in story.chapters:
+        if ch.chapter_id == chapter_id:
+            chapter = ch
+            for sc in ch.scenes:
+                if sc.scene_id == scene_id:
+                    scene = sc
+                    break
+            break
+
+    if chapter is None or scene is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Chapter or scene not found for this chat.",
+        )
+
+    # Build prompt with story context + recent chat messages
+    prompt = StoryManager.build_scene_narration_prompt(
+        story, chapter, scene,
+        character_manager=CharacterManager(),
+        location_manager=LocationManager(),
+    )
+
+    # Add recent chat conversation as context
+    recent_messages = (rec.messages or [])[-10:]
+    if recent_messages:
+        prompt += "\n\n### Recent Discussion:\n"
+        prompt += "The following conversation has taken place about this scene:\n\n"
+        for msg in recent_messages:
+            if msg.metadata and msg.metadata.get("type") == "narration_inject":
+                continue  # skip previous narration injects to avoid recursion
+            label = "Human" if msg.role == "human" else msg.speaker
+            prompt += f"**{label}:** {msg.content}\n\n"
+        prompt += (
+            "\n### Task:\n"
+            "Based on the discussion above, write the next narrative "
+            "continuation of this scene. Incorporate any insights, "
+            "reactions, or ideas raised in the discussion. Write in "
+            "third person, present tense. Be vivid and atmospheric. "
+            "Aim for 2-4 paragraphs. Do not include any meta-commentary."
+        )
+
+    # Enrich prompt with participant context
+    participants = meta.get("participants", [])
+    if participants:
+        participant_context = _build_participant_context(participants)
+        if participant_context:
+            prompt = prompt + "\n\n" + participant_context
+
+    # Call LLM
+    client = APIClient()
+    from core.registry import CouncilMember
+
+    provider = body.get("provider", "openrouter")
+    model = body.get("model", "mistralai/mistral-small-2603")
+    narrator = CouncilMember(
+        name="Narrator",
+        role="Story Narrator",
+        description="An expert storyteller",
+        api_provider=provider,
+        model=model,
+        system_prompt=(
+            "You are a masterful storyteller. Write vivid, "
+            "atmospheric prose fiction. Respond with only the "
+            "narrative text \u2014 no commentary or meta-text."
+        ),
+    )
+    messages = [ChatMessage(role="user", content=prompt)]
+    response = await client.chat(narrator, messages)
+
+    narrative_text = response.content or ""
+
+    # Append narration to scene's existing narrative
+    existing_text = scene.narrative_text or ""
+    if existing_text:
+        updated_text = existing_text + "\n\n---\n\n" + narrative_text
+    else:
+        updated_text = narrative_text
+
+    smgr.update_scene(
+        story_id, chapter_id, scene_id,
+        narrative_text=updated_text,
+    )
+
+    # Inject the narration into the chat log
+    narrator_content = f"\U0001f4d6 **Narration:**\n\n{narrative_text}"
+    try:
+        # Auto-resume if paused
+        rec = hc.get(chat_id)
+        if rec.paused:
+            hc.resume_chat(chat_id)
+
+        hc.send_human_message(
+            chat_id,
+            narrator_content,
+            metadata={
+                "type": "narration_inject",
+                "story_id": story_id,
+                "chapter_id": chapter_id,
+                "scene_id": scene_id,
+            },
+        )
+    except Exception:
+        pass  # non-blocking: narration was saved even if inject fails
+
+    rec = hc.get(chat_id)
+    current_round = _get_story_round(rec)
+    max_rounds = meta.get("story_max_rounds", _STORY_CHAT_MAX_ROUNDS)
+
+    return {
+        "narrative_text": narrative_text,
+        "model": response.model,
+        "provider": response.provider,
+        "round": current_round,
+        "max_rounds": max_rounds,
+    }
