@@ -22,6 +22,28 @@ def api_council_list() -> list[dict[str, Any]]:
     from config.settings import COUNCIL_AVATARS_DIR
     registry = CouncilRegistry().load()
     members = registry.list_members()
+
+    # Build a lookup of active evolution overlays for council members
+    active_evolutions: dict[str, dict[str, str]] = {}
+    try:
+        from core.characters import CharacterManager
+        from core.proposals import ProposalManager
+        from core.voting import VotingEngine
+        from core.character_evolution import CharacterEvolution
+        evo = CharacterEvolution(
+            character_manager=CharacterManager(),
+            proposal_manager=ProposalManager(),
+            voting_engine=VotingEngine(),
+        )
+        for overlay in evo.list_targets_with_active_overlays():
+            if overlay.get("target_type") == "council_member":
+                active_evolutions[overlay["target_id"]] = {
+                    "evolution_id": overlay["evolution_id"],
+                    "name": overlay["name"],
+                }
+    except Exception:
+        pass  # graceful fallback if evolution system is unavailable
+
     result = []
     for m in members:
         d = {
@@ -38,6 +60,10 @@ def api_council_list() -> list[dict[str, Any]]:
         avatar_file = COUNCIL_AVATARS_DIR / f"{m.name.lower()}.png"
         if avatar_file.exists():
             d["avatar_url"] = f"/api/council/{m.name}/avatar"
+        # Attach active evolution info if present
+        evo_key = f"CM-{m.name}"
+        if evo_key in active_evolutions:
+            d["active_evolution"] = active_evolutions[evo_key]
         result.append(d)
     return result
 
@@ -203,6 +229,25 @@ def api_council_detail(name: str) -> dict[str, Any]:
     avatar_file = COUNCIL_AVATARS_DIR / f"{m.name.lower()}.png"
     if avatar_file.exists():
         d["avatar_url"] = f"/api/council/{m.name}/avatar"
+    # Attach active evolution info if present
+    try:
+        from core.characters import CharacterManager
+        from core.proposals import ProposalManager
+        from core.voting import VotingEngine
+        from core.character_evolution import CharacterEvolution
+        evo = CharacterEvolution(
+            character_manager=CharacterManager(),
+            proposal_manager=ProposalManager(),
+            voting_engine=VotingEngine(),
+        )
+        overlay = evo.get_active_overlay(f"CM-{m.name}", "council_member")
+        if overlay:
+            d["active_evolution"] = {
+                "evolution_id": overlay.evolution_id,
+                "name": overlay.name,
+            }
+    except Exception:
+        pass
     return d
 
 @router.put("/api/council/{name}")

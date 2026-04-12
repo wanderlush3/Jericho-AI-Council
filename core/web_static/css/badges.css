@@ -143,6 +143,37 @@
 .badge-openrouter::before { background: var(--accent-indigo); }
 .badge-mancer { background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan); }
 .badge-mancer::before { background: var(--accent-cyan); }
+.badge-lmstudio { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); }
+.badge-lmstudio::before { background: var(--accent-amber); }
+
+/* Evolution trait badge — distinctive purple glow */
+.badge-evolution-trait {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.18), rgba(139, 92, 246, 0.12));
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.15);
+    animation: evoTraitShimmer 3s ease-in-out infinite;
+}
+
+.badge-evolution-trait::before {
+    content: '✦';
+    font-size: 0.6rem;
+    flex-shrink: 0;
+}
+
+@keyframes evoTraitShimmer {
+    0%, 100% { box-shadow: 0 0 8px rgba(168, 85, 247, 0.15); }
+    50% { box-shadow: 0 0 14px rgba(168, 85, 247, 0.28); }
+}
 
 /* Vote choice badges */
 .badge-for { background: rgba(16, 185, 129, 0.15); color: var(--status-open); }
@@ -151,4 +182,5 @@
 .badge-against::before { background: var(--status-withdrawn); }
 .badge-abstain { background: rgba(100, 116, 139, 0.15); color: var(--status-draft); }
 .badge-abstain::before { background: var(--status-draft); }
+
 

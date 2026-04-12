@@ -28,7 +28,11 @@ async function renderCouncil() {
         return;
     }
 
-    const cards = data.map((m, i) => `
+    const cards = data.map((m, i) => {
+        const evoHtml = m.active_evolution
+            ? `<span class="badge-evolution-trait">${escapeHtml(m.active_evolution.name)} Evolution</span>`
+            : '';
+        return `
         <div class="card card-clickable member-card" onclick="navigateTo('council','${m.name}')">
             <div class="member-header">
                 ${memberAvatarWithImage(m.name, i, null, m.avatar_url)}
@@ -39,10 +43,12 @@ async function renderCouncil() {
                 ${badge(m.api_provider)}
             </div>
             <div class="member-desc">${truncate(m.description, 120)}</div>
+            ${evoHtml ? `<div style="margin-bottom:var(--space-md)">${evoHtml}</div>` : ''}
             <div class="member-meta">
                 ${m.specialties.map(s => `<span class="specialty-tag">${s}</span>`).join('')}
             </div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
 
     $main().innerHTML = `
         <div class="view-enter">
@@ -194,6 +200,10 @@ async function renderCouncilDetail(name) {
              <div class="avatar-overlay">📷</div>
            </div>`;
 
+    const detailEvoHtml = data.active_evolution
+        ? `<div style="margin-top:var(--space-sm)"><span class="badge-evolution-trait">${escapeHtml(data.active_evolution.name)} Evolution</span></div>`
+        : '';
+
     $main().innerHTML = `
         <div class="view-enter">
             <button class="back-btn" onclick="navigateTo('council')">← Back to Council</button>
@@ -209,6 +219,7 @@ async function renderCouncilDetail(name) {
                             <span class="council-readonly-label">Description</span>
                             <span class="council-readonly-value" style="font-size:0.85rem;color:var(--text-secondary)">${data.description}</span>
                         </div>
+                        ${detailEvoHtml}
                     </div>
                     <button class="detail-close" onclick="navigateTo('council')">✕</button>
                 </div>
