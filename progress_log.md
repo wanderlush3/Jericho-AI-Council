@@ -3355,3 +3355,38 @@ Added interactive conversational chat to the story system, mirroring the explore
 3. The `narrate-round` endpoint reuses `StoryManager.build_scene_narration_prompt` and appends recent chat messages as context for the LLM.
 4. Chat uses the existing `HumanChat` infrastructure from `human_chat.py` — no new data models were needed.
 5. The frontend state uses `window._storyChatId` and `window._storyChatSceneId` to track the active chat.
+
+---
+
+## Session: S-COUNCIL-SESSION-TESTS-001
+**Timestamp:** 2026-04-12
+**Feature:** `F-045` — Council Session Unit Tests
+**Status:** completed
+
+### Summary
+Added comprehensive unit tests for `core/council_session.py`, which previously had zero test coverage. The test file covers the `CouncilSessionRecord` dataclass and `CouncilSessionManager` across 61 tests in 10 test classes.
+
+### Files Added
+
+#### `tests/test_council_session.py` (NEW)
+- **TestCouncilSessionRecord** (11 tests): fields, frozen, to_dict/from_dict roundtrip, create factory, validation errors (empty session_id/title/topic), whitespace stripping, defaults
+- **TestCouncilSessionManagerInit** (3 tests): directory creation, existing dir, repr
+- **TestCreateSession** (8 tests): basic creation, options, persistence, sequential IDs, validation errors, ID gap sequencing
+- **TestGetSession** (3 tests): get existing, not found, contribution preservation through save/load
+- **TestListSessions** (5 tests): list all, empty, filter by status, sorted order, corrupt file skipping
+- **TestCloseSession** (6 tests): close with summary, auto-summary, already-closed error, not-found error, field preservation, persistence
+- **TestSavePublic** (1 test): public save method for SSE handler callers
+- **TestBuildProposalData** (7 tests): basic handoff, custom overrides, not-closed error, not-found error, summary/contributions/agenda inclusion
+- **TestAutoSummary** (5 tests): auto-generated summary content (title, topic, participants, contributions, no-participants edge case)
+- **TestExceptions** (4 tests): hierarchy, not-found fields, validation fields, state error fields
+- **TestEdgeCases** (8 tests): Unicode, long agenda, many participants, persistence roundtrip, full lifecycle, repr counts, nested metadata, contribution limit in handoff
+
+### Test Results
+- **2963 passed, 12 skipped** — zero regressions (+61 new tests)
+
+### Advice for Next Agent
+1. `core/council_session.py` is the **manager** for open-ended council deliberation sessions (`CS-XXXX`). It is distinct from `core/session.py` which is the **orchestrator** for structured sessions with phase transitions (briefing → active → summary → closed).
+2. The `test_session.py` file tests the orchestrator; `test_council_session.py` tests the manager. Do not confuse them.
+3. The auto-generated summary is produced by `CouncilSessionManager._generate_summary()` and has a predictable format: title, topic, contribution count, rounds, participants, active speakers.
+4. `build_proposal_data()` limits contribution inclusion to the **last 20** and truncates each to **300 characters** — the `test_contribution_limit_in_handoff` test verifies this boundary.
+5. The `sw` CLI tool is NOT available on this system's PATH. Use direct Python commands and file reads instead.

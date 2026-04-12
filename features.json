@@ -501,7 +501,7 @@
         "id": "F-045",
         "title": "Council Session Unit Tests",
         "description": "Add dedicated unit tests for core/council_session.py — verify session orchestration lifecycle, phase transitions, and prompt builders if not already covered by test_session.py or test_integration.py",
-        "status": "pending",
+        "status": "completed",
         "dependencies": []
     },
     {
