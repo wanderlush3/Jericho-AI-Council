@@ -1,23 +1,23 @@
 [
   {
-    "id": "IMG-0002",
+    "id": "IMG-0018",
     "entity_type": "item",
     "entity_id": "ITEM-0001",
-    "filename": "img_0001.png",
-    "original_filename": "ComfyUI_temp_oteyn_00003_.png",
-    "prompt": "A majestic, ancient redwood forest at twilight, towering trees with gnarled bark and moss-covered branches, ethereal god rays piercing through the dense canopy, illuminating a carpet of ferns and glowing bioluminescent mushrooms, mist swirling around the massive trunks, hyperrealistic, cinematic lighting, atmospheric, fantasy art, detailed, 8k resolution",
-    "negative_prompt": "cartoon, blurry, low quality, oversaturated, flat lighting, no depth, humans, animals, urban elements, artificial structures, text, watermark, signature, ugly, deformed, poorly drawn hands",
+    "filename": "img_0002.png",
+    "original_filename": "ComfyUI_temp_ndmeo_00009_.png",
+    "prompt": "Masterpiece fantasy art illustration of a glass vial filled with Liquid Luck potion, the liquid is shimmering molten gold with swirling magical patterns and rising effervescent bubbles, glowing with warm golden light, ornate cork stopper, surrounded by floating magical sparkles, epic volumetric lighting, painterly style, intricate details, sharp focus, rich colors, high contrast, 8k resolution, fantasy art, highly detailed, intricate, magical, epic lighting, painterly style",
+    "negative_prompt": "photo, photograph, realistic, selfie, blurry, low quality, bad anatomy, blur, low quality, ugly, deformed, distorted, plastic, matte, dull, flat colors, text, watermark, signature, bad composition, messy, dark, gloomy, photorealistic, simple, minimalist, grayscale",
     "is_primary": true,
-    "file_size": 8234955,
+    "file_size": 2071016,
     "width": 1024,
     "height": 1024,
-    "template_id": "TPL-0001",
+    "template_id": "TPL-0002",
     "generation_job_id": "GEN-0002",
-    "created_at": "2026-04-10T19:24:37.481805+00:00",
+    "created_at": "2026-04-12T19:18:16.425586+00:00",
     "metadata": {
       "prompt_mode": "system",
-      "style_preset": "",
-      "seed": 958935436,
+      "style_preset": "fantasy_art",
+      "seed": 1193639440,
       "member_name": ""
     }
   }

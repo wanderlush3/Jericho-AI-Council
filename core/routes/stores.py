@@ -21,11 +21,31 @@ def api_stores_list(
 ) -> list[dict[str, Any]]:
     """List stores with optional filters."""
     from core.stores import StoreManager
+    from core.image_manager import ImageManager
     mgr = StoreManager()
+    imgr = ImageManager()
     results = mgr.list_stores(
         status=status, author=author, tag=tag, store_type=store_type,
     )
-    return [s.to_dict() for s in results]
+    out = []
+    for store in results:
+        d = store.to_dict()
+        # Attach primary image URL if available
+        primary_url = ""
+        try:
+            images = imgr.list_images("store", store.id)
+            primary = next(
+                (img for img in images if img.is_primary), None,
+            )
+            if primary:
+                primary_url = f"/api/images/file/{primary.id}"
+            elif images:
+                primary_url = f"/api/images/file/{images[0].id}"
+        except Exception:
+            pass
+        d["primary_image_url"] = primary_url
+        out.append(d)
+    return out
 
 @router.get("/api/stores/{store_id}")
 def api_store_detail(store_id: str) -> dict[str, Any]:

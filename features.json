@@ -534,5 +534,14 @@
             "F-037c",
             "F-035"
         ]
+    },
+    {
+        "id": "F-050",
+        "title": "Analytics Expansion — 20 New Metrics",
+        "description": "Expand the analytics dashboard from 4 governance-only cards to 9 cards covering world building (characters, locations, items, stores), economy & treasury (accounts, circulation, government balance, tax events), content & stories (stories, chapters, scenes, illustration rate), image generation (total images, by entity type, storage, templates), and memory & knowledge (beliefs, session events, decisions, laws). Adds unanimous vote tracking to existing voting stats. 25 new tests.",
+        "status": "completed",
+        "dependencies": [
+            "F-016"
+        ]
     }
 ]

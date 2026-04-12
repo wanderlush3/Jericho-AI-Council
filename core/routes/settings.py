@@ -16,12 +16,54 @@ router = APIRouter()
 def api_analytics() -> dict[str, Any]:
     """Full analytics report."""
     from core.analytics import SessionAnalytics
-    from core.proposals import ProposalManager
-    from core.voting import VotingEngine
+    from core.manager_cache import (
+        get_character_manager,
+        get_item_manager,
+        get_law_manager,
+        get_location_manager,
+        get_proposal_manager,
+        get_registry,
+        get_store_manager,
+        get_story_manager,
+        get_treasury_manager,
+        get_voting_engine,
+    )
 
-    pmgr = ProposalManager()
-    engine = VotingEngine()
-    sa = SessionAnalytics(proposal_manager=pmgr, voting_engine=engine)
+    # Optional managers — gracefully degrade if unavailable
+    image_manager = None
+    template_manager = None
+    taxation_manager = None
+    try:
+        from core.image_manager import ImageManager
+        image_manager = ImageManager()
+    except Exception:
+        pass
+    try:
+        from core.comfyui_client import WorkflowTemplateManager
+        template_manager = WorkflowTemplateManager()
+    except Exception:
+        pass
+    try:
+        from core.taxation import TaxationManager
+        taxation_manager = TaxationManager()
+    except Exception:
+        pass
+
+    sa = SessionAnalytics(
+        proposal_manager=get_proposal_manager(),
+        voting_engine=get_voting_engine(),
+        character_manager=get_character_manager(),
+        location_manager=get_location_manager(),
+        item_manager=get_item_manager(),
+        store_manager=get_store_manager(),
+        treasury_manager=get_treasury_manager(),
+        taxation_manager=taxation_manager,
+        story_manager=get_story_manager(),
+        image_manager=image_manager,
+        template_manager=template_manager,
+        law_manager=get_law_manager(),
+        registry=get_registry(),
+    )
     report = sa.full_report()
     return report.to_dict()
 

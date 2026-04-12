@@ -3542,3 +3542,55 @@ Refine how item entity context is built for LLM-driven image generation prompts.
 2. The _get_pipeline() singleton now wires all 4 entity managers (character, location, item, store). If a new entity type is added, remember to wire its manager here too.
 3. The sw CLI tool is NOT available. Use direct Python commands instead.
 4. Store context still uses the old minimal format (name + description + type). If store image generation needs similar enrichment, follow the same pattern used here for items.
+
+
+---
+
+## Session — F-050: Analytics Expansion — 20 New Metrics (2026-04-12)
+
+### Summary
+Expanded the Analytics dashboard from 4 governance-only cards to 9 cards covering all major Jericho subsystems. Added 20 new metrics plus 1 enhancement (unanimous votes) to the existing voting card.
+
+### Changes
+
+#### core/analytics.py — 5 new dataclasses + computation methods
+
+| Dataclass | Fields |
+|---|---|
+| WorldBuildingStats | total_characters, characters_by_status, total_locations, locations_by_status, total_items, items_by_status, total_stores, active_stores, total_inventory_slots |
+| EconomyStats | total_accounts, total_circulation_gold, government_balance, total_tax_events |
+| ContentStats | total_stories, stories_by_status, total_chapters, total_scenes, illustrated_scenes |
+| ImageStats | total_images, images_by_entity_type, total_storage_bytes, total_templates |
+| MemoryKnowledgeStats | total_beliefs, total_session_events, total_shared_decisions, total_laws, laws_by_status |
+
+- VotingStats extended with unanimous_count field
+- AnalyticsReport extended with 5 new optional fields
+- SessionAnalytics.__init__ now accepts 11 additional keyword-only manager arguments
+- 5 new computation methods: world_building_stats(), economy_stats(), content_stats(), image_stats(), memory_knowledge_stats()
+- All new methods follow the existing pattern: return defaults if manager is None, silently handle exceptions
+
+#### core/routes/settings.py — /api/analytics endpoint expanded
+- Replaced direct ProposalManager/VotingEngine instantiation with manager_cache accessors
+- Added optional imports for ImageManager, WorkflowTemplateManager, TaxationManager with graceful fallback
+- Passes all 13 managers to SessionAnalytics
+
+#### core/web_static/js/analytics.js — 9-card rendering
+- Page now organized into two labeled sections: Governance (4 cards) and System (5 cards)
+- Added formatBytes() helper for human-readable storage display
+- Added statusChips() helper for rendering status breakdowns
+
+#### core/web_static/css/analytics.css — Layout expansion
+- Grid minimum column width: 300px to 340px
+- Added .analytics-section-label styling
+
+#### tests/test_analytics.py — 25 new tests
+
+### Test Results
+- **3097 passed, 12 skipped** — zero regressions (+25 new tests)
+
+### Advice for Next Agent
+1. The SessionAnalytics.__init__ now accepts 15 keyword-only arguments (4 original + 11 new). All are optional and default to None.
+2. The economy stats use OBELISK_CONVERSION_RATE from config.settings to convert total bronze to gold display.
+3. The image stats method walks the ImageManager.directory structure. If the directory structure changes, update image_stats().
+4. The memory/knowledge stats method scans all members from registry.list_names(). If the project has many members with large memory files, this could be slow.
+5. The sw CLI tool is NOT available. Use direct Python commands instead.

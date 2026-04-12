@@ -1,0 +1,24 @@
+[
+  {
+    "id": "IMG-0021",
+    "entity_type": "item",
+    "entity_id": "ITEM-0004",
+    "filename": "img_0001.png",
+    "original_filename": "ComfyUI_temp_ndmeo_00012_.png",
+    "prompt": "A crystal vial containing a viscous, amber-hued liquid with an iridescent metallic sheen, swirling with fiery orange and gold highlights, resting on a weathered wooden table, dramatic side lighting creating long shadows, hyper-detailed, fantasy art, cinematic composition, warm and intense atmosphere",
+    "negative_prompt": "blurry, low quality, deformed, cartoon, plastic, muted colors, flat lighting, modern setting, water texture, blue colors, oversaturated, grainy",
+    "is_primary": true,
+    "file_size": 1769883,
+    "width": 1024,
+    "height": 1024,
+    "template_id": "TPL-0002",
+    "generation_job_id": "GEN-0005",
+    "created_at": "2026-04-12T20:03:14.866558+00:00",
+    "metadata": {
+      "prompt_mode": "system",
+      "style_preset": "",
+      "seed": 99878765,
+      "member_name": ""
+    }
+  }
+]

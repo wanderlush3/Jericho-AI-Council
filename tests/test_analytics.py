@@ -16,11 +16,16 @@ from core.analytics import (
     AnalyticsError,
     AnalyticsReport,
     AnalyticsValidationError,
+    ContentStats,
+    EconomyStats,
+    ImageStats,
     MemberStats,
+    MemoryKnowledgeStats,
     ProposalStats,
     SessionAnalytics,
     SessionStats,
     VotingStats,
+    WorldBuildingStats,
 )
 from core.proposals import Proposal, ProposalManager
 from core.voting import Vote, VoteRecord, VotingEngine
@@ -966,3 +971,451 @@ class TestExceptions:
         e = AnalyticsValidationError(["err1", "err2"])
         assert e.errors == ["err1", "err2"]
         assert "err1" in str(e)
+
+
+# ═══════════════════════════════════════════════════════════════
+# New Dataclass Tests (F-050)
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestWorldBuildingStats:
+    def test_defaults(self):
+        s = WorldBuildingStats()
+        assert s.total_characters == 0
+        assert s.characters_by_status == {}
+        assert s.total_stores == 0
+
+    def test_roundtrip(self):
+        s = WorldBuildingStats(
+            total_characters=5,
+            characters_by_status={"active": 3, "draft": 2},
+            total_locations=8,
+            locations_by_status={"active": 8},
+            total_items=12,
+            items_by_status={"active": 10, "draft": 2},
+            total_stores=3,
+            active_stores=2,
+            total_inventory_slots=15,
+        )
+        d = s.to_dict()
+        s2 = WorldBuildingStats.from_dict(d)
+        assert s2.total_characters == 5
+        assert s2.total_inventory_slots == 15
+
+
+class TestEconomyStats:
+    def test_defaults(self):
+        s = EconomyStats()
+        assert s.total_accounts == 0
+        assert s.total_circulation_gold == "0.00"
+
+    def test_roundtrip(self):
+        s = EconomyStats(
+            total_accounts=10,
+            total_circulation_gold="2400.00",
+            government_balance={"gold": 1000, "silver": 0, "bronze": 0},
+            total_tax_events=5,
+        )
+        d = s.to_dict()
+        s2 = EconomyStats.from_dict(d)
+        assert s2.total_accounts == 10
+        assert s2.government_balance["gold"] == 1000
+
+
+class TestContentStats:
+    def test_defaults(self):
+        s = ContentStats()
+        assert s.total_stories == 0
+        assert s.illustrated_scenes == 0
+
+    def test_roundtrip(self):
+        s = ContentStats(
+            total_stories=3,
+            stories_by_status={"active": 2, "draft": 1},
+            total_chapters=7,
+            total_scenes=15,
+            illustrated_scenes=8,
+        )
+        d = s.to_dict()
+        s2 = ContentStats.from_dict(d)
+        assert s2.total_scenes == 15
+        assert s2.illustrated_scenes == 8
+
+
+class TestImageStats:
+    def test_defaults(self):
+        s = ImageStats()
+        assert s.total_images == 0
+        assert s.total_storage_bytes == 0
+
+    def test_roundtrip(self):
+        s = ImageStats(
+            total_images=42,
+            images_by_entity_type={"character": 20, "location": 22},
+            total_storage_bytes=10485760,
+            total_templates=3,
+        )
+        d = s.to_dict()
+        s2 = ImageStats.from_dict(d)
+        assert s2.total_images == 42
+        assert s2.images_by_entity_type["character"] == 20
+
+
+class TestMemoryKnowledgeStats:
+    def test_defaults(self):
+        s = MemoryKnowledgeStats()
+        assert s.total_beliefs == 0
+        assert s.total_laws == 0
+
+    def test_roundtrip(self):
+        s = MemoryKnowledgeStats(
+            total_beliefs=45,
+            total_session_events=120,
+            total_shared_decisions=10,
+            total_laws=8,
+            laws_by_status={"active": 6, "draft": 2},
+        )
+        d = s.to_dict()
+        s2 = MemoryKnowledgeStats.from_dict(d)
+        assert s2.total_beliefs == 45
+        assert s2.laws_by_status["active"] == 6
+
+
+# ═══════════════════════════════════════════════════════════════
+# World Building Stats Computation (F-050)
+# ═══════════════════════════════════════════════════════════════
+
+
+class _FakeCharacterManager:
+    def __init__(self, chars):
+        self._chars = chars
+    def list_characters(self, **kw):
+        return list(self._chars)
+
+
+class _FakeLocationManager:
+    def __init__(self, locs):
+        self._locs = locs
+    def list_locations(self, **kw):
+        return list(self._locs)
+
+
+class _FakeItemManager:
+    def __init__(self, items):
+        self._items = items
+    def list_items(self, **kw):
+        return list(self._items)
+
+
+class _FakeStoreManager:
+    def __init__(self, stores):
+        self._stores = stores
+    def list_stores(self, **kw):
+        return list(self._stores)
+
+
+class _FakeEntity:
+    """Minimal entity stub with status and optional inventory."""
+    def __init__(self, status="active", inventory=None):
+        self.status = status
+        self.inventory = inventory or []
+
+
+class TestWorldBuildingComputation:
+    def test_all_counts(self):
+        chars = [_FakeEntity("active"), _FakeEntity("draft"), _FakeEntity("active")]
+        locs = [_FakeEntity("active"), _FakeEntity("active")]
+        items = [_FakeEntity("active"), _FakeEntity("draft")]
+        stores = [
+            _FakeEntity("active", inventory=["a", "b"]),
+            _FakeEntity("draft", inventory=["c"]),
+        ]
+        sa = SessionAnalytics(
+            character_manager=_FakeCharacterManager(chars),
+            location_manager=_FakeLocationManager(locs),
+            item_manager=_FakeItemManager(items),
+            store_manager=_FakeStoreManager(stores),
+        )
+        wb = sa.world_building_stats()
+        assert wb.total_characters == 3
+        assert wb.characters_by_status == {"active": 2, "draft": 1}
+        assert wb.total_locations == 2
+        assert wb.total_items == 2
+        assert wb.total_stores == 2
+        assert wb.active_stores == 1
+        assert wb.total_inventory_slots == 3
+
+    def test_no_managers(self):
+        sa = SessionAnalytics()
+        wb = sa.world_building_stats()
+        assert wb.total_characters == 0
+        assert wb.total_locations == 0
+
+
+# ═══════════════════════════════════════════════════════════════
+# Economy Stats Computation (F-050)
+# ═══════════════════════════════════════════════════════════════
+
+
+class _FakeTreasuryAccount:
+    def __init__(self, account_type="personal", gold=0, silver=0, bronze=0):
+        self.account_type = account_type
+        self.balance = _FakeBalance(gold, silver, bronze)
+
+
+class _FakeBalance:
+    def __init__(self, gold, silver, bronze):
+        self.gold = gold
+        self.silver = silver
+        self.bronze = bronze
+    def total_in_bronze(self):
+        return (self.gold * 10000) + (self.silver * 100) + self.bronze
+    def to_dict(self):
+        return {"gold": self.gold, "silver": self.silver, "bronze": self.bronze}
+
+
+class _FakeTreasuryManager:
+    def __init__(self, accounts):
+        self._accounts = accounts
+    def list_accounts(self):
+        return list(self._accounts)
+
+
+class _FakeTaxationManager:
+    def __init__(self, events):
+        self._events = events
+    def list_events(self, **kw):
+        return list(self._events)
+
+
+class TestEconomyComputation:
+    def test_basic(self):
+        accounts = [
+            _FakeTreasuryAccount("government", gold=1000),
+            _FakeTreasuryAccount("personal", gold=200),
+        ]
+        sa = SessionAnalytics(
+            treasury_manager=_FakeTreasuryManager(accounts),
+            taxation_manager=_FakeTaxationManager(["e1", "e2"]),
+        )
+        ec = sa.economy_stats()
+        assert ec.total_accounts == 2
+        assert ec.government_balance == {"gold": 1000, "silver": 0, "bronze": 0}
+        assert ec.total_tax_events == 2
+        assert ec.total_circulation_gold != "0.00"
+
+    def test_no_managers(self):
+        sa = SessionAnalytics()
+        ec = sa.economy_stats()
+        assert ec.total_accounts == 0
+        assert ec.total_circulation_gold == "0.00"
+
+
+# ═══════════════════════════════════════════════════════════════
+# Content Stats Computation (F-050)
+# ═══════════════════════════════════════════════════════════════
+
+
+class _FakeScene:
+    def __init__(self, image_id=""):
+        self.image_id = image_id
+
+
+class _FakeChapter:
+    def __init__(self, scenes=None):
+        self.scenes = scenes or []
+
+
+class _FakeStory:
+    def __init__(self, status="active", chapters=None):
+        self.status = status
+        self.chapters = chapters or []
+
+
+class _FakeStoryManager:
+    def __init__(self, stories):
+        self._stories = stories
+    def list_stories(self, **kw):
+        return list(self._stories)
+
+
+class TestContentComputation:
+    def test_basic(self):
+        stories = [
+            _FakeStory("active", [
+                _FakeChapter([_FakeScene("IMG-0001"), _FakeScene("")]),
+                _FakeChapter([_FakeScene("IMG-0002")]),
+            ]),
+            _FakeStory("draft"),
+        ]
+        sa = SessionAnalytics(story_manager=_FakeStoryManager(stories))
+        cs = sa.content_stats()
+        assert cs.total_stories == 2
+        assert cs.stories_by_status == {"active": 1, "draft": 1}
+        assert cs.total_chapters == 2
+        assert cs.total_scenes == 3
+        assert cs.illustrated_scenes == 2
+
+    def test_no_manager(self):
+        sa = SessionAnalytics()
+        cs = sa.content_stats()
+        assert cs.total_stories == 0
+
+
+# ═══════════════════════════════════════════════════════════════
+# Image Stats Computation (F-050)
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestImageComputation:
+    def test_basic(self, tmp_path):
+        # Build a fake images directory structure
+        images_dir = tmp_path / "images"
+        char_dir = images_dir / "character" / "CH-0001"
+        char_dir.mkdir(parents=True)
+        # Write a metadata file
+        import json as _json
+        metadata = [
+            {"id": "IMG-0001", "entity_type": "character", "entity_id": "CH-0001",
+             "filename": "img_0001.png", "is_primary": True, "file_size": 1024,
+             "width": 512, "height": 512, "created_at": "", "original_filename": "",
+             "prompt": "", "negative_prompt": "", "template_id": "",
+             "generation_job_id": "", "metadata": {}},
+        ]
+        (char_dir / "images.json").write_text(
+            _json.dumps(metadata), encoding="utf-8"
+        )
+
+        from core.image_manager import ImageManager
+        img_mgr = ImageManager(images_dir=images_dir)
+
+        sa = SessionAnalytics(image_manager=img_mgr)
+        im = sa.image_stats()
+        assert im.total_images == 1
+        assert im.images_by_entity_type == {"character": 1}
+        assert im.total_storage_bytes == 1024
+
+    def test_no_manager(self):
+        sa = SessionAnalytics()
+        im = sa.image_stats()
+        assert im.total_images == 0
+
+
+# ═══════════════════════════════════════════════════════════════
+# Memory & Knowledge Stats Computation (F-050)
+# ═══════════════════════════════════════════════════════════════
+
+
+class _FakeRegistry:
+    def __init__(self, names):
+        self._names = names
+    def list_names(self):
+        return list(self._names)
+
+
+class _FakeLawManager:
+    def __init__(self, laws):
+        self._laws = laws
+    def list_laws(self, **kw):
+        return list(self._laws)
+
+
+class _FakeLaw:
+    def __init__(self, status="active"):
+        self.status = status
+
+
+class TestMemoryKnowledgeComputation:
+    def test_laws(self):
+        laws = [_FakeLaw("active"), _FakeLaw("active"), _FakeLaw("draft")]
+        sa = SessionAnalytics(law_manager=_FakeLawManager(laws))
+        mk = sa.memory_knowledge_stats()
+        assert mk.total_laws == 3
+        assert mk.laws_by_status == {"active": 2, "draft": 1}
+
+    def test_no_managers(self):
+        sa = SessionAnalytics()
+        mk = sa.memory_knowledge_stats()
+        assert mk.total_laws == 0
+        assert mk.total_beliefs == 0
+
+
+# ═══════════════════════════════════════════════════════════════
+# Unanimous Vote Tracking (F-050)
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestUnanimousVotes:
+    def test_unanimous(self, tmp_path):
+        ve = _make_voting_engine(tmp_path)
+        # Record 1: all "for" — unanimous
+        ve.open_voting("P-0001")
+        ve.cast_vote("P-0001", Vote.create("Sage", "for"))
+        ve.cast_vote("P-0001", Vote.create("Logic", "for"))
+        # Record 2: mixed — not unanimous
+        ve.open_voting("P-0002")
+        ve.cast_vote("P-0002", Vote.create("Sage", "for"))
+        ve.cast_vote("P-0002", Vote.create("Logic", "against"))
+
+        sa = SessionAnalytics(voting_engine=ve)
+        stats = sa.voting_stats()
+        assert stats.unanimous_count == 1
+
+    def test_no_votes(self, tmp_path):
+        ve = _make_voting_engine(tmp_path)
+        ve.open_voting("P-0001")
+        sa = SessionAnalytics(voting_engine=ve)
+        stats = sa.voting_stats()
+        assert stats.unanimous_count == 0
+
+    def test_all_unanimous(self, tmp_path):
+        ve = _make_voting_engine(tmp_path)
+        ve.open_voting("P-0001")
+        ve.cast_vote("P-0001", Vote.create("A", "for"))
+        ve.cast_vote("P-0001", Vote.create("B", "for"))
+        ve.open_voting("P-0002")
+        ve.cast_vote("P-0002", Vote.create("A", "for"))
+
+        sa = SessionAnalytics(voting_engine=ve)
+        stats = sa.voting_stats()
+        assert stats.unanimous_count == 2
+
+
+# ═══════════════════════════════════════════════════════════════
+# Full Report with Expanded Stats (F-050)
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestFullReportExpanded:
+    def test_includes_new_sections(self, tmp_path):
+        pm = _make_proposal_manager(tmp_path)
+        ve = _make_voting_engine(tmp_path)
+        chars = [_FakeEntity("active")]
+        sa = SessionAnalytics(
+            proposal_manager=pm,
+            voting_engine=ve,
+            character_manager=_FakeCharacterManager(chars),
+            law_manager=_FakeLawManager([_FakeLaw("active")]),
+        )
+        report = sa.full_report()
+
+        assert isinstance(report.world_building_stats, WorldBuildingStats)
+        assert isinstance(report.economy_stats, EconomyStats)
+        assert isinstance(report.content_stats, ContentStats)
+        assert isinstance(report.image_stats, ImageStats)
+        assert isinstance(report.memory_knowledge_stats, MemoryKnowledgeStats)
+        assert report.world_building_stats.total_characters == 1
+        assert report.memory_knowledge_stats.total_laws == 1
+
+    def test_to_dict_includes_new_sections(self, tmp_path):
+        pm = _make_proposal_manager(tmp_path)
+        ve = _make_voting_engine(tmp_path)
+        sa = SessionAnalytics(proposal_manager=pm, voting_engine=ve)
+        report = sa.full_report()
+        d = report.to_dict()
+
+        assert "world_building_stats" in d
+        assert "economy_stats" in d
+        assert "content_stats" in d
+        assert "image_stats" in d
+        assert "memory_knowledge_stats" in d

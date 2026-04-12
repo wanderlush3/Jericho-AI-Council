@@ -1,0 +1,24 @@
+[
+  {
+    "id": "IMG-0020",
+    "entity_type": "item",
+    "entity_id": "ITEM-0003",
+    "filename": "img_0002.png",
+    "original_filename": "ComfyUI_temp_ndmeo_00011_.png",
+    "prompt": "photorealistic 8k, highly detailed macro shot of a smoky amber potion bottle, swirling translucent liquid with hints of bergamot and betrayal, smoke coiling inside the glass, honey-gold light catching sharp edges of the bottle, placed on a dark wooden surface in a dimly lit backroom, sharp focus, natural chiaroscuro lighting, professional photography, cinematic mood, photorealistic, 8k, highly detailed, natural lighting, sharp focus, professional photography",
+    "negative_prompt": "cartoon, anime, drawing, painting, illustration, blurry, low quality, bad anatomy, cartoon, anime, blurry, oversaturated, artificial lighting, bright colors, clean background, fantasy aesthetic, digital art, painting, plastic bottle, labels, text, watermark",
+    "is_primary": true,
+    "file_size": 1636973,
+    "width": 1024,
+    "height": 1024,
+    "template_id": "TPL-0002",
+    "generation_job_id": "GEN-0004",
+    "created_at": "2026-04-12T19:24:55.790743+00:00",
+    "metadata": {
+      "prompt_mode": "system",
+      "style_preset": "realistic",
+      "seed": 1917811179,
+      "member_name": ""
+    }
+  }
+]

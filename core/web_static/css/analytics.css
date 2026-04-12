@@ -1,8 +1,24 @@
 /* ─── Analytics ──────────────────────────────────────────────── */
 .analytics-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
     gap: var(--space-lg);
+}
+
+.analytics-section-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: var(--space-xl);
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.analytics-section-label:first-of-type {
+    margin-top: 0;
 }
 
 .analytics-card h3 {

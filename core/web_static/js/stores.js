@@ -39,9 +39,13 @@ async function renderStores() {
         const icon = STORE_TYPE_ICONS[store.store_type] || '🏪';
         const invCount = (store.inventory || []).length;
         const tagsHtml = (store.tags || []).map(t => `<span class="tag">#${escapeHtml(t)}</span>`).join('');
+        const avatarHtml = store.primary_image_url
+            ? `<div class="store-avatar" style="background-image:url('${store.primary_image_url}')"></div>`
+            : `<div class="store-avatar store-avatar-placeholder"><span>?</span></div>`;
         return `
         <div class="card card-clickable store-card" onclick="navigateTo('stores','${store.id}')">
             <div class="store-card-header">
+                ${avatarHtml}
                 <div class="store-card-icon">${icon}</div>
                 <div style="flex:1">
                     <div class="store-card-name">${escapeHtml(store.name)}</div>

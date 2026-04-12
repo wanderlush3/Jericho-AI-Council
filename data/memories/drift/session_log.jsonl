@@ -223,3 +223,6 @@
 {"timestamp": "2026-04-12T18:55:59.839133+00:00", "session_id": "D-001", "event_type": "discussion", "content": "Discussed proposal 'Test Proposal' (P-0001) round 1: Acknowledged.", "source": "discussion", "metadata": {}}
 {"timestamp": "2026-04-12T18:57:35.886942+00:00", "session_id": "D-001", "event_type": "discussion", "content": "Discussed proposal 'Test Proposal' (P-0001) round 1: Acknowledged.", "source": "discussion", "metadata": {}}
 {"timestamp": "2026-04-12T19:00:22.482825+00:00", "session_id": "D-001", "event_type": "discussion", "content": "Discussed proposal 'Test Proposal' (P-0001) round 1: Acknowledged.", "source": "discussion", "metadata": {}}
+{"timestamp": "2026-04-12T20:12:48.607617+00:00", "session_id": "D-001", "event_type": "discussion", "content": "Discussed proposal 'Test Proposal' (P-0001) round 1: Acknowledged.", "source": "discussion", "metadata": {}}
+{"timestamp": "2026-04-12T20:27:31.118410+00:00", "session_id": "D-001", "event_type": "discussion", "content": "Discussed proposal 'Test Proposal' (P-0001) round 1: Acknowledged.", "source": "discussion", "metadata": {}}
+{"timestamp": "2026-04-12T20:32:49.380115+00:00", "session_id": "D-001", "event_type": "discussion", "content": "Discussed proposal 'Test Proposal' (P-0001) round 1: Acknowledged.", "source": "discussion", "metadata": {}}

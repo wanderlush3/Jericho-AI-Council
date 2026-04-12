@@ -99,6 +99,7 @@ class VotingStats:
     quorum_achievement_rate: float = 0.0
     approval_rate: float = 0.0
     veto_count: int = 0
+    unanimous_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -112,6 +113,7 @@ class VotingStats:
             quorum_achievement_rate=data.get("quorum_achievement_rate", 0.0),
             approval_rate=data.get("approval_rate", 0.0),
             veto_count=data.get("veto_count", 0),
+            unanimous_count=data.get("unanimous_count", 0),
         )
 
 
@@ -140,6 +142,130 @@ class SessionStats:
 
 
 @dataclass(frozen=True)
+class WorldBuildingStats:
+    """World-building entity statistics."""
+
+    total_characters: int = 0
+    characters_by_status: dict[str, int] = field(default_factory=dict)
+    total_locations: int = 0
+    locations_by_status: dict[str, int] = field(default_factory=dict)
+    total_items: int = 0
+    items_by_status: dict[str, int] = field(default_factory=dict)
+    total_stores: int = 0
+    active_stores: int = 0
+    total_inventory_slots: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> WorldBuildingStats:
+        return cls(
+            total_characters=data.get("total_characters", 0),
+            characters_by_status=dict(data.get("characters_by_status", {})),
+            total_locations=data.get("total_locations", 0),
+            locations_by_status=dict(data.get("locations_by_status", {})),
+            total_items=data.get("total_items", 0),
+            items_by_status=dict(data.get("items_by_status", {})),
+            total_stores=data.get("total_stores", 0),
+            active_stores=data.get("active_stores", 0),
+            total_inventory_slots=data.get("total_inventory_slots", 0),
+        )
+
+
+@dataclass(frozen=True)
+class EconomyStats:
+    """Economy and treasury statistics."""
+
+    total_accounts: int = 0
+    total_circulation_gold: str = "0.00"
+    government_balance: dict[str, int] = field(default_factory=dict)
+    total_tax_events: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> EconomyStats:
+        return cls(
+            total_accounts=data.get("total_accounts", 0),
+            total_circulation_gold=data.get("total_circulation_gold", "0.00"),
+            government_balance=dict(data.get("government_balance", {})),
+            total_tax_events=data.get("total_tax_events", 0),
+        )
+
+
+@dataclass(frozen=True)
+class ContentStats:
+    """Story and content statistics."""
+
+    total_stories: int = 0
+    stories_by_status: dict[str, int] = field(default_factory=dict)
+    total_chapters: int = 0
+    total_scenes: int = 0
+    illustrated_scenes: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ContentStats:
+        return cls(
+            total_stories=data.get("total_stories", 0),
+            stories_by_status=dict(data.get("stories_by_status", {})),
+            total_chapters=data.get("total_chapters", 0),
+            total_scenes=data.get("total_scenes", 0),
+            illustrated_scenes=data.get("illustrated_scenes", 0),
+        )
+
+
+@dataclass(frozen=True)
+class ImageStats:
+    """Image generation statistics."""
+
+    total_images: int = 0
+    images_by_entity_type: dict[str, int] = field(default_factory=dict)
+    total_storage_bytes: int = 0
+    total_templates: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ImageStats:
+        return cls(
+            total_images=data.get("total_images", 0),
+            images_by_entity_type=dict(data.get("images_by_entity_type", {})),
+            total_storage_bytes=data.get("total_storage_bytes", 0),
+            total_templates=data.get("total_templates", 0),
+        )
+
+
+@dataclass(frozen=True)
+class MemoryKnowledgeStats:
+    """Memory and knowledge base statistics."""
+
+    total_beliefs: int = 0
+    total_session_events: int = 0
+    total_shared_decisions: int = 0
+    total_laws: int = 0
+    laws_by_status: dict[str, int] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> MemoryKnowledgeStats:
+        return cls(
+            total_beliefs=data.get("total_beliefs", 0),
+            total_session_events=data.get("total_session_events", 0),
+            total_shared_decisions=data.get("total_shared_decisions", 0),
+            total_laws=data.get("total_laws", 0),
+            laws_by_status=dict(data.get("laws_by_status", {})),
+        )
+
+
+@dataclass(frozen=True)
 class AnalyticsReport:
     """Full analytics bundle across all subsystems."""
 
@@ -148,6 +274,11 @@ class AnalyticsReport:
     voting_stats: VotingStats = field(default_factory=VotingStats)
     session_stats: SessionStats = field(default_factory=SessionStats)
     top_participants: list[tuple[str, int]] = field(default_factory=list)
+    world_building_stats: WorldBuildingStats = field(default_factory=WorldBuildingStats)
+    economy_stats: EconomyStats = field(default_factory=EconomyStats)
+    content_stats: ContentStats = field(default_factory=ContentStats)
+    image_stats: ImageStats = field(default_factory=ImageStats)
+    memory_knowledge_stats: MemoryKnowledgeStats = field(default_factory=MemoryKnowledgeStats)
     generated_at: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -159,6 +290,11 @@ class AnalyticsReport:
             "voting_stats": self.voting_stats.to_dict(),
             "session_stats": self.session_stats.to_dict(),
             "top_participants": list(self.top_participants),
+            "world_building_stats": self.world_building_stats.to_dict(),
+            "economy_stats": self.economy_stats.to_dict(),
+            "content_stats": self.content_stats.to_dict(),
+            "image_stats": self.image_stats.to_dict(),
+            "memory_knowledge_stats": self.memory_knowledge_stats.to_dict(),
             "generated_at": self.generated_at,
         }
 
@@ -198,11 +334,33 @@ class SessionAnalytics:
         voting_engine: Any | None = None,
         session_orchestrator: Any | None = None,
         discussion_manager: Any | None = None,
+        character_manager: Any | None = None,
+        location_manager: Any | None = None,
+        item_manager: Any | None = None,
+        store_manager: Any | None = None,
+        treasury_manager: Any | None = None,
+        taxation_manager: Any | None = None,
+        story_manager: Any | None = None,
+        image_manager: Any | None = None,
+        template_manager: Any | None = None,
+        law_manager: Any | None = None,
+        registry: Any | None = None,
     ) -> None:
         self._proposals = proposal_manager
         self._voting = voting_engine
         self._sessions = session_orchestrator
         self._discussions = discussion_manager
+        self._characters = character_manager
+        self._locations = location_manager
+        self._items = item_manager
+        self._stores = store_manager
+        self._treasury = treasury_manager
+        self._taxation = taxation_manager
+        self._stories = story_manager
+        self._images = image_manager
+        self._templates = template_manager
+        self._laws = law_manager
+        self._registry = registry
 
     # ── Properties ────────────────────────────────────────────
 
@@ -404,6 +562,7 @@ class SessionAnalytics:
         quorum_met_count = 0
         approved_count = 0
         closed_count = 0
+        unanimous_count = 0
 
         for r in records:
             tally = self._voting._compute_tally(r)
@@ -413,6 +572,9 @@ class SessionAnalytics:
                 closed_count += 1
                 if tally.approved:
                     approved_count += 1
+            # Unanimous: all votes are "for" and at least 1 vote
+            if r.votes and all(v.choice == "for" for v in r.votes):
+                unanimous_count += 1
 
         quorum_rate = (
             round(quorum_met_count / total_records, 4)
@@ -433,6 +595,7 @@ class SessionAnalytics:
             quorum_achievement_rate=quorum_rate,
             approval_rate=approval_rate,
             veto_count=veto_count,
+            unanimous_count=unanimous_count,
         )
 
     # ── Session Stats ─────────────────────────────────────────
@@ -497,6 +660,247 @@ class SessionAnalytics:
         )
         return [(name, stats.total_activity) for name, stats in ranked[:limit]]
 
+    # ── World Building Stats ───────────────────────────────────
+
+    def world_building_stats(self) -> WorldBuildingStats:
+        """Compute world-building entity statistics."""
+        total_characters = 0
+        characters_by_status: dict[str, int] = {}
+        total_locations = 0
+        locations_by_status: dict[str, int] = {}
+        total_items = 0
+        items_by_status: dict[str, int] = {}
+        total_stores = 0
+        active_stores = 0
+        total_inventory_slots = 0
+
+        if self._characters is not None:
+            try:
+                chars = self._characters.list_characters()
+                total_characters = len(chars)
+                for c in chars:
+                    characters_by_status[c.status] = (
+                        characters_by_status.get(c.status, 0) + 1
+                    )
+            except Exception:
+                pass
+
+        if self._locations is not None:
+            try:
+                locs = self._locations.list_locations()
+                total_locations = len(locs)
+                for loc in locs:
+                    locations_by_status[loc.status] = (
+                        locations_by_status.get(loc.status, 0) + 1
+                    )
+            except Exception:
+                pass
+
+        if self._items is not None:
+            try:
+                items = self._items.list_items()
+                total_items = len(items)
+                for item in items:
+                    items_by_status[item.status] = (
+                        items_by_status.get(item.status, 0) + 1
+                    )
+            except Exception:
+                pass
+
+        if self._stores is not None:
+            try:
+                stores = self._stores.list_stores()
+                total_stores = len(stores)
+                for store in stores:
+                    if store.status == "active":
+                        active_stores += 1
+                    total_inventory_slots += len(
+                        getattr(store, "inventory", []) or []
+                    )
+            except Exception:
+                pass
+
+        return WorldBuildingStats(
+            total_characters=total_characters,
+            characters_by_status=characters_by_status,
+            total_locations=total_locations,
+            locations_by_status=locations_by_status,
+            total_items=total_items,
+            items_by_status=items_by_status,
+            total_stores=total_stores,
+            active_stores=active_stores,
+            total_inventory_slots=total_inventory_slots,
+        )
+
+    # ── Economy Stats ────────────────────────────────────────
+
+    def economy_stats(self) -> EconomyStats:
+        """Compute economy and treasury statistics."""
+        total_accounts = 0
+        total_bronze = 0
+        government_balance: dict[str, int] = {}
+        total_tax_events = 0
+
+        if self._treasury is not None:
+            try:
+                accounts = self._treasury.list_accounts()
+                total_accounts = len(accounts)
+                for acct in accounts:
+                    total_bronze += acct.balance.total_in_bronze()
+                    if acct.account_type == "government":
+                        government_balance = acct.balance.to_dict()
+            except Exception:
+                pass
+
+        if self._taxation is not None:
+            try:
+                events = self._taxation.list_events()
+                total_tax_events = len(events)
+            except Exception:
+                pass
+
+        # Convert total bronze to gold display string
+        from config.settings import OBELISK_CONVERSION_RATE
+        rate = OBELISK_CONVERSION_RATE
+        gold_equiv = total_bronze / (rate * rate) if rate > 0 else 0.0
+        circulation_display = f"{gold_equiv:.2f}"
+
+        return EconomyStats(
+            total_accounts=total_accounts,
+            total_circulation_gold=circulation_display,
+            government_balance=government_balance,
+            total_tax_events=total_tax_events,
+        )
+
+    # ── Content Stats ────────────────────────────────────────
+
+    def content_stats(self) -> ContentStats:
+        """Compute story and content statistics."""
+        total_stories = 0
+        stories_by_status: dict[str, int] = {}
+        total_chapters = 0
+        total_scenes = 0
+        illustrated_scenes = 0
+
+        if self._stories is not None:
+            try:
+                stories = self._stories.list_stories()
+                total_stories = len(stories)
+                for story in stories:
+                    stories_by_status[story.status] = (
+                        stories_by_status.get(story.status, 0) + 1
+                    )
+                    total_chapters += len(story.chapters)
+                    for chapter in story.chapters:
+                        total_scenes += len(chapter.scenes)
+                        for scene in chapter.scenes:
+                            if scene.image_id:
+                                illustrated_scenes += 1
+            except Exception:
+                pass
+
+        return ContentStats(
+            total_stories=total_stories,
+            stories_by_status=stories_by_status,
+            total_chapters=total_chapters,
+            total_scenes=total_scenes,
+            illustrated_scenes=illustrated_scenes,
+        )
+
+    # ── Image Stats ──────────────────────────────────────────
+
+    def image_stats(self) -> ImageStats:
+        """Compute image generation statistics."""
+        total_images = 0
+        images_by_entity_type: dict[str, int] = {}
+        total_storage_bytes = 0
+        total_templates = 0
+
+        if self._images is not None:
+            try:
+                images_dir = self._images.directory
+                for entity_type_dir in images_dir.iterdir():
+                    if not entity_type_dir.is_dir() or entity_type_dir.name.startswith("."):
+                        continue
+                    entity_type = entity_type_dir.name
+                    for entity_dir in entity_type_dir.iterdir():
+                        if not entity_dir.is_dir():
+                            continue
+                        imgs = self._images.list_images(
+                            entity_type, entity_dir.name,
+                        )
+                        count = len(imgs)
+                        total_images += count
+                        images_by_entity_type[entity_type] = (
+                            images_by_entity_type.get(entity_type, 0) + count
+                        )
+                        for img in imgs:
+                            total_storage_bytes += img.file_size
+            except Exception:
+                pass
+
+        if self._templates is not None:
+            try:
+                total_templates = len(self._templates.list_templates())
+            except Exception:
+                pass
+
+        return ImageStats(
+            total_images=total_images,
+            images_by_entity_type=images_by_entity_type,
+            total_storage_bytes=total_storage_bytes,
+            total_templates=total_templates,
+        )
+
+    # ── Memory & Knowledge Stats ─────────────────────────────
+
+    def memory_knowledge_stats(self) -> MemoryKnowledgeStats:
+        """Compute memory and knowledge base statistics."""
+        total_beliefs = 0
+        total_session_events = 0
+        total_shared_decisions = 0
+        total_laws = 0
+        laws_by_status: dict[str, int] = {}
+
+        # Gather member names for memory scanning
+        member_names: list[str] = []
+        if self._registry is not None:
+            try:
+                member_names = self._registry.list_names()
+            except Exception:
+                pass
+
+        if member_names:
+            try:
+                from core.memory import AgentMemory, SharedMemory
+                for mname in member_names:
+                    amem = AgentMemory(mname)
+                    total_beliefs += len(amem.read_core_beliefs())
+                    total_session_events += len(amem.read_session_log())
+                shared = SharedMemory()
+                total_shared_decisions = len(shared.read_decisions())
+            except Exception:
+                pass
+
+        if self._laws is not None:
+            try:
+                laws = self._laws.list_laws()
+                total_laws = len(laws)
+                for law in laws:
+                    laws_by_status[law.status] = (
+                        laws_by_status.get(law.status, 0) + 1
+                    )
+            except Exception:
+                pass
+
+        return MemoryKnowledgeStats(
+            total_beliefs=total_beliefs,
+            total_session_events=total_session_events,
+            total_shared_decisions=total_shared_decisions,
+            total_laws=total_laws,
+            laws_by_status=laws_by_status,
+        )
+
     # ── Full Report ───────────────────────────────────────────
 
     def full_report(
@@ -515,6 +919,11 @@ class SessionAnalytics:
         voting = self.voting_stats()
         sessions = self.session_stats()
         top = self.top_participants(member_names=member_names)
+        world = self.world_building_stats()
+        economy = self.economy_stats()
+        content = self.content_stats()
+        images = self.image_stats()
+        memory_knowledge = self.memory_knowledge_stats()
 
         return AnalyticsReport(
             member_stats=members,
@@ -522,6 +931,11 @@ class SessionAnalytics:
             voting_stats=voting,
             session_stats=sessions,
             top_participants=top,
+            world_building_stats=world,
+            economy_stats=economy,
+            content_stats=content,
+            image_stats=images,
+            memory_knowledge_stats=memory_knowledge,
             generated_at=datetime.now(timezone.utc).isoformat(),
         )
 
@@ -537,4 +951,20 @@ class SessionAnalytics:
             sources.append("sessions")
         if self._discussions is not None:
             sources.append("discussions")
+        if self._characters is not None:
+            sources.append("characters")
+        if self._locations is not None:
+            sources.append("locations")
+        if self._items is not None:
+            sources.append("items")
+        if self._stores is not None:
+            sources.append("stores")
+        if self._treasury is not None:
+            sources.append("treasury")
+        if self._stories is not None:
+            sources.append("stories")
+        if self._images is not None:
+            sources.append("images")
+        if self._laws is not None:
+            sources.append("laws")
         return f"SessionAnalytics(sources=[{', '.join(sources)}])"
