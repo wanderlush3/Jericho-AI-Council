@@ -508,7 +508,7 @@
         "id": "F-046",
         "title": "Explore & Story Route Test Coverage",
         "description": "Increase endpoint test coverage for core/routes/explore.py (31KB, 10 tests) and core/routes/stories.py (46KB, 29 tests) — the two largest route files with the thinnest test coverage. Focus on SSE streaming endpoints, chat flows, and error paths",
-        "status": "pending",
+        "status": "completed",
         "dependencies": []
     },
     {

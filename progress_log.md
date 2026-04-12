@@ -3390,3 +3390,47 @@ Added comprehensive unit tests for `core/council_session.py`, which previously h
 3. The auto-generated summary is produced by `CouncilSessionManager._generate_summary()` and has a predictable format: title, topic, contribution count, rounds, participants, active speakers.
 4. `build_proposal_data()` limits contribution inclusion to the **last 20** and truncates each to **300 characters** — the `test_contribution_limit_in_handoff` test verifies this boundary.
 5. The `sw` CLI tool is NOT available on this system's PATH. Use direct Python commands and file reads instead.
+
+---
+
+## Session — F-046: Explore & Story Route Test Coverage (2026-04-12)
+
+### Objective
+Increase endpoint test coverage for the two largest route files with the thinnest test coverage:
+- `core/routes/explore.py` (912 lines, was 10 tests → now 43 tests)
+- `core/routes/stories.py` (1420 lines, was 29 tests → now 73 tests)
+
+### Changes
+
+#### tests/test_web_api_exploration.py — Expanded from 10 → 43 tests
+
+| Test Class | Tests | Coverage |
+|---|---|---|
+| TestExploreListEndpoint | 4 | List endpoint fields, detail keys, scene count |
+| TestExploreDetailEndpoint | 6 | Detail data, navigation, coordinates, lore, not-found |
+| TestSceneEndpoints | 11 | Add/list/delete scenes, wrong-location guard, filter by type, image_url enrichment, empty image_id, metadata |
+| TestLookAroundValidation | 4 | Participant count limits, not-list validation, location not found |
+| TestExploreChatEndpoints | 7 | Active chat null, create validation, location not found, inject-scene/send-stream content validation |
+| TestParticipantContextBuilder | 6 | Empty input, council/character sections, world context, unknown member, character not found |
+| TestExploreChatIdGeneration | 2 | First ID, sequential ID |
+
+#### tests/test_web_api_stories.py — Expanded from 29 → 73 tests
+
+| Test Class | Tests | Coverage |
+|---|---|---|
+| TestStoryCRUD | 18 | Create/list/get/update/delete, status transitions, not-found errors, empty list, optional fields |
+| TestChapterCRUD | 8 | Add/update/delete, not-found (chapter, story), multiple chapters |
+| TestSceneCRUD | 15 | Add/update/delete, image_url enrichment, not-found for story/chapter/scene, multiple scenes |
+| TestStoryParticipants | 16 | Narrate with/without participants, count limits, type validation, saves to scene, model info |
+| TestStoryChatHelpers | 8 | Round tracking, limit detection (below/equal/above/default/null metadata) |
+| TestStoryChatEndpoints | 6 | Active chat null, create validation, inject-narration/send-stream content validation |
+| TestNarrateRoundEndpoint | 2 | Chat not found, wrong story |
+
+### Test Results
+- **3040 passed, 12 skipped** — zero regressions (+77 new tests)
+
+### Advice for Next Agent
+1. Explore/stories test fixtures use `patch("core.story.StoryManager", ...)` at the constructor level. This works because `conftest.py` `invalidate_all()` clears singletons between tests.
+2. `CONVERSATIONS_DIR` is imported lazily from `config.settings`. To mock it, patch `config.settings.CONVERSATIONS_DIR` — NOT the route module attribute.
+3. Valid scene types for ExplorationManager are `overview`, `feature`, `transition` — NOT `detail`.
+4. The `sw` CLI tool is NOT available. Use direct Python commands instead.
