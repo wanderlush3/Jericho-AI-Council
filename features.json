@@ -486,5 +486,15 @@
             "F-041",
             "F-042"
         ]
+    },
+    {
+        "id": "F-044",
+        "title": "Story Chat",
+        "description": "Interactive round-based chat within story scenes — council members and characters discuss scenes via SSE streaming, 5-round limit, narration injection, inline chat UI with message bubbles and round badges",
+        "status": "completed",
+        "dependencies": [
+            "F-041",
+            "F-024"
+        ]
     }
 ]
