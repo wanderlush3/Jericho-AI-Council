@@ -69,6 +69,19 @@ def create_app() -> FastAPI:
     for provider in mgr.PROVIDERS:
         mgr.load_model(provider)
 
+    # Explicitly load ComfyUI settings from .env into os.environ.
+    # This ensures persistence across server restarts even if
+    # load_dotenv encounters edge-case parse issues (e.g. orphan
+    # lines from earlier multiline value corruption).
+    from config.settings import (
+        COMFYUI_HOST_ENV, COMFYUI_PORT_ENV, COMFYUI_DEFAULT_STYLE_ENV,
+    )
+    import os as _os
+    for _env_var in (COMFYUI_HOST_ENV, COMFYUI_PORT_ENV, COMFYUI_DEFAULT_STYLE_ENV):
+        _val = mgr._read_env_value(_env_var)
+        if _val is not None:
+            _os.environ[_env_var] = _val
+
     # ── Include all route modules ──────────────────────────────
     application.include_router(status_router)
     application.include_router(council_router)

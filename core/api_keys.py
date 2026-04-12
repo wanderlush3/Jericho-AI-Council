@@ -338,11 +338,16 @@ class APIKeyManager:
         """Persist an arbitrary env-var to the ``.env`` file.
 
         Also sets it in ``os.environ`` for the current process.
+        Newlines in *value* are replaced with spaces to prevent
+        corrupting the .env file format.
         """
+        # .env files are line-oriented — newlines in values would
+        # create orphan lines that break subsequent reads.
+        safe_value = value.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
         lines = self._read_env_lines()
-        lines = self._upsert_line(lines, env_var, value)
+        lines = self._upsert_line(lines, env_var, safe_value)
         self._write_env_lines(lines)
-        os.environ[env_var] = value
+        os.environ[env_var] = safe_value
 
     # ── Internal Helpers ──────────────────────────────────────
 
@@ -381,16 +386,20 @@ class APIKeyManager:
     def _upsert_line(
         lines: list[str], env_var: str, value: str
     ) -> list[str]:
-        """Update an existing line or append a new one."""
+        """Update an existing line or append a new one.
+
+        Strips newlines from *value* to prevent .env corruption.
+        """
+        safe_value = value.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
         pattern = re.compile(rf"^\s*{re.escape(env_var)}\s*=")
         found = False
         result: list[str] = []
         for line in lines:
             if pattern.match(line):
-                result.append(f"{env_var}={value}")
+                result.append(f"{env_var}={safe_value}")
                 found = True
             else:
                 result.append(line)
         if not found:
-            result.append(f"{env_var}={value}")
+            result.append(f"{env_var}={safe_value}")
         return result

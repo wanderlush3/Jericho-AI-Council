@@ -76,6 +76,47 @@ class TestComfyUIConfig:
         assert resp2.json()["host"] == "192.168.1.100"
         assert resp2.json()["port"] == 9000
 
+    def test_save_config_persists_across_restart(
+        self, tmp_path, tmp_templates, monkeypatch,
+    ):
+        """Verify ComfyUI settings survive a full server restart.
+
+        This simulates: save config → stop server → start new server → read config.
+        """
+        env_file = tmp_path / ".env"
+        env_file.write_text("", encoding="utf-8")
+        monkeypatch.setattr("config.settings.COMFYUI_TEMPLATES_DIR", tmp_templates)
+        monkeypatch.setattr("core.comfyui_client.COMFYUI_TEMPLATES_DIR", tmp_templates)
+        monkeypatch.setattr("config.settings.ENV_FILE", env_file)
+
+        # ── Session 1: save config ──
+        from core.web_api import create_app
+        app1 = create_app()
+        client1 = TestClient(app1)
+        resp = client1.post(
+            "/api/settings/comfyui",
+            json={"host": "10.20.30.40", "port": 5555},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["saved"] is True
+
+        # Clear env vars to simulate a fresh process
+        monkeypatch.delenv("JERICHO_COMFYUI_HOST", raising=False)
+        monkeypatch.delenv("JERICHO_COMFYUI_PORT", raising=False)
+
+        # ── Session 2: new app instance (simulating restart) ──
+        app2 = create_app()
+        client2 = TestClient(app2)
+        resp2 = client2.get("/api/settings/comfyui")
+        assert resp2.status_code == 200
+        data = resp2.json()
+        assert data["host"] == "10.20.30.40", (
+            f"Host not persisted across restart: {data}"
+        )
+        assert data["port"] == 5555, (
+            f"Port not persisted across restart: {data}"
+        )
+
     def test_save_config_missing_host(self, client):
         resp = client.post(
             "/api/settings/comfyui",
