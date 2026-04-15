@@ -4130,3 +4130,72 @@ Added context-aware law filtering that scores laws against conversational contex
 4. The `LAW_RELEVANCE_MIN_SCORE=0.05` threshold is deliberately low â€” it only catches laws with zero keyword overlap. Increase it if too many laws are still being injected.
 5. The sw CLI tool is NOT available. Use direct Python commands instead.
 
+
+---
+
+## Session — 2026-04-14 — F-061: Tiered Injection Profiles
+
+**Feature**: F-061 — Tiered Injection Profiles
+**Status**: Completed
+**Tests**: 3406 passed (+41 new), 12 skipped, 0 failures
+
+### What was built
+Added a tiered injection profile system that lets each route choose which context layers to include in LLM prompts. Five named profiles (CHAT_FULL, CHAT_LIGHT, IMAGE_GEN, NARRATION, DISCUSSION) control boolean flags for system prompt, history, memories, beliefs, world context, laws, LLM injections, and participant identity. Routes that don't need full context (image generation, narration) now skip heavy layers, saving ~1000–2000 tokens per call.
+
+### Token savings
+- **IMAGE_GEN** (Look Around, Illustrate): Skips memories, beliefs, laws, world context, injections — saves ~1000–1500 tokens
+- **NARRATION** (Narrate scene, Story chat narrate): Includes world context but skips memories/beliefs — saves ~500–1000 tokens
+- **DISCUSSION** (reserved for future proposal discussion): Skips world context, memories, injections — saves ~1000–2000 tokens
+- **CHAT_LIGHT** (reserved for future lightweight chat): Skips memories, beliefs, world, laws, injections — saves ~1000–2000 tokens
+
+### Implementation details
+
+#### core/injection_profiles.py — New module
+- `InjectionProfile` enum with 5 values: CHAT_FULL, CHAT_LIGHT, IMAGE_GEN, NARRATION, DISCUSSION
+- `ProfileConfig` frozen dataclass with 8 boolean flags (include_system_prompt, include_history, include_memories, include_beliefs, include_world_context, include_laws, include_injections, include_participant_context)
+- `PROFILE_CONFIGS` registry mapping each enum value to its config
+- `get_profile()` — lookup with validation
+- `should_include()` — convenience check for a specific layer
+- `to_dict()` and `enabled_layers` for debugging/API output
+
+#### config/settings.py — 1 new constant
+- `DEFAULT_INJECTION_PROFILE = "chat_full"` — default profile for documentation/settings
+
+#### core/routes/explore.py — _build_participant_context()
+- New `profile: InjectionProfile | None` parameter (backward compatible: None = include all)
+- Resolves `pcfg = get_profile(profile)` when profile is provided
+- Memory/belief injection: skipped when `pcfg.include_memories`/`pcfg.include_beliefs` is False (MemoryInfluence not even instantiated)
+- World context section: skipped when `pcfg.include_world_context` is False
+- Laws: skipped when `pcfg.include_laws` is False
+- LLM injections (location/item/store): skipped when `pcfg.include_injections` is False
+
+#### core/routes/explore.py — api_explore_look_around()
+- Now passes `profile=InjectionProfile.IMAGE_GEN` to `_build_participant_context()`
+
+#### core/routes/_helpers.py
+- `_build_participant_context` wrapper now forwards `profile` parameter
+
+#### core/routes/stories.py — 3 callers updated
+- `api_stories_narrate_scene()`: `profile=InjectionProfile.NARRATION`
+- `api_stories_illustrate_scene()`: `profile=InjectionProfile.IMAGE_GEN`
+- Story chat narrate endpoint: `profile=InjectionProfile.NARRATION`
+
+#### tests/test_injection_profiles.py — 41 new tests across 11 classes
+- TestInjectionProfile (8): enum values, membership, from_value, invalid raises
+- TestProfileConfig (6): defaults, custom flags, frozen, to_dict, enabled_layers
+- TestProfileConfigs (6): all registered, chat_full all enabled, chat_light minimal, image_gen stripped, narration selective, discussion beliefs-only
+- TestGetProfile (3): valid lookup, all profiles, frozen return
+- TestShouldInclude (5): chat_full all, image_gen excludes most, invalid layer, discussion beliefs, narration world
+- TestSettingsConstant (2): exists, valid value
+- TestParticipantContextWithProfile (5): image_gen skips world, image_gen skips memories, narration includes world, chat_full everything, discussion skips world
+- TestBackwardCompatibility (2): None same as omitted, empty participants
+- TestHelpersForwarding (1): profile forwarded correctly
+- TestNarrationInjectionBehavior (2): narration includes store injections, image_gen excludes stores
+- TestChatLightProfile (1): includes identity, skips world
+
+### Advice for Next Agent
+1. There are no more pending features in features.json — the backlog is complete.
+2. The CHAT_LIGHT and DISCUSSION profiles are defined but not yet wired to any callers — they are ready for use when proposal discussion or lightweight chat endpoints are augmented.
+3. The `profile` parameter is fully backward compatible — passing `None` or omitting it produces identical output to before F-061.
+4. To add a new profile, add it to the `InjectionProfile` enum and `PROFILE_CONFIGS` dict in `core/injection_profiles.py`.
+5. The sw CLI tool is NOT available. Use direct Python commands instead.

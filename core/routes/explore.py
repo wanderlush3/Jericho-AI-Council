@@ -37,6 +37,7 @@ from config.settings import (
     LOCATION_INJECTION_MAX_LENGTH,
     STORE_INJECTION_MAX_LENGTH,
 )
+from core.injection_profiles import InjectionProfile, get_profile
 
 
 router = APIRouter()
@@ -49,6 +50,7 @@ def _build_participant_context(
     skip_world_context: bool = False,
     current_speaker: str | None = None,
     context_keywords: list[str] | None = None,
+    profile: InjectionProfile | None = None,
 ) -> str:
     """Build rich markdown context for selected participants.
 
@@ -74,12 +76,21 @@ def _build_participant_context(
             scored against these keywords and only relevant laws are
             injected (F-060).  When ``None``, all active laws are
             injected (backward-compatible behaviour).
+        profile: Optional injection profile (F-061) that controls
+            which context layers are included.  When ``None``, all
+            layers are included (backward-compatible behaviour).
+            When provided, boolean flags on the profile config
+            determine whether memories, beliefs, world context,
+            laws, and injections are included.
 
     Returns:
         Markdown text suitable for prompt injection.
     """
     if not participants:
         return ""
+
+    # Resolve profile config (None → include everything)
+    pcfg = get_profile(profile) if profile is not None else None
 
     parts: list[str] = []
     parts.append("\n## Present Participants\n")
@@ -103,12 +114,16 @@ def _build_participant_context(
             members_map = {}
 
         # Memory influence engine (may not be available)
+        # F-061: Skip memory/belief injection when profile disables them
+        _want_memories = pcfg is None or pcfg.include_memories
+        _want_beliefs = pcfg is None or pcfg.include_beliefs
         mi = None
-        try:
-            from core.memory_influence import MemoryInfluence
-            mi = MemoryInfluence(embedding_provider=None)
-        except Exception:
-            pass
+        if _want_memories or _want_beliefs:
+            try:
+                from core.memory_influence import MemoryInfluence
+                mi = MemoryInfluence(embedding_provider=None)
+            except Exception:
+                pass
 
         for cid in council_ids:
             member = members_map.get(cid.lower())
@@ -147,14 +162,15 @@ def _build_participant_context(
                         member.name,
                         ["exploration", "location", "scene"],
                     )
-                    if ctx.beliefs:
+                    # F-061: Only inject beliefs/memories when profile allows
+                    if ctx.beliefs and _want_beliefs:
                         parts.append("\n**Core Beliefs:**")
                         for sb in ctx.beliefs[:5]:
                             parts.append(
                                 f"- **{sb.belief.topic}**: "
                                 f"{sb.belief.content}"
                             )
-                    if ctx.memories:
+                    if ctx.memories and _want_memories:
                         parts.append("\n**Relevant Memories:**")
                         for sm in ctx.memories[:5]:
                             parts.append(
@@ -222,40 +238,46 @@ def _build_participant_context(
     # When skip_world_context is True, the caller's MemoryInfluence
     # engine already injects world locations/items with relevance
     # scoring, so we skip them here to avoid duplication (F-055).
+    # F-061: Also skip when profile disables world context.
     if skip_world_context:
+        return "\n".join(parts)
+    if pcfg is not None and not pcfg.include_world_context:
         return "\n".join(parts)
 
     parts.append("\n## World Context\n")
 
     # Active Laws (F-060: conditional injection based on context keywords)
-    try:
-        active_laws = get_law_manager().list_laws(status="active")
-        if active_laws:
-            if context_keywords:
-                # Score laws against context and inject only relevant ones
-                from core.law_filter import LawFilter
-                lf = LawFilter()
-                scored = lf.filter_laws(
-                    active_laws, context_keywords,
-                    limit=CONTEXT_MAX_WORLD_LAWS,
-                )
-                if scored:
+    # F-061: Skip laws when profile disables them
+    _want_laws = pcfg is None or pcfg.include_laws
+    if _want_laws:
+        try:
+            active_laws = get_law_manager().list_laws(status="active")
+            if active_laws:
+                if context_keywords:
+                    # Score laws against context and inject only relevant ones
+                    from core.law_filter import LawFilter
+                    lf = LawFilter()
+                    scored = lf.filter_laws(
+                        active_laws, context_keywords,
+                        limit=CONTEXT_MAX_WORLD_LAWS,
+                    )
+                    if scored:
+                        parts.append("### Active Laws")
+                        for sl in scored:
+                            parts.append(
+                                f"- **{sl.law.title}**: {sl.law.description[:200]}"
+                            )
+                        parts.append("")
+                else:
+                    # No context keywords — inject all (backward-compatible)
                     parts.append("### Active Laws")
-                    for sl in scored:
+                    for law in active_laws[:CONTEXT_MAX_WORLD_LAWS]:
                         parts.append(
-                            f"- **{sl.law.title}**: {sl.law.description[:200]}"
+                            f"- **{law.title}**: {law.description[:200]}"
                         )
                     parts.append("")
-            else:
-                # No context keywords — inject all (backward-compatible)
-                parts.append("### Active Laws")
-                for law in active_laws[:CONTEXT_MAX_WORLD_LAWS]:
-                    parts.append(
-                        f"- **{law.title}**: {law.description[:200]}"
-                    )
-                parts.append("")
-    except Exception:
-        pass
+        except Exception:
+            pass
 
     # Active Locations
     try:
@@ -268,7 +290,9 @@ def _build_participant_context(
                     line += f" — {loc.lore[:100]}"
                 parts.append(line)
                 # F-053: Inject location LLM injection text
-                if loc.llm_injection:
+                # F-061: Only inject when profile allows injections
+                _want_inj = pcfg is None or pcfg.include_injections
+                if loc.llm_injection and _want_inj:
                     parts.append(
                         f"  💉 *{loc.llm_injection[:LOCATION_INJECTION_MAX_LENGTH]}*"
                     )
@@ -288,7 +312,9 @@ def _build_participant_context(
                     line += f" [{item.rarity}]"
                 parts.append(line)
                 # F-053: Inject item LLM injection text (respects consumable TTL)
-                if is_injection_active(item):
+                # F-061: Only inject when profile allows injections
+                _want_inj = pcfg is None or pcfg.include_injections
+                if is_injection_active(item) and _want_inj:
                     parts.append(
                         f"  💉 *{item.llm_injection[:ITEM_INJECTION_MAX_LENGTH]}*"
                     )
@@ -307,7 +333,9 @@ def _build_participant_context(
                     line += f" ({store.store_type})"
                 parts.append(line)
                 # F-053: Inject store LLM injection text
-                if store.llm_injection:
+                # F-061: Only inject when profile allows injections
+                _want_inj = pcfg is None or pcfg.include_injections
+                if store.llm_injection and _want_inj:
                     parts.append(
                         f"  💉 *{store.llm_injection[:STORE_INJECTION_MAX_LENGTH]}*"
                     )
@@ -507,8 +535,11 @@ async def api_explore_look_around(
     context = ExplorationManager.build_look_around_description(loc)
 
     # F-042: Enrich context with participant identities + world state
+    # F-061: Use IMAGE_GEN profile for image generation (skip heavy layers)
     if participants:
-        participant_context = _build_participant_context(participants)
+        participant_context = _build_participant_context(
+            participants, profile=InjectionProfile.IMAGE_GEN,
+        )
         if participant_context:
             context = context + "\n\n" + participant_context
 

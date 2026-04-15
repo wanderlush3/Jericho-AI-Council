@@ -641,7 +641,7 @@
     "id": "F-061",
     "title": "Tiered Injection Profiles",
     "description": "Define injection profiles: chat_full (system prompt + history + memory + world + injections), chat_light (system prompt + history + identity), image_gen (entity context + style only), narration (story context + participant identity + relevant world subset), discussion (proposal + prior contributions + member beliefs only). Let each route choose the appropriate profile. Saves ~1000–2000 tokens for lightweight call types.",
-    "status": "pending",
+    "status": "completed",
     "dependencies": [
       "F-057"
     ]

@@ -22,6 +22,7 @@ from core.routes._helpers import (
     _get_pipeline,
     _build_participant_context,
 )
+from core.injection_profiles import InjectionProfile
 
 
 router = APIRouter()
@@ -514,8 +515,11 @@ async def api_stories_narrate_scene(
     )
 
     # F-043: Enrich prompt with participant context
+    # F-061: Use NARRATION profile for story narration
     if participants:
-        participant_context = _build_participant_context(participants)
+        participant_context = _build_participant_context(
+            participants, profile=InjectionProfile.NARRATION,
+        )
         if participant_context:
             prompt = prompt + "\n\n" + participant_context
 
@@ -655,8 +659,11 @@ async def api_stories_illustrate_scene(
     user_prompt = " | ".join(prompt_parts)
 
     # F-043: Enrich prompt with participant context
+    # F-061: Use IMAGE_GEN profile for story illustration
     if participants:
-        participant_context = _build_participant_context(participants)
+        participant_context = _build_participant_context(
+            participants, profile=InjectionProfile.IMAGE_GEN,
+        )
         if participant_context:
             user_prompt = user_prompt + "\n\n" + participant_context
 
@@ -1344,9 +1351,12 @@ async def api_story_chat_narrate_round(
         )
 
     # Enrich prompt with participant context
+    # F-061: Use NARRATION profile for story chat narration
     participants = meta.get("participants", [])
     if participants:
-        participant_context = _build_participant_context(participants)
+        participant_context = _build_participant_context(
+            participants, profile=InjectionProfile.NARRATION,
+        )
         if participant_context:
             prompt = prompt + "\n\n" + participant_context
 

@@ -342,3 +342,6 @@ ROLLING_SUMMARY_THRESHOLD = 10             # Summarize when message count exceed
 ROLLING_SUMMARY_RECENT_MESSAGES = 5        # Keep this many recent raw messages alongside summary
 ROLLING_SUMMARY_MAX_TOKENS = 300           # Max tokens for the generated summary
 ROLLING_SUMMARY_ENABLED = True             # Global toggle for rolling summaries
+
+# ─── Injection Profile Settings (F-061) ──────────────────────
+DEFAULT_INJECTION_PROFILE = "chat_full"    # Default profile for _build_participant_context
