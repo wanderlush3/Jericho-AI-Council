@@ -230,6 +230,10 @@ LAWS_DIR = DATA_DIR / "laws"
 LAW_STATUSES = ("draft", "active", "archived")
 LAW_SHARED_MEMORIES_DIR = MEMORIES_DIR / "law_shared"
 
+# ─── Conditional Law Injection Settings (F-060) ──────────────
+LAW_RELEVANCE_ENABLED = True               # Filter laws by context relevance
+LAW_RELEVANCE_MIN_SCORE = 0.05             # Minimum Jaccard score to inject a law
+
 # ─── Item Settings ────────────────────────────────────────────
 ITEMS_DIR = DATA_DIR / "items"
 ITEM_STATUSES = ("draft", "active", "archived")

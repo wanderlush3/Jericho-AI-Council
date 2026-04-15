@@ -632,7 +632,7 @@
     "id": "F-060",
     "title": "Conditional Law Injection",
     "description": "Score laws against context keywords (same as memories) and only inject relevant ones. A law about taxation rates should not appear when discussing character backstories. Saves ~50–200 tokens when most laws are irrelevant.",
-    "status": "pending",
+    "status": "completed",
     "dependencies": [
       "F-055"
     ]

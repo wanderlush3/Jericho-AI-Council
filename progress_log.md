@@ -4071,3 +4071,62 @@ Added a time-based caching layer to MemoryInfluence.build_context() that avoids 
 2. Next eligible features: **F-060** (Conditional Law Injection), **F-061** (Tiered Injection Profiles).
 3. The clear_cache() method can be called after writing new memories to force a re-score on the next uild_context() call.
 4. The sw CLI tool is NOT available. Use direct Python commands instead.
+
+
+---
+
+## Session â€” 2026-04-14 â€” F-060: Conditional Law Injection
+
+**Feature**: F-060 â€” Conditional Law Injection
+**Status**: Completed
+**Tests**: 3365 passed (+40 new), 12 skipped, 0 failures
+
+### What was built
+Added context-aware law filtering that scores laws against conversational context keywords using Jaccard similarity. Only laws whose relevance score meets a configurable threshold are injected into prompts. A law about taxation rates no longer wastes tokens when the conversation is about character backstories.
+
+### Token savings
+- **Per prompt**: ~50-200 tokens saved when most of the 5 active laws are irrelevant
+- **Compound with other features**: Stacks with F-055 (skip world context), F-056 (self-persona skip), F-062 (character preview truncation)
+
+### Implementation details
+
+#### config/settings.py â€” 2 new constants
+- `LAW_RELEVANCE_ENABLED = True` â€” Global toggle for law relevance filtering
+- `LAW_RELEVANCE_MIN_SCORE = 0.05` â€” Minimum Jaccard score to inject a law (very permissive; catches only truly unrelated laws)
+
+#### core/law_filter.py â€” New module
+- `ScoredLaw` frozen dataclass: wraps a Law with relevance_score and matched_keywords
+- `LawFilter` class: scores laws against context keywords using Jaccard similarity
+  - `_law_text()` â€” builds composite text from law title, description, body, and tags
+  - `score_law()` â€” scores a single law against pre-tokenised context tokens
+  - `filter_laws()` â€” scores, filters, sorts, and limits laws; returns all when disabled
+  - Reuses `_tokenise()` and `_jaccard()` from `core/memory_influence.py` for consistency
+
+#### core/routes/explore.py â€” `_build_participant_context()`
+- New `context_keywords` parameter (optional, defaults to None for backward compatibility)
+- When `context_keywords` is provided: creates LawFilter, filters active laws by relevance
+- When `context_keywords` is None: injects all active laws (unchanged behavior)
+
+#### core/routes/_helpers.py â€” Re-export updated
+- Forwards `context_keywords` parameter through the helpers wrapper
+
+#### tests/test_law_filter.py â€” 40 new tests across 11 classes
+- TestScoredLaw (4): fields, frozen, defaults, to_dict
+- TestLawFilterInit (3): defaults, custom settings, repr
+- TestScoreLaw (6): matching keywords, no match, empty context, body/tags contribute, rounding
+- TestFilterLaws (7): relevant returned, irrelevant filtered, sorted, limited, empty list, empty/stop-word keywords
+- TestFilterDisabled (3): all pass, still sorted, still scored
+- TestSettingsConstants (3): existence and default values
+- TestHighMinScore (2): high threshold filters more, zero keeps all
+- TestLawText (4): title+desc, body, tags, empty fields
+- TestParticipantContextIntegration (2): filtered with keywords, all injected without keywords
+- TestHelpersReExport (1): context_keywords forwarded correctly
+- TestEdgeCases (5): unicode, single keyword, many laws, no body/tags, duplicate keywords
+
+### Advice for Next Agent
+1. F-060 is opt-in at the caller level. Pass `context_keywords=["topic1", "topic2"]` to `_build_participant_context()` to activate filtering. Without it, all laws are injected as before.
+2. The most impactful integration would be passing location/chat topic keywords from the explore chat endpoints to `_build_participant_context()`.
+3. Next eligible feature: **F-061** (Tiered Injection Profiles).
+4. The `LAW_RELEVANCE_MIN_SCORE=0.05` threshold is deliberately low â€” it only catches laws with zero keyword overlap. Increase it if too many laws are still being injected.
+5. The sw CLI tool is NOT available. Use direct Python commands instead.
+

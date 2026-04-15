@@ -48,6 +48,7 @@ def _build_participant_context(
     *,
     skip_world_context: bool = False,
     current_speaker: str | None = None,
+    context_keywords: list[str] | None = None,
 ) -> str:
     """Build rich markdown context for selected participants.
 
@@ -68,6 +69,11 @@ def _build_participant_context(
             The current speaker already has their full system_prompt
             as the LLM system message, so repeating the preview is
             redundant (F-056).
+        context_keywords: Optional list of words/phrases describing the
+            current conversational context.  When provided, laws are
+            scored against these keywords and only relevant laws are
+            injected (F-060).  When ``None``, all active laws are
+            injected (backward-compatible behaviour).
 
     Returns:
         Markdown text suitable for prompt injection.
@@ -221,16 +227,33 @@ def _build_participant_context(
 
     parts.append("\n## World Context\n")
 
-    # Active Laws
+    # Active Laws (F-060: conditional injection based on context keywords)
     try:
         active_laws = get_law_manager().list_laws(status="active")
         if active_laws:
-            parts.append("### Active Laws")
-            for law in active_laws[:CONTEXT_MAX_WORLD_LAWS]:
-                parts.append(
-                    f"- **{law.title}**: {law.description[:200]}"
+            if context_keywords:
+                # Score laws against context and inject only relevant ones
+                from core.law_filter import LawFilter
+                lf = LawFilter()
+                scored = lf.filter_laws(
+                    active_laws, context_keywords,
+                    limit=CONTEXT_MAX_WORLD_LAWS,
                 )
-            parts.append("")
+                if scored:
+                    parts.append("### Active Laws")
+                    for sl in scored:
+                        parts.append(
+                            f"- **{sl.law.title}**: {sl.law.description[:200]}"
+                        )
+                    parts.append("")
+            else:
+                # No context keywords — inject all (backward-compatible)
+                parts.append("### Active Laws")
+                for law in active_laws[:CONTEXT_MAX_WORLD_LAWS]:
+                    parts.append(
+                        f"- **{law.title}**: {law.description[:200]}"
+                    )
+                parts.append("")
     except Exception:
         pass
 
