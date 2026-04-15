@@ -23,6 +23,7 @@ from typing import Any
 from config.settings import CONVERSATIONS_DIR, MULTI_AI_RESPONSE_DELAY
 from core.api_client import APIClient, ChatMessage, ChatResponse
 from core.characters import CharacterManager, CharacterTemplate
+from core.conversation_summary import ConversationSummarizer, RollingSummaryResult
 from core.memory import AgentMemory, MemoryEntry, SharedMemory
 from core.memory_influence import MemoryInfluence
 from core.registry import CouncilMember, CouncilRegistry
@@ -192,8 +193,14 @@ def _build_human_chat_prompt(
     user_description: str = "",
     character_names: list[str] | None = None,
     user_name: str = "",
+    summary_result: RollingSummaryResult | None = None,
 ) -> str:
-    """Build a prompt for the council member to respond to the human."""
+    """Build a prompt for the council member to respond to the human.
+
+    When *summary_result* is provided (F-058), the prompt includes a
+    compressed summary of earlier messages followed by the most recent
+    raw messages, instead of the raw last-10 window.
+    """
     parts = ["## Direct Conversation with Human Operator"]
 
     if user_description or user_name:
@@ -208,9 +215,19 @@ def _build_human_chat_prompt(
 
     if messages:
         parts.append("\n### Conversation So Far")
-        for msg in messages[-10:]:  # limit context window
-            label = "Human" if msg.role == "human" else msg.speaker
-            parts.append(f"**{label}:** {msg.content}")
+        if summary_result is not None:
+            # F-058: inject rolling summary + recent messages
+            parts.append(
+                f"[Summary of prior conversation: "
+                f"{summary_result.summary_text}]"
+            )
+            for msg in summary_result.recent_messages:
+                label = "Human" if msg.role == "human" else msg.speaker
+                parts.append(f"**{label}:** {msg.content}")
+        else:
+            for msg in messages[-10:]:  # limit context window
+                label = "Human" if msg.role == "human" else msg.speaker
+                parts.append(f"**{label}:** {msg.content}")
 
     if memory_context_text:
         parts.append(f"\n{memory_context_text}")
@@ -270,6 +287,7 @@ class HumanChat:
         conversations_dir: Path | None = None,
         shared_memory: SharedMemory | None = None,
         memory_influence: MemoryInfluence | None = None,
+        summarizer: ConversationSummarizer | None = None,
     ) -> None:
         self._registry = registry
         self._api_client = api_client
@@ -277,6 +295,7 @@ class HumanChat:
         self._dir.mkdir(parents=True, exist_ok=True)
         self._shared_memory = shared_memory or SharedMemory()
         self._memory_influence = memory_influence
+        self._summarizer = summarizer
 
     # ── Properties ────────────────────────────────────────────
 
@@ -533,6 +552,16 @@ class HumanChat:
                 mem_name = self._character_memory_name(char.name)
                 respondents.append((member, mem_name))
 
+        # F-058: get rolling summary if available
+        summary_result = None
+        if self._summarizer is not None:
+            try:
+                summary_result = await self._summarizer.get_summary(
+                    chat_id, record.messages,
+                )
+            except Exception:
+                summary_result = None  # graceful fallback
+
         for idx, (member, mem_name) in enumerate(respondents):
             # Build prompt from conversation history
             memory_text = ""
@@ -552,10 +581,13 @@ class HumanChat:
                 user_description=_user_desc,
                 character_names=char_names,
                 user_name=_user_name,
+                summary_result=summary_result,
             )
 
             # Build API messages
-            api_messages = self._build_api_messages(record, member, prompt)
+            api_messages = self._build_api_messages(
+                record, member, prompt, summary_result=summary_result,
+            )
 
             try:
                 response = await self._api_client.chat(member, api_messages)
@@ -867,6 +899,16 @@ class HumanChat:
         from core.api_keys import APIKeyManager
         _user_desc = APIKeyManager().get_user_description()
 
+        # F-058: get rolling summary if available
+        summary_result = None
+        if self._summarizer is not None:
+            try:
+                summary_result = await self._summarizer.get_summary(
+                    chat_id, record.messages,
+                )
+            except Exception:
+                summary_result = None  # graceful fallback
+
         for idx, (member, mem_name) in enumerate(respondents):
             # Build prompt from conversation history
             memory_text = ""
@@ -885,11 +927,12 @@ class HumanChat:
                 council_members=list(record.council_members),
                 user_description=_user_desc,
                 character_names=char_names,
+                summary_result=summary_result,
             )
 
             # Build API messages
             api_messages = self._build_api_messages(
-                record, member, prompt
+                record, member, prompt, summary_result=summary_result,
             )
 
             try:
@@ -999,6 +1042,16 @@ class HumanChat:
                 mem_name = self._character_memory_name(char.name)
                 respondents.append((member, mem_name))
 
+        # F-058: get rolling summary if available
+        summary_result = None
+        if self._summarizer is not None:
+            try:
+                summary_result = await self._summarizer.get_summary(
+                    chat_id, record.messages,
+                )
+            except Exception:
+                summary_result = None  # graceful fallback
+
         for idx, (member, mem_name) in enumerate(respondents):
             memory_text = ""
             if self._memory_influence is not None:
@@ -1017,8 +1070,11 @@ class HumanChat:
                 user_description=_user_desc,
                 character_names=char_names,
                 user_name=_user_name,
+                summary_result=summary_result,
             )
-            api_messages = self._build_api_messages(record, member, prompt)
+            api_messages = self._build_api_messages(
+                record, member, prompt, summary_result=summary_result,
+            )
 
             try:
                 response = await self._api_client.chat(member, api_messages)
@@ -1132,6 +1188,16 @@ class HumanChat:
         _user_desc = _mgr.get_user_description()
         _user_name = _mgr.get_user_name()
 
+        # F-058: get rolling summary if available
+        summary_result = None
+        if self._summarizer is not None:
+            try:
+                summary_result = await self._summarizer.get_summary(
+                    chat_id, record.messages,
+                )
+            except Exception:
+                summary_result = None  # graceful fallback
+
         for idx, (member, mem_name) in enumerate(respondents):
             memory_text = ""
             if self._memory_influence is not None:
@@ -1150,8 +1216,11 @@ class HumanChat:
                 user_description=_user_desc,
                 character_names=char_names,
                 user_name=_user_name,
+                summary_result=summary_result,
             )
-            api_messages = self._build_api_messages(record, member, prompt)
+            api_messages = self._build_api_messages(
+                record, member, prompt, summary_result=summary_result,
+            )
 
             try:
                 response = await self._api_client.chat(member, api_messages)
@@ -1381,6 +1450,8 @@ class HumanChat:
         record: HumanChatRecord,
         member: CouncilMember,
         prompt: str,
+        *,
+        summary_result: RollingSummaryResult | None = None,
     ) -> list[ChatMessage]:
         """
         Build the API message list for the agent's turn.
@@ -1389,12 +1460,31 @@ class HumanChat:
         prior messages become "assistant" role.  Other council members'
         messages become "user" role with a ``[Speaker]:`` prefix so the
         LLM can distinguish who said what.
+
+        When *summary_result* is provided (F-058), a rolling summary
+        message is prepended followed by only the recent messages,
+        instead of the raw last-10 window.
         """
         messages: list[ChatMessage] = []
         total_participants = len(record.council_members) + len(record.characters)
         is_multi = total_participants > 1
 
-        for msg in record.messages[-10:]:  # limit context
+        if summary_result is not None:
+            # F-058: prepend summary, then map recent messages
+            messages.append(
+                ChatMessage(
+                    role="user",
+                    content=(
+                        f"[Summary of prior conversation: "
+                        f"{summary_result.summary_text}]"
+                    ),
+                )
+            )
+            history_messages = summary_result.recent_messages
+        else:
+            history_messages = record.messages[-10:]  # limit context
+
+        for msg in history_messages:
             if msg.role == "human":
                 if is_multi:
                     messages.append(

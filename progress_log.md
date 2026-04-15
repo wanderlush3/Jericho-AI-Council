@@ -3920,3 +3920,107 @@ Added a current_speaker parameter to _build_participant_context() that skips the
 2. The most impactful integration would be modifying HumanChat.get_agent_response() to use _build_participant_context(participants, current_speaker=member.name) per-turn. However, those methods use _build_human_chat_prompt() instead. A future feature could unify these.
 3. Next eligible features: F-057 (Token Budget Manager), F-058 (Rolling Conversation Summary), F-059 (Lazy/Cached Memory Scoring), F-060 (Conditional Law Injection), F-062 (Aggressive Character Preview Truncation). F-061 depends on F-057.
 4. The sw CLI tool is NOT available. Use direct Python commands instead.
+
+
+---
+
+## Session — F-057: Global Token Budget / Context Window Manager
+**Date:** 2026-04-14
+**Status:** Completed
+
+### What was done
+Implemented F-057 — a ContextBudget class that manages a global token budget across priority-ordered context layers. This ensures total context stays within a target window regardless of world size.
+
+### Files created
+- core/context_budget.py — New module with estimate_tokens, truncate_to_tokens, ContextLayer enum, LayerAllocation dataclass, ContextBudget class
+- tests/test_context_budget.py — 55 unit tests across 10 test classes
+
+### Files modified
+- config/settings.py — Added 6 new constants for context budget allocation
+- features.json — F-057 status set to completed
+
+### Test results
+- F-057 tests: 55 passed in 0.07s
+- Full regression: 3235 passed, 12 skipped, 0 failures (+55 new tests)
+
+### Advice for Next Agent
+1. F-057 is opt-in. No existing callers modified.
+2. Next eligible: F-058, F-059, F-060, F-061 (now unblocked), F-062.
+3. The sw CLI tool is NOT available. Use direct Python commands instead.
+
+---
+
+## Session — F-058: Rolling Conversation Summary
+**Date:** 2026-04-14
+**Status:** Completed
+
+### What was done
+Implemented F-058 — rolling LLM-based summaries for long conversations. When a conversation exceeds 10 messages, older messages are compressed into a cached summary and injected alongside the 5 most recent raw messages, replacing the old 'raw last 10' window. This preserves context continuity while reducing token usage in long conversations.
+
+### Files created
+- core/conversation_summary.py — New module with ConversationSummarizer, RollingSummaryResult, and CachedSummary classes. Content-hash caching avoids re-summarizing unchanged conversation prefixes. Graceful fallback on LLM failure.
+- 	ests/test_rolling_summary.py — 37 unit tests across 9 test classes
+
+### Files modified
+- config/settings.py — Added 4 new constants: ROLLING_SUMMARY_THRESHOLD, ROLLING_SUMMARY_RECENT_MESSAGES, ROLLING_SUMMARY_MAX_TOKENS, ROLLING_SUMMARY_ENABLED
+- core/human_chat.py — Import, __init__ summarizer param, _build_human_chat_prompt summary_result, _build_api_messages summary_result, all 4 response methods wired with graceful fallback
+- eatures.json — F-058 status set to completed
+
+### Design decisions
+- **Content-hash caching**: Only re-summarizes when the older-message prefix actually changes
+- **Opt-in**: Existing callers without a summarizer get identical behavior
+- **Graceful fallback**: LLM failure silently falls back to raw last-10 behavior
+- **Reuses existing infrastructure**: Same SUMMARIZATION_PROVIDER/MODEL config as memory summarization
+
+### Test results
+- F-058 tests: 37 passed in 0.32s
+- Full regression: 3,272 passed, 12 skipped, 0 failures (+37 new tests)
+
+### Advice for Next Agent
+1. F-058 is opt-in. Pass summarizer=ConversationSummarizer(api_client=client) to HumanChat.__init__ to activate.
+2. Next eligible features: F-059, F-060, F-061 (depends on F-057 done), F-062.
+3. The sw CLI tool is NOT available. Use direct Python commands instead.
+
+---
+
+## Session — 2026-04-14 — F-062: Aggressive Character Preview Truncation
+
+**Feature**: F-062 — Aggressive Character Preview Truncation
+**Status**: Completed
+**Tests**: 3288 passed (+16 new), 12 skipped, 0 failures
+
+### What was built
+Reduced character backstory and persona (system_prompt) preview length from 500 to 200 characters in `_build_participant_context()`. These previews tell OTHER participants who is in the room — the character themselves already has their full backstory and system_prompt in their LLM system message. Council member persona previews remain at 500 chars since their system_prompt IS their primary identity.
+
+### Token savings
+- **Per character**: ~300 chars backstory + ~300 chars persona = ~150 tokens saved
+- **3 characters**: ~450 tokens saved per prompt
+- **Compound with F-056**: Characters who are the current speaker already skip previews entirely, so savings stack for non-speaker characters
+
+### Implementation details
+
+#### config/settings.py — 3 new constants
+- `COUNCIL_PERSONA_PREVIEW_LENGTH = 500` — Council member preview (unchanged behavior)
+- `CHARACTER_BACKSTORY_PREVIEW_LENGTH = 200` — Character backstory preview (was 500)
+- `CHARACTER_PERSONA_PREVIEW_LENGTH = 200` — Character persona preview (was 500)
+
+#### core/routes/explore.py — `_build_participant_context()`
+- Imported all 3 new constants
+- Council member persona preview now uses `COUNCIL_PERSONA_PREVIEW_LENGTH` (still 500)
+- Character backstory preview now uses `CHARACTER_BACKSTORY_PREVIEW_LENGTH` (200)
+- Character persona preview now uses `CHARACTER_PERSONA_PREVIEW_LENGTH` (200)
+- All ellipsis logic updated to use the same constants for consistency
+
+#### tests/test_character_preview_truncation.py — 16 new tests
+- `TestCharacterBackstoryTruncation` (4 tests): short/long/exact-200/201-char backstory
+- `TestCharacterPersonaTruncation` (3 tests): short/long/exact-200-char persona
+- `TestCouncilMemberPreserved` (2 tests): council stays at 500, 300-char no ellipsis
+- `TestSettingsConstants` (3 tests): verify constant values
+- `TestConfigurablePreviewLength` (2 tests): monkey-patch constants to verify configurability
+- `TestMultiCharacterSavings` (2 tests): multi-character preview size verification
+
+### Advice for Next Agent
+1. The preview length constants in `config/settings.py` are the single source of truth. Changing them will automatically propagate through `_build_participant_context()`.
+2. Next eligible features: F-059 (Lazy/Cached Memory Scoring), F-060 (Conditional Law Injection), F-061 (Tiered Injection Profiles).
+3. The sw CLI tool is NOT available. Use direct Python commands instead.
+

@@ -605,7 +605,7 @@
         "id": "F-057",
         "title": "Global Token Budget / Context Window Manager",
         "description": "ContextBudget class that accepts a target token count (e.g. 32,768) and allocates portions to each layer with priorities: system prompt (fixed, highest), conversation history (sliding window, high), memories/beliefs (scored, medium), world context (scored, lower), LLM injections (user-controlled, lowest). Each layer truncates to fit the budget, making context size predictable regardless of world size.",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-055"
         ]
@@ -614,7 +614,7 @@
         "id": "F-058",
         "title": "Rolling Conversation Summary",
         "description": "For conversations with >10 messages, generate a cached rolling LLM summary of messages 1–N, then inject [Summary of prior conversation: ...] + last 5 messages instead of raw last 10. Preserves context continuity while cutting ~500–2000 tokens in long conversations.",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-055"
         ]
@@ -650,7 +650,7 @@
         "id": "F-062",
         "title": "Aggressive Character Preview Truncation",
         "description": "Reduce character backstory preview from 500 to 200 chars in _build_participant_context. The backstory preview is for OTHER participants to know who is in the room, not for the character to know their own backstory (which is already in their system prompt). Saves ~200–500 tokens with multiple characters.",
-        "status": "pending",
+        "status": "completed",
         "dependencies": [
             "F-055"
         ]

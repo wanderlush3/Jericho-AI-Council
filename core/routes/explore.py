@@ -26,10 +26,13 @@ from core.routes._helpers import (
     _explore_primary_image,
 )
 from config.settings import (
+    CHARACTER_BACKSTORY_PREVIEW_LENGTH,
+    CHARACTER_PERSONA_PREVIEW_LENGTH,
     CONTEXT_MAX_WORLD_ITEMS,
     CONTEXT_MAX_WORLD_LAWS,
     CONTEXT_MAX_WORLD_LOCATIONS,
     CONTEXT_MAX_WORLD_STORES,
+    COUNCIL_PERSONA_PREVIEW_LENGTH,
     ITEM_INJECTION_MAX_LENGTH,
     LOCATION_INJECTION_MAX_LENGTH,
     STORE_INJECTION_MAX_LENGTH,
@@ -63,8 +66,8 @@ def _build_participant_context(
         current_speaker: When provided, skip the persona preview for
             the participant whose name matches (case-insensitive).
             The current speaker already has their full system_prompt
-            as the LLM system message, so repeating a 500-char
-            preview is redundant (F-056).
+            as the LLM system message, so repeating the preview is
+            redundant (F-056).
 
     Returns:
         Markdown text suitable for prompt injection.
@@ -120,10 +123,11 @@ def _build_participant_context(
                 and member.name.lower() == current_speaker.lower()
             )
             if member.system_prompt and not is_self:
-                prompt_preview = member.system_prompt[:500]
+                _lim = COUNCIL_PERSONA_PREVIEW_LENGTH
+                prompt_preview = member.system_prompt[:_lim]
                 parts.append(
                     f"**Persona:** {prompt_preview}"
-                    + ("…" if len(member.system_prompt) > 500 else "")
+                    + ("…" if len(member.system_prompt) > _lim else "")
                 )
             if member.specialties:
                 parts.append(
@@ -186,10 +190,11 @@ def _build_participant_context(
                 and char.name.lower() == current_speaker.lower()
             )
             if char.backstory and not is_self:
-                backstory_preview = char.backstory[:500]
+                _blim = CHARACTER_BACKSTORY_PREVIEW_LENGTH
+                backstory_preview = char.backstory[:_blim]
                 parts.append(
                     f"**Backstory:** {backstory_preview}"
-                    + ("…" if len(char.backstory) > 500 else "")
+                    + ("…" if len(char.backstory) > _blim else "")
                 )
             if char.traits:
                 trait_strs = [
@@ -199,10 +204,11 @@ def _build_participant_context(
                 ]
                 parts.append(f"**Traits:** {', '.join(trait_strs)}")
             if char.system_prompt and not is_self:
-                prompt_preview = char.system_prompt[:500]
+                _plim = CHARACTER_PERSONA_PREVIEW_LENGTH
+                prompt_preview = char.system_prompt[:_plim]
                 parts.append(
                     f"**Persona:** {prompt_preview}"
-                    + ("…" if len(char.system_prompt) > 500 else "")
+                    + ("…" if len(char.system_prompt) > _plim else "")
                 )
             parts.append("")
 

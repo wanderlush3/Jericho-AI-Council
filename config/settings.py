@@ -312,3 +312,25 @@ SALARY_CHARACTER_AMOUNT = 100          # Gold Obelisk per character
 # ─── Narrative Engine Settings ───────────────────────────────
 NARRATIVE_MAX_BULLETINS = 10               # Max bulletins returned per request
 NARRATIVE_MAX_AGE_DAYS = 30                # Only consider events within this window
+
+# ─── Context Budget Settings (F-057) ─────────────────────────
+DEFAULT_CONTEXT_BUDGET_TOKENS = 32768      # Default target context window (tokens)
+CONTEXT_BUDGET_SYSTEM_PROMPT_PCT = 0.15    # 15% for system prompt
+CONTEXT_BUDGET_HISTORY_PCT = 0.35          # 35% for conversation history
+CONTEXT_BUDGET_MEMORIES_PCT = 0.20         # 20% for memories & beliefs
+CONTEXT_BUDGET_WORLD_PCT = 0.20            # 20% for world context
+CONTEXT_BUDGET_INJECTIONS_PCT = 0.10       # 10% for LLM injections
+
+# ─── Participant Preview Settings (F-062) ────────────────────
+# Preview length for "other participants" in _build_participant_context.
+# These previews tell OTHER participants who is in the room — not the
+# participant themselves (their full prompt is already in the system message).
+COUNCIL_PERSONA_PREVIEW_LENGTH = 500      # Council member system_prompt preview
+CHARACTER_BACKSTORY_PREVIEW_LENGTH = 200  # Character backstory preview (was 500)
+CHARACTER_PERSONA_PREVIEW_LENGTH = 200    # Character system_prompt preview (was 500)
+
+# ─── Rolling Conversation Summary Settings (F-058) ───────────
+ROLLING_SUMMARY_THRESHOLD = 10             # Summarize when message count exceeds this
+ROLLING_SUMMARY_RECENT_MESSAGES = 5        # Keep this many recent raw messages alongside summary
+ROLLING_SUMMARY_MAX_TOKENS = 300           # Max tokens for the generated summary
+ROLLING_SUMMARY_ENABLED = True             # Global toggle for rolling summaries
