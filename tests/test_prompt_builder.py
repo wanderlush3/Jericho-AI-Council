@@ -615,17 +615,59 @@ class TestBuildEntityContext:
         mock_loc = MagicMock()
         loc_obj = MagicMock()
         loc_obj.name = "Crystal Caverns"
-        loc_obj.description = "Glittering underground caves"
+        loc_obj.description = "Glittering underground caves filled with bioluminescent crystals"
+        loc_obj.lore = "Ancient dwarven miners discovered these caverns millennia ago"
+        loc_obj.tags = ["underground", "crystal", "mystical"]
         loc_obj.location_type = "natural"
-        loc_obj.features = [{"name": "Crystal Lake"}, {"name": "Echo Chamber"}]
+        loc_obj.coordinates = "42.3N, 71.1W"
+        loc_obj.features = [
+            {"name": "Crystal Lake", "description": "A shimmering lake of liquid crystal", "feature_type": "landmark"},
+            {"name": "Echo Chamber", "description": "Sound reverberates endlessly", "feature_type": "natural"},
+        ]
         mock_loc.get.return_value = loc_obj
 
         ctx = build_entity_context(
             "location", "LOC-0001", location_manager=mock_loc,
         )
-        assert "Entity: Location — Crystal Caverns" in ctx
-        assert "Glittering underground caves" in ctx
-        assert "natural" in ctx
+        lines = ctx.split("\n")
+        # Priority order: name → description → lore first
+        assert lines[0] == "Entity: Location — Crystal Caverns"
+        assert lines[1].startswith("Description:")
+        assert "bioluminescent crystals" in lines[1]
+        assert "Lore:" in lines[2]
+        assert "Ancient dwarven miners" in lines[2]
+        # Then tags, type, coordinates as secondary signals
+        assert "Tags: underground, crystal, mystical" in ctx
+        assert "Type: natural" in ctx
+        assert "Coordinates: 42.3N, 71.1W" in ctx
+        # Features with full descriptions
+        assert "Crystal Lake (landmark): A shimmering lake of liquid crystal" in ctx
+        assert "Echo Chamber (natural): Sound reverberates endlessly" in ctx
+
+    def test_location_context_minimal(self):
+        """Location context with only required fields (no lore, tags, etc.)."""
+        mock_loc = MagicMock()
+        loc_obj = MagicMock()
+        loc_obj.name = "Empty Clearing"
+        loc_obj.description = "A bare patch of ground"
+        loc_obj.lore = ""
+        loc_obj.tags = []
+        loc_obj.location_type = ""
+        loc_obj.coordinates = ""
+        loc_obj.features = []
+        mock_loc.get.return_value = loc_obj
+
+        ctx = build_entity_context(
+            "location", "LOC-0002", location_manager=mock_loc,
+        )
+        assert "Entity: Location — Empty Clearing" in ctx
+        assert "A bare patch of ground" in ctx
+        # Optional fields should NOT appear
+        assert "Lore:" not in ctx
+        assert "Tags:" not in ctx
+        assert "Type:" not in ctx
+        assert "Coordinates:" not in ctx
+        assert "Features:" not in ctx
 
     def test_item_context(self):
         from core.items import Item, ItemProperty

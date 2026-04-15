@@ -342,6 +342,22 @@ class HumanChat:
         """Return the memory directory name for a character."""
         return f"{char_name.strip().lower().replace(' ', '_')}_memory"
 
+    @staticmethod
+    def _should_skip_world_entities(record: HumanChatRecord) -> bool:
+        """Check if this chat already has world context in its history.
+
+        Explore chats and story chats inject participant context (which
+        includes world locations/items) into the chat message history.
+        When MemoryInfluence also injects world entities, the LLM sees
+        the same data twice.  This helper detects those chat types so
+        callers can pass ``skip_world_entities=True`` (F-055).
+        """
+        meta = record.metadata or {}
+        return bool(
+            meta.get("explore_location_id")
+            or meta.get("story_chat")
+        )
+
     # ── Chat Lifecycle ────────────────────────────────────────
 
     def create_chat(
@@ -524,7 +540,10 @@ class HumanChat:
                 keywords = MemoryInfluence.extract_keywords(
                     effective_topic or record.title
                 )
-                ctx = self._memory_influence.build_context(member.name, keywords)
+                ctx = self._memory_influence.build_context(
+                    member.name, keywords,
+                    skip_world_entities=self._should_skip_world_entities(record),
+                )
                 memory_text = ctx.formatted_text
 
             prompt = _build_human_chat_prompt(
@@ -538,33 +557,44 @@ class HumanChat:
             # Build API messages
             api_messages = self._build_api_messages(record, member, prompt)
 
-            response = await self._api_client.chat(member, api_messages)
-            last_response = response
+            try:
+                response = await self._api_client.chat(member, api_messages)
+                last_response = response
 
-            # Guard against None content from API
-            content_text = response.content or ""
+                # Guard against None content from API
+                content_text = response.content or ""
 
-            # Record the agent message
-            msg = HumanChatMessage.create(
-                role="agent",
-                speaker=member.name,
-                content=content_text,
-                metadata={"model": response.model, "provider": response.provider},
-            )
-            record = self._append_messages(record, [msg])
-
-            # Record to agent/character memory
-            agent_mem = AgentMemory(mem_name)
-            agent_mem.append_session_event(
-                MemoryEntry.create(
-                    session_id=chat_id,
-                    event_type="human_chat",
-                    content=f"Spoke with human operator about "
-                            f"'{effective_topic or record.title}': "
-                            f"{content_text[:200]}",
-                    source="human_chat",
+                # Record the agent message
+                msg = HumanChatMessage.create(
+                    role="agent",
+                    speaker=member.name,
+                    content=content_text,
+                    metadata={"model": response.model, "provider": response.provider},
                 )
-            )
+                record = self._append_messages(record, [msg])
+
+                # Record to agent/character memory
+                agent_mem = AgentMemory(mem_name)
+                agent_mem.append_session_event(
+                    MemoryEntry.create(
+                        session_id=chat_id,
+                        event_type="human_chat",
+                        content=f"Spoke with human operator about "
+                                f"'{effective_topic or record.title}': "
+                                f"{content_text[:200]}",
+                        source="human_chat",
+                    )
+                )
+            except Exception:
+                # API call failed — record an absent message and continue
+                content_text = "[absent] Was unavailable to respond at this time. [/absent]"
+                msg = HumanChatMessage.create(
+                    role="agent",
+                    speaker=member.name,
+                    content=content_text,
+                    metadata={"absent": True},
+                )
+                record = self._append_messages(record, [msg])
 
             # Save incrementally so next member sees this message
             self._save(record)
@@ -845,7 +875,8 @@ class HumanChat:
                     effective_topic or record.title
                 )
                 ctx = self._memory_influence.build_context(
-                    member.name, keywords
+                    member.name, keywords,
+                    skip_world_entities=self._should_skip_world_entities(record),
                 )
                 memory_text = ctx.formatted_text
 
@@ -861,36 +892,47 @@ class HumanChat:
                 record, member, prompt
             )
 
-            response = await self._api_client.chat(member, api_messages)
-            responses.append(response)
+            try:
+                response = await self._api_client.chat(member, api_messages)
+                responses.append(response)
 
-            # Guard against None content from API
-            content_text = response.content or ""
+                # Guard against None content from API
+                content_text = response.content or ""
 
-            # Record the agent message
-            msg = HumanChatMessage.create(
-                role="agent",
-                speaker=member.name,
-                content=content_text,
-                metadata={
-                    "model": response.model,
-                    "provider": response.provider,
-                },
-            )
-            record = self._append_messages(record, [msg])
-
-            # Record to agent/character memory
-            agent_mem = AgentMemory(mem_name)
-            agent_mem.append_session_event(
-                MemoryEntry.create(
-                    session_id=chat_id,
-                    event_type="human_chat",
-                    content=f"Spoke in group conversation about "
-                            f"'{effective_topic or record.title}': "
-                            f"{content_text[:200]}",
-                    source="human_chat",
+                # Record the agent message
+                msg = HumanChatMessage.create(
+                    role="agent",
+                    speaker=member.name,
+                    content=content_text,
+                    metadata={
+                        "model": response.model,
+                        "provider": response.provider,
+                    },
                 )
-            )
+                record = self._append_messages(record, [msg])
+
+                # Record to agent/character memory
+                agent_mem = AgentMemory(mem_name)
+                agent_mem.append_session_event(
+                    MemoryEntry.create(
+                        session_id=chat_id,
+                        event_type="human_chat",
+                        content=f"Spoke in group conversation about "
+                                f"'{effective_topic or record.title}': "
+                                f"{content_text[:200]}",
+                        source="human_chat",
+                    )
+                )
+            except Exception:
+                # API call failed — record an absent message and continue
+                content_text = "[absent] Was unavailable to respond at this time. [/absent]"
+                msg = HumanChatMessage.create(
+                    role="agent",
+                    speaker=member.name,
+                    content=content_text,
+                    metadata={"absent": True},
+                )
+                record = self._append_messages(record, [msg])
 
             # Re-load record so next member sees this message
             self._save(record)
@@ -963,7 +1005,10 @@ class HumanChat:
                 keywords = MemoryInfluence.extract_keywords(
                     effective_topic or record.title
                 )
-                ctx = self._memory_influence.build_context(member.name, keywords)
+                ctx = self._memory_influence.build_context(
+                    member.name, keywords,
+                    skip_world_entities=self._should_skip_world_entities(record),
+                )
                 memory_text = ctx.formatted_text
 
             prompt = _build_human_chat_prompt(
@@ -975,28 +1020,45 @@ class HumanChat:
             )
             api_messages = self._build_api_messages(record, member, prompt)
 
-            response = await self._api_client.chat(member, api_messages)
-            content_text = response.content or ""
+            try:
+                response = await self._api_client.chat(member, api_messages)
+                content_text = response.content or ""
 
-            msg = HumanChatMessage.create(
-                role="agent",
-                speaker=member.name,
-                content=content_text,
-                metadata={"model": response.model, "provider": response.provider},
-            )
-            record = self._append_messages(record, [msg])
-
-            agent_mem = AgentMemory(mem_name)
-            agent_mem.append_session_event(
-                MemoryEntry.create(
-                    session_id=chat_id,
-                    event_type="human_chat",
-                    content=f"Spoke with human operator about "
-                            f"'{effective_topic or record.title}': "
-                            f"{content_text[:200]}",
-                    source="human_chat",
+                msg = HumanChatMessage.create(
+                    role="agent",
+                    speaker=member.name,
+                    content=content_text,
+                    metadata={"model": response.model, "provider": response.provider},
                 )
-            )
+                record = self._append_messages(record, [msg])
+
+                agent_mem = AgentMemory(mem_name)
+                agent_mem.append_session_event(
+                    MemoryEntry.create(
+                        session_id=chat_id,
+                        event_type="human_chat",
+                        content=f"Spoke with human operator about "
+                                f"'{effective_topic or record.title}': "
+                                f"{content_text[:200]}",
+                        source="human_chat",
+                    )
+                )
+            except Exception:
+                # API call failed — record an absent message and continue
+                content_text = "[absent] Was unavailable to respond at this time. [/absent]"
+                msg = HumanChatMessage.create(
+                    role="agent",
+                    speaker=member.name,
+                    content=content_text,
+                    metadata={"absent": True},
+                )
+                record = self._append_messages(record, [msg])
+                # Build a stub response for the SSE layer
+                response = ChatResponse(
+                    content=content_text,
+                    model="",
+                    provider="",
+                )
 
             self._save(record)
             yield member.name, response, record
@@ -1077,7 +1139,8 @@ class HumanChat:
                     effective_topic or record.title
                 )
                 ctx = self._memory_influence.build_context(
-                    member.name, keywords
+                    member.name, keywords,
+                    skip_world_entities=self._should_skip_world_entities(record),
                 )
                 memory_text = ctx.formatted_text
 
@@ -1090,31 +1153,48 @@ class HumanChat:
             )
             api_messages = self._build_api_messages(record, member, prompt)
 
-            response = await self._api_client.chat(member, api_messages)
-            content_text = response.content or ""
+            try:
+                response = await self._api_client.chat(member, api_messages)
+                content_text = response.content or ""
 
-            msg = HumanChatMessage.create(
-                role="agent",
-                speaker=member.name,
-                content=content_text,
-                metadata={
-                    "model": response.model,
-                    "provider": response.provider,
-                },
-            )
-            record = self._append_messages(record, [msg])
-
-            agent_mem = AgentMemory(mem_name)
-            agent_mem.append_session_event(
-                MemoryEntry.create(
-                    session_id=chat_id,
-                    event_type="human_chat",
-                    content=f"Spoke in group conversation about "
-                            f"'{effective_topic or record.title}': "
-                            f"{content_text[:200]}",
-                    source="human_chat",
+                msg = HumanChatMessage.create(
+                    role="agent",
+                    speaker=member.name,
+                    content=content_text,
+                    metadata={
+                        "model": response.model,
+                        "provider": response.provider,
+                    },
                 )
-            )
+                record = self._append_messages(record, [msg])
+
+                agent_mem = AgentMemory(mem_name)
+                agent_mem.append_session_event(
+                    MemoryEntry.create(
+                        session_id=chat_id,
+                        event_type="human_chat",
+                        content=f"Spoke in group conversation about "
+                                f"'{effective_topic or record.title}': "
+                                f"{content_text[:200]}",
+                        source="human_chat",
+                    )
+                )
+            except Exception:
+                # API call failed — record an absent message and continue
+                content_text = "[absent] Was unavailable to respond at this time. [/absent]"
+                msg = HumanChatMessage.create(
+                    role="agent",
+                    speaker=member.name,
+                    content=content_text,
+                    metadata={"absent": True},
+                )
+                record = self._append_messages(record, [msg])
+                # Build a stub response for the SSE layer
+                response = ChatResponse(
+                    content=content_text,
+                    model="",
+                    provider="",
+                )
 
             self._save(record)
             yield member.name, response, record

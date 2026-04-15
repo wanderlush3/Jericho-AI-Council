@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from config.settings import STORES_DIR, STORE_STATUSES, STORE_TYPES
+from config.settings import STORE_INJECTION_MAX_LENGTH, STORES_DIR, STORE_STATUSES, STORE_TYPES
 from core.utils import atomic_write
 
 
@@ -150,6 +150,7 @@ class Store:
     inventory: list[StoreItem] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
     lore: str = ""
+    llm_injection: str = ""
     version: int = 1
     created_at: str = ""
     updated_at: str = ""
@@ -178,6 +179,7 @@ class Store:
             inventory=inventory,
             tags=data.get("tags", []),
             lore=data.get("lore", ""),
+            llm_injection=data.get("llm_injection", ""),
             version=data.get("version", 1),
             created_at=data.get("created_at", ""),
             updated_at=data.get("updated_at", ""),
@@ -198,6 +200,7 @@ class Store:
         inventory: list[StoreItem] | None = None,
         tags: list[str] | None = None,
         lore: str = "",
+        llm_injection: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> Store:
         """Factory that sets timestamps and defaults."""
@@ -214,6 +217,7 @@ class Store:
             inventory=inventory or [],
             tags=tags or [],
             lore=lore,
+            llm_injection=llm_injection,
             version=1,
             created_at=now,
             updated_at=now,
@@ -271,6 +275,7 @@ class StoreManager:
         owner: str = "",
         tags: list[str] | None = None,
         lore: str = "",
+        llm_injection: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> Store:
         """Create a new store in draft status."""
@@ -286,6 +291,12 @@ class StoreManager:
                 f"Invalid store type '{store_type}'. "
                 f"Must be one of: {', '.join(STORE_TYPES)}"
             )
+        if llm_injection and len(llm_injection) > STORE_INJECTION_MAX_LENGTH:
+            errors.append(
+                f"LLM injection text exceeds maximum length of "
+                f"{STORE_INJECTION_MAX_LENGTH} characters "
+                f"(got {len(llm_injection)})."
+            )
         if errors:
             raise StoreValidationError(errors)
 
@@ -300,6 +311,7 @@ class StoreManager:
             owner=owner.strip() if owner else "",
             tags=tags or [],
             lore=lore,
+            llm_injection=llm_injection,
             metadata=metadata or {},
         )
         self._save(store)
@@ -525,7 +537,7 @@ class StoreManager:
 
     _MUTABLE_FIELDS = {
         "name", "description", "lore", "tags", "metadata",
-        "location_id", "owner", "store_type",
+        "location_id", "owner", "store_type", "llm_injection",
     }
 
     def update(self, store_id: str, **fields: Any) -> Store:
@@ -544,6 +556,16 @@ class StoreManager:
                 raise StoreValidationError(
                     f"Invalid store type '{st}'. "
                     f"Must be one of: {', '.join(STORE_TYPES)}"
+                )
+
+        # Validate llm_injection length if provided
+        if "llm_injection" in fields:
+            inj = fields["llm_injection"]
+            if isinstance(inj, str) and len(inj) > STORE_INJECTION_MAX_LENGTH:
+                raise StoreValidationError(
+                    f"LLM injection text exceeds maximum length of "
+                    f"{STORE_INJECTION_MAX_LENGTH} characters "
+                    f"(got {len(inj)})."
                 )
 
         store = self.get(store_id)

@@ -543,5 +543,116 @@
         "dependencies": [
             "F-016"
         ]
+    },
+    {
+        "id": "F-051",
+        "title": "Location Image Prompt Context Refinement",
+        "description": "Refine location entity context for image generation prompts — prioritize name, description, and lore as primary visual signals. Include tags, location_type, coordinates as secondary context. Expand features with full descriptions and types for richer LLM input. Mirrors F-049 item prompt approach",
+        "status": "completed",
+        "dependencies": [
+            "F-037c",
+            "F-026"
+        ]
+    },
+    {
+        "id": "F-052",
+        "title": "Chat Absent Response Handling",
+        "description": "Gracefully handle API failures for individual participants in chat. When a council member or character fails to respond, inject [absent] Was unavailable to respond at this time. [/absent] and continue to the next participant instead of crashing the stream. Covers all 4 chat methods: get_agent_response, get_agent_response_streaming, continue_conversation, continue_conversation_streaming. Frontend renders [absent] tags with distinct amber styling.",
+        "status": "completed",
+        "dependencies": [
+            "F-009"
+        ]
+    },
+    {
+        "id": "F-053",
+        "title": "LLM Injection System",
+        "description": "User-authored llm_injection text fields on items, locations, and stores that are injected into LLM context alongside existing layers (laws, memories, characters). Non-consumable items have static injections; consumable items have 24h TTL injections. Stores now appear in participant context with their injection text. Frontend create/edit forms updated with injection textareas and active/expired badges.",
+        "status": "completed",
+        "dependencies": [
+            "F-035",
+            "F-026",
+            "F-036"
+        ]
+    },
+    {
+        "id": "F-054",
+        "title": "Injection Text Length Limits",
+        "description": "Configurable per-entity character limits for llm_injection fields: items 500, locations 800, stores 500. Enforced at backend validation (create/update reject with helpful error), context builder truncation (replaced hardcoded :300 with configurable limits), and frontend (maxlength + live character counters with amber/red threshold feedback). API responses include injection_max_length metadata. 26 new tests.",
+        "status": "completed",
+        "dependencies": [
+            "F-053"
+        ]
+    },
+    {
+        "id": "F-055",
+        "title": "Eliminate Explore Chat Context Duplication",
+        "description": "When explore/story chat triggers agent responses, MemoryInfluence injects world locations+items AND _build_participant_context also injects them — same data, twice. Add skip_world_context parameter to _build_participant_context so chat callers skip world entities (MemoryInfluence already handles them with relevance scoring). Saves ~500–1500 tokens per chat turn in explore mode.",
+        "status": "completed",
+        "dependencies": [
+            "F-053"
+        ]
+    },
+    {
+        "id": "F-056",
+        "title": "Skip Self-Persona Preview in Participant Context",
+        "description": "Remove redundant persona preview from _build_participant_context when the member IS the current speaker — they already have their full system_prompt as the system message. Add current_speaker parameter to skip that member's 500-char persona preview. Saves ~125 tokens per turn per active member.",
+        "status": "completed",
+        "dependencies": [
+            "F-055"
+        ]
+    },
+    {
+        "id": "F-057",
+        "title": "Global Token Budget / Context Window Manager",
+        "description": "ContextBudget class that accepts a target token count (e.g. 32,768) and allocates portions to each layer with priorities: system prompt (fixed, highest), conversation history (sliding window, high), memories/beliefs (scored, medium), world context (scored, lower), LLM injections (user-controlled, lowest). Each layer truncates to fit the budget, making context size predictable regardless of world size.",
+        "status": "pending",
+        "dependencies": [
+            "F-055"
+        ]
+    },
+    {
+        "id": "F-058",
+        "title": "Rolling Conversation Summary",
+        "description": "For conversations with >10 messages, generate a cached rolling LLM summary of messages 1–N, then inject [Summary of prior conversation: ...] + last 5 messages instead of raw last 10. Preserves context continuity while cutting ~500–2000 tokens in long conversations.",
+        "status": "pending",
+        "dependencies": [
+            "F-055"
+        ]
+    },
+    {
+        "id": "F-059",
+        "title": "Lazy/Cached Memory Scoring",
+        "description": "Cache MemoryContext results for a given (member, topic_hash) pair. Only re-score when the topic meaningfully changes (keyword diff). Add stale_after TTL (e.g. 5 minutes). Negligible token savings but significant latency improvement.",
+        "status": "pending",
+        "dependencies": [
+            "F-055"
+        ]
+    },
+    {
+        "id": "F-060",
+        "title": "Conditional Law Injection",
+        "description": "Score laws against context keywords (same as memories) and only inject relevant ones. A law about taxation rates should not appear when discussing character backstories. Saves ~50–200 tokens when most laws are irrelevant.",
+        "status": "pending",
+        "dependencies": [
+            "F-055"
+        ]
+    },
+    {
+        "id": "F-061",
+        "title": "Tiered Injection Profiles",
+        "description": "Define injection profiles: chat_full (system prompt + history + memory + world + injections), chat_light (system prompt + history + identity), image_gen (entity context + style only), narration (story context + participant identity + relevant world subset), discussion (proposal + prior contributions + member beliefs only). Let each route choose the appropriate profile. Saves ~1000–2000 tokens for lightweight call types.",
+        "status": "pending",
+        "dependencies": [
+            "F-057"
+        ]
+    },
+    {
+        "id": "F-062",
+        "title": "Aggressive Character Preview Truncation",
+        "description": "Reduce character backstory preview from 500 to 200 chars in _build_participant_context. The backstory preview is for OTHER participants to know who is in the room, not for the character to know their own backstory (which is already in their system prompt). Saves ~200–500 tokens with multiple characters.",
+        "status": "pending",
+        "dependencies": [
+            "F-055"
+        ]
     }
 ]

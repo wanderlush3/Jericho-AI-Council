@@ -19,14 +19,17 @@ def api_items_list(
     tag: str | None = Query(None),
 ) -> list[dict[str, Any]]:
     """List items with optional filters."""
-    from core.items import ItemManager
+    from core.items import ItemManager, is_injection_active
     from core.image_manager import ImageManager
+    from config.settings import ITEM_INJECTION_MAX_LENGTH
     mgr = ItemManager()
     imgr = ImageManager()
     results = mgr.list_items(status=status, author=author, tag=tag)
     out = []
     for item in results:
         d = item.to_dict()
+        d["injection_active"] = is_injection_active(item)
+        d["injection_max_length"] = ITEM_INJECTION_MAX_LENGTH
         # Attach primary image URL if available
         primary_url = ""
         try:
@@ -47,7 +50,8 @@ def api_items_list(
 @router.get("/api/items/{item_id}")
 def api_item_detail(item_id: str) -> dict[str, Any]:
     """Get a single item."""
-    from core.items import ItemManager, ItemNotFoundError
+    from core.items import ItemManager, ItemNotFoundError, is_injection_active
+    from config.settings import ITEM_INJECTION_MAX_LENGTH
     mgr = ItemManager()
     try:
         item = mgr.get(item_id)
@@ -56,7 +60,10 @@ def api_item_detail(item_id: str) -> dict[str, Any]:
             status_code=404,
             detail=f"Item '{item_id}' not found.",
         )
-    return item.to_dict()
+    d = item.to_dict()
+    d["injection_active"] = is_injection_active(item)
+    d["injection_max_length"] = ITEM_INJECTION_MAX_LENGTH
+    return d
 
 @router.post("/api/items")
 def api_item_create(body: dict[str, Any]) -> dict[str, Any]:
@@ -104,6 +111,7 @@ def api_item_create(body: dict[str, Any]) -> dict[str, Any]:
             name, description, author=author, lore=lore,
             properties=properties, tags=tags, rarity=rarity,
             tier=tier, legality=legality,
+            llm_injection=body.get("llm_injection", "").strip(),
         )
     except ItemValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

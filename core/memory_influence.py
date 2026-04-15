@@ -36,6 +36,8 @@ from typing import Any
 from config.settings import (
     CONTESTED_MEMORY_ENABLED,
     CONTESTED_MEMORY_PROBABILITY,
+    CONTEXT_MAX_WORLD_ITEMS,
+    CONTEXT_MAX_WORLD_LOCATIONS,
     DEFAULT_SUMMARIZATION_MODEL,
     DEFAULT_SUMMARIZATION_PROVIDER,
     EMBEDDING_JACCARD_WEIGHT,
@@ -594,6 +596,7 @@ class MemoryInfluence:
         memories_dir: Path | None = None,
         locations_dir: Path | None = None,
         items_dir: Path | None = None,
+        skip_world_entities: bool = False,
     ) -> MemoryContext:
         """
         Build a complete MemoryContext for a member.
@@ -614,6 +617,9 @@ class MemoryInfluence:
             memories_dir: Override the memories directory (for testing).
             locations_dir: Override the locations directory (for testing).
             items_dir: Override the items directory (for testing).
+            skip_world_entities: When True, omit world locations and
+                items from the context.  Use this when the caller's
+                chat history already contains world context (F-055).
 
         Returns:
             MemoryContext with scored beliefs, memories, and formatted text.
@@ -642,9 +648,18 @@ class MemoryInfluence:
                 agent_mem, scored_memories,
             )
 
-        # Load active locations and items
-        active_locations = self._load_active_locations(locations_dir)
-        active_items = self._load_active_items(items_dir)
+        # Load active locations and items (capped to prevent unbounded growth)
+        # F-055: Skip when the caller's chat history already has world context
+        if skip_world_entities:
+            active_locations = []
+            active_items = []
+        else:
+            active_locations = self._load_active_locations(locations_dir)[
+                :CONTEXT_MAX_WORLD_LOCATIONS
+            ]
+            active_items = self._load_active_items(items_dir)[
+                :CONTEXT_MAX_WORLD_ITEMS
+            ]
 
         # Format for prompt injection
         formatted = self.format_for_prompt(

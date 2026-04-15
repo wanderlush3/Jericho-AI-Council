@@ -17,7 +17,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from config.settings import ITEMS_DIR, ITEM_LEGALITY_STATUSES, ITEM_PROPERTY_TYPES, ITEM_STATUSES, ITEM_TIERS
+from config.settings import (
+    CONSUMABLE_INJECTION_TTL_HOURS,
+    ITEM_INJECTION_MAX_LENGTH,
+    ITEMS_DIR,
+    ITEM_LEGALITY_STATUSES,
+    ITEM_PROPERTY_TYPES,
+    ITEM_STATUSES,
+    ITEM_TIERS,
+)
 from core.utils import atomic_write
 
 
@@ -115,6 +123,7 @@ class Item:
     tier: str = ""
     legality: str = ""
     owner: str = ""
+    llm_injection: str = ""
     version: int = 1
     created_at: str = ""
     updated_at: str = ""
@@ -134,6 +143,7 @@ class Item:
             "tier": self.tier,
             "legality": self.legality,
             "owner": self.owner,
+            "llm_injection": self.llm_injection,
             "version": self.version,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
@@ -159,6 +169,7 @@ class Item:
             tier=data.get("tier", ""),
             legality=data.get("legality", ""),
             owner=data.get("owner", ""),
+            llm_injection=data.get("llm_injection", ""),
             version=data.get("version", 1),
             created_at=data.get("created_at", ""),
             updated_at=data.get("updated_at", ""),
@@ -180,6 +191,7 @@ class Item:
         tier: str = "",
         legality: str = "",
         owner: str = "",
+        llm_injection: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> Item:
         """Factory that sets timestamps and defaults."""
@@ -197,11 +209,42 @@ class Item:
             tier=tier,
             legality=legality,
             owner=owner,
+            llm_injection=llm_injection,
             version=1,
             created_at=now,
             updated_at=now,
             metadata=metadata or {},
         )
+
+
+# ─── LLM Injection Expiry Helper ──────────────────────────────
+
+
+def is_injection_active(item: Item) -> bool:
+    """Check whether an item's LLM injection is currently active.
+
+    - Non-consumable items: injection is **static** (always active)
+    - Consumable items: injection expires after
+      ``CONSUMABLE_INJECTION_TTL_HOURS`` hours from ``updated_at``
+    - Items with empty ``llm_injection``: always returns ``False``
+    """
+    if not item.llm_injection:
+        return False
+
+    if item.tier != "consumable":
+        return True  # permanent / degradable — static injection
+
+    # Consumable: check expiry against updated_at
+    if not item.updated_at:
+        return False
+
+    try:
+        updated = datetime.fromisoformat(item.updated_at)
+        now = datetime.now(timezone.utc)
+        elapsed_hours = (now - updated).total_seconds() / 3600
+        return elapsed_hours <= CONSUMABLE_INJECTION_TTL_HOURS
+    except (ValueError, TypeError):
+        return False
 
 
 # ─── Valid Lifecycle Transitions ───────────────────────────────
@@ -246,6 +289,7 @@ class ItemManager:
         rarity: str = "",
         tier: str = "",
         legality: str = "",
+        llm_injection: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> Item:
         """Create and persist a new item in draft status."""
@@ -271,6 +315,12 @@ class ItemManager:
             errors.append(
                 f"Invalid legality '{legality}'. Must be one of: {', '.join(ITEM_LEGALITY_STATUSES)}"
             )
+        if llm_injection and len(llm_injection) > ITEM_INJECTION_MAX_LENGTH:
+            errors.append(
+                f"LLM injection text exceeds maximum length of "
+                f"{ITEM_INJECTION_MAX_LENGTH} characters "
+                f"(got {len(llm_injection)})."
+            )
         if errors:
             raise ItemValidationError(errors)
 
@@ -286,6 +336,7 @@ class ItemManager:
             rarity=rarity,
             tier=tier,
             legality=legality,
+            llm_injection=llm_injection,
             metadata=metadata or {},
         )
         self._save(item)
@@ -400,11 +451,22 @@ class ItemManager:
     def update(self, item_id: str, **fields: Any) -> Item:
         """Update mutable fields on an item."""
         immutable = {"id", "author", "status", "created_at", "version"}
+        # llm_injection is explicitly mutable
         bad = set(fields.keys()) & immutable
         if bad:
             raise ItemValidationError(
                 f"Cannot update immutable field(s): {', '.join(sorted(bad))}"
             )
+
+        # Validate llm_injection length if provided
+        if "llm_injection" in fields:
+            inj = fields["llm_injection"]
+            if isinstance(inj, str) and len(inj) > ITEM_INJECTION_MAX_LENGTH:
+                raise ItemValidationError(
+                    f"LLM injection text exceeds maximum length of "
+                    f"{ITEM_INJECTION_MAX_LENGTH} characters "
+                    f"(got {len(inj)})."
+                )
 
         # Validate tier if provided
         if "tier" in fields:

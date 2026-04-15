@@ -22,6 +22,7 @@ def api_locations_list(
     """List locations with optional filters."""
     from core.locations import LocationManager
     from core.image_manager import ImageManager
+    from config.settings import LOCATION_INJECTION_MAX_LENGTH
     mgr = LocationManager()
     imgr = ImageManager()
     items = mgr.list_locations(
@@ -31,6 +32,7 @@ def api_locations_list(
     result = []
     for loc in items:
         d = loc.to_dict()
+        d["injection_max_length"] = LOCATION_INJECTION_MAX_LENGTH
         # Attach primary image URL if available
         primary_url = ""
         try:
@@ -52,6 +54,7 @@ def api_locations_list(
 def api_location_detail(location_id: str) -> dict[str, Any]:
     """Get a single location."""
     from core.locations import LocationManager, LocationNotFoundError
+    from config.settings import LOCATION_INJECTION_MAX_LENGTH
     mgr = LocationManager()
     try:
         loc = mgr.get(location_id)
@@ -60,7 +63,9 @@ def api_location_detail(location_id: str) -> dict[str, Any]:
             status_code=404,
             detail=f"Location '{location_id}' not found.",
         )
-    return loc.to_dict()
+    d = loc.to_dict()
+    d["injection_max_length"] = LOCATION_INJECTION_MAX_LENGTH
+    return d
 
 @router.post("/api/locations")
 def api_location_create(body: dict[str, Any]) -> dict[str, Any]:
@@ -107,6 +112,7 @@ def api_location_create(body: dict[str, Any]) -> dict[str, Any]:
             name, description, author=author, lore=lore,
             features=features, tags=tags,
             parent_location_id=parent, coordinates=coords,
+            llm_injection=body.get("llm_injection", "").strip(),
         )
     except LocationValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

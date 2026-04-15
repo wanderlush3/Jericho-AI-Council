@@ -39,6 +39,16 @@ async function renderLocations() {
                     <input id="loc-coords-input" class="settings-input" placeholder="e.g. 42.3N, 71.1W (optional)" />
                 </div>
             </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="loc-injection-input">LLM Injection <span style="color:var(--accent-cyan);font-size:0.75rem">💉 custom AI context</span></label>
+                <textarea id="loc-injection-input" class="settings-input proposal-textarea" rows="2" maxlength="800"
+                    placeholder="Custom text always injected into AI context for this location…"
+                    oninput="updateInjectionCounter('loc-injection-input','loc-injection-counter',800)"></textarea>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
+                    <span style="font-size:0.72rem;color:var(--text-muted)">Static: always active while this location is active.</span>
+                    <span id="loc-injection-counter" style="font-size:0.72rem;color:var(--text-muted)">0 / 800</span>
+                </div>
+            </div>
             <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                 <button class="btn btn-primary" onclick="createLocation()" id="loc-create-btn">
                     🌍 Create Location
@@ -83,7 +93,10 @@ async function renderLocations() {
                     <div class="loc-name">${escapeHtml(loc.name)}</div>
                     <div class="loc-author">by ${escapeHtml(loc.author)} · v${loc.version || 1}</div>
                 </div>
-                ${badge(loc.status)}
+                <div style="display:flex;gap:var(--space-xs);align-items:center">
+                    ${loc.llm_injection ? '<span class="badge" style="background:linear-gradient(135deg,hsl(180,50%,40%),hsl(200,55%,35%));font-size:0.68rem;padding:2px 6px" title="Has LLM injection">💉</span>' : ''}
+                    ${badge(loc.status)}
+                </div>
             </div>
             <div class="loc-desc">${truncate(loc.description, 120)}</div>
             ${featuresHtml || moreFeats ? `<div class="location-features-row">${featuresHtml}${moreFeats}</div>` : ''}
@@ -213,6 +226,17 @@ async function renderLocationDetail(id) {
                         <label for="loc-edit-tags">Tags</label>
                         <input id="loc-edit-tags" class="settings-input" value="${escapeAttr((data.tags || []).join(', '))}" />
                     </div>
+                    <div class="filter-group" style="margin-top:var(--space-sm)">
+                        <label for="loc-edit-injection">LLM Injection <span style="color:var(--accent-cyan);font-size:0.75rem">💉 custom AI context</span>
+                            ${data.llm_injection ? '<span class="badge" style="margin-left:var(--space-xs);background:linear-gradient(135deg,hsl(160,55%,42%),hsl(170,50%,38%));font-size:0.68rem;padding:2px 6px">✨ Active</span>' : ''}
+                        </label>
+                        <textarea id="loc-edit-injection" class="settings-input proposal-textarea" rows="2" maxlength="${data.injection_max_length || 800}"
+                            oninput="updateInjectionCounter('loc-edit-injection','loc-edit-injection-counter',${data.injection_max_length || 800})">${escapeHtml(data.llm_injection || '')}</textarea>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
+                            <span style="font-size:0.72rem;color:var(--text-muted)">Static: always active while this location is active.</span>
+                            <span id="loc-edit-injection-counter" style="font-size:0.72rem;color:var(--text-muted)">${(data.llm_injection || '').length} / ${data.injection_max_length || 800}</span>
+                        </div>
+                    </div>
                     <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                         <button class="btn btn-primary" onclick="saveLocationEdit('${data.id}')" id="loc-save-btn">
                             💾 Save Changes
@@ -248,7 +272,7 @@ async function createLocation() {
         const resp = await fetch('/api/locations', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, description, author, lore, tags, coordinates }),
+            body: JSON.stringify({ name, description, author, lore, tags, coordinates, llm_injection: document.getElementById('loc-injection-input').value.trim() }),
         });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({ detail: 'Failed to create location' }));
@@ -282,6 +306,7 @@ async function saveLocationEdit(locationId) {
         lore: document.getElementById('loc-edit-lore').value.trim(),
         coordinates: document.getElementById('loc-edit-coords').value.trim(),
         tags,
+        llm_injection: document.getElementById('loc-edit-injection').value.trim(),
     };
 
     try {

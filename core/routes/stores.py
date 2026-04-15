@@ -22,6 +22,7 @@ def api_stores_list(
     """List stores with optional filters."""
     from core.stores import StoreManager
     from core.image_manager import ImageManager
+    from config.settings import STORE_INJECTION_MAX_LENGTH
     mgr = StoreManager()
     imgr = ImageManager()
     results = mgr.list_stores(
@@ -30,6 +31,7 @@ def api_stores_list(
     out = []
     for store in results:
         d = store.to_dict()
+        d["injection_max_length"] = STORE_INJECTION_MAX_LENGTH
         # Attach primary image URL if available
         primary_url = ""
         try:
@@ -51,6 +53,7 @@ def api_stores_list(
 def api_store_detail(store_id: str) -> dict[str, Any]:
     """Get a single store with full inventory."""
     from core.stores import StoreManager, StoreNotFoundError
+    from config.settings import STORE_INJECTION_MAX_LENGTH
     mgr = StoreManager()
     try:
         store = mgr.get(store_id)
@@ -59,7 +62,9 @@ def api_store_detail(store_id: str) -> dict[str, Any]:
             status_code=404,
             detail=f"Store '{store_id}' not found.",
         )
-    return store.to_dict()
+    d = store.to_dict()
+    d["injection_max_length"] = STORE_INJECTION_MAX_LENGTH
+    return d
 
 @router.post("/api/stores")
 def api_store_create(body: dict[str, Any]) -> dict[str, Any]:
@@ -91,6 +96,7 @@ def api_store_create(body: dict[str, Any]) -> dict[str, Any]:
             owner=(body.get("owner") or "").strip(),
             tags=body.get("tags") or [],
             lore=(body.get("lore") or "").strip(),
+            llm_injection=(body.get("llm_injection") or "").strip(),
         )
     except StoreValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

@@ -53,6 +53,16 @@ async function renderItems() {
                     </select>
                 </div>
             </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="item-injection-input">LLM Injection <span style="color:var(--accent-cyan);font-size:0.75rem">💉 custom AI context</span></label>
+                <textarea id="item-injection-input" class="settings-input proposal-textarea" rows="2" maxlength="500"
+                    placeholder="Custom text injected into AI context when this item is active…"
+                    oninput="updateInjectionCounter('item-injection-input','item-injection-counter',500)"></textarea>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
+                    <span style="font-size:0.72rem;color:var(--text-muted)">Consumable tier: expires 24h after last edit. Other tiers: always active.</span>
+                    <span id="item-injection-counter" style="font-size:0.72rem;color:var(--text-muted)">0 / 500</span>
+                </div>
+            </div>
             <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                 <button class="btn btn-primary" onclick="createItem()" id="item-create-btn">
                     📦 Create Item
@@ -96,6 +106,7 @@ async function renderItems() {
                     ${item.legality ? `<span class="badge" style="background:linear-gradient(135deg,${item.legality==='legal'?'hsl(150,55%,42%),hsl(160,50%,38%)':'hsl(0,60%,48%),hsl(10,55%,43%)'});font-size:0.7rem;padding:2px 8px">${item.legality.charAt(0).toUpperCase()+item.legality.slice(1)}</span>` : ''}
                     ${item.owner ? `<span class="badge store-owned-badge">Owned by ${escapeHtml(item.owner)}</span>` : ''}
                     ${item.rarity ? `<span class="badge badge-${item.rarity}">${item.rarity}</span>` : ''}
+                    ${item.llm_injection ? `<span class="badge" style="background:linear-gradient(135deg,hsl(180,50%,40%),hsl(200,55%,35%));font-size:0.68rem;padding:2px 6px" title="LLM injection ${item.injection_active ? 'active' : 'expired'}">💉 ${item.injection_active ? 'Active' : 'Expired'}</span>` : ''}
                     ${badge(item.status)}
                 </div>
             </div>
@@ -205,6 +216,17 @@ async function renderItemDetail(id) {
                     <label for="item-edit-tags">Tags</label>
                     <input id="item-edit-tags" class="settings-input" value="${(data.tags || []).join(', ')}" />
                 </div>
+                <div class="filter-group" style="margin-top:var(--space-sm)">
+                    <label for="item-edit-injection">LLM Injection <span style="color:var(--accent-cyan);font-size:0.75rem">💉 custom AI context</span>
+                        ${data.llm_injection ? `<span class="badge" style="margin-left:var(--space-xs);background:linear-gradient(135deg,${data.injection_active ? 'hsl(160,55%,42%),hsl(170,50%,38%)' : 'hsl(35,60%,45%),hsl(40,55%,40%)'});font-size:0.68rem;padding:2px 6px">${data.injection_active ? '✨ Active' : '⏳ Expired'}</span>` : ''}
+                    </label>
+                    <textarea id="item-edit-injection" class="settings-input proposal-textarea" rows="2" maxlength="${data.injection_max_length || 500}"
+                        oninput="updateInjectionCounter('item-edit-injection','item-edit-injection-counter',${data.injection_max_length || 500})">${data.llm_injection || ''}</textarea>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
+                        <span style="font-size:0.72rem;color:var(--text-muted)">Consumable tier: expires 24h after last edit. Other tiers: always active.</span>
+                        <span id="item-edit-injection-counter" style="font-size:0.72rem;color:var(--text-muted)">${(data.llm_injection || '').length} / ${data.injection_max_length || 500}</span>
+                    </div>
+                </div>
                 <div style="margin-top:var(--space-md);display:flex;align-items:center;gap:var(--space-md)">
                     <button class="btn btn-primary" onclick="saveItemEdit('${id}')" id="item-save-btn">💾 Save Changes</button>
                     <span id="item-save-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
@@ -275,7 +297,7 @@ async function createItem() {
         const resp = await fetch('/api/items', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, description, author, lore, tags, rarity, tier, legality }),
+            body: JSON.stringify({ name, description, author, lore, tags, rarity, tier, legality, llm_injection: document.getElementById('item-injection-input').value.trim() }),
         });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({ detail: 'Create failed' }));
@@ -313,6 +335,7 @@ async function saveItemEdit(itemId) {
         rarity: document.getElementById('item-edit-rarity').value.trim(),
         tier: document.getElementById('item-edit-tier').value,
         legality: document.getElementById('item-edit-legality').value,
+        llm_injection: document.getElementById('item-edit-injection').value.trim(),
     };
 
     try {

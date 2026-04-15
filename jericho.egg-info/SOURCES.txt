@@ -95,6 +95,7 @@ tests/test_image_manager.py
 tests/test_integration.py
 tests/test_items.py
 tests/test_laws.py
+tests/test_llm_injection.py
 tests/test_locations.py
 tests/test_manager_cache.py
 tests/test_memory.py

@@ -3594,3 +3594,329 @@ Expanded the Analytics dashboard from 4 governance-only cards to 9 cards coverin
 3. The image stats method walks the ImageManager.directory structure. If the directory structure changes, update image_stats().
 4. The memory/knowledge stats method scans all members from registry.list_names(). If the project has many members with large memory files, this could be slow.
 5. The sw CLI tool is NOT available. Use direct Python commands instead.
+
+---
+
+## Session: S-FEAT-00000051
+**Timestamp:** 2026-04-12 16:55:00
+**Feature:** `F-051` — Location Image Prompt Context Refinement
+**Status:** completed
+
+### Summary
+Refined the location entity context in `build_entity_context()` to produce richer, place-focused prompts for image generation — mirroring the approach already established for items in F-049.
+
+**Before:** Location context only included name, description, location_type, and feature names (no descriptions).
+
+**After:** Location context now uses a clear priority hierarchy:
+1. **Name** — the primary identifier
+2. **Description** — visual and atmospheric details
+3. **Lore** — historical/narrative atmosphere *(new)*
+4. **Tags** — categorical visual signals *(new)*
+5. **Type** — location classification
+6. **Coordinates** — spatial context *(new)*
+7. **Features** — now includes full descriptions and feature types *(enhanced)*
+
+#### core/prompt_builder.py — `build_entity_context()` location branch
+- Reordered fields: name → description → lore → tags → type → coordinates → features
+- Added lore, tags, and coordinates extraction with `hasattr`/truthy guards
+- Features now render with full descriptions and type annotations (e.g., `Crystal Lake (landmark): A shimmering lake`)
+- Handles both dict-based features and LocationFeature dataclass instances
+
+#### tests/test_prompt_builder.py — TestBuildEntityContext
+- Replaced `test_location_context` with comprehensive test verifying priority order and all fields
+- Added `test_location_context_minimal` — validates graceful handling when optional fields are empty
+
+### Test Results
+- **3098 passed, 12 skipped** — zero regressions (+2 net new tests, 1 replaced)
+
+### Technical Debt
+- None introduced. This is a pure refinement of the existing entity context builder.
+
+### Advice for Next Agent
+1. The location context now mirrors the item context pattern (F-049). If store context needs similar refinement, follow the same approach.
+2. Features handle both `dict` and dataclass forms because the test mock uses dicts while the actual LocationManager produces LocationFeature dataclasses.
+3. All entity context builders (character, location, item, store, council_member) are in `build_entity_context()` in `core/prompt_builder.py` lines 648–753.
+4. The sw CLI tool is NOT available. Use direct Python commands instead.
+
+---
+
+## Session: S-F052-ABSENT-001
+**Timestamp:** 2026-04-12 21:45:00
+**Feature:** `F-052` — Chat Absent Response Handling
+**Status:** completed
+
+### Summary
+Implemented graceful error handling for individual participant API failures in the chat system. When a council member or character's LLM API call fails (timeout, network error, provider issue, etc.), the system now injects an `[absent]` message and continues to the next participant instead of crashing the entire SSE stream.
+
+### Files Modified
+
+#### core/human_chat.py — All 4 response methods
+- `get_agent_response()` (non-streaming, lines ~538–585): Wrapped API call in try/except, records `[absent]` message on failure
+- `get_agent_response_streaming()` (streaming, lines ~975–1020): Same pattern, plus builds a stub `ChatResponse` for SSE yield
+- `continue_conversation()` (non-streaming, lines ~860–910): Same try/except pattern for AI-to-AI rounds
+- `continue_conversation_streaming()` (streaming, lines ~1090–1140): Same pattern with stub `ChatResponse`
+- On error, the absent message is: `[absent] Was unavailable to respond at this time. [/absent]`
+- Absent messages get `metadata={"absent": True}` for downstream identification
+- Memory recording is skipped for absent responses (nothing meaningful to record)
+
+#### core/web_static/js/chat.js — renderMarkdown()
+- Added regex to convert `[absent]...[/absent]` tags into styled HTML: `.absent-wrapper` with `.absent-tag` and `.absent-text` spans
+- Runs before bold/italic parsing to ensure tag brackets aren't mangled
+
+#### core/web_static/css/chat.css — Absent styling
+- `.absent-wrapper`: dashed amber border, subtle warm background, italic text
+- `.absent-tag`: JetBrains Mono monospace, amber color, small caps feel
+- `.absent-text`: muted color, standard message size
+
+### Design Decisions
+1. **Per-participant resilience**: Each participant's API call is independently wrapped, so one failure doesn't affect others in the same round.
+2. **Stub ChatResponse**: Streaming methods need to yield a `ChatResponse` object even on error, so we construct a minimal stub with empty model/provider strings.
+3. **No memory recording on absence**: When a participant is absent, we don't create a memory entry since there's no meaningful content to record.
+4. **Frontend rendering**: The `[absent]` tag is parsed in `renderMarkdown()` and rendered as a visually distinct amber-themed block, consistent with the paused/warning visual language used elsewhere.
+
+### Test Results
+- **3098 passed, 12 skipped** — zero regressions
+
+### Advice for Next Agent
+1. The `[absent]` tag is rendered by `renderMarkdown()` which is shared across all chat views (world chat, explore chat, story chat). All views automatically get absent styling.
+2. The explore.py and stories.py route files use the same `hc.get_agent_response_streaming()` and `hc.continue_conversation_streaming()` methods, so they automatically benefit from this error handling without any route-level changes.
+3. If you need to distinguish absent messages from real ones in business logic, check `msg.metadata.get("absent")`.
+4. The sw CLI tool is NOT available. Use direct Python commands instead.
+
+---
+
+## Session: S-F053-INJECT-001
+**Timestamp:** 2026-04-14 23:19:00
+**Feature:** `F-053` — LLM Injection System
+**Status:** completed
+
+### Summary
+Added user-authored `llm_injection` text fields to **Items**, **Locations**, and **Stores**. These fields inject custom text into the LLM context alongside existing layers (laws, memories, character/council prompts). Non-consumable items have static (always-on) injections, while consumable items have 24-hour TTL injections that expire based on `updated_at`.
+
+### Files Modified
+
+#### config/settings.py
+- Added `CONSUMABLE_INJECTION_TTL_HOURS = 24` constant
+
+#### core/items.py — Item dataclass + ItemManager
+- Added `llm_injection: str = ""` to `Item` frozen dataclass
+- Wired through `to_dict()`, `from_dict()`, `Item.create()`, and `ItemManager.create()`
+- Added to mutable fields in `ItemManager.update()` (explicit comment)
+- Added `is_injection_active(item: Item) -> bool` helper function:
+  - Empty injection → `False`
+  - Non-consumable tier → always `True` (static)
+  - Consumable tier → checks `updated_at` against 24h TTL window
+
+#### core/locations.py — Location dataclass + LocationManager
+- Added `llm_injection: str = ""` to `Location` frozen dataclass
+- Wired through `to_dict()` (via asdict), `from_dict()`, `Location.create()`, `LocationManager.create()`
+- Added to `_MUTABLE_FIELDS` set
+- **Carefully** updated all 4 manual Location reconstruction sites:
+  - `update_status()` — preserves llm_injection
+  - `add_feature()` — preserves llm_injection
+  - `remove_feature()` — preserves llm_injection
+  - `update()` — supports llm_injection edits via fields.get()
+
+#### core/stores.py — Store dataclass + StoreManager
+- Added `llm_injection: str = ""` to `Store` frozen dataclass
+- Wired through `to_dict()` (via asdict), `from_dict()`, `Store.create()`, `StoreManager.create()`
+- Added to `_MUTABLE_FIELDS` set
+- Store uses `Store.from_dict({**store.to_dict(), ...})` pattern so mutations auto-carry the field
+
+#### core/routes/explore.py — `_build_participant_context()`
+- Location entries now append `💉 *{loc.llm_injection}*` when non-empty
+- Item entries now check `is_injection_active(item)` before appending injection text
+- **New** `### Known Stores` section added with store descriptions + injection text
+- Imported `get_store_manager` from manager_cache
+
+#### core/routes/items.py — API endpoints
+- `POST /api/items` — accepts `llm_injection` in body
+- `GET /api/items` — adds `injection_active` boolean to response
+- `GET /api/items/{id}` — adds `injection_active` boolean to response
+- `PUT /api/items/{id}` — already works via `**body` passthrough
+
+#### core/routes/locations.py — API endpoints
+- `POST /api/locations` — accepts `llm_injection` in body
+- `PUT /api/locations/{id}` — already works via `**body` passthrough
+
+#### core/routes/stores.py — API endpoints
+- `POST /api/stores` — accepts `llm_injection` in body
+- `PUT /api/stores/{id}` — already works via `**body` passthrough
+
+#### core/web_static/js/items.js — Frontend
+- Create form: added LLM Injection textarea with consumable TTL hint
+- List cards: 💉 Active/Expired badge when injection present
+- Detail/edit: injection textarea with active/expired indicator
+- Create and save functions pass `llm_injection` to API
+
+#### core/web_static/js/locations.js — Frontend
+- Create form: added LLM Injection textarea
+- List cards: 💉 badge when injection present
+- Detail/edit: injection textarea with active indicator
+- Create and save functions pass `llm_injection` to API
+
+#### core/web_static/js/stores.js — Frontend
+- Create form: added LLM Injection textarea
+- List cards: 💉 badge when injection present
+- Detail/edit: injection textarea with active indicator
+- Create and submit functions pass `llm_injection` to API
+
+#### tests/test_llm_injection.py — 27 new tests
+- `TestItemInjection` (5 tests): create, update, roundtrip, backward compat
+- `TestIsInjectionActive` (8 tests): permanent/degradable always active, consumable within/past 24h, boundary, empty, no updated_at, default tier
+- `TestLocationInjection` (7 tests): create, update, roundtrip, backward compat, status/add/remove feature preservation
+- `TestStoreInjection` (5 tests): create, update, roundtrip, backward compat, status preservation
+
+### Context Stacking Order
+```
+1. Council member persona + beliefs + memories
+2. Character description + traits + backstory
+3. Active Laws
+4. Known Locations + location LLM injections (NEW)
+5. Known Items + item LLM injections with TTL (NEW)
+6. Known Stores + store LLM injections (NEW)
+```
+
+### Test Results
+- **3125 passed, 12 skipped** — +27 new tests, zero regressions
+
+### Backlog Items
+- **F-054**: Injection text length limits — deferred to next session for deep dive discussion
+
+### Advice for Next Agent
+1. The `is_injection_active()` function is in `core/items.py`. Import it anywhere you need to check injection status: `from core.items import is_injection_active`.
+2. Locations and stores have **static** injections (always active while entity is active). Only items have the consumable TTL logic.
+3. The `_build_participant_context()` function in `core/routes/explore.py` is the central injection point used by Explore, Stories, and Chat views. All three automatically get the new injection text.
+4. Characters and council members do NOT have `llm_injection` fields — they use evolution system `system_prompt` instead.
+5. F-054 (injection text length limits) is in features.json as "planned" — the user wants a deep-dive discussion before deciding on approach.
+6. All injection text is truncated to 300 chars in the context builder as a safety measure, but this is NOT a formal limit — F-054 will address that properly.
+7. The sw CLI tool is NOT available. Use direct Python commands instead.
+
+---
+
+## Session — 2026-04-14 — F-054: Injection Text Length Limits
+
+**Feature**: F-054 — Injection Text Length Limits
+**Status**: ✅ Completed
+**Tests**: 3151 passed (+26 new), 12 skipped, 0 failures
+
+### What was built
+Configurable per-entity character limits for `llm_injection` fields to prevent context window domination while keeping the system practical.
+
+### Implementation details
+- **Config**: Added `ITEM_INJECTION_MAX_LENGTH=500`, `LOCATION_INJECTION_MAX_LENGTH=800`, `STORE_INJECTION_MAX_LENGTH=500` to `config/settings.py`
+- **Backend validation**: `ItemManager`, `LocationManager`, `StoreManager` all validate injection length on `create()` and `update()`, raising clear validation errors with the actual vs. max length
+- **Context builder**: Replaced hardcoded `[:300]` truncation in `explore.py` with the per-entity configurable limits — single source of truth
+- **API metadata**: All list/detail routes for items, locations, and stores now include `injection_max_length` in responses
+- **Frontend**: All injection textareas have `maxlength` attribute + live character counters (`X / 500`) with color feedback (amber at 90%, red at limit)
+- **Utility**: Added `updateInjectionCounter()` function to `core.js` for reuse across entity types
+
+### Files modified
+- `config/settings.py` — 3 new constants
+- `core/items.py` — import + validation in create/update
+- `core/locations.py` — import + validation in create/update
+- `core/stores.py` — import + validation in create/update
+- `core/routes/explore.py` — replaced [:300] with configurable limits
+- `core/routes/items.py` — injection_max_length in responses
+- `core/routes/locations.py` — injection_max_length in responses
+- `core/routes/stores.py` — injection_max_length in responses
+- `core/web_static/js/core.js` — updateInjectionCounter utility
+- `core/web_static/js/items.js` — maxlength + char counter on create/edit
+- `core/web_static/js/locations.js` — maxlength + char counter on create/edit
+- `core/web_static/js/stores.js` — maxlength + char counter on create/edit
+- `tests/test_injection_limits.py` — 26 new tests (NEW)
+
+### Advice for next session
+- F-054 is now done. Check features.json for the next `planned` feature.
+- The injection limit constants in `config/settings.py` are the single source of truth — changing them will automatically propagate through validation, truncation, and API metadata.
+- Consider whether the frontend should fetch limits dynamically from a settings endpoint rather than using hardcoded fallback values (currently `|| 500` / `|| 800`).
+
+---
+
+## Session — 2026-04-14 (F-055 + Backlog Population)
+
+### Features Implemented
+
+#### F-055: Eliminate Explore/Story Chat Context Duplication
+**Problem:** When explore or story chats trigger agent responses, `MemoryInfluence.build_context()` injects world locations and items into the prompt. But `_build_participant_context()` had ALREADY injected the same world entities into the chat message history (via scene injection or look-around prompt text). This caused the LLM to see the same world data twice — wasting ~500–1,500 tokens per chat turn.
+
+**Solution — Two-layer deduplication:**
+
+1. **`_build_participant_context()`** — Added `skip_world_context` keyword parameter (default `False`). When `True`, the entire "World Context" section (laws, locations, items, stores) is omitted. Non-chat callers (look-around image gen, story narration, story illustration) continue to use the default `False` since they don't use MemoryInfluence.
+
+2. **`MemoryInfluence.build_context()`** — Added `skip_world_entities` keyword parameter (default `False`). When `True`, the active locations and items are not loaded or formatted. This is the primary dedup mechanism.
+
+3. **`HumanChat._should_skip_world_entities()`** — New static method that inspects chat metadata for `explore_location_id` (explore chats) or `story_chat: True` (story chats). Returns `True` for chats where participant context with world data is already in the chat history.
+
+4. **All 4 `build_context()` call sites** in `HumanChat` (`get_agent_response`, `continue_conversation`, `get_agent_response_streaming`, `continue_conversation_streaming`) now pass `skip_world_entities=self._should_skip_world_entities(record)`.
+
+5. **`_helpers.py` re-export** updated to forward `skip_world_context` parameter.
+
+**Token savings:** ~500–1,500 tokens per explore/story chat turn, scaling with the number of active world entities.
+
+### Backlog Population
+Added 8 new features to `features.json` (F-056 through F-062) from the LLM Injection Optimization task list:
+- **F-056**: Skip Self-Persona Preview (S-03)
+- **F-057**: Global Token Budget Manager (S-04)
+- **F-058**: Rolling Conversation Summary (S-06)
+- **F-059**: Lazy/Cached Memory Scoring (S-07)
+- **F-060**: Conditional Law Injection (S-09)
+- **F-061**: Tiered Injection Profiles (S-10)
+- **F-062**: Aggressive Character Preview Truncation (S-11)
+
+### Test Results
+- 14 new tests in `tests/test_context_dedup.py`
+- Full suite: **3,165 passed**, 12 skipped, 0 failures (89s)
+
+### Files Modified
+- `core/routes/explore.py` — `skip_world_context` param on `_build_participant_context`
+- `core/routes/_helpers.py` — Re-export forwards new parameter
+- `core/memory_influence.py` — `skip_world_entities` param on `build_context`
+- `core/human_chat.py` — `_should_skip_world_entities` helper + 4 call site updates
+- `features.json` — F-055 completed, F-056–F-062 added to backlog
+- `tests/test_context_dedup.py` — 14 new tests (NEW)
+
+### Advice for next session
+- F-055 is done. Next P1 optimization is **F-056** (skip self-persona preview), also small effort.
+- The `_should_skip_world_entities` method is extensible — if new chat types are added where world context enters the history, just add their metadata key there.
+- The `skip_world_entities` param on `MemoryInfluence.build_context()` could also be used by other callers (sessions, discussions) if they embed world context elsewhere.
+
+
+---
+
+## Session — 2026-04-14 — F-056: Skip Self-Persona Preview in Participant Context
+
+**Feature**: F-056 — Skip Self-Persona Preview in Participant Context
+**Status**: Completed
+**Tests**: 3180 passed (+15 new), 12 skipped, 0 failures
+
+### What was built
+Added a current_speaker parameter to _build_participant_context() that skips the redundant persona preview when the participant IS the current speaker. The speaker already has their full system_prompt injected as the LLM system message, so repeating a 500-char preview is wasteful.
+
+### Implementation details
+
+#### core/routes/explore.py
+- Added current_speaker: str | None = None keyword parameter
+- Council members: When member.name matches current_speaker (case-insensitive), the **Persona:** {system_prompt[:500]} line is omitted
+- Characters: When char.name matches current_speaker (case-insensitive), both **Backstory:** and **Persona:** lines are omitted
+- Preserved for self: Name, role/description, specialties, and traits are always included
+- No changes to existing call sites: All 4 current callers pass current_speaker=None by default
+
+#### core/routes/_helpers.py
+- Updated re-export wrapper to accept and forward current_speaker parameter
+
+#### tests/test_self_persona_skip.py — 15 new tests
+- TestCouncilMemberSelfPersonaSkip (6 tests)
+- TestCharacterSelfPersonaSkip (5 tests)
+- TestMixedParticipantsSelfSkip (2 tests)
+- TestHelpersForwardsCurrentSpeaker (2 tests)
+
+### Token savings
+- ~500 chars of system_prompt preview = ~125 tokens saved per participant turn
+- Compound savings with multiple participants: 3 members = ~375 tokens saved per round
+
+### Advice for Next Agent
+1. The current_speaker parameter is opt-in. No existing call site passes it yet. To realize savings, callers that know the speaker should pass current_speaker=member.name.
+2. The most impactful integration would be modifying HumanChat.get_agent_response() to use _build_participant_context(participants, current_speaker=member.name) per-turn. However, those methods use _build_human_chat_prompt() instead. A future feature could unify these.
+3. Next eligible features: F-057 (Token Budget Manager), F-058 (Rolling Conversation Summary), F-059 (Lazy/Cached Memory Scoring), F-060 (Conditional Law Injection), F-062 (Aggressive Character Preview Truncation). F-061 depends on F-057.
+4. The sw CLI tool is NOT available. Use direct Python commands instead.

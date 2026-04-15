@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from config.settings import (
+    LOCATION_INJECTION_MAX_LENGTH,
     LOCATIONS_DIR,
     LOCATION_STATUSES,
     LOCATION_FEATURE_TYPES,
@@ -125,6 +126,7 @@ class Location:
     tags: list[str] = field(default_factory=list)
     parent_location_id: str = ""
     coordinates: str = ""
+    llm_injection: str = ""
     version: int = 1
     created_at: str = ""
     updated_at: str = ""
@@ -147,6 +149,7 @@ class Location:
             tags=data.get("tags", []),
             parent_location_id=data.get("parent_location_id", ""),
             coordinates=data.get("coordinates", ""),
+            llm_injection=data.get("llm_injection", ""),
             version=data.get("version", 1),
             created_at=data.get("created_at", ""),
             updated_at=data.get("updated_at", ""),
@@ -166,6 +169,7 @@ class Location:
         tags: list[str] | None = None,
         parent_location_id: str = "",
         coordinates: str = "",
+        llm_injection: str = "",
         version: int = 1,
         metadata: dict[str, Any] | None = None,
     ) -> Location:
@@ -182,6 +186,7 @@ class Location:
             tags=tags or [],
             parent_location_id=parent_location_id,
             coordinates=coordinates,
+            llm_injection=llm_injection,
             version=version,
             created_at=now,
             updated_at=now,
@@ -231,6 +236,7 @@ class LocationManager:
         tags: list[str] | None = None,
         parent_location_id: str = "",
         coordinates: str = "",
+        llm_injection: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> Location:
         """
@@ -248,6 +254,12 @@ class LocationManager:
             errors.append("Description must not be empty")
         if not author.strip():
             errors.append("Author must not be empty")
+        if llm_injection and len(llm_injection) > LOCATION_INJECTION_MAX_LENGTH:
+            errors.append(
+                f"LLM injection text exceeds maximum length of "
+                f"{LOCATION_INJECTION_MAX_LENGTH} characters "
+                f"(got {len(llm_injection)})"
+            )
         if errors:
             raise LocationValidationError(errors)
 
@@ -270,6 +282,7 @@ class LocationManager:
             tags=tags,
             parent_location_id=parent_location_id,
             coordinates=coordinates,
+            llm_injection=llm_injection,
             metadata=metadata,
         )
         self._save(location)
@@ -351,6 +364,7 @@ class LocationManager:
             tags=list(location.tags),
             parent_location_id=location.parent_location_id,
             coordinates=location.coordinates,
+            llm_injection=location.llm_injection,
             version=location.version,
             created_at=location.created_at,
             updated_at=now,
@@ -390,6 +404,7 @@ class LocationManager:
             tags=list(location.tags),
             parent_location_id=location.parent_location_id,
             coordinates=location.coordinates,
+            llm_injection=location.llm_injection,
             version=location.version,
             created_at=location.created_at,
             updated_at=now,
@@ -426,6 +441,7 @@ class LocationManager:
             tags=list(location.tags),
             parent_location_id=location.parent_location_id,
             coordinates=location.coordinates,
+            llm_injection=location.llm_injection,
             version=location.version,
             created_at=location.created_at,
             updated_at=now,
@@ -438,7 +454,7 @@ class LocationManager:
 
     _MUTABLE_FIELDS = {
         "name", "description", "lore", "tags", "metadata",
-        "parent_location_id", "coordinates",
+        "parent_location_id", "coordinates", "llm_injection",
     }
 
     def update(self, location_id: str, **fields: Any) -> Location:
@@ -459,6 +475,16 @@ class LocationManager:
                 [f"Cannot update immutable field(s): {', '.join(sorted(invalid))}"]
             )
 
+        # Validate llm_injection length if provided
+        if "llm_injection" in fields:
+            inj = fields["llm_injection"]
+            if isinstance(inj, str) and len(inj) > LOCATION_INJECTION_MAX_LENGTH:
+                raise LocationValidationError(
+                    [f"LLM injection text exceeds maximum length of "
+                     f"{LOCATION_INJECTION_MAX_LENGTH} characters "
+                     f"(got {len(inj)})"]
+                )
+
         location = self.get(location_id)
 
         now = datetime.now(timezone.utc).isoformat()
@@ -473,6 +499,7 @@ class LocationManager:
             tags=fields.get("tags", list(location.tags)),
             parent_location_id=fields.get("parent_location_id", location.parent_location_id),
             coordinates=fields.get("coordinates", location.coordinates),
+            llm_injection=fields.get("llm_injection", location.llm_injection),
             version=location.version,
             created_at=location.created_at,
             updated_at=now,

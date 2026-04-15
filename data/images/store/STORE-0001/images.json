@@ -1,23 +1,23 @@
 [
   {
-    "id": "IMG-0022",
+    "id": "IMG-0030",
     "entity_type": "store",
     "entity_id": "STORE-0001",
-    "filename": "img_0001.png",
-    "original_filename": "ComfyUI_temp_ndmeo_00013_.png",
-    "prompt": "pixel art, 16-bit retro game style, limited color palette, a weathered alchemist shop called \"The Unicorn and Potion\" on a foggy dockside, flickering neon sign casting eerie purple and green light, mysterious patrons in hooded cloaks, bubbling potions and glowing crystals in the window, wooden barrels and crates stacked outside, atmospheric fog obscuring details, moody lighting, detailed pixelated textures, pixel art, retro game style, limited palette, 16-bit, clean pixels",
-    "negative_prompt": "realistic, photo, smooth gradients, high resolution, blurry, modern graphics, smooth shading, photorealistic, bright colors, clean environment, high resolution, 3D render, cartoon style, cheerful atmosphere, sunny weather, no fog, no people, empty street",
+    "filename": "img_0003.png",
+    "original_filename": "ComfyUI_temp_ndmeo_00021_.png",
+    "prompt": "High-fantasy illustration of a mysterious alchemist shop named \"The Unicorn and Potion\" nestled in a foggy old dockside district, weathered wooden exterior with crooked windows filled with bubbling glowing vials and dried herbs, a flickering magical sign casting uneven light like a dying bulb, atmospheric mist hiding dark corners and unsavory details, bustling silhouettes of market goers in the hazy background, wet cobblestone street reflecting the eerie glow, epic dramatic lighting, painterly style, highly detailed, intricate, magical atmosphere, fantasy art, highly detailed, intricate, magical, epic lighting, painterly style",
+    "negative_prompt": "photo, photograph, realistic, selfie, blurry, low quality, bad anatomy, Photorealistic, modern buildings, vehicles, electric signs, bright daylight, cartoon, low quality, blurry, oversaturated, flat colors, text, watermark, ugly, deformed, messy lines, clean and sterile",
     "is_primary": true,
-    "file_size": 6889412,
+    "file_size": 2014038,
     "width": 1024,
     "height": 1024,
-    "template_id": "TPL-0001",
-    "generation_job_id": "GEN-0006",
-    "created_at": "2026-04-12T20:04:57.863875+00:00",
+    "template_id": "TPL-0002",
+    "generation_job_id": "GEN-0007",
+    "created_at": "2026-04-12T21:13:30.808869+00:00",
     "metadata": {
       "prompt_mode": "system",
-      "style_preset": "pixel_art",
-      "seed": 1665210480,
+      "style_preset": "fantasy_art",
+      "seed": 1755344144,
       "member_name": ""
     }
   }

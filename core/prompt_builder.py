@@ -686,17 +686,45 @@ def build_entity_context(
 
         elif entity_type == "location" and location_manager is not None:
             loc = location_manager.get(entity_id)
+            # Priority order: name → description → lore
+            # Name and description define the place; lore adds atmosphere
             lines = [
                 f"Entity: Location — {loc.name}",
                 f"Description: {loc.description}",
             ]
+            if hasattr(loc, "lore") and loc.lore:
+                lines.append(f"Lore: {loc.lore}")
+            if hasattr(loc, "tags") and loc.tags:
+                lines.append(f"Tags: {', '.join(loc.tags)}")
             if hasattr(loc, "location_type") and loc.location_type:
                 lines.append(f"Type: {loc.location_type}")
+            if hasattr(loc, "coordinates") and loc.coordinates:
+                lines.append(f"Coordinates: {loc.coordinates}")
             if hasattr(loc, "features") and loc.features:
-                feat_strs = [
-                    f"  - {f.get('name', f.get('feature_type', 'unknown'))}"
-                    for f in (loc.features if isinstance(loc.features, list) else [])
-                ]
+                feat_list = loc.features if isinstance(loc.features, list) else []
+                feat_strs = []
+                for f in feat_list:
+                    if isinstance(f, dict):
+                        fname = f.get('name', f.get('feature_type', 'unknown'))
+                        fdesc = f.get('description', '')
+                        ftype = f.get('feature_type', '')
+                        if fdesc and ftype:
+                            feat_strs.append(f"  - {fname} ({ftype}): {fdesc}")
+                        elif fdesc:
+                            feat_strs.append(f"  - {fname}: {fdesc}")
+                        else:
+                            feat_strs.append(f"  - {fname}")
+                    else:
+                        # LocationFeature dataclass
+                        fname = getattr(f, 'name', str(f))
+                        fdesc = getattr(f, 'description', '')
+                        ftype = getattr(f, 'feature_type', '')
+                        if fdesc and ftype:
+                            feat_strs.append(f"  - {fname} ({ftype}): {fdesc}")
+                        elif fdesc:
+                            feat_strs.append(f"  - {fname}: {fdesc}")
+                        else:
+                            feat_strs.append(f"  - {fname}")
                 if feat_strs:
                     lines.append("Features:")
                     lines.extend(feat_strs)

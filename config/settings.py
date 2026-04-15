@@ -131,6 +131,14 @@ MEMORY_INFLUENCE_MAX_BELIEFS = 5       # Max core beliefs to inject
 MEMORY_INFLUENCE_MIN_RELEVANCE = 0.1   # Minimum relevance score threshold
 MEMORY_INFLUENCE_BELIEF_BOOST = 1.5    # Multiplier for belief scores
 
+# ─── World Context Injection Limits ───────────────────────────
+# Max entities injected into LLM prompts (caps unbounded world growth).
+# Used by MemoryInfluence.build_context and _build_participant_context.
+CONTEXT_MAX_WORLD_LOCATIONS = 5        # Top N locations injected per prompt
+CONTEXT_MAX_WORLD_ITEMS = 5            # Top N items injected per prompt
+CONTEXT_MAX_WORLD_STORES = 5           # Top N stores injected per prompt
+CONTEXT_MAX_WORLD_LAWS = 5             # Top N laws injected per prompt
+
 # ─── Embedding Settings ───────────────────────────────────────
 EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"          # Sentence-transformer model
 EMBEDDING_SIMILARITY_WEIGHT = 0.7                   # Weight for embedding score in hybrid mode
@@ -224,6 +232,10 @@ ITEM_STATUSES = ("draft", "active", "archived")
 ITEM_PROPERTY_TYPES = ("magical", "physical", "consumable", "equipment", "material", "custom")
 ITEM_TIERS = ("permanent", "consumable", "degradable")
 ITEM_LEGALITY_STATUSES = ("contraband", "legal")
+CONSUMABLE_INJECTION_TTL_HOURS = 24     # Consumable item LLM injections expire after this many hours
+ITEM_INJECTION_MAX_LENGTH = 500         # Max characters for item llm_injection field
+LOCATION_INJECTION_MAX_LENGTH = 800     # Max characters for location llm_injection field
+STORE_INJECTION_MAX_LENGTH = 500        # Max characters for store llm_injection field
 
 # ─── Store Settings ──────────────────────────────────────────
 STORES_DIR = DATA_DIR / "stores"

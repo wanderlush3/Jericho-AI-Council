@@ -30,7 +30,16 @@ def _make_discussion_manager(proposal_manager=None):
     return _impl(proposal_manager)
 
 
-def _build_participant_context(participants):
+def _build_participant_context(
+    participants,
+    *,
+    skip_world_context: bool = False,
+    current_speaker: str | None = None,
+):
     """Build participant context for prompts. (Defined in explore.py)"""
     from core.routes.explore import _build_participant_context as _impl
-    return _impl(participants)
+    return _impl(
+        participants,
+        skip_world_context=skip_world_context,
+        current_speaker=current_speaker,
+    )

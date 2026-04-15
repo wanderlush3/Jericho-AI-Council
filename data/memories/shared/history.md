@@ -2116,3 +2116,201 @@ Discussed ethics.
 **Members:** Sage
 
 Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-12T20:55:33.800682+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-12T20:55:34.060674+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: A true meeting of the council. (WC-0007)
+**Closed:** 2026-04-12T21:18:12.225170+00:00
+**Members:** Ankha, Araushnee, Arianell, Cerdiwen, Emily, Maricela, Salome, Shuriira, Sima
+
+Chat 'A true meeting of the council.' between human and Ankha, Araushnee, Arianell, Cerdiwen, Emily, Maricela, Salome, Shuriira, Sima with 40 messages (4 human, 36 agent).
+
+### Human Chat: 2nd Council Meeting (WC-0008)
+**Closed:** 2026-04-12T21:18:23.383550+00:00
+**Members:** Ankha, Araushnee, Arianell, Cerdiwen, Emily, Maricela, Salome, Shuriira, Sima
+
+Chat '2nd Council Meeting' between human and Ankha, Araushnee, Arianell, Cerdiwen, Emily, Maricela, Salome, Shuriira, Sima with 20 messages (2 human, 18 agent). Topic: The Glided Cage Lore.
+
+### Human Chat: 3rd Council Meeting (WC-0009)
+**Closed:** 2026-04-12T21:18:32.732178+00:00
+**Members:** Ankha, Araushnee, Arianell, Cerdiwen, Emily, Maricela, Salome, Shuriira, Sima
+
+Chat '3rd Council Meeting' between human and Ankha, Araushnee, Arianell, Cerdiwen, Emily, Maricela, Salome, Shuriira, Sima with 23 messages (3 human, 20 agent). Topic: discussing character creation.
+
+### Human Chat: The council meets their first creation The Keeper (WC-0021)
+**Closed:** 2026-04-12T21:18:45.579369+00:00
+**Members:** The Keeper of Reflections, Maricela, Arianell, Shuriira, Sima, Emily, Salome, Araushnee, Cerdiwen, Ankha
+
+Chat 'The council meets their first creation The Keeper' between human and The Keeper of Reflections, Maricela, Arianell, Shuriira, Sima, Emily, Salome, Araushnee, Cerdiwen, Ankha, The Keeper of Reflections with 59 messages (6 human, 53 agent). Topic: The glided cages first citizen meets the council..
+
+### Human Chat: 5th Council meeting.  Updates. (WC-0022)
+**Closed:** 2026-04-12T21:18:54.756389+00:00
+**Members:** Shuriira, Arianell, Maricela, Salome, Sima, Ankha, Araushnee, Cerdiwen, Emily
+
+Chat '5th Council meeting.  Updates.' between human and Shuriira, Arianell, Maricela, Salome, Sima, Ankha, Araushnee, Cerdiwen, Emily with 20 messages (2 human, 18 agent). Topic: New features.
+
+### Human Chat: 6th Meeting, updates future plans, item, stores (WC-0023)
+**Closed:** 2026-04-12T21:19:02.574817+00:00
+**Members:** Arianell, Salome, Cerdiwen, Ankha, Araushnee, Maricela, Sima, Shuriira, Emily
+
+Chat '6th Meeting, updates future plans, item, stores' between human and Arianell, Salome, Cerdiwen, Ankha, Araushnee, Maricela, Sima, Shuriira, Emily with 20 messages (2 human, 18 agent). Topic: Items and Stores.
+
+### Human Chat: 7th Impersonal Meeting (WC-0026)
+**Closed:** 2026-04-12T21:19:28.014818+00:00
+**Members:** Maricela, Shuriira, Sima, Araushnee, Arianell, Emily, Salome, Cerdiwen, Ankha
+
+Chat '7th Impersonal Meeting' between human and Maricela, Shuriira, Sima, Araushnee, Arianell, Emily, Salome, Cerdiwen, Ankha with 13 messages (2 human, 11 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-12T21:44:02.066085+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-12T21:44:02.312829+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-14T23:06:19.014315+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-14T23:06:19.268937+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-14T23:11:51.219230+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-14T23:11:51.498566+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-14T23:15:34.671868+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-14T23:15:34.977278+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-14T23:18:05.969827+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-14T23:18:06.284888+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-15T00:06:18.386925+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-15T00:06:18.696913+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-15T00:16:28.125918+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-15T00:16:28.450707+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-15T00:20:32.267482+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-15T00:20:32.590801+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-15T00:34:15.366027+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-15T00:34:15.665114+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-15T00:37:12.767579+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-15T00:37:13.086824+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-15T00:42:05.996591+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-15T00:42:06.300508+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-15T00:47:02.014111+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-15T00:47:02.267571+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).

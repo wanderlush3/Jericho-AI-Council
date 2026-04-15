@@ -534,6 +534,8 @@ function escapeHtml(text) {
 function renderMarkdown(text) {
     if (!text) return '';
     let html = escapeHtml(text);
+    // Absent tag: [absent]...[/absent]
+    html = html.replace(/\[absent\]\s*(.*?)\s*\[\/absent\]/gi, '<div class="absent-wrapper"><span class="absent-tag">[ABSENT]</span> <span class="absent-text">$1</span> <span class="absent-tag">[/ABSENT]</span></div>');
     // Bold: **text**
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     // Italic: *text* (but not inside <strong> tags already converted)

@@ -350,5 +350,15 @@ function escapeAttr(text) {
     return text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
+function updateInjectionCounter(textareaId, counterId, maxLen) {
+    const ta = document.getElementById(textareaId);
+    const counter = document.getElementById(counterId);
+    if (!ta || !counter) return;
+    const len = ta.value.length;
+    counter.textContent = `${len} / ${maxLen}`;
+    const threshold = maxLen * 0.9;
+    counter.style.color = len >= maxLen ? 'var(--accent-rose)' : len >= threshold ? 'var(--accent-amber)' : 'var(--text-muted)';
+}
+
 // ─── Render Router ────────────────────────────────────────────
 

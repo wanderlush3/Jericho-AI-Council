@@ -577,9 +577,9 @@
       }
     }
   ],
-  "summary": "",
+  "summary": "Chat 'The council meets their first creation The Keeper' between human and The Keeper of Reflections, Maricela, Arianell, Shuriira, Sima, Emily, Salome, Araushnee, Cerdiwen, Ankha, The Keeper of Reflections with 59 messages (6 human, 53 agent). Topic: The glided cages first citizen meets the council..",
   "created_at": "2026-03-20T10:38:53.608608+00:00",
-  "closed_at": "",
+  "closed_at": "2026-04-12T21:18:45.579369+00:00",
   "metadata": {},
   "council_members": [
     "The Keeper of Reflections",
@@ -596,5 +596,5 @@
   "characters": [
     "CH-0001"
   ],
-  "paused": true
+  "paused": false
 }

@@ -19,10 +19,20 @@ from core.manager_cache import (
     get_law_manager,
     get_location_manager,
     get_registry,
+    get_store_manager,
 )
 from core.routes._helpers import (
     _get_pipeline,
     _explore_primary_image,
+)
+from config.settings import (
+    CONTEXT_MAX_WORLD_ITEMS,
+    CONTEXT_MAX_WORLD_LAWS,
+    CONTEXT_MAX_WORLD_LOCATIONS,
+    CONTEXT_MAX_WORLD_STORES,
+    ITEM_INJECTION_MAX_LENGTH,
+    LOCATION_INJECTION_MAX_LENGTH,
+    STORE_INJECTION_MAX_LENGTH,
 )
 
 
@@ -32,6 +42,9 @@ _PARTICIPANT_MAX = 10
 
 def _build_participant_context(
     participants: list[dict[str, Any]],
+    *,
+    skip_world_context: bool = False,
+    current_speaker: str | None = None,
 ) -> str:
     """Build rich markdown context for selected participants.
 
@@ -39,9 +52,19 @@ def _build_participant_context(
     - Council members: persona, core beliefs, relevant memories
     - Characters: full description, backstory, traits, system prompt
     - Shared world context: active laws, locations, items
+      (unless ``skip_world_context`` is True)
 
     Args:
         participants: List of {"id": "...", "type": "council"|"character"}
+        skip_world_context: When True, omit the World Context section
+            (laws, locations, items, stores).  Use this when the caller
+            already injects world context via MemoryInfluence to avoid
+            double-injection.
+        current_speaker: When provided, skip the persona preview for
+            the participant whose name matches (case-insensitive).
+            The current speaker already has their full system_prompt
+            as the LLM system message, so repeating a 500-char
+            preview is redundant (F-056).
 
     Returns:
         Markdown text suitable for prompt injection.
@@ -89,7 +112,14 @@ def _build_participant_context(
             parts.append(f"**Role:** {member.role}")
             if member.description:
                 parts.append(f"**Description:** {member.description}")
-            if member.system_prompt:
+            # F-056: Skip persona preview when this member IS the
+            # current speaker — their full system_prompt is already
+            # the LLM system message.
+            is_self = (
+                current_speaker is not None
+                and member.name.lower() == current_speaker.lower()
+            )
+            if member.system_prompt and not is_self:
                 prompt_preview = member.system_prompt[:500]
                 parts.append(
                     f"**Persona:** {prompt_preview}"
@@ -149,7 +179,13 @@ def _build_participant_context(
             parts.append(f"### 🎭 Character: {char.name}")
             if char.description:
                 parts.append(f"**Description:** {char.description}")
-            if char.backstory:
+            # F-056: Skip backstory + persona preview when this
+            # character IS the current speaker.
+            is_self = (
+                current_speaker is not None
+                and char.name.lower() == current_speaker.lower()
+            )
+            if char.backstory and not is_self:
                 backstory_preview = char.backstory[:500]
                 parts.append(
                     f"**Backstory:** {backstory_preview}"
@@ -162,7 +198,7 @@ def _build_participant_context(
                     for t in char.traits[:8]
                 ]
                 parts.append(f"**Traits:** {', '.join(trait_strs)}")
-            if char.system_prompt:
+            if char.system_prompt and not is_self:
                 prompt_preview = char.system_prompt[:500]
                 parts.append(
                     f"**Persona:** {prompt_preview}"
@@ -171,6 +207,12 @@ def _build_participant_context(
             parts.append("")
 
     # ── Shared World Context ──
+    # When skip_world_context is True, the caller's MemoryInfluence
+    # engine already injects world locations/items with relevance
+    # scoring, so we skip them here to avoid duplication (F-055).
+    if skip_world_context:
+        return "\n".join(parts)
+
     parts.append("\n## World Context\n")
 
     # Active Laws
@@ -178,7 +220,7 @@ def _build_participant_context(
         active_laws = get_law_manager().list_laws(status="active")
         if active_laws:
             parts.append("### Active Laws")
-            for law in active_laws[:10]:
+            for law in active_laws[:CONTEXT_MAX_WORLD_LAWS]:
                 parts.append(
                     f"- **{law.title}**: {law.description[:200]}"
                 )
@@ -191,25 +233,55 @@ def _build_participant_context(
         active_locs = get_location_manager().list_locations(status="active")
         if active_locs:
             parts.append("### Known Locations")
-            for loc in active_locs[:10]:
+            for loc in active_locs[:CONTEXT_MAX_WORLD_LOCATIONS]:
                 line = f"- **{loc.name}**: {loc.description[:150]}"
                 if loc.lore:
                     line += f" — {loc.lore[:100]}"
                 parts.append(line)
+                # F-053: Inject location LLM injection text
+                if loc.llm_injection:
+                    parts.append(
+                        f"  💉 *{loc.llm_injection[:LOCATION_INJECTION_MAX_LENGTH]}*"
+                    )
             parts.append("")
     except Exception:
         pass
 
     # Active Items
     try:
+        from core.items import is_injection_active
         active_items = get_item_manager().list_items(status="active")
         if active_items:
             parts.append("### Known Items")
-            for item in active_items[:10]:
+            for item in active_items[:CONTEXT_MAX_WORLD_ITEMS]:
                 line = f"- **{item.name}**: {item.description[:150]}"
                 if item.rarity:
                     line += f" [{item.rarity}]"
                 parts.append(line)
+                # F-053: Inject item LLM injection text (respects consumable TTL)
+                if is_injection_active(item):
+                    parts.append(
+                        f"  💉 *{item.llm_injection[:ITEM_INJECTION_MAX_LENGTH]}*"
+                    )
+            parts.append("")
+    except Exception:
+        pass
+
+    # Active Stores (F-053)
+    try:
+        active_stores = get_store_manager().list_stores(status="active")
+        if active_stores:
+            parts.append("### Known Stores")
+            for store in active_stores[:CONTEXT_MAX_WORLD_STORES]:
+                line = f"- **{store.name}**: {store.description[:150]}"
+                if store.store_type:
+                    line += f" ({store.store_type})"
+                parts.append(line)
+                # F-053: Inject store LLM injection text
+                if store.llm_injection:
+                    parts.append(
+                        f"  💉 *{store.llm_injection[:STORE_INJECTION_MAX_LENGTH]}*"
+                    )
             parts.append("")
     except Exception:
         pass

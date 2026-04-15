@@ -54,6 +54,7 @@ async function renderStores() {
                 <div class="store-card-stats">
                     <span class="store-stat">📦 ${invCount} item${invCount !== 1 ? 's' : ''}</span>
                     ${store.owner ? `<span class="store-stat">👤 ${escapeHtml(store.owner)}</span>` : ''}
+                    ${store.llm_injection ? '<span class="badge" style="background:linear-gradient(135deg,hsl(180,50%,40%),hsl(200,55%,35%));font-size:0.68rem;padding:2px 6px" title="Has LLM injection">💉</span>' : ''}
                 </div>
             </div>
             <div class="store-card-desc">${truncate(store.description, 140)}</div>
@@ -115,6 +116,16 @@ function _storeCreateForm() {
             <div class="store-form-field">
                 <label class="store-form-label">Tags <span class="store-form-hint">(comma-separated)</span></label>
                 <input type="text" id="store-new-tags" class="store-form-input" placeholder="weapons, armor">
+            </div>
+            <div class="store-form-field store-form-full">
+                <label class="store-form-label">LLM Injection <span style="color:var(--accent-cyan);font-size:0.75rem">💉 custom AI context</span></label>
+                <textarea id="store-new-injection" class="store-form-textarea" rows="2" maxlength="500"
+                    placeholder="Custom text injected into AI context when this store is active…"
+                    oninput="updateInjectionCounter('store-new-injection','store-new-injection-counter',500)"></textarea>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
+                    <span style="font-size:0.72rem;color:var(--text-muted)">Static: always active while this store is active.</span>
+                    <span id="store-new-injection-counter" style="font-size:0.72rem;color:var(--text-muted)">0 / 500</span>
+                </div>
             </div>
         </div>
         <div class="store-form-actions">
@@ -259,7 +270,7 @@ async function submitNewStore() {
         const resp = await fetch('/api/stores', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, description, author, store_type, owner, lore, location_id, tags }),
+            body: JSON.stringify({ name, description, author, store_type, owner, lore, location_id, tags, llm_injection: document.getElementById('store-new-injection').value.trim() }),
         });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({ detail: 'Create failed' }));
@@ -473,6 +484,17 @@ async function renderStoreDetail(storeId) {
                             <label class="store-form-label">Tags</label>
                             <input type="text" id="store-edit-tags" class="store-form-input" value="${escapeAttr(tagsStr)}">
                         </div>
+                        <div class="store-form-field store-form-full">
+                            <label class="store-form-label">LLM Injection <span style="color:var(--accent-cyan);font-size:0.75rem">💉 custom AI context</span>
+                                ${data.llm_injection ? '<span class="badge" style="margin-left:var(--space-xs);background:linear-gradient(135deg,hsl(160,55%,42%),hsl(170,50%,38%));font-size:0.68rem;padding:2px 6px">✨ Active</span>' : ''}
+                            </label>
+                            <textarea id="store-edit-injection" class="store-form-textarea" rows="2" maxlength="${data.injection_max_length || 500}"
+                                oninput="updateInjectionCounter('store-edit-injection','store-edit-injection-counter',${data.injection_max_length || 500})">${escapeHtml(data.llm_injection || '')}</textarea>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
+                                <span style="font-size:0.72rem;color:var(--text-muted)">Static: always active while this store is active.</span>
+                                <span id="store-edit-injection-counter" style="font-size:0.72rem;color:var(--text-muted)">${(data.llm_injection || '').length} / ${data.injection_max_length || 500}</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="store-form-actions">
                         <button class="btn btn-primary" onclick="updateStore('${storeId}')" id="btn-update-store">💾 Save Changes</button>
@@ -556,6 +578,7 @@ async function updateStore(storeId) {
         store_type: document.getElementById('store-edit-type').value,
         location_id: document.getElementById('store-edit-location').value.trim(),
         tags: document.getElementById('store-edit-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+        llm_injection: document.getElementById('store-edit-injection').value.trim(),
     };
     const btn = document.getElementById('btn-update-store');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
