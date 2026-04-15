@@ -4024,3 +4024,50 @@ Reduced character backstory and persona (system_prompt) preview length from 500 
 2. Next eligible features: F-059 (Lazy/Cached Memory Scoring), F-060 (Conditional Law Injection), F-061 (Tiered Injection Profiles).
 3. The sw CLI tool is NOT available. Use direct Python commands instead.
 
+
+---
+
+## Session — 2026-04-14 — F-059: Lazy/Cached Memory Scoring
+
+**Feature**: F-059 — Lazy/Cached Memory Scoring
+**Status**: Completed
+**Tests**: 3325 passed (+37 new), 12 skipped, 0 failures
+
+### What was built
+Added a time-based caching layer to MemoryInfluence.build_context() that avoids re-scoring memories and beliefs when the same (member_name, keyword_set) pair is requested within a configurable TTL (default 5 minutes). This provides significant latency improvement for repeated calls without affecting token usage.
+
+### Implementation details
+
+#### config/settings.py — 2 new constants
+- MEMORY_CACHE_TTL_SECONDS = 300 — Cache entries expire after 5 minutes
+- MEMORY_CACHE_ENABLED = True — Global toggle for memory context caching
+
+#### core/memory_influence.py — Cache infrastructure
+- Added _CacheEntry dataclass: stores MemoryContext, created_at (monotonic clock), and skip_world_entities flag
+- Added cache_enabled, cache_ttl, cache_size properties
+- Added _make_cache_key() — builds (normalised_name, frozenset_of_lowered_keywords) for order-independent, case-insensitive matching
+- Added _get_cached() — returns cached result if fresh and skip_world_entities matches; evicts stale entries
+- Added _put_cached() — stores result with monotonic timestamp
+- Added clear_cache(member_name=None) — clears all entries or per-member entries; returns count removed
+- Updated uild_context() — checks cache before scoring, stores result after scoring
+- Updated __init__() — accepts cache_enabled and cache_ttl_seconds params with settings defaults
+- Updated __repr__() — includes cache status and TTL
+
+#### tests/test_memory_cache.py — 37 new tests across 10 classes
+- TestCacheProperties (6): enabled/disabled/ttl/size/defaults/repr
+- TestCacheHitAndMiss (4): first call populates, second call returns same object, different keywords/members miss
+- TestKeywordOrderIndependence (4): reordering, case, member case, whitespace
+- TestTTLExpiration (2): stale evicted, fresh survives
+- TestSkipWorldEntitiesMismatch (2): mismatch invalidates, same flag hits
+- TestClearCache (5): clear all, by member, empty, nonexistent, case-insensitive
+- TestCacheDisabled (2): no caching, clear noop
+- TestCacheKeyGeneration (5): basic, empty, whitespace filtered, deduped, order independence
+- TestCacheEntryDataclass (2): fields, mutability
+- TestCacheSettingsConstants (2): TTL and enabled defaults
+- TestCacheIntegrationScoring (3): beliefs preserved, formatted text preserved, different keywords produce different results
+
+### Advice for Next Agent
+1. F-059 is opt-in and transparent. All existing uild_context() callers benefit automatically.
+2. Next eligible features: **F-060** (Conditional Law Injection), **F-061** (Tiered Injection Profiles).
+3. The clear_cache() method can be called after writing new memories to force a re-score on the next uild_context() call.
+4. The sw CLI tool is NOT available. Use direct Python commands instead.

@@ -131,6 +131,10 @@ MEMORY_INFLUENCE_MAX_BELIEFS = 5       # Max core beliefs to inject
 MEMORY_INFLUENCE_MIN_RELEVANCE = 0.1   # Minimum relevance score threshold
 MEMORY_INFLUENCE_BELIEF_BOOST = 1.5    # Multiplier for belief scores
 
+# ─── Memory Cache Settings (F-059) ────────────────────────────
+MEMORY_CACHE_TTL_SECONDS = 300             # Cache MemoryContext for 5 minutes before re-scoring
+MEMORY_CACHE_ENABLED = True                # Global toggle for memory context caching
+
 # ─── World Context Injection Limits ───────────────────────────
 # Max entities injected into LLM prompts (caps unbounded world growth).
 # Used by MemoryInfluence.build_context and _build_participant_context.

@@ -1,658 +1,658 @@
 [
-    {
-        "id": "F-001",
-        "title": "Project Scaffolding",
-        "description": "Project scaffolding — directory structure, settings, pyproject.toml, content migration from jericho01, 9 council member profiles",
-        "status": "completed",
-        "dependencies": []
-    },
-    {
-        "id": "F-002",
-        "title": "API Client",
-        "description": "API client — unified OpenRouter + Mancer client with retry, rate limiting, structured response parsing",
-        "status": "completed",
-        "dependencies": [
-            "F-001"
-        ]
-    },
-    {
-        "id": "F-003",
-        "title": "Council Member Registry",
-        "description": "Council member registry — load/list/validate YAML profiles, get member by name, list all members",
-        "status": "completed",
-        "dependencies": [
-            "F-001"
-        ]
-    },
-    {
-        "id": "F-004",
-        "title": "Memory System",
-        "description": "Memory system — per-agent read/write, core beliefs, session log (JSONL), shared council memory",
-        "status": "completed",
-        "dependencies": [
-            "F-001"
-        ]
-    },
-    {
-        "id": "F-005",
-        "title": "Proposal System",
-        "description": "Proposal system — create, list, review proposals with structured markdown format and lifecycle tracking",
-        "status": "completed",
-        "dependencies": [
-            "F-003"
-        ]
-    },
-    {
-        "id": "F-006",
-        "title": "Voting Engine",
-        "description": "Voting engine — cast votes, tally, quorum check, approval threshold, human veto power",
-        "status": "completed",
-        "dependencies": [
-            "F-005"
-        ]
-    },
-    {
-        "id": "F-007",
-        "title": "Council Session Orchestrator",
-        "description": "Council session orchestrator — full session lifecycle: context load, briefing, activity phase, record, summary",
-        "status": "completed",
-        "dependencies": [
-            "F-002",
-            "F-003",
-            "F-004"
-        ]
-    },
-    {
-        "id": "F-008",
-        "title": "Agent-to-Agent Chat",
-        "description": "Agent-to-agent chat — orchestrator-mediated conversations between council members with memory recording",
-        "status": "completed",
-        "dependencies": [
-            "F-002",
-            "F-004"
-        ]
-    },
-    {
-        "id": "F-009",
-        "title": "Human-to-Agent Chat",
-        "description": "Human-to-agent chat — direct conversation with individual council members, memories updated",
-        "status": "completed",
-        "dependencies": [
-            "F-002",
-            "F-004"
-        ]
-    },
-    {
-        "id": "F-010",
-        "title": "Discussion Rounds",
-        "description": "Discussion rounds — structured multi-agent discussion on a proposal before voting",
-        "status": "completed",
-        "dependencies": [
-            "F-008",
-            "F-005"
-        ]
-    },
-    {
-        "id": "F-011",
-        "title": "Character Template System",
-        "description": "Character template system — structured YAML format for AI character definitions with traits, backstory, prompt",
-        "status": "completed",
-        "dependencies": [
-            "F-001"
-        ]
-    },
-    {
-        "id": "F-012",
-        "title": "Collaborative Character Design",
-        "description": "Collaborative character design — council members contribute to character creation via structured prompts",
-        "status": "completed",
-        "dependencies": [
-            "F-007",
-            "F-011"
-        ]
-    },
-    {
-        "id": "F-013",
-        "title": "Character Evolution",
-        "description": "Character evolution — propose and vote on modifications to existing characters via governance system",
-        "status": "completed",
-        "dependencies": [
-            "F-012",
-            "F-006"
-        ]
-    },
-    {
-        "id": "F-014",
-        "title": "CLI Interface",
-        "description": "CLI interface — Click-based 'jericho' command with subcommands for council, chat, vote, characters, status",
-        "status": "completed",
-        "dependencies": [
-            "F-007"
-        ]
-    },
-    {
-        "id": "F-015",
-        "title": "Rich Terminal Dashboard",
-        "description": "Rich terminal dashboard — council status display, vote tallies, session activity, member overview",
-        "status": "completed",
-        "dependencies": [
-            "F-014"
-        ]
-    },
-    {
-        "id": "F-016",
-        "title": "Session Analytics",
-        "description": "Session analytics — track participation rates, voting patterns, proposal success rates, member activity",
-        "status": "completed",
-        "dependencies": [
-            "F-006",
-            "F-007"
-        ]
-    },
-    {
-        "id": "F-017",
-        "title": "Test Suite",
-        "description": "Test suite — comprehensive tests for API client, council registry, memory, governance, and orchestrator",
-        "status": "completed",
-        "dependencies": [
-            "F-002",
-            "F-003",
-            "F-004",
-            "F-005",
-            "F-006"
-        ]
-    },
-    {
-        "id": "F-018",
-        "title": "Memory Influence",
-        "description": "Memory influence — memories affect agent responses via context injection with relevance scoring",
-        "status": "completed",
-        "dependencies": [
-            "F-004",
-            "F-007"
-        ]
-    },
-    {
-        "id": "F-019",
-        "title": "Council Expansion",
-        "description": "Council expansion — agents can propose adding new council members via governance system",
-        "status": "completed",
-        "dependencies": [
-            "F-006",
-            "F-003"
-        ]
-    },
-    {
-        "id": "F-020",
-        "title": "Prompt Evolution History",
-        "description": "Prompt evolution history — visual timeline of how prompts and characters changed over council decisions",
-        "status": "completed",
-        "dependencies": [
-            "F-013",
-            "F-015"
-        ]
-    },
-    {
-        "id": "F-021",
-        "title": "Web Dashboard",
-        "description": "Browser-based dashboard with FastAPI backend and single-page HTML/JS/CSS frontend for viewing council, proposals, votes, characters, and analytics",
-        "status": "completed",
-        "dependencies": [
-            "F-003",
-            "F-005",
-            "F-006",
-            "F-011",
-            "F-016"
-        ]
-    },
-    {
-        "id": "F-022",
-        "title": "Governance Report Generator",
-        "description": "Export governance activity (council roster, proposals, votes, characters, analytics) as structured Markdown documents",
-        "status": "completed",
-        "dependencies": [
-            "F-003",
-            "F-005",
-            "F-006",
-            "F-011",
-            "F-016"
-        ]
-    },
-    {
-        "id": "F-023",
-        "title": "Secure API Key Management",
-        "description": "Web-based API key configuration with Fernet (AES) encryption at rest, obfuscated display, and settings page in the dashboard",
-        "status": "completed",
-        "dependencies": [
-            "F-002",
-            "F-021"
-        ]
-    },
-    {
-        "id": "F-024",
-        "title": "Web Chat Interface",
-        "description": "Browser-based chat interface for human-to-agent and agent-to-agent conversations via the web dashboard, with SSE streaming, multi-party AI chat, and pause controls",
-        "status": "completed",
-        "dependencies": [
-            "F-009",
-            "F-021",
-            "F-023"
-        ]
-    },
-    {
-        "id": "F-025",
-        "title": "Proposal System Web UI",
-        "description": "Interactive proposal lifecycle in the web dashboard — create proposals, AI-driven council discussion with SSE streaming, pause/resume controls, AI-driven voting, and vote results display",
-        "status": "completed",
-        "dependencies": [
-            "F-005",
-            "F-006",
-            "F-010",
-            "F-021",
-            "F-024"
-        ]
-    },
-    {
-        "id": "F-026",
-        "title": "World Locations",
-        "description": "Filesystem-backed location management system with hierarchical relationships, lifecycle (draft/active/archived), location features, memory-influence integration for prompt context injection, full CRUD REST API, and responsive web dashboard UI",
-        "status": "completed",
-        "dependencies": [
-            "F-011",
-            "F-014",
-            "F-021"
-        ]
-    },
-    {
-        "id": "F-027",
-        "title": "User Description",
-        "description": "Settings-page textarea (700-char max) for a user self-description that is injected into AI chat prompts so council members have context about the human operator",
-        "status": "completed",
-        "dependencies": [
-            "F-009",
-            "F-021",
-            "F-023"
-        ]
-    },
-    {
-        "id": "F-028",
-        "title": "Memory Explorer Web UI",
-        "description": "Web dashboard section for browsing council member memories (core beliefs, session events) and shared council memory (decisions, narrative history) with belief deletion support",
-        "status": "completed",
-        "dependencies": [
-            "F-004",
-            "F-021"
-        ]
-    },
-    {
-        "id": "F-029",
-        "title": "Evolution Web UI",
-        "description": "Web dashboard section for character evolutions — list, detail, create, lifecycle actions (submit/vote/resolve/apply), timelines, and version diff views with evolution counts in dashboard and nav",
-        "status": "completed",
-        "dependencies": [
-            "F-013",
-            "F-020",
-            "F-021"
-        ]
-    },
-    {
-        "id": "F-030",
-        "title": "Presence Wrapper System",
-        "description": "SilentPassa — [PRESENT]/[SILENCE] wrappers for agent messages in chat, with toggle button and localStorage persistence",
-        "status": "completed",
-        "dependencies": [
-            "F-024"
-        ]
-    },
-    {
-        "id": "F-031",
-        "title": "Council Promotion UI",
-        "description": "Add Council Member button in the Council view — lists eligible active characters, lets user assign a council role name and description, creates YAML profile in council/members/",
-        "status": "completed",
-        "dependencies": [
-            "F-003",
-            "F-011",
-            "F-021"
-        ]
-    },
-    {
-        "id": "F-032",
-        "title": "Obelisk Monetary System — Backend",
-        "description": "Treasury core module with ObeliskBalance, TreasuryAccount, TreasuryManager (credit/debit/transfer/normalize), REST API endpoints, and comprehensive tests",
-        "status": "completed",
-        "dependencies": [
-            "F-003",
-            "F-011",
-            "F-021"
-        ]
-    },
-    {
-        "id": "F-033",
-        "title": "Obelisk Monetary System — Frontend Web UI",
-        "description": "Treasury nav/view in web dashboard, Obelisk balance on character/council/user profiles, Treasury section in Governance",
-        "status": "completed",
-        "dependencies": [
-            "F-032"
-        ]
-    },
-    {
-        "id": "F-034",
-        "title": "Obelisk Taxation System",
-        "description": "Government taxation mechanism — tax rates, collection schedules, tax events on transactions",
-        "status": "completed",
-        "dependencies": [
-            "F-032"
-        ]
-    },
-    {
-        "id": "F-035",
-        "title": "World Items System",
-        "description": "Item creation, proposal handoff, lifecycle management (draft/active/archived), LLM context injection, full frontend UI with property management",
-        "status": "completed",
-        "dependencies": [
-            "F-026"
-        ]
-    },
-    {
-        "id": "F-036",
-        "title": "World Stores System",
-        "description": "Commerce system — StoreManager with inventory CRUD, purchase flow (treasury transfer), lifecycle (draft/active/archived), full CRUD API endpoints, frontend with create/edit/inventory/purchase UI, 88 unit tests",
-        "status": "completed",
-        "dependencies": [
-            "F-035",
-            "F-032"
-        ]
-    },
-    {
-        "id": "F-037a",
-        "title": "ComfyUI Client & Connection Manager",
-        "description": "Backend HTTP client for ComfyUI API (queue workflow, poll status, download images via /view), workflow template storage (filesystem-backed TPL-XXXX JSON files), placeholder detection and filling, connection testing — local only (127.0.0.1:8188 default)",
-        "status": "completed",
-        "dependencies": [
-            "F-021"
-        ]
-    },
-    {
-        "id": "F-037b",
-        "title": "Image Manager & Storage System",
-        "description": "Filesystem-backed image storage organized by entity (data/images/{entity_type}/{entity_id}/), EntityImage frozen dataclass with metadata, primary image flag, save/retrieve/delete/serve operations, images.json metadata per entity",
-        "status": "completed",
-        "dependencies": [
-            "F-037a"
-        ]
-    },
-    {
-        "id": "F-037c",
-        "title": "Prompt Generation Engine",
-        "description": "Multi-mode LLM-driven prompt construction — 5 modes: council vote, character/member, standalone system, user+character refinement, raw user input. Style presets (fantasy art, anime, realistic, etc.), entity context building, positive/negative prompt output",
-        "status": "completed",
-        "dependencies": [
-            "F-037a"
-        ]
-    },
-    {
-        "id": "F-037d",
-        "title": "ComfyUI Settings & Templates Web UI",
-        "description": "Frontend settings page for ComfyUI connection config (host:port, test connection), workflow template upload (drag-and-drop JSON), template list with placeholder preview, per-entity-type resolution settings, default style preset selection",
-        "status": "completed",
-        "dependencies": [
-            "F-037a",
-            "F-037b"
-        ]
-    },
-    {
-        "id": "F-037e",
-        "title": "Entity Image Galleries",
-        "description": "Frontend image gallery panels on character/location/item/store detail pages — thumbnail grid, primary badge, lightbox view, set primary, delete, download, prompt info tooltip. Primary image thumbnails on entity list cards",
-        "status": "completed",
-        "dependencies": [
-            "F-037b",
-            "F-037d"
-        ]
-    },
-    {
-        "id": "F-037f",
-        "title": "Generation Pipeline & Progress UI",
-        "description": "End-to-end generation flow — Generate Image button, prompt mode selector modal, SSE progress events, ComfyUI queue integration, auto-gallery refresh. Queue limit of 10 jobs. Cancel support",
-        "status": "completed",
-        "dependencies": [
-            "F-037c",
-            "F-037e"
-        ]
-    },
-    {
-        "id": "F-037g",
-        "title": "Prompt Style Presets & Generation Queue Polish",
-        "description": "Custom Style Preset Manager (CRUD + import/export), batch generation for entity lists (up to 10), queue dashboard with live-polling status cards, preset editor with live preview, generation completion toasts, batch generate buttons on entity list pages",
-        "status": "completed",
-        "dependencies": [
-            "F-037f"
-        ]
-    },
-    {
-        "id": "F-038",
-        "title": "Sidebar Accordion Navigation",
-        "description": "Collapsible accordion sidebar — section headers toggle child nav items, chevron indicators, CSS max-height transitions, localStorage persistence, Settings pinned to bottom, compatible with all 3 UI skins",
-        "status": "completed",
-        "dependencies": [
-            "F-021"
-        ]
-    },
-    {
-        "id": "F-039",
-        "title": "Per-Entity-Type Workflow Templates",
-        "description": "Per-entity-type template assignment manager — assign default ComfyUI workflows per entity type (character/location/item/store), smart fallback chain (explicit → entity_type match → first available), settings UI with assignment cards, Generate modal smart pre-selection with Default badge, template test endpoint, 66 tests",
-        "status": "completed",
-        "dependencies": [
-            "F-037g"
-        ]
-    },
-    {
-        "id": "F-040",
-        "title": "Exploration Image Galleries",
-        "description": "Visual location exploration system — ExplorationManager with scene metadata (overview/feature/transition types), 'Look Around' generation via existing pipeline, location navigation (parent/children/siblings), 7 API endpoints, immersive Explore view with hero image overlay, scene gallery strip, navigation cards, lightbox viewer, generation progress polling, 66 tests",
-        "status": "completed",
-        "dependencies": [
-            "F-037f",
-            "F-026"
-        ]
-    },
-    {
-        "id": "F-041",
-        "title": "Story Illustration System",
-        "description": "LLM-narrated story segments with inline generated illustrations — per-scene image generation, chapter/scene management, story viewer with embedded images",
-        "status": "completed",
-        "dependencies": [
-            "F-037f",
-            "F-039"
-        ]
-    },
-    {
-        "id": "F-042",
-        "title": "Explore Participant System",
-        "description": "Add up to 10 council members and/or characters to Explore experiences — merged participant API, collapsible selector UI with avatars/type badges/search/counter, full context injection (persona, beliefs, memories, traits, laws, locations, items) into Look Around generation, max 10 validation, backward compatible, 18 tests",
-        "status": "completed",
-        "dependencies": [
-            "F-040",
-            "F-003"
-        ]
-    },
-    {
-        "id": "F-043",
-        "title": "Story Participant System",
-        "description": "Add participant selection to Story narration/illustration — reuse _build_participant_context() from F-042, collapsible selector UI in Story editor, up to 10 participants, context injected into narration LLM prompts and illustration generation",
-        "status": "completed",
-        "dependencies": [
-            "F-041",
-            "F-042"
-        ]
-    },
-    {
-        "id": "F-044",
-        "title": "Story Chat",
-        "description": "Interactive round-based chat within story scenes — council members and characters discuss scenes via SSE streaming, 5-round limit, narration injection, inline chat UI with message bubbles and round badges",
-        "status": "completed",
-        "dependencies": [
-            "F-041",
-            "F-024"
-        ]
-    },
-    {
-        "id": "F-045",
-        "title": "Council Session Unit Tests",
-        "description": "Add dedicated unit tests for core/council_session.py — verify session orchestration lifecycle, phase transitions, and prompt builders if not already covered by test_session.py or test_integration.py",
-        "status": "completed",
-        "dependencies": []
-    },
-    {
-        "id": "F-046",
-        "title": "Explore & Story Route Test Coverage",
-        "description": "Increase endpoint test coverage for core/routes/explore.py (31KB, 10 tests) and core/routes/stories.py (46KB, 29 tests) — the two largest route files with the thinnest test coverage. Focus on SSE streaming endpoints, chat flows, and error paths",
-        "status": "completed",
-        "dependencies": []
-    },
-    {
-        "id": "F-047",
-        "title": "Utils Edge-Case Tests",
-        "description": "Add dedicated unit tests for core/utils.py — cover atomic_write and atomic_append edge cases including concurrent writes, permission errors, empty content, and Unicode handling",
-        "status": "completed",
-        "dependencies": []
-    },
-    {
-        "id": "F-048",
-        "title": "README Documentation Update",
-        "description": "Comprehensive README update — reflect modular routes architecture (20 files), modular frontend (26 JS + 33 CSS modules), LM Studio provider support, participant systems (Explore/Story), interactive chat in Explore/Story scenes, chat response timers, manager cache singleton, updated test counts (3,072 tests across 52 files)",
-        "status": "completed",
-        "dependencies": []
-    },
-    {
-        "id": "F-049",
-        "title": "Item Image Prompt Context Refinement",
-        "description": "Refine item entity context for image generation prompts — prioritize tags first, then name, description, lore. Include rarity, tier, and detailed property descriptions. Fix pipeline PromptBuilder to wire item_manager and store_manager for full entity context resolution",
-        "status": "completed",
-        "dependencies": [
-            "F-037c",
-            "F-035"
-        ]
-    },
-    {
-        "id": "F-050",
-        "title": "Analytics Expansion — 20 New Metrics",
-        "description": "Expand the analytics dashboard from 4 governance-only cards to 9 cards covering world building (characters, locations, items, stores), economy & treasury (accounts, circulation, government balance, tax events), content & stories (stories, chapters, scenes, illustration rate), image generation (total images, by entity type, storage, templates), and memory & knowledge (beliefs, session events, decisions, laws). Adds unanimous vote tracking to existing voting stats. 25 new tests.",
-        "status": "completed",
-        "dependencies": [
-            "F-016"
-        ]
-    },
-    {
-        "id": "F-051",
-        "title": "Location Image Prompt Context Refinement",
-        "description": "Refine location entity context for image generation prompts — prioritize name, description, and lore as primary visual signals. Include tags, location_type, coordinates as secondary context. Expand features with full descriptions and types for richer LLM input. Mirrors F-049 item prompt approach",
-        "status": "completed",
-        "dependencies": [
-            "F-037c",
-            "F-026"
-        ]
-    },
-    {
-        "id": "F-052",
-        "title": "Chat Absent Response Handling",
-        "description": "Gracefully handle API failures for individual participants in chat. When a council member or character fails to respond, inject [absent] Was unavailable to respond at this time. [/absent] and continue to the next participant instead of crashing the stream. Covers all 4 chat methods: get_agent_response, get_agent_response_streaming, continue_conversation, continue_conversation_streaming. Frontend renders [absent] tags with distinct amber styling.",
-        "status": "completed",
-        "dependencies": [
-            "F-009"
-        ]
-    },
-    {
-        "id": "F-053",
-        "title": "LLM Injection System",
-        "description": "User-authored llm_injection text fields on items, locations, and stores that are injected into LLM context alongside existing layers (laws, memories, characters). Non-consumable items have static injections; consumable items have 24h TTL injections. Stores now appear in participant context with their injection text. Frontend create/edit forms updated with injection textareas and active/expired badges.",
-        "status": "completed",
-        "dependencies": [
-            "F-035",
-            "F-026",
-            "F-036"
-        ]
-    },
-    {
-        "id": "F-054",
-        "title": "Injection Text Length Limits",
-        "description": "Configurable per-entity character limits for llm_injection fields: items 500, locations 800, stores 500. Enforced at backend validation (create/update reject with helpful error), context builder truncation (replaced hardcoded :300 with configurable limits), and frontend (maxlength + live character counters with amber/red threshold feedback). API responses include injection_max_length metadata. 26 new tests.",
-        "status": "completed",
-        "dependencies": [
-            "F-053"
-        ]
-    },
-    {
-        "id": "F-055",
-        "title": "Eliminate Explore Chat Context Duplication",
-        "description": "When explore/story chat triggers agent responses, MemoryInfluence injects world locations+items AND _build_participant_context also injects them — same data, twice. Add skip_world_context parameter to _build_participant_context so chat callers skip world entities (MemoryInfluence already handles them with relevance scoring). Saves ~500–1500 tokens per chat turn in explore mode.",
-        "status": "completed",
-        "dependencies": [
-            "F-053"
-        ]
-    },
-    {
-        "id": "F-056",
-        "title": "Skip Self-Persona Preview in Participant Context",
-        "description": "Remove redundant persona preview from _build_participant_context when the member IS the current speaker — they already have their full system_prompt as the system message. Add current_speaker parameter to skip that member's 500-char persona preview. Saves ~125 tokens per turn per active member.",
-        "status": "completed",
-        "dependencies": [
-            "F-055"
-        ]
-    },
-    {
-        "id": "F-057",
-        "title": "Global Token Budget / Context Window Manager",
-        "description": "ContextBudget class that accepts a target token count (e.g. 32,768) and allocates portions to each layer with priorities: system prompt (fixed, highest), conversation history (sliding window, high), memories/beliefs (scored, medium), world context (scored, lower), LLM injections (user-controlled, lowest). Each layer truncates to fit the budget, making context size predictable regardless of world size.",
-        "status": "completed",
-        "dependencies": [
-            "F-055"
-        ]
-    },
-    {
-        "id": "F-058",
-        "title": "Rolling Conversation Summary",
-        "description": "For conversations with >10 messages, generate a cached rolling LLM summary of messages 1–N, then inject [Summary of prior conversation: ...] + last 5 messages instead of raw last 10. Preserves context continuity while cutting ~500–2000 tokens in long conversations.",
-        "status": "completed",
-        "dependencies": [
-            "F-055"
-        ]
-    },
-    {
-        "id": "F-059",
-        "title": "Lazy/Cached Memory Scoring",
-        "description": "Cache MemoryContext results for a given (member, topic_hash) pair. Only re-score when the topic meaningfully changes (keyword diff). Add stale_after TTL (e.g. 5 minutes). Negligible token savings but significant latency improvement.",
-        "status": "pending",
-        "dependencies": [
-            "F-055"
-        ]
-    },
-    {
-        "id": "F-060",
-        "title": "Conditional Law Injection",
-        "description": "Score laws against context keywords (same as memories) and only inject relevant ones. A law about taxation rates should not appear when discussing character backstories. Saves ~50–200 tokens when most laws are irrelevant.",
-        "status": "pending",
-        "dependencies": [
-            "F-055"
-        ]
-    },
-    {
-        "id": "F-061",
-        "title": "Tiered Injection Profiles",
-        "description": "Define injection profiles: chat_full (system prompt + history + memory + world + injections), chat_light (system prompt + history + identity), image_gen (entity context + style only), narration (story context + participant identity + relevant world subset), discussion (proposal + prior contributions + member beliefs only). Let each route choose the appropriate profile. Saves ~1000–2000 tokens for lightweight call types.",
-        "status": "pending",
-        "dependencies": [
-            "F-057"
-        ]
-    },
-    {
-        "id": "F-062",
-        "title": "Aggressive Character Preview Truncation",
-        "description": "Reduce character backstory preview from 500 to 200 chars in _build_participant_context. The backstory preview is for OTHER participants to know who is in the room, not for the character to know their own backstory (which is already in their system prompt). Saves ~200–500 tokens with multiple characters.",
-        "status": "completed",
-        "dependencies": [
-            "F-055"
-        ]
-    }
+  {
+    "id": "F-001",
+    "title": "Project Scaffolding",
+    "description": "Project scaffolding — directory structure, settings, pyproject.toml, content migration from jericho01, 9 council member profiles",
+    "status": "completed",
+    "dependencies": []
+  },
+  {
+    "id": "F-002",
+    "title": "API Client",
+    "description": "API client — unified OpenRouter + Mancer client with retry, rate limiting, structured response parsing",
+    "status": "completed",
+    "dependencies": [
+      "F-001"
+    ]
+  },
+  {
+    "id": "F-003",
+    "title": "Council Member Registry",
+    "description": "Council member registry — load/list/validate YAML profiles, get member by name, list all members",
+    "status": "completed",
+    "dependencies": [
+      "F-001"
+    ]
+  },
+  {
+    "id": "F-004",
+    "title": "Memory System",
+    "description": "Memory system — per-agent read/write, core beliefs, session log (JSONL), shared council memory",
+    "status": "completed",
+    "dependencies": [
+      "F-001"
+    ]
+  },
+  {
+    "id": "F-005",
+    "title": "Proposal System",
+    "description": "Proposal system — create, list, review proposals with structured markdown format and lifecycle tracking",
+    "status": "completed",
+    "dependencies": [
+      "F-003"
+    ]
+  },
+  {
+    "id": "F-006",
+    "title": "Voting Engine",
+    "description": "Voting engine — cast votes, tally, quorum check, approval threshold, human veto power",
+    "status": "completed",
+    "dependencies": [
+      "F-005"
+    ]
+  },
+  {
+    "id": "F-007",
+    "title": "Council Session Orchestrator",
+    "description": "Council session orchestrator — full session lifecycle: context load, briefing, activity phase, record, summary",
+    "status": "completed",
+    "dependencies": [
+      "F-002",
+      "F-003",
+      "F-004"
+    ]
+  },
+  {
+    "id": "F-008",
+    "title": "Agent-to-Agent Chat",
+    "description": "Agent-to-agent chat — orchestrator-mediated conversations between council members with memory recording",
+    "status": "completed",
+    "dependencies": [
+      "F-002",
+      "F-004"
+    ]
+  },
+  {
+    "id": "F-009",
+    "title": "Human-to-Agent Chat",
+    "description": "Human-to-agent chat — direct conversation with individual council members, memories updated",
+    "status": "completed",
+    "dependencies": [
+      "F-002",
+      "F-004"
+    ]
+  },
+  {
+    "id": "F-010",
+    "title": "Discussion Rounds",
+    "description": "Discussion rounds — structured multi-agent discussion on a proposal before voting",
+    "status": "completed",
+    "dependencies": [
+      "F-008",
+      "F-005"
+    ]
+  },
+  {
+    "id": "F-011",
+    "title": "Character Template System",
+    "description": "Character template system — structured YAML format for AI character definitions with traits, backstory, prompt",
+    "status": "completed",
+    "dependencies": [
+      "F-001"
+    ]
+  },
+  {
+    "id": "F-012",
+    "title": "Collaborative Character Design",
+    "description": "Collaborative character design — council members contribute to character creation via structured prompts",
+    "status": "completed",
+    "dependencies": [
+      "F-007",
+      "F-011"
+    ]
+  },
+  {
+    "id": "F-013",
+    "title": "Character Evolution",
+    "description": "Character evolution — propose and vote on modifications to existing characters via governance system",
+    "status": "completed",
+    "dependencies": [
+      "F-012",
+      "F-006"
+    ]
+  },
+  {
+    "id": "F-014",
+    "title": "CLI Interface",
+    "description": "CLI interface — Click-based 'jericho' command with subcommands for council, chat, vote, characters, status",
+    "status": "completed",
+    "dependencies": [
+      "F-007"
+    ]
+  },
+  {
+    "id": "F-015",
+    "title": "Rich Terminal Dashboard",
+    "description": "Rich terminal dashboard — council status display, vote tallies, session activity, member overview",
+    "status": "completed",
+    "dependencies": [
+      "F-014"
+    ]
+  },
+  {
+    "id": "F-016",
+    "title": "Session Analytics",
+    "description": "Session analytics — track participation rates, voting patterns, proposal success rates, member activity",
+    "status": "completed",
+    "dependencies": [
+      "F-006",
+      "F-007"
+    ]
+  },
+  {
+    "id": "F-017",
+    "title": "Test Suite",
+    "description": "Test suite — comprehensive tests for API client, council registry, memory, governance, and orchestrator",
+    "status": "completed",
+    "dependencies": [
+      "F-002",
+      "F-003",
+      "F-004",
+      "F-005",
+      "F-006"
+    ]
+  },
+  {
+    "id": "F-018",
+    "title": "Memory Influence",
+    "description": "Memory influence — memories affect agent responses via context injection with relevance scoring",
+    "status": "completed",
+    "dependencies": [
+      "F-004",
+      "F-007"
+    ]
+  },
+  {
+    "id": "F-019",
+    "title": "Council Expansion",
+    "description": "Council expansion — agents can propose adding new council members via governance system",
+    "status": "completed",
+    "dependencies": [
+      "F-006",
+      "F-003"
+    ]
+  },
+  {
+    "id": "F-020",
+    "title": "Prompt Evolution History",
+    "description": "Prompt evolution history — visual timeline of how prompts and characters changed over council decisions",
+    "status": "completed",
+    "dependencies": [
+      "F-013",
+      "F-015"
+    ]
+  },
+  {
+    "id": "F-021",
+    "title": "Web Dashboard",
+    "description": "Browser-based dashboard with FastAPI backend and single-page HTML/JS/CSS frontend for viewing council, proposals, votes, characters, and analytics",
+    "status": "completed",
+    "dependencies": [
+      "F-003",
+      "F-005",
+      "F-006",
+      "F-011",
+      "F-016"
+    ]
+  },
+  {
+    "id": "F-022",
+    "title": "Governance Report Generator",
+    "description": "Export governance activity (council roster, proposals, votes, characters, analytics) as structured Markdown documents",
+    "status": "completed",
+    "dependencies": [
+      "F-003",
+      "F-005",
+      "F-006",
+      "F-011",
+      "F-016"
+    ]
+  },
+  {
+    "id": "F-023",
+    "title": "Secure API Key Management",
+    "description": "Web-based API key configuration with Fernet (AES) encryption at rest, obfuscated display, and settings page in the dashboard",
+    "status": "completed",
+    "dependencies": [
+      "F-002",
+      "F-021"
+    ]
+  },
+  {
+    "id": "F-024",
+    "title": "Web Chat Interface",
+    "description": "Browser-based chat interface for human-to-agent and agent-to-agent conversations via the web dashboard, with SSE streaming, multi-party AI chat, and pause controls",
+    "status": "completed",
+    "dependencies": [
+      "F-009",
+      "F-021",
+      "F-023"
+    ]
+  },
+  {
+    "id": "F-025",
+    "title": "Proposal System Web UI",
+    "description": "Interactive proposal lifecycle in the web dashboard — create proposals, AI-driven council discussion with SSE streaming, pause/resume controls, AI-driven voting, and vote results display",
+    "status": "completed",
+    "dependencies": [
+      "F-005",
+      "F-006",
+      "F-010",
+      "F-021",
+      "F-024"
+    ]
+  },
+  {
+    "id": "F-026",
+    "title": "World Locations",
+    "description": "Filesystem-backed location management system with hierarchical relationships, lifecycle (draft/active/archived), location features, memory-influence integration for prompt context injection, full CRUD REST API, and responsive web dashboard UI",
+    "status": "completed",
+    "dependencies": [
+      "F-011",
+      "F-014",
+      "F-021"
+    ]
+  },
+  {
+    "id": "F-027",
+    "title": "User Description",
+    "description": "Settings-page textarea (700-char max) for a user self-description that is injected into AI chat prompts so council members have context about the human operator",
+    "status": "completed",
+    "dependencies": [
+      "F-009",
+      "F-021",
+      "F-023"
+    ]
+  },
+  {
+    "id": "F-028",
+    "title": "Memory Explorer Web UI",
+    "description": "Web dashboard section for browsing council member memories (core beliefs, session events) and shared council memory (decisions, narrative history) with belief deletion support",
+    "status": "completed",
+    "dependencies": [
+      "F-004",
+      "F-021"
+    ]
+  },
+  {
+    "id": "F-029",
+    "title": "Evolution Web UI",
+    "description": "Web dashboard section for character evolutions — list, detail, create, lifecycle actions (submit/vote/resolve/apply), timelines, and version diff views with evolution counts in dashboard and nav",
+    "status": "completed",
+    "dependencies": [
+      "F-013",
+      "F-020",
+      "F-021"
+    ]
+  },
+  {
+    "id": "F-030",
+    "title": "Presence Wrapper System",
+    "description": "SilentPassa — [PRESENT]/[SILENCE] wrappers for agent messages in chat, with toggle button and localStorage persistence",
+    "status": "completed",
+    "dependencies": [
+      "F-024"
+    ]
+  },
+  {
+    "id": "F-031",
+    "title": "Council Promotion UI",
+    "description": "Add Council Member button in the Council view — lists eligible active characters, lets user assign a council role name and description, creates YAML profile in council/members/",
+    "status": "completed",
+    "dependencies": [
+      "F-003",
+      "F-011",
+      "F-021"
+    ]
+  },
+  {
+    "id": "F-032",
+    "title": "Obelisk Monetary System — Backend",
+    "description": "Treasury core module with ObeliskBalance, TreasuryAccount, TreasuryManager (credit/debit/transfer/normalize), REST API endpoints, and comprehensive tests",
+    "status": "completed",
+    "dependencies": [
+      "F-003",
+      "F-011",
+      "F-021"
+    ]
+  },
+  {
+    "id": "F-033",
+    "title": "Obelisk Monetary System — Frontend Web UI",
+    "description": "Treasury nav/view in web dashboard, Obelisk balance on character/council/user profiles, Treasury section in Governance",
+    "status": "completed",
+    "dependencies": [
+      "F-032"
+    ]
+  },
+  {
+    "id": "F-034",
+    "title": "Obelisk Taxation System",
+    "description": "Government taxation mechanism — tax rates, collection schedules, tax events on transactions",
+    "status": "completed",
+    "dependencies": [
+      "F-032"
+    ]
+  },
+  {
+    "id": "F-035",
+    "title": "World Items System",
+    "description": "Item creation, proposal handoff, lifecycle management (draft/active/archived), LLM context injection, full frontend UI with property management",
+    "status": "completed",
+    "dependencies": [
+      "F-026"
+    ]
+  },
+  {
+    "id": "F-036",
+    "title": "World Stores System",
+    "description": "Commerce system — StoreManager with inventory CRUD, purchase flow (treasury transfer), lifecycle (draft/active/archived), full CRUD API endpoints, frontend with create/edit/inventory/purchase UI, 88 unit tests",
+    "status": "completed",
+    "dependencies": [
+      "F-035",
+      "F-032"
+    ]
+  },
+  {
+    "id": "F-037a",
+    "title": "ComfyUI Client & Connection Manager",
+    "description": "Backend HTTP client for ComfyUI API (queue workflow, poll status, download images via /view), workflow template storage (filesystem-backed TPL-XXXX JSON files), placeholder detection and filling, connection testing — local only (127.0.0.1:8188 default)",
+    "status": "completed",
+    "dependencies": [
+      "F-021"
+    ]
+  },
+  {
+    "id": "F-037b",
+    "title": "Image Manager & Storage System",
+    "description": "Filesystem-backed image storage organized by entity (data/images/{entity_type}/{entity_id}/), EntityImage frozen dataclass with metadata, primary image flag, save/retrieve/delete/serve operations, images.json metadata per entity",
+    "status": "completed",
+    "dependencies": [
+      "F-037a"
+    ]
+  },
+  {
+    "id": "F-037c",
+    "title": "Prompt Generation Engine",
+    "description": "Multi-mode LLM-driven prompt construction — 5 modes: council vote, character/member, standalone system, user+character refinement, raw user input. Style presets (fantasy art, anime, realistic, etc.), entity context building, positive/negative prompt output",
+    "status": "completed",
+    "dependencies": [
+      "F-037a"
+    ]
+  },
+  {
+    "id": "F-037d",
+    "title": "ComfyUI Settings & Templates Web UI",
+    "description": "Frontend settings page for ComfyUI connection config (host:port, test connection), workflow template upload (drag-and-drop JSON), template list with placeholder preview, per-entity-type resolution settings, default style preset selection",
+    "status": "completed",
+    "dependencies": [
+      "F-037a",
+      "F-037b"
+    ]
+  },
+  {
+    "id": "F-037e",
+    "title": "Entity Image Galleries",
+    "description": "Frontend image gallery panels on character/location/item/store detail pages — thumbnail grid, primary badge, lightbox view, set primary, delete, download, prompt info tooltip. Primary image thumbnails on entity list cards",
+    "status": "completed",
+    "dependencies": [
+      "F-037b",
+      "F-037d"
+    ]
+  },
+  {
+    "id": "F-037f",
+    "title": "Generation Pipeline & Progress UI",
+    "description": "End-to-end generation flow — Generate Image button, prompt mode selector modal, SSE progress events, ComfyUI queue integration, auto-gallery refresh. Queue limit of 10 jobs. Cancel support",
+    "status": "completed",
+    "dependencies": [
+      "F-037c",
+      "F-037e"
+    ]
+  },
+  {
+    "id": "F-037g",
+    "title": "Prompt Style Presets & Generation Queue Polish",
+    "description": "Custom Style Preset Manager (CRUD + import/export), batch generation for entity lists (up to 10), queue dashboard with live-polling status cards, preset editor with live preview, generation completion toasts, batch generate buttons on entity list pages",
+    "status": "completed",
+    "dependencies": [
+      "F-037f"
+    ]
+  },
+  {
+    "id": "F-038",
+    "title": "Sidebar Accordion Navigation",
+    "description": "Collapsible accordion sidebar — section headers toggle child nav items, chevron indicators, CSS max-height transitions, localStorage persistence, Settings pinned to bottom, compatible with all 3 UI skins",
+    "status": "completed",
+    "dependencies": [
+      "F-021"
+    ]
+  },
+  {
+    "id": "F-039",
+    "title": "Per-Entity-Type Workflow Templates",
+    "description": "Per-entity-type template assignment manager — assign default ComfyUI workflows per entity type (character/location/item/store), smart fallback chain (explicit → entity_type match → first available), settings UI with assignment cards, Generate modal smart pre-selection with Default badge, template test endpoint, 66 tests",
+    "status": "completed",
+    "dependencies": [
+      "F-037g"
+    ]
+  },
+  {
+    "id": "F-040",
+    "title": "Exploration Image Galleries",
+    "description": "Visual location exploration system — ExplorationManager with scene metadata (overview/feature/transition types), 'Look Around' generation via existing pipeline, location navigation (parent/children/siblings), 7 API endpoints, immersive Explore view with hero image overlay, scene gallery strip, navigation cards, lightbox viewer, generation progress polling, 66 tests",
+    "status": "completed",
+    "dependencies": [
+      "F-037f",
+      "F-026"
+    ]
+  },
+  {
+    "id": "F-041",
+    "title": "Story Illustration System",
+    "description": "LLM-narrated story segments with inline generated illustrations — per-scene image generation, chapter/scene management, story viewer with embedded images",
+    "status": "completed",
+    "dependencies": [
+      "F-037f",
+      "F-039"
+    ]
+  },
+  {
+    "id": "F-042",
+    "title": "Explore Participant System",
+    "description": "Add up to 10 council members and/or characters to Explore experiences — merged participant API, collapsible selector UI with avatars/type badges/search/counter, full context injection (persona, beliefs, memories, traits, laws, locations, items) into Look Around generation, max 10 validation, backward compatible, 18 tests",
+    "status": "completed",
+    "dependencies": [
+      "F-040",
+      "F-003"
+    ]
+  },
+  {
+    "id": "F-043",
+    "title": "Story Participant System",
+    "description": "Add participant selection to Story narration/illustration — reuse _build_participant_context() from F-042, collapsible selector UI in Story editor, up to 10 participants, context injected into narration LLM prompts and illustration generation",
+    "status": "completed",
+    "dependencies": [
+      "F-041",
+      "F-042"
+    ]
+  },
+  {
+    "id": "F-044",
+    "title": "Story Chat",
+    "description": "Interactive round-based chat within story scenes — council members and characters discuss scenes via SSE streaming, 5-round limit, narration injection, inline chat UI with message bubbles and round badges",
+    "status": "completed",
+    "dependencies": [
+      "F-041",
+      "F-024"
+    ]
+  },
+  {
+    "id": "F-045",
+    "title": "Council Session Unit Tests",
+    "description": "Add dedicated unit tests for core/council_session.py — verify session orchestration lifecycle, phase transitions, and prompt builders if not already covered by test_session.py or test_integration.py",
+    "status": "completed",
+    "dependencies": []
+  },
+  {
+    "id": "F-046",
+    "title": "Explore & Story Route Test Coverage",
+    "description": "Increase endpoint test coverage for core/routes/explore.py (31KB, 10 tests) and core/routes/stories.py (46KB, 29 tests) — the two largest route files with the thinnest test coverage. Focus on SSE streaming endpoints, chat flows, and error paths",
+    "status": "completed",
+    "dependencies": []
+  },
+  {
+    "id": "F-047",
+    "title": "Utils Edge-Case Tests",
+    "description": "Add dedicated unit tests for core/utils.py — cover atomic_write and atomic_append edge cases including concurrent writes, permission errors, empty content, and Unicode handling",
+    "status": "completed",
+    "dependencies": []
+  },
+  {
+    "id": "F-048",
+    "title": "README Documentation Update",
+    "description": "Comprehensive README update — reflect modular routes architecture (20 files), modular frontend (26 JS + 33 CSS modules), LM Studio provider support, participant systems (Explore/Story), interactive chat in Explore/Story scenes, chat response timers, manager cache singleton, updated test counts (3,072 tests across 52 files)",
+    "status": "completed",
+    "dependencies": []
+  },
+  {
+    "id": "F-049",
+    "title": "Item Image Prompt Context Refinement",
+    "description": "Refine item entity context for image generation prompts — prioritize tags first, then name, description, lore. Include rarity, tier, and detailed property descriptions. Fix pipeline PromptBuilder to wire item_manager and store_manager for full entity context resolution",
+    "status": "completed",
+    "dependencies": [
+      "F-037c",
+      "F-035"
+    ]
+  },
+  {
+    "id": "F-050",
+    "title": "Analytics Expansion — 20 New Metrics",
+    "description": "Expand the analytics dashboard from 4 governance-only cards to 9 cards covering world building (characters, locations, items, stores), economy & treasury (accounts, circulation, government balance, tax events), content & stories (stories, chapters, scenes, illustration rate), image generation (total images, by entity type, storage, templates), and memory & knowledge (beliefs, session events, decisions, laws). Adds unanimous vote tracking to existing voting stats. 25 new tests.",
+    "status": "completed",
+    "dependencies": [
+      "F-016"
+    ]
+  },
+  {
+    "id": "F-051",
+    "title": "Location Image Prompt Context Refinement",
+    "description": "Refine location entity context for image generation prompts — prioritize name, description, and lore as primary visual signals. Include tags, location_type, coordinates as secondary context. Expand features with full descriptions and types for richer LLM input. Mirrors F-049 item prompt approach",
+    "status": "completed",
+    "dependencies": [
+      "F-037c",
+      "F-026"
+    ]
+  },
+  {
+    "id": "F-052",
+    "title": "Chat Absent Response Handling",
+    "description": "Gracefully handle API failures for individual participants in chat. When a council member or character fails to respond, inject [absent] Was unavailable to respond at this time. [/absent] and continue to the next participant instead of crashing the stream. Covers all 4 chat methods: get_agent_response, get_agent_response_streaming, continue_conversation, continue_conversation_streaming. Frontend renders [absent] tags with distinct amber styling.",
+    "status": "completed",
+    "dependencies": [
+      "F-009"
+    ]
+  },
+  {
+    "id": "F-053",
+    "title": "LLM Injection System",
+    "description": "User-authored llm_injection text fields on items, locations, and stores that are injected into LLM context alongside existing layers (laws, memories, characters). Non-consumable items have static injections; consumable items have 24h TTL injections. Stores now appear in participant context with their injection text. Frontend create/edit forms updated with injection textareas and active/expired badges.",
+    "status": "completed",
+    "dependencies": [
+      "F-035",
+      "F-026",
+      "F-036"
+    ]
+  },
+  {
+    "id": "F-054",
+    "title": "Injection Text Length Limits",
+    "description": "Configurable per-entity character limits for llm_injection fields: items 500, locations 800, stores 500. Enforced at backend validation (create/update reject with helpful error), context builder truncation (replaced hardcoded :300 with configurable limits), and frontend (maxlength + live character counters with amber/red threshold feedback). API responses include injection_max_length metadata. 26 new tests.",
+    "status": "completed",
+    "dependencies": [
+      "F-053"
+    ]
+  },
+  {
+    "id": "F-055",
+    "title": "Eliminate Explore Chat Context Duplication",
+    "description": "When explore/story chat triggers agent responses, MemoryInfluence injects world locations+items AND _build_participant_context also injects them — same data, twice. Add skip_world_context parameter to _build_participant_context so chat callers skip world entities (MemoryInfluence already handles them with relevance scoring). Saves ~500–1500 tokens per chat turn in explore mode.",
+    "status": "completed",
+    "dependencies": [
+      "F-053"
+    ]
+  },
+  {
+    "id": "F-056",
+    "title": "Skip Self-Persona Preview in Participant Context",
+    "description": "Remove redundant persona preview from _build_participant_context when the member IS the current speaker — they already have their full system_prompt as the system message. Add current_speaker parameter to skip that member's 500-char persona preview. Saves ~125 tokens per turn per active member.",
+    "status": "completed",
+    "dependencies": [
+      "F-055"
+    ]
+  },
+  {
+    "id": "F-057",
+    "title": "Global Token Budget / Context Window Manager",
+    "description": "ContextBudget class that accepts a target token count (e.g. 32,768) and allocates portions to each layer with priorities: system prompt (fixed, highest), conversation history (sliding window, high), memories/beliefs (scored, medium), world context (scored, lower), LLM injections (user-controlled, lowest). Each layer truncates to fit the budget, making context size predictable regardless of world size.",
+    "status": "completed",
+    "dependencies": [
+      "F-055"
+    ]
+  },
+  {
+    "id": "F-058",
+    "title": "Rolling Conversation Summary",
+    "description": "For conversations with >10 messages, generate a cached rolling LLM summary of messages 1–N, then inject [Summary of prior conversation: ...] + last 5 messages instead of raw last 10. Preserves context continuity while cutting ~500–2000 tokens in long conversations.",
+    "status": "completed",
+    "dependencies": [
+      "F-055"
+    ]
+  },
+  {
+    "id": "F-059",
+    "title": "Lazy/Cached Memory Scoring",
+    "description": "Cache MemoryContext results for a given (member, topic_hash) pair. Only re-score when the topic meaningfully changes (keyword diff). Add stale_after TTL (e.g. 5 minutes). Negligible token savings but significant latency improvement.",
+    "status": "completed",
+    "dependencies": [
+      "F-055"
+    ]
+  },
+  {
+    "id": "F-060",
+    "title": "Conditional Law Injection",
+    "description": "Score laws against context keywords (same as memories) and only inject relevant ones. A law about taxation rates should not appear when discussing character backstories. Saves ~50–200 tokens when most laws are irrelevant.",
+    "status": "pending",
+    "dependencies": [
+      "F-055"
+    ]
+  },
+  {
+    "id": "F-061",
+    "title": "Tiered Injection Profiles",
+    "description": "Define injection profiles: chat_full (system prompt + history + memory + world + injections), chat_light (system prompt + history + identity), image_gen (entity context + style only), narration (story context + participant identity + relevant world subset), discussion (proposal + prior contributions + member beliefs only). Let each route choose the appropriate profile. Saves ~1000–2000 tokens for lightweight call types.",
+    "status": "pending",
+    "dependencies": [
+      "F-057"
+    ]
+  },
+  {
+    "id": "F-062",
+    "title": "Aggressive Character Preview Truncation",
+    "description": "Reduce character backstory preview from 500 to 200 chars in _build_participant_context. The backstory preview is for OTHER participants to know who is in the room, not for the character to know their own backstory (which is already in their system prompt). Saves ~200–500 tokens with multiple characters.",
+    "status": "completed",
+    "dependencies": [
+      "F-055"
+    ]
+  }
 ]

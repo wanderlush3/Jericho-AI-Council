@@ -28,6 +28,7 @@ import math
 import os
 import random
 import re
+import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -45,6 +46,8 @@ from config.settings import (
     ITEMS_DIR,
     LOCATIONS_DIR,
     MEMORIES_DIR,
+    MEMORY_CACHE_ENABLED,
+    MEMORY_CACHE_TTL_SECONDS,
     MEMORY_DECAY_ENABLED,
     MEMORY_DECAY_HALF_LIFE_DAYS,
     MEMORY_DECAY_MIN_FACTOR,
@@ -158,6 +161,15 @@ class MemoryContext:
         return bool(self.beliefs or self.memories)
 
 
+@dataclass
+class _CacheEntry:
+    """Internal cache entry for MemoryContext results."""
+
+    context: MemoryContext
+    created_at: float  # time.monotonic() timestamp
+    skip_world_entities: bool
+
+
 # ─── Tokenisation ──────────────────────────────────────────────
 
 # Simple word-boundary tokeniser: splits on non-alphanumeric, lowercases.
@@ -228,6 +240,8 @@ class MemoryInfluence:
         summarization_enabled: bool | None = None,
         contested_enabled: bool | None = None,
         contested_probability: float | None = None,
+        cache_enabled: bool | None = None,
+        cache_ttl_seconds: float | None = None,
     ) -> None:
         self._memory_limit = (
             memory_limit if memory_limit is not None
@@ -285,6 +299,17 @@ class MemoryInfluence:
             else CONTESTED_MEMORY_PROBABILITY
         )
 
+        # Cache settings (F-059)
+        self._cache_enabled = (
+            cache_enabled if cache_enabled is not None
+            else MEMORY_CACHE_ENABLED
+        )
+        self._cache_ttl = (
+            cache_ttl_seconds if cache_ttl_seconds is not None
+            else MEMORY_CACHE_TTL_SECONDS
+        )
+        self._cache: dict[tuple[str, frozenset[str]], _CacheEntry] = {}
+
     # ── Properties ────────────────────────────────────────────
 
     @property
@@ -326,6 +351,19 @@ class MemoryInfluence:
     @property
     def contested_probability(self) -> float:
         return self._contested_probability
+
+    @property
+    def cache_enabled(self) -> bool:
+        return self._cache_enabled
+
+    @property
+    def cache_ttl(self) -> float:
+        return self._cache_ttl
+
+    @property
+    def cache_size(self) -> int:
+        """Number of entries currently in the cache."""
+        return len(self._cache)
 
     # ── Scoring ───────────────────────────────────────────────────────
 
@@ -588,6 +626,78 @@ class MemoryInfluence:
 
     # ── Context Building ──────────────────────────────────────
 
+    @staticmethod
+    def _make_cache_key(
+        member_name: str,
+        context_keywords: list[str],
+    ) -> tuple[str, frozenset[str]]:
+        """Build a deterministic cache key from member name + keywords.
+
+        The key is ``(normalised_name, frozenset_of_lowered_keywords)``
+        so keyword order does not affect cache hits.
+        """
+        normalised = member_name.strip().lower()
+        kw_set = frozenset(k.strip().lower() for k in context_keywords if k.strip())
+        return (normalised, kw_set)
+
+    def _get_cached(
+        self,
+        key: tuple[str, frozenset[str]],
+        skip_world_entities: bool,
+    ) -> MemoryContext | None:
+        """Return a cached MemoryContext if it exists and is still fresh."""
+        entry = self._cache.get(key)
+        if entry is None:
+            return None
+        age = time.monotonic() - entry.created_at
+        if age > self._cache_ttl:
+            # Stale — remove and miss
+            del self._cache[key]
+            return None
+        # If previous cache was with world entities but caller now wants
+        # to skip (or vice-versa), treat as a miss so world context is
+        # correct.  We could store both variants, but for simplicity
+        # we just invalidate on mismatch.
+        if entry.skip_world_entities != skip_world_entities:
+            del self._cache[key]
+            return None
+        return entry.context
+
+    def _put_cached(
+        self,
+        key: tuple[str, frozenset[str]],
+        context: MemoryContext,
+        skip_world_entities: bool,
+    ) -> None:
+        """Store a MemoryContext in the cache."""
+        self._cache[key] = _CacheEntry(
+            context=context,
+            created_at=time.monotonic(),
+            skip_world_entities=skip_world_entities,
+        )
+
+    def clear_cache(self, member_name: str | None = None) -> int:
+        """Clear cached MemoryContext entries.
+
+        Args:
+            member_name: If provided, only clear entries for this member.
+                If ``None``, clear the entire cache.
+
+        Returns:
+            Number of entries removed.
+        """
+        if member_name is None:
+            count = len(self._cache)
+            self._cache.clear()
+            return count
+        normalised = member_name.strip().lower()
+        keys_to_remove = [
+            k for k in self._cache if k[0] == normalised
+        ]
+        for k in keys_to_remove:
+            del self._cache[k]
+        return len(keys_to_remove)
+
     def build_context(
         self,
         member_name: str,
@@ -611,6 +721,12 @@ class MemoryInfluence:
         accumulated, previously-summarized entries are also included
         in the scoring pool.
 
+        Results are cached by ``(member_name, keyword_set)`` for up
+        to ``cache_ttl`` seconds (F-059).  Repeated calls with the
+        same member and keywords return the cached result without
+        re-scoring.  Pass ``cache_enabled=False`` at construction
+        time or toggle ``MEMORY_CACHE_ENABLED`` to disable.
+
         Args:
             member_name: Council member name (case-insensitive).
             context_keywords: Words/phrases describing the current topic.
@@ -624,6 +740,14 @@ class MemoryInfluence:
         Returns:
             MemoryContext with scored beliefs, memories, and formatted text.
         """
+        # F-059: Check cache first
+        cache_key: tuple[str, frozenset[str]] | None = None
+        if self._cache_enabled:
+            cache_key = self._make_cache_key(member_name, context_keywords)
+            cached = self._get_cached(cache_key, skip_world_entities)
+            if cached is not None:
+                return cached
+
         base_dir = memories_dir or self._memories_dir
         agent_mem = AgentMemory(member_name, memories_dir=base_dir)
 
@@ -669,12 +793,18 @@ class MemoryInfluence:
             contested=contested_map,
         )
 
-        return MemoryContext(
+        result = MemoryContext(
             member_name=member_name.strip().lower(),
             beliefs=scored_beliefs,
             memories=scored_memories,
             formatted_text=formatted,
         )
+
+        # F-059: Store in cache
+        if self._cache_enabled and cache_key is not None:
+            self._put_cached(cache_key, result, skip_world_entities)
+
+        return result
 
     @staticmethod
     def _load_contested_for_scored(
@@ -1010,5 +1140,7 @@ class MemoryInfluence:
             f"min_relevance={self._min_relevance}, "
             f"belief_boost={self._belief_boost}, "
             f"decay={self._decay_enabled}, "
-            f"summarization={self._summarization_enabled})"
+            f"summarization={self._summarization_enabled}, "
+            f"cache={self._cache_enabled}, "
+            f"cache_ttl={self._cache_ttl})"
         )
