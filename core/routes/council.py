@@ -4,6 +4,8 @@ Jericho — Council Routes
 
 from __future__ import annotations
 
+import logging
+
 
 from typing import Any
 
@@ -18,6 +20,8 @@ from core.manager_cache import (
     invalidate_registry,
 )
 
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -46,7 +50,7 @@ def api_council_list() -> list[dict[str, Any]]:
                     "name": overlay["name"],
                 }
     except Exception:
-        pass  # graceful fallback if evolution system is unavailable
+        log.debug("core.routes.council: non-critical error", exc_info=True)
 
     # Single directory scan for avatar existence (Category 5)
     existing_avatars = {
@@ -260,7 +264,7 @@ def api_council_detail(name: str) -> dict[str, Any]:
                 "name": overlay.name,
             }
     except Exception:
-        pass
+        log.debug("core.routes.council: non-critical error", exc_info=True)
     return d
 
 @router.put("/api/council/{name}")

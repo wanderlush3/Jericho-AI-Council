@@ -11,6 +11,7 @@ Storage: one JSON file per proposal in ``data/proposals/``, named ``P-XXXX.json`
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
 from dataclasses import asdict, dataclass, field
@@ -329,18 +330,8 @@ class ProposalManager:
             raise ProposalLifecycleError(proposal_id, proposal.status, new_status)
 
         now = datetime.now(timezone.utc).isoformat()
-        updated = Proposal(
-            id=proposal.id,
-            title=proposal.title,
-            description=proposal.description,
-            author=proposal.author,
-            category=proposal.category,
-            status=new_status,
-            created_at=proposal.created_at,
-            updated_at=now,
-            body=proposal.body,
-            reviews=list(proposal.reviews),
-            metadata=dict(proposal.metadata),
+        updated = dataclasses.replace(
+            proposal, status=new_status, updated_at=now,
         )
         self._save(updated)
         return updated
@@ -371,18 +362,8 @@ class ProposalManager:
 
         now = datetime.now(timezone.utc).isoformat()
         new_reviews = list(proposal.reviews) + [review]
-        updated = Proposal(
-            id=proposal.id,
-            title=proposal.title,
-            description=proposal.description,
-            author=proposal.author,
-            category=proposal.category,
-            status=proposal.status,
-            created_at=proposal.created_at,
-            updated_at=now,
-            body=proposal.body,
-            reviews=new_reviews,
-            metadata=dict(proposal.metadata),
+        updated = dataclasses.replace(
+            proposal, reviews=new_reviews, updated_at=now,
         )
         self._save(updated)
         return updated
@@ -417,19 +398,7 @@ class ProposalManager:
             )
 
         now = datetime.now(timezone.utc).isoformat()
-        updated = Proposal(
-            id=proposal.id,
-            title=fields.get("title", proposal.title),
-            description=fields.get("description", proposal.description),
-            author=proposal.author,
-            category=fields.get("category", proposal.category),
-            status=proposal.status,
-            created_at=proposal.created_at,
-            updated_at=now,
-            body=fields.get("body", proposal.body),
-            reviews=list(proposal.reviews),
-            metadata=fields.get("metadata", dict(proposal.metadata)),
-        )
+        updated = dataclasses.replace(proposal, updated_at=now, **fields)
         self._save(updated)
         return updated
 

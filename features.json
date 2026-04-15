@@ -675,7 +675,7 @@
     "id": "F-065",
     "title": "Add Exception Logging to Silent Catch Blocks",
     "description": "Multiple modules use bare 'except Exception: pass' that silently swallow errors, making debugging difficult. Key locations: (1) _build_participant_context() in routes/explore.py — memory influence, registry, character, law, location, item, and store loading all have silent catches, (2) human_chat.py streaming methods, (3) routes/stories.py scene/chat handlers, (4) routes/sessions.py analytics. Replace bare 'except Exception: pass' with 'except Exception: logger.debug(\"...\", exc_info=True)' or logger.warning for more critical paths. Ensure each module has a module-level logger via logging.getLogger(__name__). No behavior changes — just visibility into failures.",
-    "status": "pending",
+    "status": "completed",
     "dependencies": []
   },
   {

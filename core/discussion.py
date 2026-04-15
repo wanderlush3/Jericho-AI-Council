@@ -13,6 +13,7 @@ Storage:
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -451,19 +452,10 @@ class DiscussionManager:
 
         # Update record with new contributions and incremented round
         all_contributions = list(record.contributions) + new_contributions
-        record = DiscussionRecord(
-            discussion_id=record.discussion_id,
-            proposal_id=record.proposal_id,
-            title=record.title,
-            participants=list(record.participants),
+        record = dataclasses.replace(
+            record,
             contributions=all_contributions,
-            round_count=record.round_count,
             current_round=round_number,
-            status=record.status,
-            summary=record.summary,
-            created_at=record.created_at,
-            closed_at=record.closed_at,
-            metadata=dict(record.metadata),
         )
         self._save(record)
         return record
@@ -525,19 +517,11 @@ class DiscussionManager:
         now = datetime.now(timezone.utc).isoformat()
         final_summary = summary or self._generate_summary(record)
 
-        record = DiscussionRecord(
-            discussion_id=record.discussion_id,
-            proposal_id=record.proposal_id,
-            title=record.title,
-            participants=list(record.participants),
-            contributions=list(record.contributions),
-            round_count=record.round_count,
-            current_round=record.current_round,
+        record = dataclasses.replace(
+            record,
             status="closed",
             summary=final_summary,
-            created_at=record.created_at,
             closed_at=now,
-            metadata=dict(record.metadata),
         )
         self._save(record)
 

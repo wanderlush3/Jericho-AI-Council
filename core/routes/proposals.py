@@ -4,6 +4,8 @@ Jericho — Proposals Routes
 
 from __future__ import annotations
 
+import logging
+
 
 import json as json_module
 from typing import Any
@@ -23,6 +25,9 @@ from core.manager_cache import (
 )
 
 from core.routes._helpers import _make_discussion_manager
+
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -238,20 +243,13 @@ async def api_proposal_discuss_stream(proposal_id: str):
                 await asyncio.sleep(0.5)
 
             # Save the updated record
+            import dataclasses
             from core.discussion import DiscussionRecord
             all_contributions = list(record.contributions) + new_contributions
-            updated_record = DiscussionRecord(
-                discussion_id=record.discussion_id,
-                proposal_id=record.proposal_id,
-                title=record.title,
-                participants=list(record.participants),
+            updated_record = dataclasses.replace(
+                record,
                 contributions=all_contributions,
-                round_count=record.round_count,
                 current_round=round_number,
-                status=record.status,
-                summary=record.summary,
-                created_at=record.created_at,
-                closed_at=record.closed_at,
                 metadata=meta,
             )
             dmgr._save(updated_record)
@@ -305,7 +303,7 @@ def api_proposal_discuss_pause(proposal_id: str) -> dict[str, Any]:
     try:
         pmgr.update_status(proposal_id, "under_review")
     except Exception:
-        pass  # non-critical
+        log.debug("core.routes.proposals: non-critical error", exc_info=True)
 
     return record.to_dict()
 
@@ -367,20 +365,8 @@ def api_proposal_scheduled_message_set(
     else:
         meta.pop("scheduled_message", None)
 
-    updated = DiscussionRecord(
-        discussion_id=record.discussion_id,
-        proposal_id=record.proposal_id,
-        title=record.title,
-        participants=list(record.participants),
-        contributions=list(record.contributions),
-        round_count=record.round_count,
-        current_round=record.current_round,
-        status=record.status,
-        summary=record.summary,
-        created_at=record.created_at,
-        closed_at=record.closed_at,
-        metadata=meta,
-    )
+    import dataclasses
+    updated = dataclasses.replace(record, metadata=meta)
     dmgr._save(updated)
 
     return {
@@ -588,7 +574,7 @@ async def api_proposal_vote(proposal_id: str) -> dict[str, Any]:
             try:
                 engine.cast_vote(proposal_id, vote)
             except Exception:
-                pass  # duplicate vote, skip
+                log.debug("core.routes.proposals: non-critical error", exc_info=True)
 
             vote_results.append({
                 "voter": member.name,
@@ -606,15 +592,11 @@ async def api_proposal_vote(proposal_id: str) -> dict[str, Any]:
     try:
         engine.close_voting(proposal_id)
     except Exception:
-        pass
-
-    # Transition proposal to decided
+        log.debug("core.routes.proposals: non-critical error", exc_info=True)
     try:
         pmgr.update_status(proposal_id, "decided")
     except Exception:
-        pass
-
-    # Get final tally
+        log.debug("core.routes.proposals: non-critical error", exc_info=True)
     tally = engine.tally(proposal_id)
     record = engine.get(proposal_id)
 

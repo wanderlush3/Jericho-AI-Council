@@ -4,6 +4,7 @@ Jericho — Explore Routes
 
 from __future__ import annotations
 
+import logging
 
 import json as json_module
 import time
@@ -39,6 +40,9 @@ from config.settings import (
 )
 from core.injection_profiles import InjectionProfile, get_profile
 
+
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -123,8 +127,7 @@ def _build_participant_context(
                 from core.memory_influence import MemoryInfluence
                 mi = MemoryInfluence(embedding_provider=None)
             except Exception:
-                pass
-
+                log.debug("core.routes.explore: non-critical error", exc_info=True)
         for cid in council_ids:
             member = members_map.get(cid.lower())
             if not member:
@@ -178,8 +181,7 @@ def _build_participant_context(
                                 f"{sm.entry.content}"
                             )
                 except Exception:
-                    pass
-
+                    log.debug("core.routes.explore: non-critical error", exc_info=True)
             parts.append("")  # blank separator
 
     # ── Characters ──
@@ -277,9 +279,7 @@ def _build_participant_context(
                         )
                     parts.append("")
         except Exception:
-            pass
-
-    # Active Locations
+            log.debug("core.routes.explore: non-critical error", exc_info=True)
     try:
         active_locs = get_location_manager().list_locations(status="active")
         if active_locs:
@@ -298,9 +298,7 @@ def _build_participant_context(
                     )
             parts.append("")
     except Exception:
-        pass
-
-    # Active Items
+        log.debug("core.routes.explore: non-critical error", exc_info=True)
     try:
         from core.items import is_injection_active
         active_items = get_item_manager().list_items(status="active")
@@ -320,9 +318,7 @@ def _build_participant_context(
                     )
             parts.append("")
     except Exception:
-        pass
-
-    # Active Stores (F-053)
+        log.debug("core.routes.explore: non-critical error", exc_info=True)
     try:
         active_stores = get_store_manager().list_stores(status="active")
         if active_stores:
@@ -341,8 +337,7 @@ def _build_participant_context(
                     )
             parts.append("")
     except Exception:
-        pass
-
+        log.debug("core.routes.explore: non-critical error", exc_info=True)
     return "\n".join(parts)
 
 # ── Exploration (F-040) ───────────────────────────────────
@@ -375,8 +370,7 @@ def api_explore_list() -> list[dict[str, Any]]:
             elif images:
                 primary_url = f"/api/images/file/{images[0].id}"
         except Exception:
-            pass
-
+            log.debug("core.routes.explore: non-critical error", exc_info=True)
         result.append({
             "id": loc.id,
             "name": loc.name,
@@ -555,7 +549,7 @@ async def api_explore_look_around(
             )
             template_id = tam.get_recommended_template("location")
         except Exception:
-            pass
+            log.debug("core.routes.explore: non-critical error", exc_info=True)
     if not template_id:
         raise HTTPException(
             status_code=400,
@@ -815,7 +809,7 @@ def api_explore_chat_create(
         try:
             rec = hc.add_council_member(chat_id, cid)
         except Exception:
-            pass  # skip invalid, non-blocking
+            log.debug("core.routes.explore: non-critical error", exc_info=True)
 
     # Add remaining characters beyond the first
     for chid in character_ids[1 if not first_member else 0:]:
@@ -824,7 +818,7 @@ def api_explore_chat_create(
         try:
             rec = hc.add_character(chat_id, chid)
         except Exception:
-            pass  # skip invalid, non-blocking
+            log.debug("core.routes.explore: non-critical error", exc_info=True)
 
     return rec.to_dict()
 

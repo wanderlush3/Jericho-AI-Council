@@ -4,6 +4,7 @@ Jericho — Stories Routes
 
 from __future__ import annotations
 
+import logging
 import json as json_module
 import time
 from typing import Any
@@ -24,6 +25,9 @@ from core.routes._helpers import (
 )
 from core.injection_profiles import InjectionProfile
 
+
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -687,7 +691,7 @@ async def api_stories_illustrate_scene(
             )
             template_id = tam.get_recommended_template(entity_type)
         except Exception:
-            pass
+            log.debug("core.routes.stories: non-critical error", exc_info=True)
     if not template_id:
         raise HTTPException(
             status_code=400,
@@ -948,7 +952,7 @@ def api_story_chat_create(
         try:
             rec = hc.add_council_member(chat_id, cid)
         except Exception:
-            pass  # skip invalid, non-blocking
+            log.debug("core.routes.stories: non-critical error", exc_info=True)
 
     # Add remaining characters beyond the first
     for chid in character_ids[1 if not first_member else 0:]:
@@ -957,7 +961,7 @@ def api_story_chat_create(
         try:
             rec = hc.add_character(chat_id, chid)
         except Exception:
-            pass  # skip invalid, non-blocking
+            log.debug("core.routes.stories: non-critical error", exc_info=True)
 
     result = rec.to_dict()
     result["round"] = 0
@@ -1045,8 +1049,7 @@ async def api_story_chat_inject_narration(
                     hc.close_chat(chat_id, summary="Story chat reached round limit.")
                     final_record = hc.get(chat_id)
                 except Exception:
-                    pass
-
+                    log.debug("core.routes.stories: non-critical error", exc_info=True)
             done_data = json_module.dumps({
                 "chat": final_record.to_dict(),
                 "round": new_round,
@@ -1142,8 +1145,7 @@ async def api_story_chat_send_stream(
                     hc.close_chat(chat_id, summary="Story chat reached round limit.")
                     final_record = hc.get(chat_id)
                 except Exception:
-                    pass
-
+                    log.debug("core.routes.stories: non-critical error", exc_info=True)
             done_data = json_module.dumps({
                 "chat": final_record.to_dict(),
                 "round": new_round,
@@ -1222,8 +1224,7 @@ async def api_story_chat_continue_stream(
                     hc.close_chat(chat_id, summary="Story chat reached round limit.")
                     final_record = hc.get(chat_id)
                 except Exception:
-                    pass
-
+                    log.debug("core.routes.stories: non-critical error", exc_info=True)
             done_data = json_module.dumps({
                 "chat": final_record.to_dict(),
                 "round": new_round,
@@ -1414,7 +1415,7 @@ async def api_story_chat_narrate_round(
             },
         )
     except Exception:
-        pass  # non-blocking: narration was saved even if inject fails
+        log.debug("core.routes.stories: non-critical error", exc_info=True)
 
     rec = hc.get(chat_id)
     current_round = _get_story_round(rec)

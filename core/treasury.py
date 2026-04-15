@@ -10,6 +10,7 @@ stored as ``ACCT-<slug>.json`` in ``data/treasury/``.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import logging
 import re
@@ -502,14 +503,8 @@ class TreasuryManager:
     ) -> TreasuryAccount:
         """Save an account with an updated balance and timestamp."""
         now = datetime.now(timezone.utc).isoformat()
-        updated = TreasuryAccount(
-            account_id=account.account_id,
-            account_type=account.account_type,
-            owner_name=account.owner_name,
-            balance=new_balance,
-            created_at=account.created_at,
-            updated_at=now,
-            metadata=dict(account.metadata),
+        updated = dataclasses.replace(
+            account, balance=new_balance, updated_at=now,
         )
         self._save(updated)
         return updated

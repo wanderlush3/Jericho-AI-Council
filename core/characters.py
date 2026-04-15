@@ -12,6 +12,7 @@ Storage: one JSON file per character in ``data/characters/``, named ``CH-XXXX.js
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
 from dataclasses import asdict, dataclass, field
@@ -375,25 +376,13 @@ class CharacterManager:
             raise CharacterValidationError(["Description must not be empty"])
 
         now = datetime.now(timezone.utc).isoformat()
-        updated = CharacterTemplate(
-            id=character.id,
-            name=fields.get("name", character.name),
-            description=fields.get("description", character.description),
-            author=character.author,
-            status=character.status,
-            backstory=fields.get("backstory", character.backstory),
-            traits=list(character.traits),
-            system_prompt=fields.get("system_prompt", character.system_prompt),
-            greeting=fields.get("greeting", character.greeting),
-            example_messages=list(fields.get("example_messages", character.example_messages)),
-            tags=list(fields.get("tags", character.tags)),
-            api_provider=fields.get("api_provider", character.api_provider),
-            model=fields.get("model", character.model),
-            version=character.version,
-            created_at=character.created_at,
-            updated_at=now,
-            metadata=dict(fields.get("metadata", character.metadata)),
-        )
+        overrides: dict[str, Any] = {"updated_at": now}
+        for key in ("name", "description", "backstory", "system_prompt",
+                    "greeting", "example_messages", "tags", "metadata",
+                    "api_provider", "model"):
+            if key in fields:
+                overrides[key] = fields[key]
+        updated = dataclasses.replace(character, **overrides)
         self._save(updated)
         return updated
 
@@ -420,24 +409,8 @@ class CharacterManager:
             raise CharacterLifecycleError(character_id, character.status, new_status)
 
         now = datetime.now(timezone.utc).isoformat()
-        updated = CharacterTemplate(
-            id=character.id,
-            name=character.name,
-            description=character.description,
-            author=character.author,
-            status=new_status,
-            backstory=character.backstory,
-            traits=list(character.traits),
-            system_prompt=character.system_prompt,
-            greeting=character.greeting,
-            example_messages=list(character.example_messages),
-            tags=list(character.tags),
-            api_provider=character.api_provider,
-            model=character.model,
-            version=character.version,
-            created_at=character.created_at,
-            updated_at=now,
-            metadata=dict(character.metadata),
+        updated = dataclasses.replace(
+            character, status=new_status, updated_at=now,
         )
         self._save(updated)
         return updated
@@ -462,24 +435,8 @@ class CharacterManager:
 
         now = datetime.now(timezone.utc).isoformat()
         new_traits = list(character.traits) + [trait]
-        updated = CharacterTemplate(
-            id=character.id,
-            name=character.name,
-            description=character.description,
-            author=character.author,
-            status=character.status,
-            backstory=character.backstory,
-            traits=new_traits,
-            system_prompt=character.system_prompt,
-            greeting=character.greeting,
-            example_messages=list(character.example_messages),
-            tags=list(character.tags),
-            api_provider=character.api_provider,
-            model=character.model,
-            version=character.version,
-            created_at=character.created_at,
-            updated_at=now,
-            metadata=dict(character.metadata),
+        updated = dataclasses.replace(
+            character, traits=new_traits, updated_at=now,
         )
         self._save(updated)
         return updated
@@ -505,24 +462,8 @@ class CharacterManager:
             )
 
         now = datetime.now(timezone.utc).isoformat()
-        updated = CharacterTemplate(
-            id=character.id,
-            name=character.name,
-            description=character.description,
-            author=character.author,
-            status=character.status,
-            backstory=character.backstory,
-            traits=new_traits,
-            system_prompt=character.system_prompt,
-            greeting=character.greeting,
-            example_messages=list(character.example_messages),
-            tags=list(character.tags),
-            api_provider=character.api_provider,
-            model=character.model,
-            version=character.version,
-            created_at=character.created_at,
-            updated_at=now,
-            metadata=dict(character.metadata),
+        updated = dataclasses.replace(
+            character, traits=new_traits, updated_at=now,
         )
         self._save(updated)
         return updated
@@ -556,25 +497,7 @@ class CharacterManager:
         character = self.get(character_id)
 
         now = datetime.now(timezone.utc).isoformat()
-        updated = CharacterTemplate(
-            id=character.id,
-            name=fields.get("name", character.name),
-            description=fields.get("description", character.description),
-            author=character.author,
-            status=character.status,
-            backstory=fields.get("backstory", character.backstory),
-            traits=list(character.traits),
-            system_prompt=fields.get("system_prompt", character.system_prompt),
-            greeting=fields.get("greeting", character.greeting),
-            example_messages=fields.get("example_messages", list(character.example_messages)),
-            tags=fields.get("tags", list(character.tags)),
-            api_provider=fields.get("api_provider", character.api_provider),
-            model=fields.get("model", character.model),
-            version=character.version,
-            created_at=character.created_at,
-            updated_at=now,
-            metadata=fields.get("metadata", dict(character.metadata)),
-        )
+        updated = dataclasses.replace(character, updated_at=now, **fields)
         self._save(updated)
         return updated
 
@@ -672,20 +595,10 @@ class CharacterManager:
         new_meta = dict(original.metadata)
         new_meta["previous_version"] = original.id
 
-        new_char = CharacterTemplate(
+        new_char = dataclasses.replace(
+            original,
             id=next_id,
-            name=original.name,
-            description=original.description,
-            author=original.author,
             status="draft",
-            backstory=original.backstory,
-            traits=list(original.traits),
-            system_prompt=original.system_prompt,
-            greeting=original.greeting,
-            example_messages=list(original.example_messages),
-            tags=list(original.tags),
-            api_provider=original.api_provider,
-            model=original.model,
             version=original.version + 1,
             created_at=now,
             updated_at=now,

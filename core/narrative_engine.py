@@ -11,10 +11,15 @@ randomised selection for variety.
 
 from __future__ import annotations
 
+import logging
+
 import random
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone, timedelta
 from typing import Any
+
+
+log = logging.getLogger(__name__)
 
 
 # --- Data Models -----------------------------------------------------------
@@ -225,7 +230,7 @@ class NarrativeEngine:
                         timestamp=ts, icon="📜",
                     ))
         except Exception:
-            pass  # graceful degradation
+            log.debug("core.narrative_engine: non-critical error", exc_info=True)
         return bulletins
 
     # -- Vote Bulletins ----------------------------------------------------
@@ -254,9 +259,7 @@ class NarrativeEngine:
                     proposal = pmgr.get(rec.proposal_id)
                     title = proposal.title
                 except Exception:
-                    pass
-
-                # Compute tally
+                    log.debug("core.narrative_engine: non-critical error", exc_info=True)
                 tally = engine._compute_tally(rec)
                 for_count = tally.votes_for
                 against_count = tally.votes_against
@@ -320,7 +323,7 @@ class NarrativeEngine:
                     timestamp=ts, icon=icon,
                 ))
         except Exception:
-            pass
+            log.debug("core.narrative_engine: non-critical error", exc_info=True)
         return bulletins
 
     # -- Character Bulletins -----------------------------------------------
@@ -359,7 +362,7 @@ class NarrativeEngine:
                     timestamp=ts, icon="🎭",
                 ))
         except Exception:
-            pass
+            log.debug("core.narrative_engine: non-critical error", exc_info=True)
         return bulletins
 
     # -- Item Bulletins ----------------------------------------------------
@@ -393,7 +396,7 @@ class NarrativeEngine:
                     timestamp=ts, icon="📦",
                 ))
         except Exception:
-            pass
+            log.debug("core.narrative_engine: non-critical error", exc_info=True)
         return bulletins
 
     # -- Location Bulletins ------------------------------------------------
@@ -427,7 +430,7 @@ class NarrativeEngine:
                     timestamp=ts, icon="🗺️",
                 ))
         except Exception:
-            pass
+            log.debug("core.narrative_engine: non-critical error", exc_info=True)
         return bulletins
 
     # -- Treasury Bulletins ------------------------------------------------
@@ -465,7 +468,7 @@ class NarrativeEngine:
                     timestamp=now, icon="🪙",
                 ))
         except Exception:
-            pass
+            log.debug("core.narrative_engine: non-critical error", exc_info=True)
         return bulletins
 
     # -- Helpers -----------------------------------------------------------

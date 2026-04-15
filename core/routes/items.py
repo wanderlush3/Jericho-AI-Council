@@ -4,11 +4,15 @@ Jericho — Items Routes
 
 from __future__ import annotations
 
+import logging
+
 
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -42,7 +46,7 @@ def api_items_list(
             elif images:
                 primary_url = f"/api/images/file/{images[0].id}"
         except Exception:
-            pass
+            log.debug("core.routes.items: non-critical error", exc_info=True)
         d["primary_image_url"] = primary_url
         out.append(d)
     return out

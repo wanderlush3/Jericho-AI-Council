@@ -12,6 +12,8 @@ and ``DiscussionManager`` and returns frozen data-class reports.
 
 from __future__ import annotations
 
+import logging
+
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -19,6 +21,9 @@ from typing import Any
 
 # ─── Exceptions ────────────────────────────────────────────────
 
+
+
+log = logging.getLogger(__name__)
 
 class AnalyticsError(Exception):
     """Base exception for analytics errors."""
@@ -522,7 +527,7 @@ class SessionAnalytics:
                     if tally.approved:
                         approved_count += 1
                 except Exception:
-                    pass  # vote record may not exist
+                    log.debug("core.analytics: non-critical error", exc_info=True)
 
         approval_rate = (
             round(approved_count / decided_count, 4)
@@ -683,8 +688,7 @@ class SessionAnalytics:
                         characters_by_status.get(c.status, 0) + 1
                     )
             except Exception:
-                pass
-
+                log.debug("core.analytics: non-critical error", exc_info=True)
         if self._locations is not None:
             try:
                 locs = self._locations.list_locations()
@@ -694,8 +698,7 @@ class SessionAnalytics:
                         locations_by_status.get(loc.status, 0) + 1
                     )
             except Exception:
-                pass
-
+                log.debug("core.analytics: non-critical error", exc_info=True)
         if self._items is not None:
             try:
                 items = self._items.list_items()
@@ -705,8 +708,7 @@ class SessionAnalytics:
                         items_by_status.get(item.status, 0) + 1
                     )
             except Exception:
-                pass
-
+                log.debug("core.analytics: non-critical error", exc_info=True)
         if self._stores is not None:
             try:
                 stores = self._stores.list_stores()
@@ -718,8 +720,7 @@ class SessionAnalytics:
                         getattr(store, "inventory", []) or []
                     )
             except Exception:
-                pass
-
+                log.debug("core.analytics: non-critical error", exc_info=True)
         return WorldBuildingStats(
             total_characters=total_characters,
             characters_by_status=characters_by_status,
@@ -750,16 +751,13 @@ class SessionAnalytics:
                     if acct.account_type == "government":
                         government_balance = acct.balance.to_dict()
             except Exception:
-                pass
-
+                log.debug("core.analytics: non-critical error", exc_info=True)
         if self._taxation is not None:
             try:
                 events = self._taxation.list_events()
                 total_tax_events = len(events)
             except Exception:
-                pass
-
-        # Convert total bronze to gold display string
+                log.debug("core.analytics: non-critical error", exc_info=True)
         from config.settings import OBELISK_CONVERSION_RATE
         rate = OBELISK_CONVERSION_RATE
         gold_equiv = total_bronze / (rate * rate) if rate > 0 else 0.0
@@ -797,8 +795,7 @@ class SessionAnalytics:
                             if scene.image_id:
                                 illustrated_scenes += 1
             except Exception:
-                pass
-
+                log.debug("core.analytics: non-critical error", exc_info=True)
         return ContentStats(
             total_stories=total_stories,
             stories_by_status=stories_by_status,
@@ -837,14 +834,12 @@ class SessionAnalytics:
                         for img in imgs:
                             total_storage_bytes += img.file_size
             except Exception:
-                pass
-
+                log.debug("core.analytics: non-critical error", exc_info=True)
         if self._templates is not None:
             try:
                 total_templates = len(self._templates.list_templates())
             except Exception:
-                pass
-
+                log.debug("core.analytics: non-critical error", exc_info=True)
         return ImageStats(
             total_images=total_images,
             images_by_entity_type=images_by_entity_type,
@@ -868,8 +863,7 @@ class SessionAnalytics:
             try:
                 member_names = self._registry.list_names()
             except Exception:
-                pass
-
+                log.debug("core.analytics: non-critical error", exc_info=True)
         if member_names:
             try:
                 from core.memory import AgentMemory, SharedMemory
@@ -880,8 +874,7 @@ class SessionAnalytics:
                 shared = SharedMemory()
                 total_shared_decisions = len(shared.read_decisions())
             except Exception:
-                pass
-
+                log.debug("core.analytics: non-critical error", exc_info=True)
         if self._laws is not None:
             try:
                 laws = self._laws.list_laws()
@@ -891,8 +884,7 @@ class SessionAnalytics:
                         laws_by_status.get(law.status, 0) + 1
                     )
             except Exception:
-                pass
-
+                log.debug("core.analytics: non-critical error", exc_info=True)
         return MemoryKnowledgeStats(
             total_beliefs=total_beliefs,
             total_session_events=total_session_events,

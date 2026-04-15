@@ -4,6 +4,8 @@ Jericho — Status Routes
 
 from __future__ import annotations
 
+import logging
+
 
 from typing import Any
 
@@ -21,6 +23,8 @@ from core.manager_cache import (
     get_voting_engine,
 )
 
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -40,6 +44,7 @@ def api_status() -> dict[str, Any]:
             "providers": providers,
         }
     except Exception:
+        log.debug("Status: failed to load members", exc_info=True)
         data["members"] = {"count": 0, "providers": {}}
 
     try:
@@ -56,6 +61,7 @@ def api_status() -> dict[str, Any]:
             "by_category": by_category,
         }
     except Exception:
+        log.debug("Status: failed to load proposals", exc_info=True)
         data["proposals"] = {"count": 0, "by_status": {}, "by_category": {}}
 
     try:
@@ -69,6 +75,7 @@ def api_status() -> dict[str, Any]:
             "by_status": vote_statuses,
         }
     except Exception:
+        log.debug("Status: failed to load votes", exc_info=True)
         data["votes"] = {"count": 0, "by_status": {}}
 
     try:
@@ -82,6 +89,7 @@ def api_status() -> dict[str, Any]:
             "by_status": char_statuses,
         }
     except Exception:
+        log.debug("Status: failed to load characters", exc_info=True)
         data["characters"] = {"count": 0, "by_status": {}}
 
     try:
@@ -95,6 +103,7 @@ def api_status() -> dict[str, Any]:
             "by_status": loc_statuses,
         }
     except Exception:
+        log.debug("Status: failed to load locations", exc_info=True)
         data["locations"] = {"count": 0, "by_status": {}}
 
     try:
@@ -108,6 +117,7 @@ def api_status() -> dict[str, Any]:
             "by_status": item_statuses,
         }
     except Exception:
+        log.debug("Status: failed to load items", exc_info=True)
         data["items"] = {"count": 0, "by_status": {}}
 
     try:
@@ -121,6 +131,7 @@ def api_status() -> dict[str, Any]:
             "by_status": law_statuses,
         }
     except Exception:
+        log.debug("Status: failed to load laws", exc_info=True)
         data["laws"] = {"count": 0, "by_status": {}}
 
     try:
@@ -139,6 +150,7 @@ def api_status() -> dict[str, Any]:
             "by_status": evo_statuses,
         }
     except Exception:
+        log.debug("Status: failed to load evolutions", exc_info=True)
         data["evolutions"] = {"count": 0, "by_status": {}}
 
     try:
@@ -161,6 +173,7 @@ def api_status() -> dict[str, Any]:
             "total_decisions": total_decisions,
         }
     except Exception:
+        log.debug("Status: failed to load memories", exc_info=True)
         data["memories"] = {
             "members_with_memories": 0,
             "total_beliefs": 0,
@@ -178,6 +191,7 @@ def api_status() -> dict[str, Any]:
             "government_balance": gov_balance,
         }
     except Exception:
+        log.debug("Status: failed to load treasury", exc_info=True)
         data["treasury"] = {"total_accounts": 0, "government_balance": {"gold": 0, "silver": 0, "bronze": 0}}
 
     try:
@@ -191,6 +205,7 @@ def api_status() -> dict[str, Any]:
             "by_status": store_statuses,
         }
     except Exception:
+        log.debug("Status: failed to load stores", exc_info=True)
         data["stores"] = {"count": 0, "by_status": {}}
 
     return data

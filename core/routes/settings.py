@@ -4,11 +4,15 @@ Jericho — Settings Routes
 
 from __future__ import annotations
 
+import logging
+
 
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -37,17 +41,17 @@ def api_analytics() -> dict[str, Any]:
         from core.image_manager import ImageManager
         image_manager = ImageManager()
     except Exception:
-        pass
+        log.debug("Analytics: ImageManager unavailable", exc_info=True)
     try:
         from core.comfyui_client import WorkflowTemplateManager
         template_manager = WorkflowTemplateManager()
     except Exception:
-        pass
+        log.debug("Analytics: WorkflowTemplateManager unavailable", exc_info=True)
     try:
         from core.taxation import TaxationManager
         taxation_manager = TaxationManager()
     except Exception:
-        pass
+        log.debug("Analytics: TaxationManager unavailable", exc_info=True)
 
     sa = SessionAnalytics(
         proposal_manager=get_proposal_manager(),
@@ -515,7 +519,7 @@ def api_comfyui_style_presets() -> list[dict[str, Any]]:
                 "created_at": rec.get("created_at", ""),
             })
     except Exception:
-        pass
+        log.debug("Style presets: failed to load custom presets", exc_info=True)
 
     return results
 

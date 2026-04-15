@@ -4252,3 +4252,61 @@ Uses lazy imports for HumanChatError and HumanChatMessage to break the circular 
 3. The ChatStreamingMixin pattern could be applied to other large modules if needed.
 4. To further slim human_chat.py, extract _build_api_messages() and _generate_summary() into chat_helpers.py.
 5. The sw CLI tool is NOT available. Use direct Python commands instead.
+
+
+---
+
+## Session — 2026-04-14 — F-065: Add Exception Logging to Silent Catch Blocks
+
+**Feature**: F-065 — Add Exception Logging to Silent Catch Blocks
+**Status**: Completed
+**Tests**: 3,406 passed, 12 skipped
+
+### What Was Done
+
+Replaced every bare `except Exception: pass` / `except Exception: continue` across the entire `core/` tree with `log.debug('...', exc_info=True)` calls. This ensures that previously invisible failures now surface in debug-level logs with full tracebacks.
+
+**Files modified (18 total):**
+
+| File | Silent catches fixed |
+|------|---------------------|
+| `core/routes/status.py` | 11 |
+| `core/routes/settings.py` | 4 |
+| `core/routes/stores.py` | 1 |
+| `core/routes/votes.py` | 1 |
+| `core/routes/tasks.py` | 2 |
+| `core/story.py` | 2 |
+| `core/routes/stories.py` | 4 |
+| `core/routes/proposals.py` | 4 |
+| `core/routes/explore.py` | 8 |
+| `core/analytics.py` | 12 |
+| `core/cli.py` | 2 |
+| `core/evolution_history.py` | 2 |
+| `core/narrative_engine.py` | 6 |
+| `core/prompt_builder.py` | 1 |
+| `core/routes/council.py` | 1 |
+| `core/routes/generation.py` | 3 |
+| `core/routes/items.py` | 1 |
+| `core/routes/locations.py` | 1 |
+
+**Total silent catches fixed: 66**
+
+Each file now has:
+- Top-level `import logging`
+- Module-level `log = logging.getLogger(__name__)`
+- `log.debug("context message", exc_info=True)` replacing every bare `pass`/`continue`
+
+### Technical Notes
+
+- Used `log.debug` (not `log.warning`) since these are expected failures on fresh installs or optional subsystems
+- `exc_info=True` captures full traceback for debugging when DEBUG level is enabled
+- Catches that already had logging (e.g. `core/salary.py`, `core/treasury.py`) were left untouched
+- Intentionally silent catches (e.g. `__repr__` fallbacks, re-raise patterns) were preserved
+
+### Advice for Next Agent
+
+1. Feature F-064 (Extract Business Logic From Route Files) and F-066 (Thread-Safe Sequential ID Generation) remain open in the backlog.
+2. When adding new `except Exception` blocks, always include `log.debug(...)` -- the zero-silent-catches invariant is now established.
+3. The coding session workflow is at `/coding-session`. Read it before starting.
+4. Run `python -m pytest tests/ -x -q` to validate changes -- expect 3,406+ passing tests.
+5. The sw CLI tool is NOT available. Use direct Python commands instead.

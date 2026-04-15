@@ -4,6 +4,8 @@ Jericho — Tasks Routes
 
 from __future__ import annotations
 
+import logging
+
 
 import json as json_module
 from typing import Any
@@ -11,6 +13,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 from starlette.responses import StreamingResponse
 
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -151,6 +155,7 @@ async def api_tasks_do_tasks() -> StreamingResponse:
                 all_chars = cmgr.list_characters(status="active")
                 char_map = {c.name.lower(): c for c in all_chars}
             except Exception:
+                log.debug("Tasks: character manager unavailable", exc_info=True)
                 char_map = {}
 
             # Council member names for lookup
@@ -300,7 +305,10 @@ async def api_tasks_do_tasks() -> StreamingResponse:
                                     )
                                 )
                             except Exception:
-                                pass  # non-fatal
+                                log.debug(
+                                    "Tasks: failed to persist memory for %s",
+                                    assignee_name, exc_info=True,
+                                )
 
                             # Stream this message
                             event_data = json_module.dumps({

@@ -27,6 +27,7 @@ Usage::
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -39,6 +40,8 @@ from config.settings import (
     STORY_STATUSES,
 )
 from core.utils import atomic_write
+
+log = logging.getLogger(__name__)
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -910,6 +913,7 @@ class StoryManager:
                         desc += f" ({char.backstory[:100]}...)"
                     char_descs.append(desc)
                 except Exception:
+                    log.debug("Story: character %s not found", char_id, exc_info=True)
                     char_descs.append(f"- {char_id} (unknown)")
             if char_descs:
                 parts.append("\n### Characters in this scene:")
@@ -923,7 +927,7 @@ class StoryManager:
                 if loc.description:
                     parts.append(loc.description)
             except Exception:
-                pass
+                log.debug("Story: location %s not found", scene.location_id, exc_info=True)
 
         # Mood directive
         if scene.mood:

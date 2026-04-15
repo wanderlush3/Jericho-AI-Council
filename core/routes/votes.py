@@ -4,11 +4,15 @@ Jericho — Votes Routes
 
 from __future__ import annotations
 
+import logging
+
 
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -27,6 +31,7 @@ def api_votes_list(
             tally = engine.tally(r.proposal_id)
             rec_dict["tally"] = tally.to_dict()
         except Exception:
+            log.debug("Votes: failed to tally %s", r.proposal_id, exc_info=True)
             rec_dict["tally"] = None
         result.append(rec_dict)
     return result

@@ -10,6 +10,8 @@ Entry point: ``jericho = "core.cli:cli"`` (configured in pyproject.toml).
 
 from __future__ import annotations
 
+import logging
+
 import sys
 from pathlib import Path
 
@@ -463,7 +465,7 @@ def history_timeline(character_id: str) -> None:
             voting_engine=_VE(),
         )
     except Exception:
-        pass  # proceed without evolution data
+        log.debug("core.cli: non-critical error", exc_info=True)
 
     hist = EvolutionHistory(character_manager=chars, evolution_manager=evo_mgr)
 
@@ -514,8 +516,7 @@ def history_list() -> None:
             voting_engine=_VE(),
         )
     except Exception:
-        pass
-
+        log.debug("core.cli: non-critical error", exc_info=True)
     hist = EvolutionHistory(character_manager=chars, evolution_manager=evo_mgr)
 
     try:
@@ -611,8 +612,7 @@ def report_generate(title: str | None, sections: str | None, output_path: str | 
     try:
         registry = CouncilRegistry().load()
     except Exception:
-        pass
-
+        log.debug("core.cli: non-critical error", exc_info=True)
     pmgr = ProposalManager()
     engine = VotingEngine()
     cmgr = CharacterManager()

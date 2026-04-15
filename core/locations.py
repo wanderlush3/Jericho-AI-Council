@@ -11,6 +11,7 @@ Storage: one JSON file per location in ``data/locations/``, named ``LOC-XXXX.jso
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
 from dataclasses import asdict, dataclass, field
@@ -353,22 +354,8 @@ class LocationManager:
             raise LocationLifecycleError(location_id, location.status, new_status)
 
         now = datetime.now(timezone.utc).isoformat()
-        updated = Location(
-            id=location.id,
-            name=location.name,
-            description=location.description,
-            author=location.author,
-            status=new_status,
-            lore=location.lore,
-            features=list(location.features),
-            tags=list(location.tags),
-            parent_location_id=location.parent_location_id,
-            coordinates=location.coordinates,
-            llm_injection=location.llm_injection,
-            version=location.version,
-            created_at=location.created_at,
-            updated_at=now,
-            metadata=dict(location.metadata),
+        updated = dataclasses.replace(
+            location, status=new_status, updated_at=now,
         )
         self._save(updated)
         return updated
@@ -393,22 +380,8 @@ class LocationManager:
 
         now = datetime.now(timezone.utc).isoformat()
         new_features = list(location.features) + [feature]
-        updated = Location(
-            id=location.id,
-            name=location.name,
-            description=location.description,
-            author=location.author,
-            status=location.status,
-            lore=location.lore,
-            features=new_features,
-            tags=list(location.tags),
-            parent_location_id=location.parent_location_id,
-            coordinates=location.coordinates,
-            llm_injection=location.llm_injection,
-            version=location.version,
-            created_at=location.created_at,
-            updated_at=now,
-            metadata=dict(location.metadata),
+        updated = dataclasses.replace(
+            location, features=new_features, updated_at=now,
         )
         self._save(updated)
         return updated
@@ -430,22 +403,8 @@ class LocationManager:
             )
 
         now = datetime.now(timezone.utc).isoformat()
-        updated = Location(
-            id=location.id,
-            name=location.name,
-            description=location.description,
-            author=location.author,
-            status=location.status,
-            lore=location.lore,
-            features=new_features,
-            tags=list(location.tags),
-            parent_location_id=location.parent_location_id,
-            coordinates=location.coordinates,
-            llm_injection=location.llm_injection,
-            version=location.version,
-            created_at=location.created_at,
-            updated_at=now,
-            metadata=dict(location.metadata),
+        updated = dataclasses.replace(
+            location, features=new_features, updated_at=now,
         )
         self._save(updated)
         return updated
@@ -488,23 +447,7 @@ class LocationManager:
         location = self.get(location_id)
 
         now = datetime.now(timezone.utc).isoformat()
-        updated = Location(
-            id=location.id,
-            name=fields.get("name", location.name),
-            description=fields.get("description", location.description),
-            author=location.author,
-            status=location.status,
-            lore=fields.get("lore", location.lore),
-            features=list(location.features),
-            tags=fields.get("tags", list(location.tags)),
-            parent_location_id=fields.get("parent_location_id", location.parent_location_id),
-            coordinates=fields.get("coordinates", location.coordinates),
-            llm_injection=fields.get("llm_injection", location.llm_injection),
-            version=location.version,
-            created_at=location.created_at,
-            updated_at=now,
-            metadata=fields.get("metadata", dict(location.metadata)),
-        )
+        updated = dataclasses.replace(location, updated_at=now, **fields)
         self._save(updated)
         return updated
 

@@ -29,6 +29,8 @@ Usage::
 
 from __future__ import annotations
 
+import logging
+
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -42,6 +44,9 @@ from config.settings import (
 
 # ─── Exceptions ────────────────────────────────────────────────
 
+
+
+log = logging.getLogger(__name__)
 
 class PromptError(Exception):
     """Base exception for prompt generation errors."""
@@ -378,7 +383,7 @@ def get_style_preset(name: str) -> StylePreset | None:
             if preset.name.lower() == name.lower():
                 return preset
     except Exception:
-        pass  # Fall through to builtins
+        log.debug("core.prompt_builder: non-critical error", exc_info=True)
 
     # Try builtin key
     if name in DEFAULT_STYLE_PRESETS:
@@ -404,8 +409,7 @@ def list_style_presets() -> list[StylePreset]:
         for preset_data in mgr.list_presets():
             presets[preset_data["key"]] = preset_data["preset"]
     except Exception:
-        pass
-
+        log.debug("core.prompt_builder: non-critical error", exc_info=True)
     return sorted(presets.values(), key=lambda p: p.name.lower())
 
 
@@ -776,7 +780,7 @@ def build_entity_context(
             return "\n".join(lines)
 
     except Exception:
-        pass  # Entity not found or manager error — return empty
+        log.debug("core.prompt_builder: non-critical error", exc_info=True)
 
     return ""
 

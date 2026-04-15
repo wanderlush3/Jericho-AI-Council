@@ -4,6 +4,8 @@ Jericho — Generation Routes
 
 from __future__ import annotations
 
+import logging
+
 
 import json as json_module
 from typing import Any
@@ -20,6 +22,8 @@ from core.manager_cache import (
     get_store_manager,
 )
 
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -96,7 +100,7 @@ def _explore_primary_image(imgr: Any, entity_type: str, entity_id: str) -> str:
         elif images:
             return f"/api/images/file/{images[0].id}"
     except Exception:
-        pass
+        log.debug("core.routes.generation: non-critical error", exc_info=True)
     return ""
 
 @router.post("/api/generate/prompts")
@@ -453,9 +457,7 @@ def api_participants_available() -> list[dict[str, Any]]:
                 "avatar_url": avatar_url,
             })
     except Exception:
-        pass
-
-    # Active characters
+        log.debug("core.routes.generation: non-critical error", exc_info=True)
     try:
         cmgr = get_character_manager()
         # Single directory scan for avatar existence (Category 5)
@@ -475,6 +477,5 @@ def api_participants_available() -> list[dict[str, Any]]:
                 "avatar_url": avatar_url,
             })
     except Exception:
-        pass
-
+        log.debug("core.routes.generation: non-critical error", exc_info=True)
     return result

@@ -19,6 +19,7 @@ Storage:
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -413,19 +414,8 @@ class SessionOrchestrator:
         record = self._transition(record, "briefing")
 
         # Update started_at timestamp
-        record = SessionRecord(
-            session_id=record.session_id,
-            title=record.title,
-            phase=record.phase,
-            activity_type=record.activity_type,
-            agenda=record.agenda,
-            participants=list(record.participants),
-            messages=list(record.messages),
-            summary=record.summary,
-            created_at=record.created_at,
-            started_at=datetime.now(timezone.utc).isoformat(),
-            closed_at=record.closed_at,
-            metadata=dict(record.metadata),
+        record = dataclasses.replace(
+            record, started_at=datetime.now(timezone.utc).isoformat(),
         )
         self._save(record)
         return record
@@ -763,19 +753,10 @@ class SessionOrchestrator:
         # Set the summary and closed_at timestamp
         now = datetime.now(timezone.utc).isoformat()
         final_summary = summary or self._generate_summary(record)
-        record = SessionRecord(
-            session_id=record.session_id,
-            title=record.title,
-            phase=record.phase,
-            activity_type=record.activity_type,
-            agenda=record.agenda,
-            participants=list(record.participants),
-            messages=list(record.messages),
+        record = dataclasses.replace(
+            record,
             summary=final_summary,
-            created_at=record.created_at,
-            started_at=record.started_at,
             closed_at=now,
-            metadata=dict(record.metadata),
         )
         self._save(record)
 
@@ -893,20 +874,7 @@ class SessionOrchestrator:
                 f"Cannot transition from '{current}' to '{target}' "
                 f"(allowed: {allowed or 'none'})"
             )
-        return SessionRecord(
-            session_id=record.session_id,
-            title=record.title,
-            phase=target,
-            activity_type=record.activity_type,
-            agenda=record.agenda,
-            participants=list(record.participants),
-            messages=list(record.messages),
-            summary=record.summary,
-            created_at=record.created_at,
-            started_at=record.started_at,
-            closed_at=record.closed_at,
-            metadata=dict(record.metadata),
-        )
+        return dataclasses.replace(record, phase=target)
 
     def _append_messages(
         self,
@@ -915,20 +883,7 @@ class SessionOrchestrator:
     ) -> SessionRecord:
         """Return a new SessionRecord with messages appended."""
         all_messages = list(record.messages) + new_messages
-        return SessionRecord(
-            session_id=record.session_id,
-            title=record.title,
-            phase=record.phase,
-            activity_type=record.activity_type,
-            agenda=record.agenda,
-            participants=list(record.participants),
-            messages=all_messages,
-            summary=record.summary,
-            created_at=record.created_at,
-            started_at=record.started_at,
-            closed_at=record.closed_at,
-            metadata=dict(record.metadata),
-        )
+        return dataclasses.replace(record, messages=all_messages)
 
     def _generate_summary(self, record: SessionRecord) -> str:
         """Generate a default summary from session data."""

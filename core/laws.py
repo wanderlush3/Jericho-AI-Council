@@ -13,6 +13,7 @@ Storage: one JSON file per law in ``data/laws/``, named ``LAW-XXXX.json``.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
 from dataclasses import asdict, dataclass, field
@@ -275,18 +276,8 @@ class LawManager:
             raise LawLifecycleError(law_id, law.status, new_status)
 
         now = datetime.now(timezone.utc).isoformat()
-        updated = Law(
-            id=law.id,
-            title=law.title,
-            description=law.description,
-            author=law.author,
-            status=new_status,
-            body=law.body,
-            source_proposal_id=law.source_proposal_id,
-            tags=list(law.tags),
-            created_at=law.created_at,
-            updated_at=now,
-            metadata=dict(law.metadata),
+        updated = dataclasses.replace(
+            law, status=new_status, updated_at=now,
         )
         self._save(updated)
         return updated
@@ -317,19 +308,7 @@ class LawManager:
         law = self.get(law_id)
 
         now = datetime.now(timezone.utc).isoformat()
-        updated = Law(
-            id=law.id,
-            title=fields.get("title", law.title),
-            description=fields.get("description", law.description),
-            author=law.author,
-            status=law.status,
-            body=fields.get("body", law.body),
-            source_proposal_id=law.source_proposal_id,
-            tags=fields.get("tags", list(law.tags)),
-            created_at=law.created_at,
-            updated_at=now,
-            metadata=fields.get("metadata", dict(law.metadata)),
-        )
+        updated = dataclasses.replace(law, updated_at=now, **fields)
         self._save(updated)
         return updated
 

@@ -10,6 +10,7 @@ Storage: one JSON file per vote record in ``data/votes/``, named
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -291,17 +292,7 @@ class VotingEngine:
             )
 
         new_votes = list(record.votes) + [vote]
-        updated = VoteRecord(
-            proposal_id=record.proposal_id,
-            status=record.status,
-            votes=new_votes,
-            vetoed=record.vetoed,
-            veto_reason=record.veto_reason,
-            veto_timestamp=record.veto_timestamp,
-            opened_at=record.opened_at,
-            closed_at=record.closed_at,
-            metadata=dict(record.metadata),
-        )
+        updated = dataclasses.replace(record, votes=new_votes)
         self._save(updated)
         return updated
 
@@ -367,16 +358,8 @@ class VotingEngine:
             )
 
         now = datetime.now(timezone.utc).isoformat()
-        updated = VoteRecord(
-            proposal_id=record.proposal_id,
-            status="closed",
-            votes=list(record.votes),
-            vetoed=record.vetoed,
-            veto_reason=record.veto_reason,
-            veto_timestamp=record.veto_timestamp,
-            opened_at=record.opened_at,
-            closed_at=now,
-            metadata=dict(record.metadata),
+        updated = dataclasses.replace(
+            record, status="closed", closed_at=now,
         )
         self._save(updated)
         return updated
@@ -402,16 +385,8 @@ class VotingEngine:
             )
 
         now = datetime.now(timezone.utc).isoformat()
-        updated = VoteRecord(
-            proposal_id=record.proposal_id,
-            status=record.status,
-            votes=list(record.votes),
-            vetoed=True,
-            veto_reason=reason,
-            veto_timestamp=now,
-            opened_at=record.opened_at,
-            closed_at=record.closed_at,
-            metadata=dict(record.metadata),
+        updated = dataclasses.replace(
+            record, vetoed=True, veto_reason=reason, veto_timestamp=now,
         )
         self._save(updated)
         return updated
@@ -431,16 +406,8 @@ class VotingEngine:
                 proposal_id, "Proposal is not vetoed"
             )
 
-        updated = VoteRecord(
-            proposal_id=record.proposal_id,
-            status=record.status,
-            votes=list(record.votes),
-            vetoed=False,
-            veto_reason="",
-            veto_timestamp="",
-            opened_at=record.opened_at,
-            closed_at=record.closed_at,
-            metadata=dict(record.metadata),
+        updated = dataclasses.replace(
+            record, vetoed=False, veto_reason="", veto_timestamp="",
         )
         self._save(updated)
         return updated

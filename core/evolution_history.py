@@ -14,11 +14,16 @@ Data sources (all read-only):
 
 from __future__ import annotations
 
+import logging
+
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from core.characters import CharacterManager, CharacterTemplate, Trait
 from core.character_evolution import CharacterEvolution, EvolutionRecord
+
+
+log = logging.getLogger(__name__)
 
 
 # ─── Data Models ───────────────────────────────────────────────
@@ -292,7 +297,8 @@ class EvolutionHistory:
                 snap = self.get_snapshot(cid)
                 snapshots.append(snap)
             except Exception:
-                continue  # skip missing intermediate versions
+                log.debug("core.evolution_history: error processing record", exc_info=True)
+                continue
 
         # Collect evolution events
         events: list[EvolutionEvent] = []
@@ -341,8 +347,8 @@ class EvolutionHistory:
                 timeline = self.build_timeline(head.id)
                 timelines.append(timeline)
             except Exception:
+                log.debug("core.evolution_history: error processing record", exc_info=True)
                 continue
-
         timelines.sort(key=lambda t: t.character_name.lower())
         return timelines
 
