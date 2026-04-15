@@ -4199,3 +4199,56 @@ Added a tiered injection profile system that lets each route choose which contex
 3. The `profile` parameter is fully backward compatible — passing `None` or omitting it produces identical output to before F-061.
 4. To add a new profile, add it to the `InjectionProfile` enum and `PROFILE_CONFIGS` dict in `core/injection_profiles.py`.
 5. The sw CLI tool is NOT available. Use direct Python commands instead.
+
+
+---
+
+## Session — 2026-04-14 — F-063: Split human_chat.py Into Focused Modules
+
+**Feature**: F-063 — Split human_chat.py Into Focused Modules
+**Status**: Completed
+**Tests**: 3406 passed (+0 new — pure refactor), 12 skipped, 0 failures
+
+### What was built
+Split core/human_chat.py (1,543 lines) into three focused modules:
+
+#### core/chat_helpers.py — 156 lines (NEW)
+Pure utility functions extracted from HumanChat class and module scope:
+- character_to_member(char) — converts a CharacterTemplate to a CouncilMember with rich system prompt assembly (backstory, traits, greeting, examples)
+- character_memory_name(char_name) — derives memory directory name (
+ame_memory)
+- uild_human_chat_prompt() — full prompt assembly for human-to-agent conversations, including F-058 rolling summary support, multi-member context, and user description
+
+Uses list[Any] for the messages parameter to avoid circular imports with human_chat.py.
+
+#### core/chat_streaming.py — 331 lines (NEW)
+ChatStreamingMixin class that HumanChat inherits from, providing:
+- get_agent_response_streaming() — async generator yielding (member_name, ChatResponse, record) per respondent, with SSE-facing absent message handling (F-052)
+- continue_conversation_streaming() — async generator for AI-to-AI rounds with auto-pause
+
+Uses lazy imports for HumanChatError and HumanChatMessage to break the circular dependency chain.
+
+#### core/human_chat.py — 1,154 lines (slimmed from 1,543)
+- Removed _build_human_chat_prompt() function (moved to chat_helpers)
+- _character_to_member() and _character_memory_name() now delegate to chat_helpers functions
+- Removed get_agent_response_streaming() and continue_conversation_streaming() (inherited from ChatStreamingMixin)
+- Added _build_human_chat_prompt = build_human_chat_prompt re-export for backward compatibility
+- HumanChat now inherits from ChatStreamingMixin
+
+### Backward compatibility
+- rom core.human_chat import _build_human_chat_prompt — still works via re-export alias
+- rom core.human_chat import HumanChat — still works, now includes mixin methods
+- All exception and data model classes — remain in human_chat.py
+- All lazy imports in route files (core/routes/chat.py, explore.py, stories.py) — unchanged
+
+### Technical Debt
+- human_chat.py is 1,154 lines, not the ~800 target from the feature description. The remaining bulk is the non-streaming get_agent_response() and continue_conversation() methods, which share nearly identical logic with their streaming counterparts. These could be further refactored to share a common core iterator, but that would change internal control flow.
+- The static method delegates (_character_to_member, _character_memory_name) on HumanChat class remain as thin wrappers for existing internal call sites.
+- chat_helpers.py uses list[Any] for the messages parameter of uild_human_chat_prompt() to avoid circular imports.
+
+### Advice for Next Agent
+1. Next eligible features: **F-064** (Extract Business Logic From Route Files — depends on F-063), **F-065** (Exception Logging), **F-066** (Thread-Safe ID Generation). F-064 is now unblocked.
+2. The chat_helpers.py functions are independently importable: rom core.chat_helpers import character_to_member, build_human_chat_prompt.
+3. The ChatStreamingMixin pattern could be applied to other large modules if needed.
+4. To further slim human_chat.py, extract _build_api_messages() and _generate_summary() into chat_helpers.py.
+5. The sw CLI tool is NOT available. Use direct Python commands instead.

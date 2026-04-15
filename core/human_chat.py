@@ -1,5 +1,5 @@
 """
-Jericho — Human-to-Agent Chat (F-009)
+Jericho — Human-to-Agent Chat (F-009, refactored F-063)
 
 Direct conversation between the human operator and individual council
 members with automatic memory recording.  Unlike agent-to-agent chat
@@ -8,13 +8,19 @@ members with automatic memory recording.  Unlike agent-to-agent chat
 Storage:
     Each chat gets a JSON file in ``data/conversations/``
     named ``H-<chat_id>.json``.
+
+Extracted modules (F-063):
+    - ``core.chat_helpers`` — pure helpers: character_to_member,
+      character_memory_name, build_human_chat_prompt
+    - ``core.chat_streaming`` — ChatStreamingMixin with
+      get_agent_response_streaming, continue_conversation_streaming
 """
 
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
-from collections.abc import AsyncIterator
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,11 +29,21 @@ from typing import Any
 from config.settings import CONVERSATIONS_DIR, MULTI_AI_RESPONSE_DELAY
 from core.api_client import APIClient, ChatMessage, ChatResponse
 from core.characters import CharacterManager, CharacterTemplate
+from core.chat_helpers import (
+    build_human_chat_prompt,
+    character_memory_name,
+    character_to_member,
+)
+from core.chat_streaming import ChatStreamingMixin
 from core.conversation_summary import ConversationSummarizer, RollingSummaryResult
 from core.memory import AgentMemory, MemoryEntry, SharedMemory
 from core.memory_influence import MemoryInfluence
 from core.registry import CouncilMember, CouncilRegistry
 from core.utils import atomic_write
+
+# ─── Backward-compatible re-exports ───────────────────────────
+# Tests and other modules import ``_build_human_chat_prompt`` from here.
+_build_human_chat_prompt = build_human_chat_prompt
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -179,94 +195,20 @@ class HumanChatRecord:
         )
 
 
-# ─── Helpers ───────────────────────────────────────────────────
-
-
-
-
-def _build_human_chat_prompt(
-    member: CouncilMember,
-    messages: list[HumanChatMessage],
-    topic: str,
-    memory_context_text: str = "",
-    council_members: list[str] | None = None,
-    user_description: str = "",
-    character_names: list[str] | None = None,
-    user_name: str = "",
-    summary_result: RollingSummaryResult | None = None,
-) -> str:
-    """Build a prompt for the council member to respond to the human.
-
-    When *summary_result* is provided (F-058), the prompt includes a
-    compressed summary of earlier messages followed by the most recent
-    raw messages, instead of the raw last-10 window.
-    """
-    parts = ["## Direct Conversation with Human Operator"]
-
-    if user_description or user_name:
-        label = "About the Human Operator"
-        if user_name:
-            label += f" ({user_name})"
-        desc = user_description or "No further details provided."
-        parts.append(f"\n**{label}:** {desc}")
-
-    if topic:
-        parts.append(f"**Topic:** {topic}")
-
-    if messages:
-        parts.append("\n### Conversation So Far")
-        if summary_result is not None:
-            # F-058: inject rolling summary + recent messages
-            parts.append(
-                f"[Summary of prior conversation: "
-                f"{summary_result.summary_text}]"
-            )
-            for msg in summary_result.recent_messages:
-                label = "Human" if msg.role == "human" else msg.speaker
-                parts.append(f"**{label}:** {msg.content}")
-        else:
-            for msg in messages[-10:]:  # limit context window
-                label = "Human" if msg.role == "human" else msg.speaker
-                parts.append(f"**{label}:** {msg.content}")
-
-    if memory_context_text:
-        parts.append(f"\n{memory_context_text}")
-
-    # Multi-member context — combine council members and characters
-    all_participants = list(council_members or []) + list(character_names or [])
-    other_members = [
-        m for m in all_participants
-        if m.lower() != member.name.lower()
-    ]
-
-    parts.append(f"\n---\n")
-    if other_members:
-        others_str = ", ".join(f"**{m}**" for m in other_members)
-        parts.append(
-            f"You are **{member.name}** ({member.role}). You are in a "
-            f"group conversation with the human operator and {others_str}. "
-            f"Read everyone's messages carefully and respond to the latest "
-            f"points raised. Be concise but substantive."
-        )
-    else:
-        parts.append(
-            f"You are **{member.name}** ({member.role}). You are speaking "
-            f"directly with the human operator of the Jericho AI Council. "
-            f"Respond to their latest message. Be concise but substantive."
-        )
-    return "\n".join(parts)
-
-
 # ─── Human Chat ────────────────────────────────────────────────
 
 
-class HumanChat:
+class HumanChat(ChatStreamingMixin):
     """
     Direct human-to-agent conversations.
 
     Provides lightweight, one-on-one conversations between the human
     operator and a single council member.  All agent responses are
     recorded to per-agent memory automatically.
+
+    Streaming methods (``get_agent_response_streaming``,
+    ``continue_conversation_streaming``) are provided by
+    ``ChatStreamingMixin``.
 
     Usage::
 
@@ -307,59 +249,17 @@ class HumanChat:
     def registry(self) -> CouncilRegistry:
         return self._registry
 
-    # ── Character Helpers ─────────────────────────────────────
+    # ── Character Helpers (delegates to chat_helpers) ─────────
 
     @staticmethod
     def _character_to_member(char: CharacterTemplate) -> CouncilMember:
-        """Convert a CharacterTemplate to a CouncilMember for API calls.
-
-        Uses the character's own api_provider/model (model defaults to
-        'Default' which makes APIClient fall back to the Settings default).
-        The character's traits, backstory, and personality fields are woven
-        into the system prompt so the LLM receives the full character context.
-        """
-        # Build a rich system prompt from all character fields
-        prompt_parts: list[str] = []
-        if char.system_prompt:
-            prompt_parts.append(char.system_prompt)
-
-        if char.backstory:
-            prompt_parts.append(f"\n## Backstory\n{char.backstory}")
-
-        if char.traits:
-            traits_text = "\n".join(
-                f"- **{t.name}** ({t.trait_type}, intensity {t.intensity}): {t.description}"
-                for t in char.traits
-            )
-            prompt_parts.append(f"\n## Character Traits\n{traits_text}")
-
-        if char.greeting:
-            prompt_parts.append(
-                f"\n## Greeting\nWhen starting a conversation, greet with: {char.greeting}"
-            )
-
-        if char.example_messages:
-            examples = "\n".join(f"- {ex}" for ex in char.example_messages)
-            prompt_parts.append(f"\n## Example Messages\n{examples}")
-
-        full_prompt = "\n".join(prompt_parts) if prompt_parts else f"You are {char.name}."
-
-        return CouncilMember(
-            name=char.name,
-            role=char.description,
-            description=char.description,
-            personality={},
-            api_provider=char.api_provider,
-            model=char.model,
-            vote_weight=1.0,
-            specialties=list(char.tags),
-            system_prompt=full_prompt,
-        )
+        """Convert a CharacterTemplate to a CouncilMember for API calls."""
+        return character_to_member(char)
 
     @staticmethod
     def _character_memory_name(char_name: str) -> str:
         """Return the memory directory name for a character."""
-        return f"{char_name.strip().lower().replace(' ', '_')}_memory"
+        return character_memory_name(char_name)
 
     @staticmethod
     def _should_skip_world_entities(record: HumanChatRecord) -> bool:
@@ -439,7 +339,7 @@ class HumanChat:
             initial_characters = [character_id.strip()]
 
             # Create the character memory directory
-            mem_name = self._character_memory_name(char.name)
+            mem_name = character_memory_name(char.name)
             AgentMemory(mem_name)  # Creates the directory
 
             # Use character name as member_name if no council member provided
@@ -548,8 +448,8 @@ class HumanChat:
         for char_id in record.characters:
             char = self._load_character(char_id)
             if char is not None:
-                member = self._character_to_member(char)
-                mem_name = self._character_memory_name(char.name)
+                member = character_to_member(char)
+                mem_name = character_memory_name(char.name)
                 respondents.append((member, mem_name))
 
         # F-058: get rolling summary if available
@@ -575,7 +475,7 @@ class HumanChat:
                 )
                 memory_text = ctx.formatted_text
 
-            prompt = _build_human_chat_prompt(
+            prompt = build_human_chat_prompt(
                 member, record.messages, effective_topic, memory_text,
                 council_members=list(record.council_members),
                 user_description=_user_desc,
@@ -758,7 +658,7 @@ class HumanChat:
             )
 
         # Create character memory directory
-        mem_name = self._character_memory_name(char.name)
+        mem_name = character_memory_name(char.name)
         AgentMemory(mem_name)
 
         new_characters = list(record.characters) + [character_id]
@@ -878,8 +778,8 @@ class HumanChat:
         for char_id in record.characters:
             char = self._load_character(char_id)
             if char is not None:
-                member = self._character_to_member(char)
-                mem_name = self._character_memory_name(char.name)
+                member = character_to_member(char)
+                mem_name = character_memory_name(char.name)
                 respondents.append((member, mem_name))
 
         if len(respondents) < 2:
@@ -922,7 +822,7 @@ class HumanChat:
                 )
                 memory_text = ctx.formatted_text
 
-            prompt = _build_human_chat_prompt(
+            prompt = build_human_chat_prompt(
                 member, record.messages, effective_topic, memory_text,
                 council_members=list(record.council_members),
                 user_description=_user_desc,
@@ -988,293 +888,6 @@ class HumanChat:
         record = self._set_paused(record, True)
         self._save(record)
         return record, responses
-
-    async def get_agent_response_streaming(
-        self,
-        chat_id: str,
-    ) -> AsyncIterator[tuple[str, ChatResponse, HumanChatRecord]]:
-        """
-        Stream council member responses one at a time.
-
-        Same logic as ``get_agent_response`` but yields after each
-        member responds so the caller can forward results immediately
-        (e.g. via SSE).
-
-        Yields:
-            ``(member_name, ChatResponse, updated_record)`` per member.
-        """
-        record = self.get(chat_id)
-
-        if record.closed_at:
-            raise HumanChatError(f"Chat '{chat_id}' is closed")
-
-        if record.paused:
-            raise HumanChatError(f"Chat '{chat_id}' is paused")
-
-        members_to_respond = list(record.council_members)
-        if not members_to_respond and not record.characters:
-            members_to_respond = [record.member_name]
-
-        effective_topic = record.topic
-
-        # Load user profile for prompt context
-        from core.api_keys import APIKeyManager
-        _mgr = APIKeyManager()
-        _user_desc = _mgr.get_user_description()
-        _user_name = _mgr.get_user_name()
-
-        # Resolve character names for prompt context
-        char_names = self._resolve_character_names(record)
-
-        # Build response queue: council members first, then characters
-        respondents: list[tuple[CouncilMember, str]] = []  # (member, memory_name)
-
-        for member_name in members_to_respond:
-            if member_name not in self._registry:
-                continue  # skip non-registry names (e.g. characters)
-            member = self._registry.get(member_name)
-            respondents.append((member, member.name))
-
-        for char_id in record.characters:
-            char = self._load_character(char_id)
-            if char is not None:
-                member = self._character_to_member(char)
-                mem_name = self._character_memory_name(char.name)
-                respondents.append((member, mem_name))
-
-        # F-058: get rolling summary if available
-        summary_result = None
-        if self._summarizer is not None:
-            try:
-                summary_result = await self._summarizer.get_summary(
-                    chat_id, record.messages,
-                )
-            except Exception:
-                summary_result = None  # graceful fallback
-
-        for idx, (member, mem_name) in enumerate(respondents):
-            memory_text = ""
-            if self._memory_influence is not None:
-                keywords = MemoryInfluence.extract_keywords(
-                    effective_topic or record.title
-                )
-                ctx = self._memory_influence.build_context(
-                    member.name, keywords,
-                    skip_world_entities=self._should_skip_world_entities(record),
-                )
-                memory_text = ctx.formatted_text
-
-            prompt = _build_human_chat_prompt(
-                member, record.messages, effective_topic, memory_text,
-                council_members=list(record.council_members),
-                user_description=_user_desc,
-                character_names=char_names,
-                user_name=_user_name,
-                summary_result=summary_result,
-            )
-            api_messages = self._build_api_messages(
-                record, member, prompt, summary_result=summary_result,
-            )
-
-            try:
-                response = await self._api_client.chat(member, api_messages)
-                content_text = response.content or ""
-
-                msg = HumanChatMessage.create(
-                    role="agent",
-                    speaker=member.name,
-                    content=content_text,
-                    metadata={"model": response.model, "provider": response.provider},
-                )
-                record = self._append_messages(record, [msg])
-
-                agent_mem = AgentMemory(mem_name)
-                agent_mem.append_session_event(
-                    MemoryEntry.create(
-                        session_id=chat_id,
-                        event_type="human_chat",
-                        content=f"Spoke with human operator about "
-                                f"'{effective_topic or record.title}': "
-                                f"{content_text[:200]}",
-                        source="human_chat",
-                    )
-                )
-            except Exception:
-                # API call failed — record an absent message and continue
-                content_text = "[absent] Was unavailable to respond at this time. [/absent]"
-                msg = HumanChatMessage.create(
-                    role="agent",
-                    speaker=member.name,
-                    content=content_text,
-                    metadata={"absent": True},
-                )
-                record = self._append_messages(record, [msg])
-                # Build a stub response for the SSE layer
-                response = ChatResponse(
-                    content=content_text,
-                    model="",
-                    provider="",
-                )
-
-            self._save(record)
-            yield member.name, response, record
-
-            # Inter-AI pacing delay (skip after the last respondent)
-            if idx < len(respondents) - 1:
-                await asyncio.sleep(MULTI_AI_RESPONSE_DELAY)
-
-        # Auto-pause when multiple participants are active
-        if len(respondents) > 1:
-            record = self._set_paused(record, True)
-            self._save(record)
-
-
-    async def continue_conversation_streaming(
-        self,
-        chat_id: str,
-    ) -> AsyncIterator[tuple[str, ChatResponse, HumanChatRecord]]:
-        """
-        Stream one round of AI-to-AI conversation responses.
-
-        Same logic as ``continue_conversation`` but yields after each
-        member responds.
-
-        Yields:
-            ``(member_name, ChatResponse, updated_record)`` per member.
-        """
-        record = self.get(chat_id)
-
-        if record.closed_at:
-            raise HumanChatError(f"Chat '{chat_id}' is closed")
-
-        members_to_respond = list(record.council_members)
-        if not members_to_respond and not record.characters:
-            members_to_respond = [record.member_name]
-
-        # Resolve character names for prompt context
-        char_names = self._resolve_character_names(record)
-
-        # Build response queue: council members first, then characters
-        respondents: list[tuple[CouncilMember, str]] = []  # (member, memory_name)
-
-        for member_name in members_to_respond:
-            if member_name not in self._registry:
-                continue  # skip non-registry names (e.g. characters)
-            member = self._registry.get(member_name)
-            respondents.append((member, member.name))
-
-        for char_id in record.characters:
-            char = self._load_character(char_id)
-            if char is not None:
-                member = self._character_to_member(char)
-                mem_name = self._character_memory_name(char.name)
-                respondents.append((member, mem_name))
-
-        if len(respondents) < 2:
-            raise HumanChatError(
-                "continue_conversation requires 2+ participants"
-            )
-
-        # Auto-resume if paused
-        if record.paused:
-            record = self._set_paused(record, False)
-            self._save(record)
-
-        effective_topic = record.topic
-
-        # Load user profile for prompt context
-        from core.api_keys import APIKeyManager
-        _mgr = APIKeyManager()
-        _user_desc = _mgr.get_user_description()
-        _user_name = _mgr.get_user_name()
-
-        # F-058: get rolling summary if available
-        summary_result = None
-        if self._summarizer is not None:
-            try:
-                summary_result = await self._summarizer.get_summary(
-                    chat_id, record.messages,
-                )
-            except Exception:
-                summary_result = None  # graceful fallback
-
-        for idx, (member, mem_name) in enumerate(respondents):
-            memory_text = ""
-            if self._memory_influence is not None:
-                keywords = MemoryInfluence.extract_keywords(
-                    effective_topic or record.title
-                )
-                ctx = self._memory_influence.build_context(
-                    member.name, keywords,
-                    skip_world_entities=self._should_skip_world_entities(record),
-                )
-                memory_text = ctx.formatted_text
-
-            prompt = _build_human_chat_prompt(
-                member, record.messages, effective_topic, memory_text,
-                council_members=list(record.council_members),
-                user_description=_user_desc,
-                character_names=char_names,
-                user_name=_user_name,
-                summary_result=summary_result,
-            )
-            api_messages = self._build_api_messages(
-                record, member, prompt, summary_result=summary_result,
-            )
-
-            try:
-                response = await self._api_client.chat(member, api_messages)
-                content_text = response.content or ""
-
-                msg = HumanChatMessage.create(
-                    role="agent",
-                    speaker=member.name,
-                    content=content_text,
-                    metadata={
-                        "model": response.model,
-                        "provider": response.provider,
-                    },
-                )
-                record = self._append_messages(record, [msg])
-
-                agent_mem = AgentMemory(mem_name)
-                agent_mem.append_session_event(
-                    MemoryEntry.create(
-                        session_id=chat_id,
-                        event_type="human_chat",
-                        content=f"Spoke in group conversation about "
-                                f"'{effective_topic or record.title}': "
-                                f"{content_text[:200]}",
-                        source="human_chat",
-                    )
-                )
-            except Exception:
-                # API call failed — record an absent message and continue
-                content_text = "[absent] Was unavailable to respond at this time. [/absent]"
-                msg = HumanChatMessage.create(
-                    role="agent",
-                    speaker=member.name,
-                    content=content_text,
-                    metadata={"absent": True},
-                )
-                record = self._append_messages(record, [msg])
-                # Build a stub response for the SSE layer
-                response = ChatResponse(
-                    content=content_text,
-                    model="",
-                    provider="",
-                )
-
-            self._save(record)
-            yield member.name, response, record
-
-            # Inter-AI pacing delay (skip after the last respondent)
-            if idx < len(respondents) - 1:
-                await asyncio.sleep(MULTI_AI_RESPONSE_DELAY)
-
-        # Auto-pause after round
-        record = self._set_paused(record, True)
-        self._save(record)
 
     def close_chat(
         self,
@@ -1428,22 +1041,7 @@ class HumanChat:
         **overrides: Any,
     ) -> HumanChatRecord:
         """Return a new HumanChatRecord with specified fields replaced."""
-        defaults = {
-            "chat_id": record.chat_id,
-            "title": record.title,
-            "member_name": record.member_name,
-            "topic": record.topic,
-            "messages": list(record.messages),
-            "summary": record.summary,
-            "created_at": record.created_at,
-            "closed_at": record.closed_at,
-            "metadata": dict(record.metadata),
-            "council_members": list(record.council_members),
-            "characters": list(record.characters),
-            "paused": record.paused,
-        }
-        defaults.update(overrides)
-        return HumanChatRecord(**defaults)
+        return dataclasses.replace(record, **overrides)
 
     def _build_api_messages(
         self,
