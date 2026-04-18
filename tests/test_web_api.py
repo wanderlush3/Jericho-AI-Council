@@ -3454,6 +3454,175 @@ class TestApiItemProposalHandoff:
         assert len(idata["properties"]) == 2
 
 
+# ─── Item Gift Endpoint (F-068) ────────────────────────────────
+
+
+@pytest.fixture
+def gift_env(tmp_path):
+    """Set up items dir + conversations dir for gift tests."""
+    items_d = tmp_path / "items"
+    items_d.mkdir()
+    convos_d = tmp_path / "conversations"
+    convos_d.mkdir()
+    members_d = tmp_path / "members"
+    members_d.mkdir()
+    characters_d = tmp_path / "characters"
+    characters_d.mkdir()
+    proposals_d = tmp_path / "proposals"
+    proposals_d.mkdir()
+    votes_d = tmp_path / "votes"
+    votes_d.mkdir()
+
+    sage = {
+        "name": "Sage", "role": "Ethics Advisor",
+        "description": "Ethics.", "personality": {"tone": "calm"},
+        "api_provider": "openrouter", "model": "anthropic/claude-3.5-sonnet",
+        "vote_weight": 1.0, "specialties": ["ethics"],
+        "system_prompt": "You are Sage.",
+    }
+    (members_d / "sage.yaml").write_text(yaml.dump(sage), encoding="utf-8")
+
+    return {
+        "items_dir": items_d,
+        "conversations_dir": convos_d,
+        "members_dir": members_d,
+        "characters_dir": characters_d,
+        "proposals_dir": proposals_d,
+        "votes_dir": votes_d,
+    }
+
+
+@pytest.fixture
+def gift_client(gift_env, tmp_path):
+    """TestClient configured for item gift tests."""
+    static_dir = tmp_path / "web_static"
+    static_dir.mkdir(exist_ok=True)
+    (static_dir / "index.html").write_text("<h1>Test</h1>", encoding="utf-8")
+    avatars_dir = tmp_path / "council_avatars"
+    avatars_dir.mkdir(exist_ok=True)
+
+    with (
+        patch("core.web_api.WEB_STATIC_DIR", static_dir),
+        patch("core.web_api.COUNCIL_MEMBERS_DIR", gift_env["members_dir"]),
+        patch("core.registry.COUNCIL_MEMBERS_DIR", gift_env["members_dir"]),
+        patch("core.proposals.PROPOSALS_DIR", gift_env["proposals_dir"]),
+        patch("core.voting.VOTES_DIR", gift_env["votes_dir"]),
+        patch("core.items.ITEMS_DIR", gift_env["items_dir"]),
+        patch("core.characters.CHARACTERS_DIR", gift_env["characters_dir"]),
+        patch("config.settings.CONVERSATIONS_DIR", gift_env["conversations_dir"]),
+        patch("config.settings.COUNCIL_AVATARS_DIR", avatars_dir),
+    ):
+        app = create_app()
+        yield TestClient(app)
+
+
+class TestApiItemGift:
+    """Tests for POST /api/items/{id}/gift — F-068."""
+
+    def _create_active_item(self, client, owners=None):
+        """Create an active item with owners via API."""
+        if owners is None:
+            owners = [{"name": "Alice", "type": "user"}]
+        resp = client.post("/api/items", json={
+            "name": "Crown", "description": "Royal crown",
+            "author": "Sage", "tier": "permanent",
+            "owned_by": owners,
+        })
+        assert resp.status_code == 200
+        item = resp.json()
+        # Activate
+        resp2 = client.put(f"/api/items/{item['id']}/status", json={"status": "active"})
+        assert resp2.status_code == 200
+        return resp2.json()
+
+    def test_gift_success(self, gift_client, gift_env):
+        item = self._create_active_item(gift_client)
+        resp = gift_client.post(f"/api/items/{item['id']}/gift", json={
+            "from_owner": {"name": "Alice", "type": "user"},
+            "to_owner": {"name": "Bob", "type": "character"},
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        # Ownership transferred
+        item_owners = [o["name"] for o in data["item"]["owned_by"]]
+        assert "Alice" not in item_owners
+        assert "Bob" in item_owners
+        # Gift record
+        assert data["gift"]["item_name"] == "Crown"
+        assert data["gift"]["from_owner"]["name"] == "Alice"
+        assert data["gift"]["to_owner"]["name"] == "Bob"
+        # Chat created
+        assert data["chat_id"].startswith("GIFT-")
+
+    def test_gift_creates_chat_file(self, gift_client, gift_env):
+        item = self._create_active_item(gift_client)
+        resp = gift_client.post(f"/api/items/{item['id']}/gift", json={
+            "from_owner": {"name": "Alice", "type": "user"},
+            "to_owner": {"name": "Bob", "type": "character"},
+        })
+        assert resp.status_code == 200
+        chat_files = list(gift_env["conversations_dir"].glob("H-GIFT-*.json"))
+        assert len(chat_files) == 1
+        import json as json_mod
+        chat = json_mod.loads(chat_files[0].read_text(encoding="utf-8"))
+        assert len(chat["messages"]) == 2
+        assert chat["closed_at"] != ""
+        assert chat["metadata"]["gift"] is True
+
+    def test_gift_missing_from_owner(self, gift_client):
+        item = self._create_active_item(gift_client)
+        resp = gift_client.post(f"/api/items/{item['id']}/gift", json={
+            "to_owner": {"name": "Bob", "type": "character"},
+        })
+        assert resp.status_code == 400
+        assert "from_owner" in resp.json()["detail"]
+
+    def test_gift_missing_to_owner(self, gift_client):
+        item = self._create_active_item(gift_client)
+        resp = gift_client.post(f"/api/items/{item['id']}/gift", json={
+            "from_owner": {"name": "Alice", "type": "user"},
+        })
+        assert resp.status_code == 400
+        assert "to_owner" in resp.json()["detail"]
+
+    def test_gift_not_found(self, gift_client):
+        resp = gift_client.post("/api/items/ITEM-9999/gift", json={
+            "from_owner": {"name": "Alice", "type": "user"},
+            "to_owner": {"name": "Bob", "type": "character"},
+        })
+        assert resp.status_code == 404
+
+    def test_gift_inactive_item(self, gift_client):
+        """Gifting a draft item returns 400."""
+        resp = gift_client.post("/api/items", json={
+            "name": "Crown", "description": "Royal crown",
+            "author": "Sage", "tier": "permanent",
+            "owned_by": [{"name": "Alice", "type": "user"}],
+        })
+        item = resp.json()
+        resp2 = gift_client.post(f"/api/items/{item['id']}/gift", json={
+            "from_owner": {"name": "Alice", "type": "user"},
+            "to_owner": {"name": "Bob", "type": "character"},
+        })
+        assert resp2.status_code == 400
+        assert "active" in resp2.json()["detail"]
+
+    def test_gift_with_message(self, gift_client, gift_env):
+        item = self._create_active_item(gift_client)
+        resp = gift_client.post(f"/api/items/{item['id']}/gift", json={
+            "from_owner": {"name": "Alice", "type": "user"},
+            "to_owner": {"name": "Bob", "type": "character"},
+            "message": "With great respect",
+        })
+        assert resp.status_code == 200
+        assert resp.json()["gift"]["message"] == "With great respect"
+        # Chat message should contain the custom message
+        import json as json_mod
+        chat_files = list(gift_env["conversations_dir"].glob("H-GIFT-*.json"))
+        chat = json_mod.loads(chat_files[0].read_text(encoding="utf-8"))
+        assert "With great respect" in chat["messages"][0]["content"]
+
+
 # ─── Treasury Endpoints ─────────────────────────────────────
 
 

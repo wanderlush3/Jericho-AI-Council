@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from config.settings import COMFYUI_IMAGES_DIR
-from core.utils import atomic_write
+from core.utils import atomic_write, make_id_lock
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -229,6 +229,7 @@ class ImageManager:
     def __init__(self, images_dir: Path | None = None) -> None:
         self._dir = images_dir or COMFYUI_IMAGES_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
+        self._id_lock = make_id_lock()
 
     # ── Properties ───────────────────────────────────────────
 
@@ -317,27 +318,28 @@ class ImageManager:
             existing = self._clear_primary(existing)
 
         # ── Create EntityImage record ────────────────────────
-        image_id = self._next_id()
-        image = EntityImage.create(
-            id=image_id,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            filename=filename,
-            original_filename=original_filename.strip() if original_filename else "",
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            is_primary=is_primary,
-            file_size=len(image_data),
-            width=width,
-            height=height,
-            template_id=template_id,
-            generation_job_id=generation_job_id,
-            metadata=metadata,
-        )
+        with self._id_lock:
+            image_id = self._next_id()
+            image = EntityImage.create(
+                id=image_id,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                filename=filename,
+                original_filename=original_filename.strip() if original_filename else "",
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                is_primary=is_primary,
+                file_size=len(image_data),
+                width=width,
+                height=height,
+                template_id=template_id,
+                generation_job_id=generation_job_id,
+                metadata=metadata,
+            )
 
-        # ── Append to metadata and save ──────────────────────
-        existing.append(image)
-        self._save_entity_metadata(entity_type, entity_id, existing)
+            # ── Append to metadata and save ──────────────────────
+            existing.append(image)
+            self._save_entity_metadata(entity_type, entity_id, existing)
         return image
 
     # ── Get Image ────────────────────────────────────────────

@@ -1,23 +1,12 @@
 import json
 
-data = json.load(open('features.json', 'r', encoding='utf-8'))
-if isinstance(data, list):
-    features = data
-else:
-    features = data.get('features', data)
+with open("features.json", "r", encoding="utf-8") as f:
+    data = json.load(f)
 
-pending = []
-for f in features:
-    status = f['status']
-    fid = f['id']
-    title = f['title']
-    print(f"{fid:8} {status:12} {title}")
-    if status == 'pending':
-        pending.append(f)
+# data might be a list directly
+features = data if isinstance(data, list) else data.get("features", [])
 
-print("\n--- PENDING FEATURES ---")
-for f in pending:
-    deps = f.get('dependencies', [])
-    dep_str = ', '.join(deps) if deps else 'none'
-    print(f"{f['id']:8} {f['title']}")
-    print(f"         deps: {dep_str}")
+for feat in features:
+    deps = ", ".join(feat.get("dependencies", [])) if feat.get("dependencies") else ""
+    dep_str = f"  deps=[{deps}]" if deps else ""
+    print(f"{feat['id']:8s} [{feat['status']:10s}] {feat['title']}{dep_str}")

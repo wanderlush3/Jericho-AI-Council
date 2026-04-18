@@ -8,7 +8,31 @@ from __future__ import annotations
 
 import os
 import tempfile
+import threading
 from pathlib import Path
+
+
+def make_id_lock() -> threading.Lock:
+    """Create a new threading.Lock for guarding sequential ID generation.
+
+    Each manager that generates sequential IDs (e.g. ``CH-0001``,
+    ``P-0002``) should hold **one** lock instance and acquire it around
+    the ``_next_id()`` → ``_save()`` pair inside its ``create()``
+    method.  This prevents two concurrent requests from scanning the
+    same max-id and producing a duplicate.
+
+    Usage inside a manager ``__init__``::
+
+        self._id_lock = make_id_lock()
+
+    And inside the ``create`` method::
+
+        with self._id_lock:
+            new_id = self._next_id()
+            ...
+            self._save(record)
+    """
+    return threading.Lock()
 
 
 def atomic_write(filepath: Path, content: str) -> None:

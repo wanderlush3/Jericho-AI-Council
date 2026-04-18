@@ -25,7 +25,7 @@ from config.settings import (
     LOCATION_STATUSES,
     LOCATION_FEATURE_TYPES,
 )
-from core.utils import atomic_write
+from core.utils import atomic_write, make_id_lock
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -217,6 +217,7 @@ class LocationManager:
     def __init__(self, locations_dir: Path | None = None) -> None:
         self._dir = locations_dir or LOCATIONS_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
+        self._id_lock = make_id_lock()
 
     # ── Properties ────────────────────────────────────────────
 
@@ -272,21 +273,22 @@ class LocationManager:
                     [f"Parent location not found: '{parent_location_id}'"]
                 )
 
-        next_id = self._next_id()
-        location = Location.create(
-            id=next_id,
-            name=name.strip(),
-            description=description.strip(),
-            author=author.strip(),
-            lore=lore,
-            features=features or [],
-            tags=tags,
-            parent_location_id=parent_location_id,
-            coordinates=coordinates,
-            llm_injection=llm_injection,
-            metadata=metadata,
-        )
-        self._save(location)
+        with self._id_lock:
+            next_id = self._next_id()
+            location = Location.create(
+                id=next_id,
+                name=name.strip(),
+                description=description.strip(),
+                author=author.strip(),
+                lore=lore,
+                features=features or [],
+                tags=tags,
+                parent_location_id=parent_location_id,
+                coordinates=coordinates,
+                llm_injection=llm_injection,
+                metadata=metadata,
+            )
+            self._save(location)
         return location
 
     # ── Read ──────────────────────────────────────────────────

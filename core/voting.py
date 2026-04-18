@@ -468,3 +468,84 @@ class VotingEngine:
     def __repr__(self) -> str:
         count = len(list(self._dir.glob("V-*.json")))
         return f"VotingEngine(records={count}, quorum={self._quorum}, threshold={self._threshold}, dir={self._dir})"
+
+
+# ─── Vote Prompt Builder / Parser (F-064) ──────────────────────
+# Extracted from core/routes/proposals.py — pure business logic for
+# formatting LLM vote prompts and parsing structured vote responses.
+
+
+def build_vote_prompt(
+    proposal,
+    member,
+    discussion_context: str = "",
+    memory_block: str = "",
+) -> str:
+    """Build an LLM vote prompt for a council member.
+
+    Args:
+        proposal: The proposal being voted on (needs .title, .id,
+            .category, .author, .description).
+        member: The council member casting the vote (needs .name, .role).
+        discussion_context: Pre-formatted discussion summary text.
+        memory_block: Pre-formatted memory context text.
+
+    Returns:
+        Formatted prompt string.
+    """
+    return (
+        f"## Vote Required: {proposal.title}\n"
+        f"**Proposal ID:** {proposal.id}\n"
+        f"**Category:** {proposal.category}\n"
+        f"**Author:** {proposal.author}\n"
+        f"**Description:** {proposal.description}\n"
+        f"{discussion_context}"
+        f"{memory_block}\n\n"
+        f"---\n"
+        f"You are **{member.name}** ({member.role}). "
+        f"You must now vote on this proposal.\n\n"
+        f"Respond with EXACTLY this format (first line is your vote, "
+        f"rest is your reasoning):\n"
+        f"VOTE: for\n"
+        f"or\n"
+        f"VOTE: against\n"
+        f"or\n"
+        f"VOTE: abstain\n\n"
+        f"Then explain your reasoning briefly."
+    )
+
+
+def parse_vote_response(content: str) -> tuple[str, str]:
+    """Parse a structured vote response from an LLM.
+
+    Expects the response to contain ``VOTE: for|against|abstain``
+    followed by reasoning text.
+
+    Args:
+        content: Raw LLM response text.
+
+    Returns:
+        Tuple of ``(choice, reason)`` where choice is one of
+        ``"for"``, ``"against"``, or ``"abstain"``.
+    """
+    import re
+
+    choice = "abstain"  # default
+    reason = content
+    content_lower = content.lower()
+
+    if "vote: for" in content_lower or "vote:for" in content_lower:
+        choice = "for"
+    elif "vote: against" in content_lower or "vote:against" in content_lower:
+        choice = "against"
+    elif "vote: abstain" in content_lower or "vote:abstain" in content_lower:
+        choice = "abstain"
+
+    # Extract reason (everything after the VOTE: line)
+    reason_match = re.split(
+        r"VOTE:\s*\w+\s*\n?", content, flags=re.IGNORECASE,
+    )
+    if len(reason_match) > 1:
+        reason = reason_match[-1].strip()
+
+    return choice, reason

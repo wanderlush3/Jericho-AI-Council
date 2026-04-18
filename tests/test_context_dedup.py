@@ -31,11 +31,11 @@ class TestBuildParticipantContextSkipWorld:
             participants, skip_world_context=skip_world_context,
         )
 
-    @patch("core.routes.explore.get_law_manager")
-    @patch("core.routes.explore.get_location_manager")
-    @patch("core.routes.explore.get_item_manager")
-    @patch("core.routes.explore.get_store_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_law_manager")
+    @patch("core.context_builder.get_location_manager")
+    @patch("core.context_builder.get_item_manager")
+    @patch("core.context_builder.get_store_manager")
+    @patch("core.context_builder.get_registry")
     def test_default_includes_world_context(
         self,
         mock_registry, mock_store_mgr, mock_item_mgr,
@@ -60,7 +60,7 @@ class TestBuildParticipantContextSkipWorld:
 
         assert "World Context" in result
 
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_registry")
     def test_skip_world_context_omits_section(self, mock_registry):
         """When skip_world_context=True, 'World Context' is NOT in output."""
         mock_reg = MagicMock()
@@ -78,7 +78,7 @@ class TestBuildParticipantContextSkipWorld:
         assert "Known Stores" not in result
         assert "Active Laws" not in result
 
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_registry")
     def test_skip_world_context_still_includes_participants(
         self, mock_registry,
     ):
@@ -102,8 +102,8 @@ class TestBuildParticipantContextSkipWorld:
         assert "Sage" in result
         assert "Ethics Advisor" in result
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_skip_world_preserves_character_context(
         self, mock_registry, mock_char_mgr,
     ):
@@ -142,7 +142,7 @@ class TestBuildParticipantContextSkipWorld:
 class TestHelpersReExport:
     """Test that _helpers.py correctly forwards skip_world_context."""
 
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_registry")
     def test_helpers_forwards_skip_world(self, mock_registry):
         """The _helpers re-export accepts and forwards skip_world_context."""
         mock_reg = MagicMock()

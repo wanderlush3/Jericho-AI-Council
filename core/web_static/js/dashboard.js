@@ -21,6 +21,7 @@ async function renderView(view, detail) {
             case 'treasury': detail ? await renderTreasuryDetail(detail) : await renderTreasury(); break;
             case 'taxation': await renderTaxation(); break;
             case 'generation-queue': await renderGenerationQueue(); break;
+            case 'reputation': detail ? await renderReputationDetail(detail) : await renderReputation(); break;
             case 'settings': await renderSettings(); break;
             default: await renderDashboard();
         }

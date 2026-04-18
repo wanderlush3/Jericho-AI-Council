@@ -1,0 +1,299 @@
+/* ═══════════════════════════════════════════════════════════════
+   Reputation — Leaderboard & Detail (F-069)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Leaderboard ──────────────────────────────────────────────── */
+
+.reputation-leaderboard {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.reputation-row {
+    display: grid;
+    grid-template-columns: 2.5rem 1fr auto auto auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.reputation-row:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-glow);
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-1px);
+}
+
+.reputation-rank {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-align: center;
+    width: 2.5rem;
+}
+
+.reputation-rank.top-1 { color: #FFD700; }
+.reputation-rank.top-2 { color: #C0C0C0; }
+.reputation-rank.top-3 { color: #CD7F32; }
+
+.reputation-entity-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.reputation-tier-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.7rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.reputation-tier-badge.tier-legendary {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.15));
+    color: #FFD700;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.reputation-tier-badge.tier-distinguished {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(168, 85, 247, 0.15));
+    color: var(--accent-violet);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.reputation-tier-badge.tier-respected {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(59, 130, 246, 0.15));
+    color: var(--accent-cyan);
+    border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.reputation-tier-badge.tier-neutral {
+    background: rgba(148, 163, 184, 0.15);
+    color: var(--text-secondary);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.reputation-tier-badge.tier-dubious {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--accent-amber);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.reputation-tier-badge.tier-disgraced {
+    background: rgba(244, 63, 94, 0.15);
+    color: var(--accent-rose);
+    border: 1px solid rgba(244, 63, 94, 0.25);
+}
+
+.reputation-score {
+    font-weight: 700;
+    font-size: 1.1rem;
+    min-width: 3.5rem;
+    text-align: right;
+}
+
+.reputation-score.positive { color: var(--accent-emerald); }
+.reputation-score.negative { color: var(--accent-rose); }
+.reputation-score.zero     { color: var(--text-muted); }
+
+.reputation-event-count {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    min-width: 4rem;
+    text-align: right;
+}
+
+/* ── Score Bar Chart ──────────────────────────────────────────── */
+
+.reputation-bar-container {
+    width: 100%;
+    max-width: 200px;
+    height: 6px;
+    background: rgba(148, 163, 184, 0.15);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.reputation-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-violet));
+    transition: width 0.6s ease;
+}
+
+/* ── Detail View ─────────────────────────────────────────────── */
+
+.reputation-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.reputation-detail-score {
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.reputation-detail-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.reputation-detail-meta .entity-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.reputation-detail-meta .score-breakdown {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* ── Event Timeline ──────────────────────────────────────────── */
+
+.reputation-events {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.reputation-event-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.65rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    transition: all 0.15s ease;
+}
+
+.reputation-event-item:hover {
+    background: var(--bg-card-hover);
+}
+
+.reputation-event-type {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent-blue);
+    white-space: nowrap;
+}
+
+.reputation-event-reason {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.reputation-event-points {
+    font-weight: 700;
+    font-size: 0.9rem;
+    min-width: 3rem;
+    text-align: right;
+}
+
+.reputation-event-points.positive { color: var(--accent-emerald); }
+.reputation-event-points.negative { color: var(--accent-rose); }
+
+.reputation-event-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* ── Admin Form ──────────────────────────────────────────────── */
+
+.reputation-admin-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+}
+
+.reputation-admin-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.reputation-admin-form .form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.reputation-admin-form label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.reputation-admin-form input,
+.reputation-admin-form select,
+.reputation-admin-form textarea {
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-family: inherit;
+}
+
+.reputation-admin-form textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+/* ── Stances Grid ────────────────────────────────────────────── */
+
+.stances-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.stance-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    font-size: 0.85rem;
+}
+
+.stance-chip .stance-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}

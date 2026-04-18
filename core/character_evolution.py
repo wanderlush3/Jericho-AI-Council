@@ -39,7 +39,7 @@ from config.settings import (
 from core.characters import CharacterManager, CharacterTemplate, Trait
 from core.memory import SharedMemory
 from core.proposals import Proposal, ProposalManager
-from core.utils import atomic_write
+from core.utils import atomic_write, make_id_lock
 from core.voting import VotingEngine, Vote, VoteTally
 
 
@@ -327,6 +327,7 @@ class CharacterEvolution:
         self._dir = evolutions_dir or EVOLUTION_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
         self._shared_memory = shared_memory or SharedMemory()
+        self._id_lock = make_id_lock()
 
     # ── Properties ────────────────────────────────────────────
 
@@ -397,22 +398,23 @@ class CharacterEvolution:
             )
 
         target_id = character_id.strip()
-        next_id = self._next_id()
-        seq_num = self._next_sequence_number(target_id, target_type)
-        evo_name = name or f"Evolution #{seq_num} for {character.name}"
+        with self._id_lock:
+            next_id = self._next_id()
+            seq_num = self._next_sequence_number(target_id, target_type)
+            evo_name = name or f"Evolution #{seq_num} for {character.name}"
 
-        record = EvolutionRecord.create(
-            evolution_id=next_id,
-            character_id=character_id.strip(),
-            author=author.strip(),
-            changes=effective_changes,
-            metadata=metadata,
-            name=evo_name,
-            sequence_number=seq_num,
-            target_type=target_type,
-            target_id=target_id,
-        )
-        self._save(record)
+            record = EvolutionRecord.create(
+                evolution_id=next_id,
+                character_id=character_id.strip(),
+                author=author.strip(),
+                changes=effective_changes,
+                metadata=metadata,
+                name=evo_name,
+                sequence_number=seq_num,
+                target_type=target_type,
+                target_id=target_id,
+            )
+            self._save(record)
         return record
 
     # ── Submit for Review ─────────────────────────────────────
@@ -879,24 +881,25 @@ class CharacterEvolution:
         target_id = source.target_id or source.character_id
         target_type = source.target_type
 
-        next_id = self._next_id()
-        seq_num = self._next_sequence_number(target_id, target_type)
-        rollback_author = author or source.author
+        with self._id_lock:
+            next_id = self._next_id()
+            seq_num = self._next_sequence_number(target_id, target_type)
+            rollback_author = author or source.author
 
-        record = EvolutionRecord.create(
-            evolution_id=next_id,
-            character_id=source.character_id,
-            author=rollback_author,
-            changes=reverse_changes,
-            metadata={"rollback_source": evolution_id},
-            name=f"Rollback of {evolution_id}",
-            sequence_number=seq_num,
-            target_type=target_type,
-            target_id=target_id,
-        )
-        # Mark the rollback_of field
-        record = self._rebuild(record, rollback_of=evolution_id)
-        self._save(record)
+            record = EvolutionRecord.create(
+                evolution_id=next_id,
+                character_id=source.character_id,
+                author=rollback_author,
+                changes=reverse_changes,
+                metadata={"rollback_source": evolution_id},
+                name=f"Rollback of {evolution_id}",
+                sequence_number=seq_num,
+                target_type=target_type,
+                target_id=target_id,
+            )
+            # Mark the rollback_of field
+            record = self._rebuild(record, rollback_of=evolution_id)
+            self._save(record)
 
         # Archive the source evolution's overlay
         if source.overlay_status == "active":
@@ -963,21 +966,22 @@ class CharacterEvolution:
                 rationale=f"Rollback to version {version_id}",
             ))
 
-        next_id = self._next_id()
-        seq_num = self._next_sequence_number(target_id, target_type)
+        with self._id_lock:
+            next_id = self._next_id()
+            seq_num = self._next_sequence_number(target_id, target_type)
 
-        record = EvolutionRecord.create(
-            evolution_id=next_id,
-            character_id=target_id,
-            author=author,
-            changes=changes,
-            metadata={"rollback_to_version": version_id},
-            name=f"Rollback to {version_id}",
-            sequence_number=seq_num,
-            target_type=target_type,
-            target_id=target_id,
-        )
-        self._save(record)
+            record = EvolutionRecord.create(
+                evolution_id=next_id,
+                character_id=target_id,
+                author=author,
+                changes=changes,
+                metadata={"rollback_to_version": version_id},
+                name=f"Rollback to {version_id}",
+                sequence_number=seq_num,
+                target_type=target_type,
+                target_id=target_id,
+            )
+            self._save(record)
         return record
 
     # ── Council Member Evolution ──────────────────────────────
@@ -1028,25 +1032,26 @@ class CharacterEvolution:
             )
 
         target_id = f"CM-{member.name}"
-        next_id = self._next_id()
-        seq_num = self._next_sequence_number(target_id, "council_member")
+        with self._id_lock:
+            next_id = self._next_id()
+            seq_num = self._next_sequence_number(target_id, "council_member")
 
-        record = EvolutionRecord.create(
-            evolution_id=next_id,
-            character_id=target_id,
-            author=author.strip(),
-            changes=effective_changes,
-            metadata={
-                **(metadata or {}),
-                "member_name": member.name,
-                "member_role": member.role,
-            },
-            name=name or f"Evolution #{seq_num} for {member.name}",
-            sequence_number=seq_num,
-            target_type="council_member",
-            target_id=target_id,
-        )
-        self._save(record)
+            record = EvolutionRecord.create(
+                evolution_id=next_id,
+                character_id=target_id,
+                author=author.strip(),
+                changes=effective_changes,
+                metadata={
+                    **(metadata or {}),
+                    "member_name": member.name,
+                    "member_role": member.role,
+                },
+                name=name or f"Evolution #{seq_num} for {member.name}",
+                sequence_number=seq_num,
+                target_type="council_member",
+                target_id=target_id,
+            )
+            self._save(record)
         return record
 
     # ── Create from Proposal (Auto-fill) ──────────────────────
@@ -1101,30 +1106,31 @@ class CharacterEvolution:
         evo_author = author or proposal.author
         evo_name = f"From proposal: {proposal.title}"
 
-        next_id = self._next_id()
+        with self._id_lock:
+            next_id = self._next_id()
 
-        if character_id:
-            target_id = character_id
-        else:
-            target_id = "PENDING"
+            if character_id:
+                target_id = character_id
+            else:
+                target_id = "PENDING"
 
-        seq_num = self._next_sequence_number(target_id, "character") if target_id != "PENDING" else 0
+            seq_num = self._next_sequence_number(target_id, "character") if target_id != "PENDING" else 0
 
-        record = EvolutionRecord.create(
-            evolution_id=next_id,
-            character_id=character_id or "PENDING",
-            author=evo_author,
-            changes=changes,
-            metadata={
-                "source_proposal_id": proposal_id,
-                "source_proposal_title": proposal.title,
-            },
-            name=evo_name,
-            sequence_number=seq_num,
-            target_type="character",
-            target_id=target_id,
-        )
-        self._save(record)
+            record = EvolutionRecord.create(
+                evolution_id=next_id,
+                character_id=character_id or "PENDING",
+                author=evo_author,
+                changes=changes,
+                metadata={
+                    "source_proposal_id": proposal_id,
+                    "source_proposal_title": proposal.title,
+                },
+                name=evo_name,
+                sequence_number=seq_num,
+                target_type="character",
+                target_id=target_id,
+            )
+            self._save(record)
         return record
 
     # ── Enhanced create_evolution (with naming) ───────────────
@@ -1173,22 +1179,23 @@ class CharacterEvolution:
             )
 
         target_id = character_id.strip()
-        next_id = self._next_id()
-        seq_num = self._next_sequence_number(target_id, target_type)
-        evo_name = name or f"Evolution #{seq_num} for {character.name}"
+        with self._id_lock:
+            next_id = self._next_id()
+            seq_num = self._next_sequence_number(target_id, target_type)
+            evo_name = name or f"Evolution #{seq_num} for {character.name}"
 
-        record = EvolutionRecord.create(
-            evolution_id=next_id,
-            character_id=character_id.strip(),
-            author=author.strip(),
-            changes=effective_changes,
-            metadata=metadata,
-            name=evo_name,
-            sequence_number=seq_num,
-            target_type=target_type,
-            target_id=target_id,
-        )
-        self._save(record)
+            record = EvolutionRecord.create(
+                evolution_id=next_id,
+                character_id=character_id.strip(),
+                author=author.strip(),
+                changes=effective_changes,
+                metadata=metadata,
+                name=evo_name,
+                sequence_number=seq_num,
+                target_type=target_type,
+                target_id=target_id,
+            )
+            self._save(record)
         return record
 
     # ── Query (enhanced) ──────────────────────────────────────

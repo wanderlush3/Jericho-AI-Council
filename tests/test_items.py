@@ -20,6 +20,8 @@ from core.items import (
     ItemNotFoundError,
     ItemProperty,
     ItemValidationError,
+    OWNER_TYPES,
+    validate_owned_by,
 )
 
 
@@ -159,7 +161,7 @@ class TestItem:
         assert item.properties == []
         assert item.tags == []
         assert item.rarity == ""
-        assert item.owner == ""
+        assert item.owned_by == []
         assert item.version == 1
         assert item.metadata == {}
 
@@ -510,28 +512,33 @@ class TestItemUpdate:
         updated = mgr.update(item.id, rarity="legendary")
         assert updated.rarity == "legendary"
 
-    def test_update_owner(self, tmp_path):
+    def test_update_owned_by(self, tmp_path):
         mgr = _make_manager(tmp_path)
         item = _create_sample(mgr)
-        assert item.owner == ""
-        updated = mgr.update(item.id, owner="Araushnee")
-        assert updated.owner == "Araushnee"
+        assert item.owned_by == []
+        updated = mgr.update(item.id, owned_by=[
+            {"name": "Araushnee", "type": "character"},
+        ])
+        assert len(updated.owned_by) == 1
+        assert updated.owned_by[0]["name"] == "Araushnee"
+        assert updated.owned_by[0]["type"] == "character"
         # Persist through reload
         reloaded = mgr.get(item.id)
-        assert reloaded.owner == "Araushnee"
+        assert len(reloaded.owned_by) == 1
+        assert reloaded.owned_by[0]["name"] == "Araushnee"
 
-    def test_owner_roundtrip(self, tmp_path):
+    def test_owned_by_roundtrip(self, tmp_path):
         mgr = _make_manager(tmp_path)
         item = mgr.create(
             "Whip", "A coiled leather whip",
             author="Council",
+            owned_by=[{"name": "Araushnee", "type": "character"}],
         )
-        mgr.update(item.id, owner="Araushnee")
         loaded = mgr.get(item.id)
         d = loaded.to_dict()
-        assert d["owner"] == "Araushnee"
+        assert d["owned_by"] == [{"name": "Araushnee", "type": "character"}]
         restored = Item.from_dict(d)
-        assert restored.owner == "Araushnee"
+        assert restored.owned_by == [{"name": "Araushnee", "type": "character"}]
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -676,6 +683,113 @@ class TestItemTier:
 
 
 # ═══════════════════════════════════════════════════════════════
+# Owned By
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestOwnedBy:
+    def test_multiple_owners(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        owners = [
+            {"name": "King Oberon", "type": "council_member"},
+            {"name": "Araushnee", "type": "character"},
+            {"name": "Player One", "type": "user"},
+        ]
+        item = mgr.create("Crown", "Royal crown", author="Council", owned_by=owners)
+        assert len(item.owned_by) == 3
+        loaded = mgr.get(item.id)
+        assert len(loaded.owned_by) == 3
+        assert loaded.owned_by[0]["name"] == "King Oberon"
+        assert loaded.owned_by[1]["type"] == "character"
+        assert loaded.owned_by[2]["type"] == "user"
+
+    def test_validation_invalid_type(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        with pytest.raises(ItemValidationError, match="invalid"):
+            mgr.create("Crown", "Royal crown", author="Council", owned_by=[
+                {"name": "Bob", "type": "monster"},
+            ])
+
+    def test_validation_empty_name(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        with pytest.raises(ItemValidationError, match="name must not be empty"):
+            mgr.create("Crown", "Royal crown", author="Council", owned_by=[
+                {"name": "", "type": "user"},
+            ])
+
+    def test_duplicate_rejected(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        with pytest.raises(ItemValidationError, match="Duplicate"):
+            mgr.create("Crown", "Royal crown", author="Council", owned_by=[
+                {"name": "Bob", "type": "user"},
+                {"name": "bob", "type": "user"},  # case-insensitive duplicate
+            ])
+
+    def test_backward_compat_legacy_owner(self, tmp_path):
+        """Legacy items with 'owner' string should auto-migrate to owned_by."""
+        import json
+        mgr = _make_manager(tmp_path)
+        # Simulate a legacy item JSON with 'owner' string
+        legacy_data = {
+            "id": "ITEM-0001",
+            "name": "Whip",
+            "description": "A whip",
+            "author": "Council",
+            "owner": "Araushnee",
+        }
+        item = Item.from_dict(legacy_data)
+        assert item.owned_by == [{"name": "Araushnee", "type": "user"}]
+
+    def test_backward_compat_no_owner(self):
+        """Legacy items without any owner field get empty owned_by."""
+        data = {"id": "ITEM-0001", "name": "A", "description": "D", "author": "C"}
+        item = Item.from_dict(data)
+        assert item.owned_by == []
+
+    def test_update_validation_invalid_type(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        item = _create_sample(mgr)
+        with pytest.raises(ItemValidationError, match="invalid"):
+            mgr.update(item.id, owned_by=[
+                {"name": "Bob", "type": "alien"},
+            ])
+
+    def test_update_clear_owners(self, tmp_path):
+        """Setting owned_by to empty list clears all owners."""
+        mgr = _make_manager(tmp_path)
+        item = mgr.create(
+            "Crown", "Royal crown", author="Council",
+            owned_by=[{"name": "Bob", "type": "user"}],
+        )
+        assert len(item.owned_by) == 1
+        updated = mgr.update(item.id, owned_by=[])
+        assert updated.owned_by == []
+
+    def test_validate_owned_by_function(self):
+        """Test the public validate_owned_by helper directly."""
+        # Valid entries
+        assert validate_owned_by([
+            {"name": "A", "type": "user"},
+            {"name": "B", "type": "character"},
+        ]) == []
+
+        # Non-list
+        errors = validate_owned_by("bad")
+        assert len(errors) == 1
+        assert "must be a list" in errors[0]
+
+        # Non-dict entry
+        errors = validate_owned_by(["bad"])
+        assert len(errors) == 1
+        assert "must be a dict" in errors[0]
+
+    def test_owner_types_constant(self):
+        assert "user" in OWNER_TYPES
+        assert "character" in OWNER_TYPES
+        assert "council_member" in OWNER_TYPES
+
+
+# ═══════════════════════════════════════════════════════════════
 # Exceptions
 # ═══════════════════════════════════════════════════════════════
 
@@ -702,3 +816,227 @@ class TestExceptions:
         assert e.item_id == "ITEM-0001"
         assert e.current_status == "draft"
         assert e.requested_status == "archived"
+
+
+# ═══════════════════════════════════════════════════════════════
+# Gift Giving (F-068)
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestGiftGiving:
+    """Tests for ItemManager.gift_item() — F-068."""
+
+    def _make_active_item(self, mgr, *, owners=None, name="Crown"):
+        """Create an active item with owners."""
+        if owners is None:
+            owners = [{"name": "Alice", "type": "user"}]
+        item = mgr.create(
+            name, "A royal crown", author="Council",
+            tier="permanent", owned_by=owners,
+        )
+        return mgr.update_status(item.id, "active")
+
+    def test_basic_gift(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        item = self._make_active_item(mgr)
+
+        gift = mgr.gift_item(
+            item.id,
+            from_owner={"name": "Alice", "type": "user"},
+            to_owner={"name": "Bob", "type": "character"},
+        )
+        assert gift.item_id == item.id
+        assert gift.item_name == "Crown"
+        assert gift.from_owner["name"] == "Alice"
+        assert gift.to_owner["name"] == "Bob"
+        assert gift.timestamp != ""
+
+    def test_ownership_transferred(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        item = self._make_active_item(mgr)
+
+        mgr.gift_item(
+            item.id,
+            from_owner={"name": "Alice", "type": "user"},
+            to_owner={"name": "Bob", "type": "character"},
+        )
+        reloaded = mgr.get(item.id)
+        names = [o["name"] for o in reloaded.owned_by]
+        assert "Alice" not in names
+        assert "Bob" in names
+
+    def test_from_owner_not_found(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        item = self._make_active_item(mgr)
+
+        with pytest.raises(ItemValidationError, match="not a current owner"):
+            mgr.gift_item(
+                item.id,
+                from_owner={"name": "Nonexistent", "type": "user"},
+                to_owner={"name": "Bob", "type": "character"},
+            )
+
+    def test_to_owner_already_owns(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        item = self._make_active_item(mgr, owners=[
+            {"name": "Alice", "type": "user"},
+            {"name": "Bob", "type": "character"},
+        ])
+
+        with pytest.raises(ItemValidationError, match="already owns"):
+            mgr.gift_item(
+                item.id,
+                from_owner={"name": "Alice", "type": "user"},
+                to_owner={"name": "Bob", "type": "character"},
+            )
+
+    def test_self_gift_rejected(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        item = self._make_active_item(mgr)
+
+        with pytest.raises(ItemValidationError, match="same owner"):
+            mgr.gift_item(
+                item.id,
+                from_owner={"name": "Alice", "type": "user"},
+                to_owner={"name": "Alice", "type": "user"},
+            )
+
+    def test_case_insensitive_self_gift(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        item = self._make_active_item(mgr)
+
+        with pytest.raises(ItemValidationError, match="same owner"):
+            mgr.gift_item(
+                item.id,
+                from_owner={"name": "ALICE", "type": "user"},
+                to_owner={"name": "alice", "type": "user"},
+            )
+
+    def test_inactive_item_rejected(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        # Create but don't activate
+        item = mgr.create(
+            "Crown", "Royal crown", author="Council",
+            tier="permanent", owned_by=[{"name": "Alice", "type": "user"}],
+        )
+        with pytest.raises(ItemValidationError, match="must be active"):
+            mgr.gift_item(
+                item.id,
+                from_owner={"name": "Alice", "type": "user"},
+                to_owner={"name": "Bob", "type": "character"},
+            )
+
+    def test_archived_item_rejected(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        item = self._make_active_item(mgr)
+        mgr.update_status(item.id, "archived")
+
+        with pytest.raises(ItemValidationError, match="must be active"):
+            mgr.gift_item(
+                item.id,
+                from_owner={"name": "Alice", "type": "user"},
+                to_owner={"name": "Bob", "type": "character"},
+            )
+
+    def test_invalid_to_owner_type(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        item = self._make_active_item(mgr)
+
+        with pytest.raises(ItemValidationError, match="invalid"):
+            mgr.gift_item(
+                item.id,
+                from_owner={"name": "Alice", "type": "user"},
+                to_owner={"name": "Bob", "type": "monster"},
+            )
+
+    def test_empty_to_owner_name(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        item = self._make_active_item(mgr)
+
+        with pytest.raises(ItemValidationError, match="name must not be empty"):
+            mgr.gift_item(
+                item.id,
+                from_owner={"name": "Alice", "type": "user"},
+                to_owner={"name": "", "type": "user"},
+            )
+
+    def test_gift_record_serialization(self, tmp_path):
+        from core.items import GiftRecord
+        mgr = _make_manager(tmp_path)
+        item = self._make_active_item(mgr)
+
+        gift = mgr.gift_item(
+            item.id,
+            from_owner={"name": "Alice", "type": "user"},
+            to_owner={"name": "Bob", "type": "character"},
+            message="A token of appreciation",
+        )
+        d = gift.to_dict()
+        assert d["item_id"] == item.id
+        assert d["item_name"] == "Crown"
+        assert d["from_owner"]["name"] == "Alice"
+        assert d["to_owner"]["name"] == "Bob"
+        assert d["message"] == "A token of appreciation"
+        assert d["timestamp"] != ""
+
+    def test_gift_with_custom_message(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        item = self._make_active_item(mgr)
+
+        gift = mgr.gift_item(
+            item.id,
+            from_owner={"name": "Alice", "type": "user"},
+            to_owner={"name": "Bob", "type": "character"},
+            message="For your bravery!",
+        )
+        assert gift.message == "For your bravery!"
+
+    def test_sequential_gifts(self, tmp_path):
+        """Gift item from A→B, then B→C."""
+        mgr = _make_manager(tmp_path)
+        item = self._make_active_item(mgr)
+
+        # A→B
+        mgr.gift_item(
+            item.id,
+            from_owner={"name": "Alice", "type": "user"},
+            to_owner={"name": "Bob", "type": "character"},
+        )
+        reloaded = mgr.get(item.id)
+        assert [o["name"] for o in reloaded.owned_by] == ["Bob"]
+
+        # B→C
+        mgr.gift_item(
+            item.id,
+            from_owner={"name": "Bob", "type": "character"},
+            to_owner={"name": "Carol", "type": "council_member"},
+        )
+        reloaded = mgr.get(item.id)
+        assert [o["name"] for o in reloaded.owned_by] == ["Carol"]
+
+    def test_gift_preserves_other_owners(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        item = self._make_active_item(mgr, owners=[
+            {"name": "Alice", "type": "user"},
+            {"name": "Dave", "type": "council_member"},
+        ])
+
+        mgr.gift_item(
+            item.id,
+            from_owner={"name": "Alice", "type": "user"},
+            to_owner={"name": "Bob", "type": "character"},
+        )
+        reloaded = mgr.get(item.id)
+        names = sorted(o["name"] for o in reloaded.owned_by)
+        assert "Alice" not in names
+        assert "Bob" in names
+        assert "Dave" in names
+
+    def test_item_not_found(self, tmp_path):
+        mgr = _make_manager(tmp_path)
+        with pytest.raises(ItemNotFoundError):
+            mgr.gift_item(
+                "ITEM-9999",
+                from_owner={"name": "Alice", "type": "user"},
+                to_owner={"name": "Bob", "type": "character"},
+            )

@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from config.settings import STORE_INJECTION_MAX_LENGTH, STORES_DIR, STORE_STATUSES, STORE_TYPES
-from core.utils import atomic_write
+from core.utils import atomic_write, make_id_lock
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -255,6 +255,7 @@ class StoreManager:
     def __init__(self, stores_dir: Path | None = None) -> None:
         self._dir = stores_dir or STORES_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
+        self._id_lock = make_id_lock()
 
     # ── Properties ────────────────────────────────────────────
 
@@ -300,21 +301,22 @@ class StoreManager:
         if errors:
             raise StoreValidationError(errors)
 
-        store_id = self._next_id()
-        store = Store.create(
-            id=store_id,
-            name=name.strip(),
-            description=description.strip(),
-            author=author.strip(),
-            store_type=store_type,
-            location_id=location_id.strip() if location_id else "",
-            owner=owner.strip() if owner else "",
-            tags=tags or [],
-            lore=lore,
-            llm_injection=llm_injection,
-            metadata=metadata or {},
-        )
-        self._save(store)
+        with self._id_lock:
+            store_id = self._next_id()
+            store = Store.create(
+                id=store_id,
+                name=name.strip(),
+                description=description.strip(),
+                author=author.strip(),
+                store_type=store_type,
+                location_id=location_id.strip() if location_id else "",
+                owner=owner.strip() if owner else "",
+                tags=tags or [],
+                lore=lore,
+                llm_injection=llm_injection,
+                metadata=metadata or {},
+            )
+            self._save(store)
         return store
 
     # ── Read ──────────────────────────────────────────────────

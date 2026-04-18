@@ -25,7 +25,7 @@ from config.settings import (
     PROPOSAL_STATUSES,
     REVIEW_STANCES,
 )
-from core.utils import atomic_write
+from core.utils import atomic_write, make_id_lock
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -218,6 +218,7 @@ class ProposalManager:
     def __init__(self, proposals_dir: Path | None = None) -> None:
         self._dir = proposals_dir or PROPOSALS_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
+        self._id_lock = make_id_lock()
 
     # ── Properties ────────────────────────────────────────────
 
@@ -255,17 +256,18 @@ class ProposalManager:
         if errors:
             raise ProposalValidationError(errors)
 
-        next_id = self._next_id()
-        proposal = Proposal.create(
-            id=next_id,
-            title=title.strip(),
-            description=description.strip(),
-            author=author.strip(),
-            category=category,
-            body=body,
-            metadata=metadata,
-        )
-        self._save(proposal)
+        with self._id_lock:
+            next_id = self._next_id()
+            proposal = Proposal.create(
+                id=next_id,
+                title=title.strip(),
+                description=description.strip(),
+                author=author.strip(),
+                category=category,
+                body=body,
+                metadata=metadata,
+            )
+            self._save(proposal)
         return proposal
 
     # ── Read ──────────────────────────────────────────────────

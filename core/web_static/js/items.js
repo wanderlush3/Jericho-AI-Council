@@ -104,7 +104,7 @@ async function renderItems() {
                 <div style="display:flex;gap:var(--space-xs);align-items:center;flex-wrap:wrap">
                     ${item.tier ? `<span class="badge badge-tier-${item.tier}" style="background:linear-gradient(135deg,hsl(${item.tier==='permanent'?'210,60%,50%':item.tier==='consumable'?'40,70%,50%':'0,55%,50%'}),hsl(${item.tier==='permanent'?'230,55%,45%':item.tier==='consumable'?'55,65%,45%':'15,50%,45%'}));font-size:0.7rem;padding:2px 8px">${item.tier.charAt(0).toUpperCase()+item.tier.slice(1)}</span>` : ''}
                     ${item.legality ? `<span class="badge" style="background:linear-gradient(135deg,${item.legality==='legal'?'hsl(150,55%,42%),hsl(160,50%,38%)':'hsl(0,60%,48%),hsl(10,55%,43%)'});font-size:0.7rem;padding:2px 8px">${item.legality.charAt(0).toUpperCase()+item.legality.slice(1)}</span>` : ''}
-                    ${item.owner ? `<span class="badge store-owned-badge">Owned by ${escapeHtml(item.owner)}</span>` : ''}
+                    ${(item.owned_by||[]).map(o => `<span class="badge store-owned-badge" title="${o.type}">${o.type==='council_member'?'👑':o.type==='character'?'🎭':'👤'} ${escapeHtml(o.name)}</span>`).join('')}
                     ${item.rarity ? `<span class="badge badge-${item.rarity}">${item.rarity}</span>` : ''}
                     ${item.llm_injection ? `<span class="badge" style="background:linear-gradient(135deg,hsl(180,50%,40%),hsl(200,55%,35%));font-size:0.68rem;padding:2px 6px" title="LLM injection ${item.injection_active ? 'active' : 'expired'}">💉 ${item.injection_active ? 'Active' : 'Expired'}</span>` : ''}
                     ${badge(item.status)}
@@ -168,7 +168,7 @@ async function renderItemDetail(id) {
             <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
                 <div>
                     <button class="btn" onclick="navigateTo('items')" style="margin-bottom:var(--space-sm);font-size:0.82rem">← Back to Items</button>
-                    <h2>${data.name} ${tierBadge} ${data.legality ? `<span class="badge" style="background:linear-gradient(135deg,${data.legality==='legal'?'hsl(150,55%,42%),hsl(160,50%,38%)':'hsl(0,60%,48%),hsl(10,55%,43%)'});font-size:0.78rem;padding:3px 10px">${data.legality.charAt(0).toUpperCase()+data.legality.slice(1)}</span>` : ''} ${data.rarity ? `<span class="badge badge-${data.rarity}">${data.rarity}</span>` : ''} ${data.owner ? `<span class="badge store-owned-badge">Owned by ${escapeHtml(data.owner)}</span>` : ''}</h2>
+                    <h2>${data.name} ${tierBadge} ${data.legality ? `<span class="badge" style="background:linear-gradient(135deg,${data.legality==='legal'?'hsl(150,55%,42%),hsl(160,50%,38%)':'hsl(0,60%,48%),hsl(10,55%,43%)'});font-size:0.78rem;padding:3px 10px">${data.legality.charAt(0).toUpperCase()+data.legality.slice(1)}</span>` : ''} ${data.rarity ? `<span class="badge badge-${data.rarity}">${data.rarity}</span>` : ''} ${(data.owned_by||[]).map(o => `<span class="badge store-owned-badge" title="${o.type}">${o.type==='council_member'?'👑':o.type==='character'?'🎭':'👤'} ${escapeHtml(o.name)}</span>`).join('')}</h2>
                     <p>${badge(data.status)} · ID: ${data.id} · v${data.version} · by ${data.author}</p>
                 </div>
                 <div style="display:flex;gap:var(--space-sm)">
@@ -256,6 +256,68 @@ async function renderItemDetail(id) {
                     </div>
                     <button class="btn" onclick="addItemProperty('${id}')" style="margin-top:var(--space-sm)">➕ Add Property</button>
                 </div>
+            </div>
+
+            <div class="detail-section">
+                <h3>👥 Owned By (${(data.owned_by||[]).length})</h3>
+                ${(data.owned_by||[]).length ? (data.owned_by||[]).map((o,i) => `
+                    <div class="detail-row" style="display:flex;align-items:center;gap:var(--space-sm)">
+                        <span class="badge" style="background:linear-gradient(135deg,${o.type==='council_member'?'hsl(280,50%,45%),hsl(290,45%,40%)':o.type==='character'?'hsl(30,55%,45%),hsl(40,50%,40%)':'hsl(210,50%,45%),hsl(220,45%,40%)'});font-size:0.72rem;padding:2px 8px">${o.type==='council_member'?'👑 Council':o.type==='character'?'🎭 Character':'👤 User'}</span>
+                        <strong>${escapeHtml(o.name)}</strong>
+                        <button class="btn" style="margin-left:auto;padding:2px 8px;font-size:0.75rem" onclick="removeItemOwner('${id}',${i})">✕</button>
+                    </div>
+                `).join('') : '<p style="color:var(--text-muted)">No owners assigned.</p>'}
+                <div style="margin-top:var(--space-md);padding-top:var(--space-md);border-top:1px solid var(--border-subtle)">
+                    <h4>Add Owner</h4>
+                    <div class="proposal-form-grid">
+                        <div class="filter-group" style="flex:2">
+                            <label for="item-owner-name">Name</label>
+                            <input id="item-owner-name" class="settings-input" placeholder="e.g. Araushnee" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="item-owner-type">Type</label>
+                            <select id="item-owner-type" class="settings-input">
+                                <option value="user">👤 User</option>
+                                <option value="character">🎭 Character</option>
+                                <option value="council_member">👑 Council Member</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn" onclick="addItemOwner('${id}')" style="margin-top:var(--space-sm)">➕ Add Owner</button>
+                </div>
+                ${data.status === 'active' && (data.owned_by||[]).length > 0 ? `
+                <div style="margin-top:var(--space-md);padding-top:var(--space-md);border-top:1px solid var(--border-subtle)">
+                    <h4>🎁 Gift Item</h4>
+                    <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:var(--space-sm)">Transfer ownership by gifting this item to someone else. A chat record will be created to acknowledge the gift.</p>
+                    <div class="proposal-form-grid">
+                        <div class="filter-group">
+                            <label for="item-gift-from">From Owner</label>
+                            <select id="item-gift-from" class="settings-input">
+                                ${(data.owned_by||[]).map((o,i) => `<option value="${i}">${o.type==='council_member'?'👑':o.type==='character'?'🎭':'👤'} ${escapeHtml(o.name)} (${o.type})</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
+                        <div class="filter-group" style="flex:2">
+                            <label for="item-gift-to-name">To (Name)</label>
+                            <input id="item-gift-to-name" class="settings-input" placeholder="e.g. King Oberon" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="item-gift-to-type">Type</label>
+                            <select id="item-gift-to-type" class="settings-input">
+                                <option value="user">👤 User</option>
+                                <option value="character">🎭 Character</option>
+                                <option value="council_member">👑 Council Member</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filter-group" style="margin-top:var(--space-sm)">
+                        <label for="item-gift-message">Gift Message <span style="color:var(--text-muted);font-size:0.75rem">(optional)</span></label>
+                        <input id="item-gift-message" class="settings-input" placeholder="e.g. A token of my appreciation…" />
+                    </div>
+                    <button class="btn" onclick="giftItem('${id}')" style="margin-top:var(--space-sm);background:linear-gradient(135deg,hsl(330,55%,50%),hsl(350,50%,45%))" id="item-gift-btn">🎁 Gift Item</button>
+                </div>
+                ` : ''}
             </div>
 
             <div class="detail-section">
@@ -454,6 +516,114 @@ async function removeItemProperty(itemId, propName) {
         await renderItemDetail(itemId);
     } catch (err) {
         showToast(`Error: ${err.message}`, true);
+    }
+}
+
+// ── Item Owner Management ────────────────────────────────────
+
+async function addItemOwner(itemId) {
+    const name = document.getElementById('item-owner-name').value.trim();
+    const ownerType = document.getElementById('item-owner-type').value;
+
+    if (!name) { document.getElementById('item-owner-name').focus(); return; }
+
+    try {
+        const current = await api(`/api/items/${encodeURIComponent(itemId)}`);
+        const newOwners = [...(current.owned_by || []), { name, type: ownerType }];
+        const resp = await fetch(`/api/items/${encodeURIComponent(itemId)}/owned-by`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owned_by: newOwners }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Failed to add owner' }));
+            throw new Error(err.detail);
+        }
+        showToast(`Owner "${name}" added ✅`);
+        await renderItemDetail(itemId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
+
+async function removeItemOwner(itemId, index) {
+    try {
+        const current = await api(`/api/items/${encodeURIComponent(itemId)}`);
+        const owners = [...(current.owned_by || [])];
+        const removed = owners.splice(index, 1);
+        const resp = await fetch(`/api/items/${encodeURIComponent(itemId)}/owned-by`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owned_by: owners }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Failed to remove owner' }));
+            throw new Error(err.detail);
+        }
+        showToast(`Owner removed ✅`);
+        await renderItemDetail(itemId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
+
+// ── Gift Item ────────────────────────────────────────────────
+
+async function giftItem(itemId) {
+    const btn = document.getElementById('item-gift-btn');
+    const fromIdx = parseInt(document.getElementById('item-gift-from').value, 10);
+    const toName = document.getElementById('item-gift-to-name').value.trim();
+    const toType = document.getElementById('item-gift-to-type').value;
+    const message = document.getElementById('item-gift-message').value.trim();
+
+    if (!toName) {
+        showToast('Recipient name is required.', true);
+        document.getElementById('item-gift-to-name').focus();
+        return;
+    }
+
+    // Get current item to resolve from_owner by index
+    let current;
+    try {
+        current = await api(`/api/items/${encodeURIComponent(itemId)}`);
+    } catch (err) {
+        showToast(`Error loading item: ${err.message}`, true);
+        return;
+    }
+
+    const fromOwner = (current.owned_by || [])[fromIdx];
+    if (!fromOwner) {
+        showToast('Selected owner not found.', true);
+        return;
+    }
+
+    if (!confirm(`Gift "${current.name}" from ${fromOwner.name} to ${toName}?`)) return;
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Gifting…';
+
+    try {
+        const resp = await fetch(`/api/items/${encodeURIComponent(itemId)}/gift`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from_owner: fromOwner,
+                to_owner: { name: toName, type: toType },
+                message,
+            }),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Gift failed' }));
+            throw new Error(err.detail);
+        }
+        const result = await resp.json();
+        showToast(`🎁 "${current.name}" gifted to ${toName}! Chat: ${result.chat_id}`);
+        await renderItemDetail(itemId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🎁 Gift Item';
     }
 }
 

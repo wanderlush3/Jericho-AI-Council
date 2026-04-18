@@ -666,7 +666,7 @@
     "id": "F-064",
     "title": "Extract Business Logic From Route Files",
     "description": "Several route files contain substantial business logic that should live in core/ modules. Primary target: _build_participant_context() in routes/explore.py (350-line prompt assembly engine) should move to core/context_builder.py or core/prompt_builder.py. Secondary: examine routes/stories.py (46KB) and routes/proposals.py (39KB) for business logic that could be extracted. Routes should ideally be thin HTTP adapters — parse request, call business logic, return response. Update all imports and tests. No behavior changes.",
-    "status": "pending",
+    "status": "done",
     "dependencies": [
       "F-063"
     ]
@@ -682,7 +682,53 @@
     "id": "F-066",
     "title": "Thread-Safe Sequential ID Generation",
     "description": "All _next_id() implementations (CharacterManager, ProposalManager, CustomStylePresetManager, StoryManager, ExplorationManager, etc.) scan the filesystem for existing files and increment — susceptible to race conditions under concurrent API requests. Two concurrent calls could get the same ID; the second atomic_write would silently overwrite the first. Fix: add a per-manager threading.Lock around ID generation + file creation as an atomic unit. Alternatively, consider a shared atomic counter file or UUID-based IDs. Primary targets: CharacterManager._next_id(), ProposalManager._next_id(), CustomStylePresetManager._next_id(), StoryManager._next_id(), ExplorationManager._next_scene_id(). Add concurrent-creation tests to verify safety.",
-    "status": "pending",
+    "status": "completed",
     "dependencies": []
+  },
+  {
+    "id": "F-067",
+    "title": "Item Owned-By Multi-Owner Field",
+    "description": "Replace the single-string 'owner' field on Items with a multi-owner 'owned_by' list. Each entry has a name and type (user, character, council_member). Supports multiple simultaneous owners. Backward compatible — legacy 'owner' strings auto-migrate to owned_by on load. Dedicated PUT /api/items/{id}/owned-by endpoint. Frontend add/remove owner UI with type badges. Validation: non-empty name, valid type, no duplicate name+type pairs.",
+    "status": "completed",
+    "dependencies": [
+      "F-035"
+    ]
+  },
+  {
+    "id": "F-068",
+    "title": "Gift Giving System",
+    "description": "Gift-giving mechanism that transfers item ownership via owned_by changes. When a gift is given, the item's owned_by list is updated to reflect the new owner, and a simple chat message exchange is auto-created between the gift receiver and gift giver acknowledging the gift. Depends on the owned_by multi-owner field (F-067) and chat system (F-009).",
+    "status": "completed",
+    "dependencies": [
+      "F-067",
+      "F-009"
+    ]
+  },
+  {
+    "id": "F-069",
+    "title": "Reputation System",
+    "description": "Event-sourced reputation tracking for council members and characters. Immutable events are stored as JSONL, scores computed on demand with 120-day half-life decay. Six tiers from Disgraced to Legendary. Default reputation stance per entity (configurable first impression). API endpoints for leaderboard, scoring, event history, and manual admin awards. Frontend leaderboard and detail views. LLM context injection of reputation tiers. Infrastructure-only — automated event recording from votes/proposals/gifts is deferred to F-070.",
+    "status": "completed",
+    "dependencies": [
+      "F-068"
+    ]
+  },
+  {
+    "id": "F-070",
+    "title": "Reputation Auto-Recording Integration",
+    "description": "Wire automated reputation event recording into existing systems. When a vote is cast, proposal authored/approved/rejected, gift given/received, discussion participated in, or council session attended, a reputation event is automatically recorded. Requires careful integration hooks in VotingEngine, ProposalManager, ItemManager.gift_item, DiscussionManager, and SessionManager. Should be minimally invasive — thin observer/hook layer.",
+    "status": "pending",
+    "dependencies": [
+      "F-069"
+    ]
+  },
+  {
+    "id": "F-071",
+    "title": "Reputation Gameplay Effects",
+    "description": "Reputation scores affect gameplay mechanics. IMPORTANT: Do not implement without a full discussion and approved implementation plan. Potential effects: vote weight modulation based on reputation tier, store price adjustments, proposal fast-track for high-reputation authors, restricted actions for disgraced entities. Requires careful balancing to avoid feedback loops.",
+    "status": "pending",
+    "dependencies": [
+      "F-069"
+    ]
   }
 ]

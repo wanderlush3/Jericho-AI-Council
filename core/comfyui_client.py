@@ -36,7 +36,7 @@ from config.settings import (
     COMFYUI_TEMPLATES_DIR,
     COMFYUI_MAX_QUEUE_SIZE,
 )
-from core.utils import atomic_write
+from core.utils import atomic_write, make_id_lock
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -1073,6 +1073,7 @@ class WorkflowTemplateManager:
     def __init__(self, templates_dir: Path | None = None) -> None:
         self._dir = templates_dir or COMFYUI_TEMPLATES_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
+        self._id_lock = make_id_lock()
 
     # ── Properties ───────────────────────────────────────────
 
@@ -1106,17 +1107,18 @@ class WorkflowTemplateManager:
         if errors:
             raise TemplateValidationError(errors)
 
-        template_id = self._next_id()
-        template = WorkflowTemplate.create(
-            id=template_id,
-            name=name.strip(),
-            description=description.strip() if description else "",
-            workflow_json=workflow_json,
-            entity_type=entity_type.strip() if entity_type else "",
-            author=author.strip() if author else "",
-            metadata=metadata,
-        )
-        self._save(template)
+        with self._id_lock:
+            template_id = self._next_id()
+            template = WorkflowTemplate.create(
+                id=template_id,
+                name=name.strip(),
+                description=description.strip() if description else "",
+                workflow_json=workflow_json,
+                entity_type=entity_type.strip() if entity_type else "",
+                author=author.strip() if author else "",
+                metadata=metadata,
+            )
+            self._save(template)
         return template
 
     # ── Read ─────────────────────────────────────────────────

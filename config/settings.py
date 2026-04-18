@@ -343,5 +343,27 @@ ROLLING_SUMMARY_RECENT_MESSAGES = 5        # Keep this many recent raw messages 
 ROLLING_SUMMARY_MAX_TOKENS = 300           # Max tokens for the generated summary
 ROLLING_SUMMARY_ENABLED = True             # Global toggle for rolling summaries
 
+# ─── Reputation Settings (F-069) ─────────────────────────────
+REPUTATION_DIR = DATA_DIR / "reputation"
+REPUTATION_DECAY_HALF_LIFE_DAYS = 120      # Events lose 50% weight after 120 days
+REPUTATION_DECAY_MIN_FACTOR = 0.1          # Floor — events never decay below 10%
+REPUTATION_DECAY_ENABLED = True            # Global toggle for time decay
+
+# Default reputation stance: how each entity perceives unknown entities.
+# Keyed by lowercase name; value is one of: disgraced, dubious, neutral, respected
+DEFAULT_REPUTATION_STANCES: dict[str, str] = {
+    # Council members
+    "sage": "neutral",
+    "logic": "neutral",
+    "spark": "neutral",
+    "echo": "neutral",
+    "forge": "neutral",
+    "pulse": "neutral",
+    "lens": "neutral",
+    "anchor": "neutral",
+    "drift": "dubious",
+    # Default for any entity not explicitly listed
+}
+
 # ─── Injection Profile Settings (F-061) ──────────────────────
 DEFAULT_INJECTION_PROFILE = "chat_full"    # Default profile for _build_participant_context

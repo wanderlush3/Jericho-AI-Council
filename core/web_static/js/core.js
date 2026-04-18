@@ -175,7 +175,7 @@ async function api(path) {
 const VIEW_TO_SECTION = {
     dashboard: 'overview', analytics: 'overview',
     council: 'governance', proposals: 'governance', votes: 'governance',
-    sessions: 'governance', laws: 'governance',
+    sessions: 'governance', laws: 'governance', reputation: 'governance',
     characters: 'characters', memories: 'characters', evolution: 'characters',
     tasks: 'characters',
     chat: 'world', explore: 'world', stories: 'world', locations: 'world', items: 'world', stores: 'world',

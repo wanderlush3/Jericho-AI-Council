@@ -468,7 +468,10 @@ async def api_proposal_vote(proposal_id: str) -> dict[str, Any]:
     an AI-generated vote, close voting, return tally.
     """
     from core.proposals import ProposalManager, ProposalNotFoundError
-    from core.voting import VotingEngine, Vote, VotingStateError
+    from core.voting import (
+        VotingEngine, Vote, VotingStateError,
+        build_vote_prompt, parse_vote_response,
+    )
     from core.discussion import DiscussionNotFoundError
     from core.api_client import ChatMessage
 
@@ -521,25 +524,9 @@ async def api_proposal_vote(proposal_id: str) -> dict[str, Any]:
         if ctx.formatted_text:
             memory_block = f"\n\n{ctx.formatted_text}\n"
 
-        vote_prompt = (
-            f"## Vote Required: {proposal.title}\n"
-            f"**Proposal ID:** {proposal.id}\n"
-            f"**Category:** {proposal.category}\n"
-            f"**Author:** {proposal.author}\n"
-            f"**Description:** {proposal.description}\n"
-            f"{discussion_context}"
-            f"{memory_block}\n\n"
-            f"---\n"
-            f"You are **{member.name}** ({member.role}). "
-            f"You must now vote on this proposal.\n\n"
-            f"Respond with EXACTLY this format (first line is your vote, "
-            f"rest is your reasoning):\n"
-            f"VOTE: for\n"
-            f"or\n"
-            f"VOTE: against\n"
-            f"or\n"
-            f"VOTE: abstain\n\n"
-            f"Then explain your reasoning briefly."
+        # F-064: Use extracted prompt builder
+        vote_prompt = build_vote_prompt(
+            proposal, member, discussion_context, memory_block,
         )
 
         messages = [ChatMessage(role="user", content=vote_prompt)]
@@ -548,22 +535,8 @@ async def api_proposal_vote(proposal_id: str) -> dict[str, Any]:
             response = await client.chat(member, messages)
             content = response.content or ""
 
-            # Parse vote from response
-            choice = "abstain"  # default
-            reason = content
-            content_lower = content.lower()
-            if "vote: for" in content_lower or "vote:for" in content_lower:
-                choice = "for"
-            elif "vote: against" in content_lower or "vote:against" in content_lower:
-                choice = "against"
-            elif "vote: abstain" in content_lower or "vote:abstain" in content_lower:
-                choice = "abstain"
-
-            # Extract reason (everything after the VOTE: line)
-            import re
-            reason_match = re.split(r"VOTE:\s*\w+\s*\n?", content, flags=re.IGNORECASE)
-            if len(reason_match) > 1:
-                reason = reason_match[-1].strip()
+            # F-064: Use extracted response parser
+            choice, reason = parse_vote_response(content)
 
             vote = Vote.create(
                 voter=member.name,

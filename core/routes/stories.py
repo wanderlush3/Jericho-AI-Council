@@ -24,6 +24,12 @@ from core.routes._helpers import (
     _build_participant_context,
 )
 from core.injection_profiles import InjectionProfile
+from core.story import (
+    STORY_CHAT_MAX_ROUNDS as _STORY_CHAT_MAX_ROUNDS,
+    get_story_round as _get_story_round,
+    increment_story_round as _increment_story_round,
+    is_story_chat_at_limit as _is_story_chat_at_limit,
+)
 
 
 
@@ -32,7 +38,6 @@ log = logging.getLogger(__name__)
 router = APIRouter()
 
 _PARTICIPANT_MAX = 10
-_STORY_CHAT_MAX_ROUNDS = 5
 
 @router.get("/api/stories")
 def api_stories_list(
@@ -804,32 +809,9 @@ def _next_story_chat_id() -> str:
     return f"STC-{num:04d}"
 
 
-def _get_story_round(chat_record) -> int:
-    """Get the current round number from chat metadata."""
-    return (chat_record.metadata or {}).get("story_round", 0)
-
-
-def _increment_story_round(hc, chat_id: str) -> int:
-    """Increment and return the new round number."""
-    rec = hc.get(chat_id)
-    meta = dict(rec.metadata or {})
-    current = meta.get("story_round", 0)
-    meta["story_round"] = current + 1
-    # Update metadata by replacing the record
-    from core.human_chat import HumanChatRecord
-    d = rec.to_dict()
-    d["metadata"] = meta
-    updated = HumanChatRecord.from_dict(d)
-    hc._save(updated)
-    return current + 1
-
-
-def _is_story_chat_at_limit(chat_record) -> bool:
-    """Check if the story chat has reached its round limit."""
-    meta = chat_record.metadata or {}
-    current = meta.get("story_round", 0)
-    max_rounds = meta.get("story_max_rounds", _STORY_CHAT_MAX_ROUNDS)
-    return current >= max_rounds
+# F-064: Story chat round helpers extracted to core/story.py
+# _get_story_round, _increment_story_round, _is_story_chat_at_limit
+# are now imported at the top of this file.
 
 
 @router.get("/api/stories/{story_id}/chat/active")

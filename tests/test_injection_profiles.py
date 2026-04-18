@@ -317,11 +317,11 @@ class TestParticipantContextWithProfile:
         reg.list_members.return_value = members
         return reg
 
-    @patch("core.routes.explore.get_registry")
-    @patch("core.routes.explore.get_law_manager")
-    @patch("core.routes.explore.get_location_manager")
-    @patch("core.routes.explore.get_item_manager")
-    @patch("core.routes.explore.get_store_manager")
+    @patch("core.context_builder.get_registry")
+    @patch("core.context_builder.get_law_manager")
+    @patch("core.context_builder.get_location_manager")
+    @patch("core.context_builder.get_item_manager")
+    @patch("core.context_builder.get_store_manager")
     def test_image_gen_skips_world_context(
         self, mock_stores, mock_items, mock_locs, mock_laws, mock_reg,
     ):
@@ -346,11 +346,11 @@ class TestParticipantContextWithProfile:
         mock_items.return_value.list_items.assert_not_called()
         mock_stores.return_value.list_stores.assert_not_called()
 
-    @patch("core.routes.explore.get_registry")
-    @patch("core.routes.explore.get_law_manager")
-    @patch("core.routes.explore.get_location_manager")
-    @patch("core.routes.explore.get_item_manager")
-    @patch("core.routes.explore.get_store_manager")
+    @patch("core.context_builder.get_registry")
+    @patch("core.context_builder.get_law_manager")
+    @patch("core.context_builder.get_location_manager")
+    @patch("core.context_builder.get_item_manager")
+    @patch("core.context_builder.get_store_manager")
     def test_image_gen_skips_memories(
         self, mock_stores, mock_items, mock_locs, mock_laws, mock_reg,
     ):
@@ -371,11 +371,11 @@ class TestParticipantContextWithProfile:
             # MemoryInfluence should never be instantiated
             mock_mi.assert_not_called()
 
-    @patch("core.routes.explore.get_registry")
-    @patch("core.routes.explore.get_law_manager")
-    @patch("core.routes.explore.get_location_manager")
-    @patch("core.routes.explore.get_item_manager")
-    @patch("core.routes.explore.get_store_manager")
+    @patch("core.context_builder.get_registry")
+    @patch("core.context_builder.get_law_manager")
+    @patch("core.context_builder.get_location_manager")
+    @patch("core.context_builder.get_item_manager")
+    @patch("core.context_builder.get_store_manager")
     def test_narration_includes_world_context(
         self, mock_stores, mock_items, mock_locs, mock_laws, mock_reg,
     ):
@@ -416,11 +416,11 @@ class TestParticipantContextWithProfile:
         # Should include LLM injections (narration profile has include_injections=True)
         assert "Important place" in result
 
-    @patch("core.routes.explore.get_registry")
-    @patch("core.routes.explore.get_law_manager")
-    @patch("core.routes.explore.get_location_manager")
-    @patch("core.routes.explore.get_item_manager")
-    @patch("core.routes.explore.get_store_manager")
+    @patch("core.context_builder.get_registry")
+    @patch("core.context_builder.get_law_manager")
+    @patch("core.context_builder.get_location_manager")
+    @patch("core.context_builder.get_item_manager")
+    @patch("core.context_builder.get_store_manager")
     def test_chat_full_includes_everything(
         self, mock_stores, mock_items, mock_locs, mock_laws, mock_reg,
     ):
@@ -447,11 +447,11 @@ class TestParticipantContextWithProfile:
         assert "World Context" in result
         assert "Tax Law" in result
 
-    @patch("core.routes.explore.get_registry")
-    @patch("core.routes.explore.get_law_manager")
-    @patch("core.routes.explore.get_location_manager")
-    @patch("core.routes.explore.get_item_manager")
-    @patch("core.routes.explore.get_store_manager")
+    @patch("core.context_builder.get_registry")
+    @patch("core.context_builder.get_law_manager")
+    @patch("core.context_builder.get_location_manager")
+    @patch("core.context_builder.get_item_manager")
+    @patch("core.context_builder.get_store_manager")
     def test_discussion_skips_world_and_participants(
         self, mock_stores, mock_items, mock_locs, mock_laws, mock_reg,
     ):
@@ -476,11 +476,11 @@ class TestParticipantContextWithProfile:
 class TestBackwardCompatibility:
     """Verify that profile=None produces identical behavior."""
 
-    @patch("core.routes.explore.get_registry")
-    @patch("core.routes.explore.get_law_manager")
-    @patch("core.routes.explore.get_location_manager")
-    @patch("core.routes.explore.get_item_manager")
-    @patch("core.routes.explore.get_store_manager")
+    @patch("core.context_builder.get_registry")
+    @patch("core.context_builder.get_law_manager")
+    @patch("core.context_builder.get_location_manager")
+    @patch("core.context_builder.get_item_manager")
+    @patch("core.context_builder.get_store_manager")
     def test_none_profile_same_as_omitted(
         self, mock_stores, mock_items, mock_locs, mock_laws, mock_reg,
     ):
@@ -527,11 +527,11 @@ class TestBackwardCompatibility:
 class TestHelpersForwarding:
     """Verify _helpers.py forwards the profile parameter."""
 
-    @patch("core.routes.explore.get_registry")
-    @patch("core.routes.explore.get_law_manager")
-    @patch("core.routes.explore.get_location_manager")
-    @patch("core.routes.explore.get_item_manager")
-    @patch("core.routes.explore.get_store_manager")
+    @patch("core.context_builder.get_registry")
+    @patch("core.context_builder.get_law_manager")
+    @patch("core.context_builder.get_location_manager")
+    @patch("core.context_builder.get_item_manager")
+    @patch("core.context_builder.get_store_manager")
     def test_helpers_forwards_profile(
         self, mock_stores, mock_items, mock_locs, mock_laws, mock_reg,
     ):
@@ -562,11 +562,11 @@ class TestHelpersForwarding:
 class TestNarrationInjectionBehavior:
     """Verify NARRATION profile handles LLM injections correctly."""
 
-    @patch("core.routes.explore.get_registry")
-    @patch("core.routes.explore.get_law_manager")
-    @patch("core.routes.explore.get_location_manager")
-    @patch("core.routes.explore.get_item_manager")
-    @patch("core.routes.explore.get_store_manager")
+    @patch("core.context_builder.get_registry")
+    @patch("core.context_builder.get_law_manager")
+    @patch("core.context_builder.get_location_manager")
+    @patch("core.context_builder.get_item_manager")
+    @patch("core.context_builder.get_store_manager")
     def test_narration_includes_store_injections(
         self, mock_stores, mock_items, mock_locs, mock_laws, mock_reg,
     ):
@@ -597,11 +597,11 @@ class TestNarrationInjectionBehavior:
         assert "Magic Shop" in result
         assert "shopkeeper whispers" in result
 
-    @patch("core.routes.explore.get_registry")
-    @patch("core.routes.explore.get_law_manager")
-    @patch("core.routes.explore.get_location_manager")
-    @patch("core.routes.explore.get_item_manager")
-    @patch("core.routes.explore.get_store_manager")
+    @patch("core.context_builder.get_registry")
+    @patch("core.context_builder.get_law_manager")
+    @patch("core.context_builder.get_location_manager")
+    @patch("core.context_builder.get_item_manager")
+    @patch("core.context_builder.get_store_manager")
     def test_image_gen_excludes_store_injections(
         self, mock_stores, mock_items, mock_locs, mock_laws, mock_reg,
     ):
@@ -632,11 +632,11 @@ class TestNarrationInjectionBehavior:
 class TestChatLightProfile:
     """Verify CHAT_LIGHT profile behavior."""
 
-    @patch("core.routes.explore.get_registry")
-    @patch("core.routes.explore.get_law_manager")
-    @patch("core.routes.explore.get_location_manager")
-    @patch("core.routes.explore.get_item_manager")
-    @patch("core.routes.explore.get_store_manager")
+    @patch("core.context_builder.get_registry")
+    @patch("core.context_builder.get_law_manager")
+    @patch("core.context_builder.get_location_manager")
+    @patch("core.context_builder.get_item_manager")
+    @patch("core.context_builder.get_store_manager")
     def test_chat_light_includes_identity(
         self, mock_stores, mock_items, mock_locs, mock_laws, mock_reg,
     ):

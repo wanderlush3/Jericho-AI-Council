@@ -11,7 +11,7 @@ Route modules live in core/routes/:
     status, council, proposals, votes, characters, tasks,
     locations, items, stores, settings, chat, memories,
     laws, evolutions, sessions, treasury, images,
-    generation, explore, stories
+    generation, explore, stories, reputation
 """
 
 from __future__ import annotations
@@ -49,6 +49,7 @@ from core.routes.images import router as images_router
 from core.routes.generation import router as generation_router
 from core.routes.explore import router as explore_router
 from core.routes.stories import router as stories_router
+from core.routes.reputation import router as reputation_router
 
 
 def create_app() -> FastAPI:
@@ -103,6 +104,7 @@ def create_app() -> FastAPI:
     application.include_router(generation_router)
     application.include_router(explore_router)
     application.include_router(stories_router)
+    application.include_router(reputation_router)
 
     # ── Static Files ──────────────────────────────────────────
     static_dir = WEB_STATIC_DIR

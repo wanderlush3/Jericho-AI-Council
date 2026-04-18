@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from pathlib import Path
 from unittest.mock import patch
 
@@ -28,6 +29,14 @@ def _mock_voting_init(votes_dir, quorum=5, threshold=0.6):
         self._dir = votes_dir
         self._quorum = quorum
         self._threshold = threshold
+    return init
+
+
+def _mock_manager_init(target_dir):
+    """Return a proper __init__ replacement for managers needing _dir + _id_lock."""
+    def init(self, d=None):
+        self._dir = target_dir
+        self._id_lock = threading.Lock()
     return init
 
 
@@ -309,7 +318,7 @@ class TestProposalsCreate:
     """Tests for ``jericho proposals create``."""
 
     def test_create_proposal(self, runner, proposals_dir):
-        with patch("core.cli.ProposalManager.__init__", lambda self, d=None: setattr(self, '_dir', proposals_dir)):
+        with patch("core.cli.ProposalManager.__init__", _mock_manager_init(proposals_dir)):
             result = runner.invoke(cli, [
                 "proposals", "create",
                 "--title", "New Ethics Rule",
@@ -322,7 +331,7 @@ class TestProposalsCreate:
         assert "P-0003" in result.output
 
     def test_create_with_body(self, runner, proposals_dir):
-        with patch("core.cli.ProposalManager.__init__", lambda self, d=None: setattr(self, '_dir', proposals_dir)):
+        with patch("core.cli.ProposalManager.__init__", _mock_manager_init(proposals_dir)):
             result = runner.invoke(cli, [
                 "proposals", "create",
                 "--title", "Detailed Proposal",

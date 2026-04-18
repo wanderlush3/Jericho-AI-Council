@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from config.settings import TASKS_DIR, TASK_STATUSES, TASK_MAX_ROUNDS
+from core.utils import make_id_lock
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -192,6 +193,7 @@ class TaskManager:
     def __init__(self, tasks_dir: Path | None = None) -> None:
         self._dir = tasks_dir or TASKS_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
+        self._id_lock = make_id_lock()
 
     def __repr__(self) -> str:
         return f"TaskManager(dir='{self._dir}')"
@@ -219,9 +221,10 @@ class TaskManager:
         if errors:
             raise TaskValidationError(errors)
 
-        task_id = self._next_id()
-        task = Task.create(task_id, name, description, reason, assignees, **metadata)
-        self._save(task)
+        with self._id_lock:
+            task_id = self._next_id()
+            task = Task.create(task_id, name, description, reason, assignees, **metadata)
+            self._save(task)
         return task
 
     def get(self, task_id: str) -> Task:

@@ -29,7 +29,7 @@ from config.settings import (
 from core.registry import CouncilRegistry, VALID_API_PROVIDERS
 from core.memory import SharedMemory
 from core.proposals import ProposalManager
-from core.utils import atomic_write
+from core.utils import atomic_write, make_id_lock
 from core.voting import VotingEngine
 
 
@@ -317,6 +317,7 @@ class CouncilExpansion:
         self._dir.mkdir(parents=True, exist_ok=True)
         self._members_dir = members_dir or self._registry._members_dir
         self._shared_memory = shared_memory or SharedMemory()
+        self._id_lock = make_id_lock()
 
     # ── Properties ────────────────────────────────────────────
 
@@ -375,14 +376,15 @@ class CouncilExpansion:
         if errors:
             raise ExpansionValidationError(errors)
 
-        next_id = self._next_id()
-        record = ExpansionRecord.create(
-            expansion_id=next_id,
-            author=author.strip(),
-            member_spec=member_spec,
-            metadata=metadata,
-        )
-        self._save(record)
+        with self._id_lock:
+            next_id = self._next_id()
+            record = ExpansionRecord.create(
+                expansion_id=next_id,
+                author=author.strip(),
+                member_spec=member_spec,
+                metadata=metadata,
+            )
+            self._save(record)
         return record
 
     # ── Submit for Review ─────────────────────────────────────

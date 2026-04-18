@@ -26,7 +26,10 @@ from config.settings import (
     ITEM_STATUSES,
     ITEM_TIERS,
 )
-from core.utils import atomic_write
+from core.utils import atomic_write, make_id_lock
+
+# Valid owner types for owned_by entries
+OWNER_TYPES = ("user", "character", "council_member")
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -122,7 +125,7 @@ class Item:
     rarity: str = ""
     tier: str = ""
     legality: str = ""
-    owner: str = ""
+    owned_by: list[dict[str, str]] = field(default_factory=list)
     llm_injection: str = ""
     version: int = 1
     created_at: str = ""
@@ -142,7 +145,7 @@ class Item:
             "rarity": self.rarity,
             "tier": self.tier,
             "legality": self.legality,
-            "owner": self.owner,
+            "owned_by": [dict(o) for o in self.owned_by],
             "llm_injection": self.llm_injection,
             "version": self.version,
             "created_at": self.created_at,
@@ -156,6 +159,10 @@ class Item:
             ItemProperty.from_dict(p)
             for p in data.get("properties", [])
         ]
+        # Backward compat: migrate legacy "owner" string → owned_by list
+        owned_by = data.get("owned_by", [])
+        if not owned_by and data.get("owner"):
+            owned_by = [{"name": data["owner"], "type": "user"}]
         return cls(
             id=data["id"],
             name=data["name"],
@@ -168,7 +175,7 @@ class Item:
             rarity=data.get("rarity", ""),
             tier=data.get("tier", ""),
             legality=data.get("legality", ""),
-            owner=data.get("owner", ""),
+            owned_by=owned_by,
             llm_injection=data.get("llm_injection", ""),
             version=data.get("version", 1),
             created_at=data.get("created_at", ""),
@@ -190,7 +197,7 @@ class Item:
         rarity: str = "",
         tier: str = "",
         legality: str = "",
-        owner: str = "",
+        owned_by: list[dict[str, str]] | None = None,
         llm_injection: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> Item:
@@ -208,7 +215,7 @@ class Item:
             rarity=rarity,
             tier=tier,
             legality=legality,
-            owner=owner,
+            owned_by=owned_by or [],
             llm_injection=llm_injection,
             version=1,
             created_at=now,
@@ -256,6 +263,38 @@ _VALID_TRANSITIONS: dict[str, set[str]] = {
 }
 
 
+# ─── Owned-By Validation ──────────────────────────────────────
+
+
+def validate_owned_by(entries: list[Any]) -> list[str]:
+    """Validate a list of owned_by entries, returning error messages."""
+    errors: list[str] = []
+    if not isinstance(entries, list):
+        errors.append("owned_by must be a list.")
+        return errors
+    seen: set[tuple[str, str]] = set()
+    for i, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            errors.append(f"owned_by[{i}] must be a dict.")
+            continue
+        name = entry.get("name", "").strip() if isinstance(entry.get("name"), str) else ""
+        otype = entry.get("type", "").strip() if isinstance(entry.get("type"), str) else ""
+        if not name:
+            errors.append(f"owned_by[{i}].name must not be empty.")
+        if otype not in OWNER_TYPES:
+            errors.append(
+                f"owned_by[{i}].type '{otype}' is invalid. "
+                f"Must be one of: {', '.join(OWNER_TYPES)}"
+            )
+        key = (name.lower(), otype)
+        if key in seen:
+            errors.append(
+                f"Duplicate owned_by entry: name='{name}', type='{otype}'."
+            )
+        seen.add(key)
+    return errors
+
+
 # ─── Item Manager ──────────────────────────────────────────────
 
 
@@ -268,6 +307,7 @@ class ItemManager:
     def __init__(self, items_dir: Path | None = None) -> None:
         self._dir = items_dir or ITEMS_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
+        self._id_lock = make_id_lock()
 
     # ── Properties ────────────────────────────────────────────
 
@@ -289,6 +329,7 @@ class ItemManager:
         rarity: str = "",
         tier: str = "",
         legality: str = "",
+        owned_by: list[dict[str, str]] | None = None,
         llm_injection: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> Item:
@@ -321,25 +362,29 @@ class ItemManager:
                 f"{ITEM_INJECTION_MAX_LENGTH} characters "
                 f"(got {len(llm_injection)})."
             )
+        if owned_by:
+            errors.extend(validate_owned_by(owned_by))
         if errors:
             raise ItemValidationError(errors)
 
-        item_id = self._next_id()
-        item = Item.create(
-            id=item_id,
-            name=name,
-            description=description,
-            author=author,
-            lore=lore,
-            properties=properties or [],
-            tags=tags or [],
-            rarity=rarity,
-            tier=tier,
-            legality=legality,
-            llm_injection=llm_injection,
-            metadata=metadata or {},
-        )
-        self._save(item)
+        with self._id_lock:
+            item_id = self._next_id()
+            item = Item.create(
+                id=item_id,
+                name=name,
+                description=description,
+                author=author,
+                lore=lore,
+                properties=properties or [],
+                tags=tags or [],
+                rarity=rarity,
+                tier=tier,
+                legality=legality,
+                owned_by=owned_by or [],
+                llm_injection=llm_injection,
+                metadata=metadata or {},
+            )
+            self._save(item)
         return item
 
     def get(self, item_id: str) -> Item:
@@ -486,6 +531,12 @@ class ItemManager:
                     f"Must be one of: {', '.join(ITEM_LEGALITY_STATUSES)}"
                 )
 
+        # Validate owned_by if provided
+        if "owned_by" in fields:
+            ob_errors = validate_owned_by(fields["owned_by"])
+            if ob_errors:
+                raise ItemValidationError(ob_errors)
+
         item = self.get(item_id)
         now = datetime.now(timezone.utc).isoformat()
         data = item.to_dict()
@@ -512,8 +563,127 @@ class ItemManager:
         data = json.dumps(item.to_dict(), indent=2, ensure_ascii=False)
         atomic_write(path, data + "\n")
 
+    # ── Gift Giving (F-068) ──────────────────────────────────
+
+    def gift_item(
+        self,
+        item_id: str,
+        *,
+        from_owner: dict[str, str],
+        to_owner: dict[str, str],
+        message: str = "",
+    ) -> "GiftRecord":
+        """Transfer ownership of an item from one owner to another.
+
+        Validates:
+        - Item exists and is active
+        - ``from_owner`` is currently in ``owned_by``
+        - ``to_owner`` is a valid owner entry and not already an owner
+        - ``from_owner`` and ``to_owner`` are not the same
+
+        Returns a :class:`GiftRecord` capturing the transfer.
+        """
+        item = self.get(item_id)
+
+        # Must be active
+        if item.status != "active":
+            raise ItemValidationError(
+                f"Item '{item_id}' must be active to gift "
+                f"(current status: {item.status})."
+            )
+
+        # Validate to_owner structure
+        ob_errors = validate_owned_by([to_owner])
+        if ob_errors:
+            raise ItemValidationError(ob_errors)
+
+        # Normalize for comparison (case-insensitive name, exact type)
+        from_key = (
+            from_owner.get("name", "").strip().lower(),
+            from_owner.get("type", "").strip(),
+        )
+        to_key = (
+            to_owner.get("name", "").strip().lower(),
+            to_owner.get("type", "").strip(),
+        )
+
+        if from_key == to_key:
+            raise ItemValidationError(
+                "Cannot gift an item to the same owner."
+            )
+
+        # Verify from_owner exists in owned_by
+        current_keys = [
+            (o.get("name", "").strip().lower(), o.get("type", "").strip())
+            for o in item.owned_by
+        ]
+        if from_key not in current_keys:
+            raise ItemValidationError(
+                f"'{from_owner.get('name', '')}' ({from_owner.get('type', '')}) "
+                f"is not a current owner of item '{item_id}'."
+            )
+
+        # Verify to_owner is not already an owner
+        if to_key in current_keys:
+            raise ItemValidationError(
+                f"'{to_owner.get('name', '')}' ({to_owner.get('type', '')}) "
+                f"already owns item '{item_id}'."
+            )
+
+        # Build new owned_by: remove from_owner, add to_owner
+        new_owned_by = [
+            o for o in item.owned_by
+            if (o.get("name", "").strip().lower(), o.get("type", "").strip()) != from_key
+        ]
+        new_owned_by.append({
+            "name": to_owner["name"].strip(),
+            "type": to_owner["type"].strip(),
+        })
+
+        now = datetime.now(timezone.utc).isoformat()
+        updated = Item.from_dict({
+            **item.to_dict(),
+            "owned_by": [dict(o) for o in new_owned_by],
+            "updated_at": now,
+        })
+        self._save(updated)
+
+        return GiftRecord(
+            item_id=item_id,
+            item_name=item.name,
+            from_owner=from_owner,
+            to_owner=to_owner,
+            message=message,
+            timestamp=now,
+        )
+
     # ── Dunder ────────────────────────────────────────────────
 
     def __repr__(self) -> str:
         count = len(list(self._dir.glob("ITEM-*.json")))
         return f"ItemManager(dir={self._dir!r}, items={count})"
+
+
+# ─── Gift Record (F-068) ──────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class GiftRecord:
+    """Captures a completed gift transfer for downstream processing."""
+
+    item_id: str
+    item_name: str
+    from_owner: dict[str, str]
+    to_owner: dict[str, str]
+    message: str = ""
+    timestamp: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "item_id": self.item_id,
+            "item_name": self.item_name,
+            "from_owner": dict(self.from_owner),
+            "to_owner": dict(self.to_owner),
+            "message": self.message,
+            "timestamp": self.timestamp,
+        }

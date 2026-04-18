@@ -41,8 +41,8 @@ class TestCharacterBackstoryTruncation:
         char.traits = []
         return char
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_short_backstory_not_truncated(self, mock_registry, mock_cmgr):
         """Backstory under 200 chars is included in full without ellipsis."""
         mock_reg = MagicMock()
@@ -58,8 +58,8 @@ class TestCharacterBackstoryTruncation:
         assert short_bs in result
         assert "…" not in result.split("**Backstory:**")[1].split("\n")[0]
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_long_backstory_truncated_at_200(self, mock_registry, mock_cmgr):
         """Backstory over 200 chars is truncated with ellipsis."""
         mock_reg = MagicMock()
@@ -80,8 +80,8 @@ class TestCharacterBackstoryTruncation:
         preview = backstory_line.split("**Backstory:** ")[1]
         assert preview == "A" * 200 + "…"
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_exactly_200_char_backstory_no_ellipsis(
         self, mock_registry, mock_cmgr,
     ):
@@ -102,8 +102,8 @@ class TestCharacterBackstoryTruncation:
         preview = backstory_line.split("**Backstory:** ")[1]
         assert preview == "B" * 200  # No ellipsis
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_201_char_backstory_has_ellipsis(
         self, mock_registry, mock_cmgr,
     ):
@@ -149,8 +149,8 @@ class TestCharacterPersonaTruncation:
         char.traits = []
         return char
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_short_persona_not_truncated(self, mock_registry, mock_cmgr):
         """System prompt under 200 chars is included in full."""
         mock_reg = MagicMock()
@@ -165,8 +165,8 @@ class TestCharacterPersonaTruncation:
 
         assert short_prompt in result
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_long_persona_truncated_at_200(self, mock_registry, mock_cmgr):
         """System prompt over 200 chars is truncated with ellipsis."""
         mock_reg = MagicMock()
@@ -185,8 +185,8 @@ class TestCharacterPersonaTruncation:
         preview = persona_line.split("**Persona:** ")[1]
         assert preview == "X" * 200 + "…"
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_exactly_200_char_persona_no_ellipsis(
         self, mock_registry, mock_cmgr,
     ):
@@ -222,7 +222,7 @@ class TestCouncilMemberPreserved:
             current_speaker=current_speaker,
         )
 
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_registry")
     def test_council_member_uses_500_char_preview(self, mock_registry):
         """Council member system_prompt is truncated at 500, not 200."""
         member = MagicMock()
@@ -245,7 +245,7 @@ class TestCouncilMemberPreserved:
         # Should have 500 Z's + ellipsis, NOT 200
         assert preview == "Z" * 500 + "…"
 
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_registry")
     def test_council_300_char_prompt_no_ellipsis(self, mock_registry):
         """Council member with 300-char prompt: no truncation, no ellipsis."""
         member = MagicMock()
@@ -293,9 +293,9 @@ class TestSettingsConstants:
 class TestConfigurablePreviewLength:
     """Test that changing the config constant changes the behavior."""
 
-    @patch("core.routes.explore.CHARACTER_BACKSTORY_PREVIEW_LENGTH", 100)
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.CHARACTER_BACKSTORY_PREVIEW_LENGTH", 100)
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_custom_backstory_length(self, mock_registry, mock_cmgr):
         """Overriding CHARACTER_BACKSTORY_PREVIEW_LENGTH to 100 works."""
         mock_reg = MagicMock()
@@ -322,9 +322,9 @@ class TestConfigurablePreviewLength:
         preview = backstory_line.split("**Backstory:** ")[1]
         assert preview == "D" * 100 + "…"
 
-    @patch("core.routes.explore.CHARACTER_PERSONA_PREVIEW_LENGTH", 50)
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.CHARACTER_PERSONA_PREVIEW_LENGTH", 50)
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_custom_persona_length(self, mock_registry, mock_cmgr):
         """Overriding CHARACTER_PERSONA_PREVIEW_LENGTH to 50 works."""
         mock_reg = MagicMock()
@@ -358,8 +358,8 @@ class TestConfigurablePreviewLength:
 class TestMultiCharacterSavings:
     """Verify token savings when multiple characters are present."""
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_multiple_characters_use_short_previews(
         self, mock_registry, mock_cmgr,
     ):
@@ -414,8 +414,8 @@ class TestMultiCharacterSavings:
             assert len(preview_text) == 201
             assert preview_text.endswith("…")
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_three_characters_total_backstory_under_700(
         self, mock_registry, mock_cmgr,
     ):

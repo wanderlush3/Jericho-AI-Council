@@ -40,6 +40,7 @@ from typing import Any
 from config.settings import (
     COMFYUI_TEMPLATES_DIR,
 )
+from core.utils import make_id_lock
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -439,6 +440,7 @@ class CustomStylePresetManager:
         from config.settings import COMFYUI_PRESETS_DIR
         self._dir = Path(presets_dir) if presets_dir else COMFYUI_PRESETS_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
+        self._id_lock = make_id_lock()
 
     # ── Create ───────────────────────────────────────────────
 
@@ -484,20 +486,21 @@ class CustomStylePresetManager:
             raise PromptValidationError(errors)
 
         # Auto-sequential ID
-        preset_id = self._next_id()
+        with self._id_lock:
+            preset_id = self._next_id()
 
-        record = {
-            "id": preset_id,
-            "key": key,
-            "name": name.strip(),
-            "description": description.strip(),
-            "positive_suffix": positive_suffix.strip(),
-            "negative_prefix": negative_prefix.strip(),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
+            record = {
+                "id": preset_id,
+                "key": key,
+                "name": name.strip(),
+                "description": description.strip(),
+                "positive_suffix": positive_suffix.strip(),
+                "negative_prefix": negative_prefix.strip(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
 
-        path = self._dir / f"{preset_id}.json"
-        path.write_text(json.dumps(record, indent=2), encoding="utf-8")
+            path = self._dir / f"{preset_id}.json"
+            path.write_text(json.dumps(record, indent=2), encoding="utf-8")
         return record
 
     # ── Read ─────────────────────────────────────────────────

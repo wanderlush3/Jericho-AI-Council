@@ -459,7 +459,7 @@ class TestParticipantContextBuilder:
     def test_council_member_section_header(self):
         from core.routes.explore import _build_participant_context
 
-        with patch("core.routes.explore.get_registry") as mock_reg:
+        with patch("core.context_builder.get_registry") as mock_reg:
             mock_member = MagicMock()
             mock_member.name = "Sage"
             mock_member.role = "Ethics"
@@ -487,8 +487,8 @@ class TestParticipantContextBuilder:
         mock_char.traits = []
         mock_char.system_prompt = ""
 
-        with patch("core.routes.explore.get_registry") as mock_reg, \
-             patch("core.routes.explore.get_character_manager") as mock_cmgr:
+        with patch("core.context_builder.get_registry") as mock_reg, \
+             patch("core.context_builder.get_character_manager") as mock_cmgr:
             mock_reg_inst = MagicMock()
             mock_reg_inst.list_members.return_value = []
             mock_reg.return_value = mock_reg_inst
@@ -507,10 +507,10 @@ class TestParticipantContextBuilder:
         """World context section header is always appended."""
         from core.routes.explore import _build_participant_context
 
-        with patch("core.routes.explore.get_registry") as mock_reg, \
-             patch("core.routes.explore.get_law_manager") as mock_law, \
-             patch("core.routes.explore.get_location_manager") as mock_loc, \
-             patch("core.routes.explore.get_item_manager") as mock_item:
+        with patch("core.context_builder.get_registry") as mock_reg, \
+             patch("core.context_builder.get_law_manager") as mock_law, \
+             patch("core.context_builder.get_location_manager") as mock_loc, \
+             patch("core.context_builder.get_item_manager") as mock_item:
             mock_reg_inst = MagicMock()
             mock_reg_inst.list_members.return_value = []
             mock_reg.return_value = mock_reg_inst
@@ -527,10 +527,10 @@ class TestParticipantContextBuilder:
         """A council member not in the registry shows 'unavailable'."""
         from core.routes.explore import _build_participant_context
 
-        with patch("core.routes.explore.get_registry") as mock_reg, \
-             patch("core.routes.explore.get_law_manager") as mock_law, \
-             patch("core.routes.explore.get_location_manager") as mock_loc, \
-             patch("core.routes.explore.get_item_manager") as mock_item:
+        with patch("core.context_builder.get_registry") as mock_reg, \
+             patch("core.context_builder.get_law_manager") as mock_law, \
+             patch("core.context_builder.get_location_manager") as mock_loc, \
+             patch("core.context_builder.get_item_manager") as mock_item:
             mock_reg_inst = MagicMock()
             mock_reg_inst.list_members.return_value = []
             mock_reg.return_value = mock_reg_inst
@@ -547,11 +547,11 @@ class TestParticipantContextBuilder:
         """A character whose get() raises shows 'not found'."""
         from core.routes.explore import _build_participant_context
 
-        with patch("core.routes.explore.get_registry") as mock_reg, \
-             patch("core.routes.explore.get_character_manager") as mock_cmgr, \
-             patch("core.routes.explore.get_law_manager") as mock_law, \
-             patch("core.routes.explore.get_location_manager") as mock_loc, \
-             patch("core.routes.explore.get_item_manager") as mock_item:
+        with patch("core.context_builder.get_registry") as mock_reg, \
+             patch("core.context_builder.get_character_manager") as mock_cmgr, \
+             patch("core.context_builder.get_law_manager") as mock_law, \
+             patch("core.context_builder.get_location_manager") as mock_loc, \
+             patch("core.context_builder.get_item_manager") as mock_item:
             mock_reg_inst = MagicMock()
             mock_reg_inst.list_members.return_value = []
             mock_reg.return_value = mock_reg_inst

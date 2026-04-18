@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from core.memory_influence import MemoryInfluence
     from core.proposals import ProposalManager
     from core.registry import CouncilRegistry
+    from core.reputation import ReputationManager
     from core.stores import StoreManager
     from core.story import StoryManager
     from core.treasury import TreasuryManager
@@ -45,6 +46,7 @@ _voting_engine: VotingEngine | None = None
 _treasury_manager: TreasuryManager | None = None
 _store_manager: StoreManager | None = None
 _memory_influence: MemoryInfluence | None = None
+_reputation_manager: ReputationManager | None = None
 
 
 # ── Accessors ─────────────────────────────────────────────────
@@ -182,6 +184,17 @@ def get_memory_influence() -> MemoryInfluence:
     return _memory_influence
 
 
+def get_reputation_manager() -> ReputationManager:
+    """Return the cached ReputationManager."""
+    global _reputation_manager
+    if _reputation_manager is None:
+        with _lock:
+            if _reputation_manager is None:
+                from core.reputation import ReputationManager
+                _reputation_manager = ReputationManager()
+    return _reputation_manager
+
+
 # ── Invalidation ──────────────────────────────────────────────
 # Call these from mutation endpoints (POST/PUT/DELETE) so the
 # next read picks up fresh data.
@@ -264,6 +277,13 @@ def invalidate_memory_influence() -> None:
         _memory_influence = None
 
 
+def invalidate_reputation_manager() -> None:
+    """Clear the cached ReputationManager."""
+    global _reputation_manager
+    with _lock:
+        _reputation_manager = None
+
+
 def invalidate_all() -> None:
     """Clear all cached managers (useful for testing)."""
     invalidate_registry()
@@ -277,6 +297,7 @@ def invalidate_all() -> None:
     invalidate_treasury_manager()
     invalidate_store_manager()
     invalidate_memory_influence()
+    invalidate_reputation_manager()
     global _api_client
     with _lock:
         _api_client = None

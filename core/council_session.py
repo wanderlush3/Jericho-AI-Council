@@ -20,7 +20,7 @@ from typing import Any
 
 from config.settings import COUNCIL_SESSIONS_DIR
 from core.discussion import DiscussionContribution
-from core.utils import atomic_write
+from core.utils import atomic_write, make_id_lock
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -175,6 +175,7 @@ class CouncilSessionManager:
     def __init__(self, sessions_dir: Path | None = None) -> None:
         self._dir = sessions_dir or COUNCIL_SESSIONS_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
+        self._id_lock = make_id_lock()
 
     @property
     def directory(self) -> Path:
@@ -202,18 +203,19 @@ class CouncilSessionManager:
         if errors:
             raise CouncilSessionValidationError(errors)
 
-        next_id = self._next_id()
-        session = CouncilSessionRecord.create(
-            session_id=next_id,
-            title=title,
-            topic=topic,
-            agenda=agenda,
-            participants=participants,
-            round_count=round_count,
-            proposed_category=proposed_category,
-            metadata=metadata,
-        )
-        self._save(session)
+        with self._id_lock:
+            next_id = self._next_id()
+            session = CouncilSessionRecord.create(
+                session_id=next_id,
+                title=title,
+                topic=topic,
+                agenda=agenda,
+                participants=participants,
+                round_count=round_count,
+                proposed_category=proposed_category,
+                metadata=metadata,
+            )
+            self._save(session)
         return session
 
     # ── Read ──────────────────────────────────────────────────

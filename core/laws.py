@@ -25,7 +25,7 @@ from config.settings import (
     LAWS_DIR,
     LAW_STATUSES,
 )
-from core.utils import atomic_write
+from core.utils import atomic_write, make_id_lock
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -162,6 +162,7 @@ class LawManager:
     def __init__(self, laws_dir: Path | None = None) -> None:
         self._dir = laws_dir or LAWS_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
+        self._id_lock = make_id_lock()
 
     # ── Properties ────────────────────────────────────────────
 
@@ -200,18 +201,19 @@ class LawManager:
         if errors:
             raise LawValidationError(errors)
 
-        next_id = self._next_id()
-        law = Law.create(
-            id=next_id,
-            title=title.strip(),
-            description=description.strip(),
-            author=author.strip(),
-            body=body,
-            source_proposal_id=source_proposal_id,
-            tags=tags or [],
-            metadata=metadata,
-        )
-        self._save(law)
+        with self._id_lock:
+            next_id = self._next_id()
+            law = Law.create(
+                id=next_id,
+                title=title.strip(),
+                description=description.strip(),
+                author=author.strip(),
+                body=body,
+                source_proposal_id=source_proposal_id,
+                tags=tags or [],
+                metadata=metadata,
+            )
+            self._save(law)
         return law
 
     # ── Read ──────────────────────────────────────────────────

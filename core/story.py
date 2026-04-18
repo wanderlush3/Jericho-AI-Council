@@ -39,7 +39,7 @@ from config.settings import (
     STORY_MAX_SCENES_PER_CHAPTER,
     STORY_STATUSES,
 )
-from core.utils import atomic_write
+from core.utils import atomic_write, make_id_lock
 
 log = logging.getLogger(__name__)
 
@@ -402,6 +402,7 @@ class StoryManager:
     def __init__(self, stories_dir: Path | None = None) -> None:
         self._dir = stories_dir or STORIES_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
+        self._id_lock = make_id_lock()
 
     # ── Properties ───────────────────────────────────────────
 
@@ -437,17 +438,18 @@ class StoryManager:
         Raises:
             StoryValidationError: If title is empty.
         """
-        story_id = self._next_id()
-        story = StoryRecord.create(
-            story_id=story_id,
-            title=title,
-            synopsis=synopsis,
-            author=author,
-            style_preset_key=style_preset_key,
-            template_id=template_id,
-            metadata=metadata,
-        )
-        self._save(story)
+        with self._id_lock:
+            story_id = self._next_id()
+            story = StoryRecord.create(
+                story_id=story_id,
+                title=title,
+                synopsis=synopsis,
+                author=author,
+                style_preset_key=style_preset_key,
+                template_id=template_id,
+                metadata=metadata,
+            )
+            self._save(story)
         return story
 
     # ── Get / List Stories ───────────────────────────────────
@@ -1001,3 +1003,38 @@ class StoryManager:
 
     def __repr__(self) -> str:
         return f"StoryManager(dir={str(self._dir)!r})"
+
+
+# ─── Story Chat Helpers (F-064) ────────────────────────────────
+# Extracted from core/routes/stories.py — pure business logic for
+# managing story chat round tracking.
+
+STORY_CHAT_MAX_ROUNDS = 5
+
+
+def get_story_round(chat_record) -> int:
+    """Get the current round number from chat metadata."""
+    return (chat_record.metadata or {}).get("story_round", 0)
+
+
+def increment_story_round(hc, chat_id: str) -> int:
+    """Increment and return the new round number."""
+    rec = hc.get(chat_id)
+    meta = dict(rec.metadata or {})
+    current = meta.get("story_round", 0)
+    meta["story_round"] = current + 1
+    # Update metadata by replacing the record
+    from core.human_chat import HumanChatRecord
+    d = rec.to_dict()
+    d["metadata"] = meta
+    updated = HumanChatRecord.from_dict(d)
+    hc._save(updated)
+    return current + 1
+
+
+def is_story_chat_at_limit(chat_record) -> bool:
+    """Check if the story chat has reached its round limit."""
+    meta = chat_record.metadata or {}
+    current = meta.get("story_round", 0)
+    max_rounds = meta.get("story_max_rounds", STORY_CHAT_MAX_ROUNDS)
+    return current >= max_rounds

@@ -44,7 +44,7 @@ class TestCouncilMemberSelfPersonaSkip:
         member.specialties = ["ethics"]
         return member
 
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_registry")
     def test_no_current_speaker_includes_persona(self, mock_registry):
         """Without current_speaker, persona preview is included."""
         member = self._mock_member()
@@ -60,7 +60,7 @@ class TestCouncilMemberSelfPersonaSkip:
         assert "**Persona:**" in result
         assert "You are Sage" in result
 
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_registry")
     def test_current_speaker_skips_own_persona(self, mock_registry):
         """When current_speaker matches, persona preview is omitted."""
         member = self._mock_member()
@@ -80,7 +80,7 @@ class TestCouncilMemberSelfPersonaSkip:
         assert "Ethics Advisor" in result
         assert "Wise counsel" in result
 
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_registry")
     def test_current_speaker_case_insensitive(self, mock_registry):
         """current_speaker matching is case-insensitive."""
         member = self._mock_member()
@@ -95,7 +95,7 @@ class TestCouncilMemberSelfPersonaSkip:
 
         assert "**Persona:**" not in result
 
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_registry")
     def test_non_matching_speaker_keeps_persona(self, mock_registry):
         """When current_speaker doesn't match, persona is preserved."""
         member = self._mock_member()
@@ -111,7 +111,7 @@ class TestCouncilMemberSelfPersonaSkip:
         assert "**Persona:**" in result
         assert "You are Sage" in result
 
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_registry")
     def test_multiple_members_only_self_skipped(self, mock_registry):
         """With multiple council members, only the speaker's persona is skipped."""
         sage = self._mock_member(
@@ -139,7 +139,7 @@ class TestCouncilMemberSelfPersonaSkip:
         # Drift's persona is preserved
         assert "You are Drift" in result
 
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_registry")
     def test_specialties_preserved_for_self(self, mock_registry):
         """Specialties are always included even when persona is skipped."""
         member = self._mock_member()
@@ -188,8 +188,8 @@ class TestCharacterSelfPersonaSkip:
 
         return char
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_no_current_speaker_includes_all(
         self, mock_registry, mock_char_mgr,
     ):
@@ -211,8 +211,8 @@ class TestCharacterSelfPersonaSkip:
         assert "**Persona:**" in result
         assert "You are Aria" in result
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_current_speaker_skips_backstory_and_persona(
         self, mock_registry, mock_char_mgr,
     ):
@@ -237,8 +237,8 @@ class TestCharacterSelfPersonaSkip:
         assert "mysterious elf" in result
         assert "Wise" in result
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_character_speaker_case_insensitive(
         self, mock_registry, mock_char_mgr,
     ):
@@ -258,8 +258,8 @@ class TestCharacterSelfPersonaSkip:
         assert "**Backstory:**" not in result
         assert "**Persona:**" not in result
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_traits_always_preserved(
         self, mock_registry, mock_char_mgr,
     ):
@@ -279,8 +279,8 @@ class TestCharacterSelfPersonaSkip:
         assert "Wise" in result
         assert "**Traits:**" in result
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_description_always_preserved(
         self, mock_registry, mock_char_mgr,
     ):
@@ -315,8 +315,8 @@ class TestMixedParticipantsSelfSkip:
             current_speaker=current_speaker,
         )
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_council_speaker_character_preserved(
         self, mock_registry, mock_char_mgr,
     ):
@@ -354,8 +354,8 @@ class TestMixedParticipantsSelfSkip:
         assert "twin moons" in result
         assert "You are Aria" in result
 
-    @patch("core.routes.explore.get_character_manager")
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_character_manager")
+    @patch("core.context_builder.get_registry")
     def test_character_speaker_council_preserved(
         self, mock_registry, mock_char_mgr,
     ):
@@ -400,7 +400,7 @@ class TestMixedParticipantsSelfSkip:
 class TestHelpersForwardsCurrentSpeaker:
     """Test that _helpers.py re-export correctly forwards current_speaker."""
 
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_registry")
     def test_helpers_forwards_current_speaker(self, mock_registry):
         """The _helpers re-export accepts and forwards current_speaker."""
         member = MagicMock()
@@ -423,7 +423,7 @@ class TestHelpersForwardsCurrentSpeaker:
         assert "**Persona:**" not in result
         assert "Sage" in result
 
-    @patch("core.routes.explore.get_registry")
+    @patch("core.context_builder.get_registry")
     def test_helpers_none_speaker_preserves_persona(self, mock_registry):
         """Helpers re-export with current_speaker=None preserves persona."""
         member = MagicMock()

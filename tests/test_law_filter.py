@@ -421,11 +421,11 @@ class TestParticipantContextIntegration:
         mock_store_manager = MagicMock()
         mock_store_manager.list_stores.return_value = []
 
-        with patch("core.routes.explore.get_law_manager", return_value=mock_law_manager), \
-             patch("core.routes.explore.get_registry", return_value=mock_registry), \
-             patch("core.routes.explore.get_location_manager", return_value=mock_loc_manager), \
-             patch("core.routes.explore.get_item_manager", return_value=mock_item_manager), \
-             patch("core.routes.explore.get_store_manager", return_value=mock_store_manager):
+        with patch("core.context_builder.get_law_manager", return_value=mock_law_manager), \
+             patch("core.context_builder.get_registry", return_value=mock_registry), \
+             patch("core.context_builder.get_location_manager", return_value=mock_loc_manager), \
+             patch("core.context_builder.get_item_manager", return_value=mock_item_manager), \
+             patch("core.context_builder.get_store_manager", return_value=mock_store_manager):
 
             from core.routes.explore import _build_participant_context
 
@@ -467,11 +467,11 @@ class TestParticipantContextIntegration:
         mock_store_manager = MagicMock()
         mock_store_manager.list_stores.return_value = []
 
-        with patch("core.routes.explore.get_law_manager", return_value=mock_law_manager), \
-             patch("core.routes.explore.get_registry", return_value=mock_registry), \
-             patch("core.routes.explore.get_location_manager", return_value=mock_loc_manager), \
-             patch("core.routes.explore.get_item_manager", return_value=mock_item_manager), \
-             patch("core.routes.explore.get_store_manager", return_value=mock_store_manager):
+        with patch("core.context_builder.get_law_manager", return_value=mock_law_manager), \
+             patch("core.context_builder.get_registry", return_value=mock_registry), \
+             patch("core.context_builder.get_location_manager", return_value=mock_loc_manager), \
+             patch("core.context_builder.get_item_manager", return_value=mock_item_manager), \
+             patch("core.context_builder.get_store_manager", return_value=mock_store_manager):
 
             from core.routes.explore import _build_participant_context
 
@@ -498,7 +498,7 @@ class TestHelpersReExport:
         mock_impl = MagicMock(return_value="test_result")
 
         with mock_patch(
-            "core.routes.explore._build_participant_context",
+            "core.context_builder.build_participant_context",
             mock_impl,
         ):
             from core.routes._helpers import _build_participant_context

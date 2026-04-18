@@ -38,8 +38,8 @@ def _build_participant_context(
     context_keywords: list[str] | None = None,
     profile=None,
 ):
-    """Build participant context for prompts. (Defined in explore.py)"""
-    from core.routes.explore import _build_participant_context as _impl
+    """Build participant context for prompts. (Defined in context_builder.py)"""
+    from core.context_builder import build_participant_context as _impl
     return _impl(
         participants,
         skip_world_context=skip_world_context,

@@ -26,7 +26,7 @@ from config.settings import (
     CHARACTERS_DIR,
     CHARACTER_STATUSES,
 )
-from core.utils import atomic_write
+from core.utils import atomic_write, make_id_lock
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -237,6 +237,7 @@ class CharacterManager:
     def __init__(self, characters_dir: Path | None = None) -> None:
         self._dir = characters_dir or CHARACTERS_DIR
         self._dir.mkdir(parents=True, exist_ok=True)
+        self._id_lock = make_id_lock()
 
     # ── Properties ────────────────────────────────────────────
 
@@ -283,23 +284,24 @@ class CharacterManager:
         if errors:
             raise CharacterValidationError(errors)
 
-        next_id = self._next_id()
-        character = CharacterTemplate.create(
-            id=next_id,
-            name=name.strip(),
-            description=description.strip(),
-            author=author.strip(),
-            backstory=backstory,
-            traits=effective_traits,
-            system_prompt=system_prompt,
-            greeting=greeting,
-            example_messages=example_messages,
-            tags=tags,
-            api_provider=api_provider,
-            model=model,
-            metadata=metadata,
-        )
-        self._save(character)
+        with self._id_lock:
+            next_id = self._next_id()
+            character = CharacterTemplate.create(
+                id=next_id,
+                name=name.strip(),
+                description=description.strip(),
+                author=author.strip(),
+                backstory=backstory,
+                traits=effective_traits,
+                system_prompt=system_prompt,
+                greeting=greeting,
+                example_messages=example_messages,
+                tags=tags,
+                api_provider=api_provider,
+                model=model,
+                metadata=metadata,
+            )
+            self._save(character)
         return character
 
     # ── Read ──────────────────────────────────────────────────
@@ -590,21 +592,22 @@ class CharacterManager:
         self.update_status(character_id, "superseded")
 
         # Create new version
-        next_id = self._next_id()
-        now = datetime.now(timezone.utc).isoformat()
-        new_meta = dict(original.metadata)
-        new_meta["previous_version"] = original.id
+        with self._id_lock:
+            next_id = self._next_id()
+            now = datetime.now(timezone.utc).isoformat()
+            new_meta = dict(original.metadata)
+            new_meta["previous_version"] = original.id
 
-        new_char = dataclasses.replace(
-            original,
-            id=next_id,
-            status="draft",
-            version=original.version + 1,
-            created_at=now,
-            updated_at=now,
-            metadata=new_meta,
-        )
-        self._save(new_char)
+            new_char = dataclasses.replace(
+                original,
+                id=next_id,
+                status="draft",
+                version=original.version + 1,
+                created_at=now,
+                updated_at=now,
+                metadata=new_meta,
+            )
+            self._save(new_char)
         return new_char
 
     # ── Internal ──────────────────────────────────────────────
