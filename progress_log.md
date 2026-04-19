@@ -4658,3 +4658,126 @@ available but is no longer the only way to generate reputation data.
    hook yet. It requires knowing which side won after vote close.
 6. **Test baseline is now 3,560.** Any future changes must maintain this count.
 7. Run `python -m pytest tests/ -x -q` to validate — expect 3,560+ passing tests.
+
+---
+
+## Session: S-VOTE-REFINE-01
+**Timestamp:** 2026-04-18 20:45:00
+**Feature:** F-072 — Voting System Refinement
+**Agent:** Antigravity (coding session)
+
+### Summary
+
+Investigated and fixed 6 inconsistencies in the voting system's parsing,
+error handling, and frontend display.
+
+### Changes Made
+
+#### `core/voting.py` — `parse_vote_response()` rewrite
+- **Before:** Fragile `elif`-ordered substring matching (`"vote: for" in text`)
+  that could misclassify votes when LLMs echoed prompt options.
+- **After:** Robust `re.findall()` with *last-match* semantics. Uses a compiled
+  `\bVOTE\s*:\s*(for|against|abstain)\b` regex to find ALL occurrences, then
+  takes the **last** match (LLMs reason first, conclude last).
+- Reasoning now captured from both sides of the VOTE tag (pre + post), not
+  just post-tag text. Whichever side has more content is preserved.
+- Returns 3-tuple `(choice, reason, confident)` where `confident=False` when
+  defaulting to abstain (no VOTE tag found). Enables audit/observability.
+
+#### `core/routes/proposals.py` — `api_proposal_vote()` hardened
+- **Closed record handling:** If a previous vote exists and is already closed,
+  returns the existing results with `reused_existing=True` instead of silently
+  cascading `VotingStateError` for every member.
+- **API error → actual abstain:** When the LLM API call fails for a member,
+  now casts a real `Vote.create(choice="abstain")` in the engine so quorum
+  and tally stay consistent with the frontend display.
+- **Weight + confidence in response:** Each `individual_votes` entry now
+  includes `weight`, `parse_confident`, and `error` fields for frontend use.
+- Moved reputation weight calculation before the try/except block so error
+  votes also get the correct weight.
+
+#### `core/web_static/js/proposals.js` — vote weight display
+- Proposal detail vote breakdown now shows:
+  - `w:X.XX` weight badge when weight ≠ 1 (reputation-adjusted)
+  - `⚠ parse` badge when `parse_confident=false` (defaulted to abstain)
+  - `⚠ error` badge when the vote came from an API error fallback
+- Matches the existing weight display pattern in `votes.js`.
+
+#### Tests — 8 new test cases
+- Updated 6 existing `TestParseVoteResponse` tests for 3-tuple return.
+- Added 8 new edge case tests:
+  - Prompt echo (all 3 options listed, last tag wins)
+  - Reasoning before VOTE tag preserved
+  - Reasoning on both sides merged
+  - Multiple VOTE tags (last wins)
+  - No tag → full content as reason + confident=False
+  - Empty input
+  - Extra whitespace around colon
+  - Mixed-case tag
+
+### Test Results
+
+- 3,626 passed, 12 skipped, 0 failed (+8 new tests)
+
+### Advice for Next Agent
+
+1. **`parse_vote_response` now returns 3 values** — if any other code calls
+   this function directly, it must unpack `(choice, reason, confident)`.
+   Currently only `proposals.py:api_proposal_vote` uses it.
+2. **`individual_votes` in the vote API response** now includes `weight`,
+   `parse_confident`, `error` fields. Frontend code consumes these for badges.
+3. **Re-vote on closed records** now returns the existing result with
+   `reused_existing=True`. To force a re-vote, the caller would need to
+   clear the existing record first (not yet implemented — by design).
+4. **Test baseline is now 3,626.** Any future changes must maintain this count.
+5. Run `python -m pytest tests/ -x -q` to validate — expect 3,626+ passing.
+
+---
+
+## Session: S-DOCS-README-01
+**Timestamp:** 2026-04-18 20:55:00
+**Feature:** Documentation — README Update
+**Agent:** Antigravity (coding session)
+
+### Summary
+
+Comprehensive README.md update to accurately reflect the current state of the
+project after 77 features have been completed.
+
+### Changes Made
+
+- **Feature count**: 47 → **77** (added reputation system, gift giving,
+  context optimizations, thread-safe IDs, and 30 other features)
+- **Test count**: 3,072 → **3,626** (with 66 test suites, not 52)
+- **Core Python files**: 43 → **53** (added reputation, context budget,
+  injection profiles, conversation summary, chat helpers, etc.)
+- **Route files**: 20 → **22** (added reputation.py route)
+- **JS modules**: 26 (~13,500 lines) → **27 (~14,300 lines)** (added reputation.js)
+- **CSS modules**: 33 (~9,400 lines) → **35 (~10,000 lines)** (added reputation.css, votes.css)
+- **New Features section**: Added "Reputation System" as a standalone domain
+  with 5 sub-features
+- **New Features section**: Added Intelligence sub-features (context budget,
+  injection profiles, rolling summary, conditional law injection)
+- **New Features section**: Added gift giving, absent response handling,
+  thread-safe IDs
+- **Governance Model**: Added reputation tiers table with score ranges and effects
+- **Configuration**: Added reputation settings table
+- **Vote weight**: Updated to mention reputation modulation
+- **Architecture Principles**: Added thread-safe IDs and feature flags
+- **Project Structure**: Updated all file counts, added all missing modules
+  and directories
+- **Navigation Sections**: Updated to match actual sidebar structure
+
+### Test Results
+
+- 3,626 passed, 12 skipped, 0 failed (no changes to code — docs only)
+
+### Advice for Next Agent
+
+1. **All 77 features are complete.** The backlog is empty.
+2. **README is now accurate.** If new features are added, update the README
+   counts (features, tests, file counts) as part of the feature session.
+3. **Test baseline is 3,626.** Any future changes must maintain this count.
+4. The `sw` CLI tool is **not available** on this system. Read `features.json`
+   and `progress_log.md` directly.
+5. Run `python -m pytest tests/ -x -q` to validate — expect 3,626+ passing.
