@@ -384,7 +384,7 @@ def get_style_preset(name: str) -> StylePreset | None:
             if preset.name.lower() == name.lower():
                 return preset
     except Exception:
-        log.debug("core.prompt_builder: non-critical error", exc_info=True)
+        log.debug("Failed to load entity description for prompt builder", exc_info=True)
 
     # Try builtin key
     if name in DEFAULT_STYLE_PRESETS:
@@ -410,7 +410,7 @@ def list_style_presets() -> list[StylePreset]:
         for preset_data in mgr.list_presets():
             presets[preset_data["key"]] = preset_data["preset"]
     except Exception:
-        log.debug("core.prompt_builder: non-critical error", exc_info=True)
+        log.debug("Failed to load entity for prompt refinement context", exc_info=True)
     return sorted(presets.values(), key=lambda p: p.name.lower())
 
 
@@ -783,7 +783,7 @@ def build_entity_context(
             return "\n".join(lines)
 
     except Exception:
-        log.debug("core.prompt_builder: non-critical error", exc_info=True)
+        log.debug("Failed to assemble style preset into prompt", exc_info=True)
 
     return ""
 

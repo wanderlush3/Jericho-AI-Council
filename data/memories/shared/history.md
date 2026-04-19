@@ -2650,3 +2650,99 @@ Discussed ethics.
 **Members:** Sage
 
 Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-18T03:22:48.039310+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-18T03:22:48.293835+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-18T03:32:35.238137+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-18T03:32:35.597137+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-18T03:36:42.216067+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-18T03:36:42.465169+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-18T03:54:15.235412+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-18T03:54:15.599226+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-18T03:56:38.425550+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-18T03:56:38.709466+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-19T00:15:23.723172+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-19T00:15:23.980523+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-19T00:19:54.850446+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-19T00:19:55.105609+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-19T00:32:21.908836+00:00
+**Members:** Sage
+
+Discussed ethics.
+
+### Human Chat: Test Chat (WC-0001)
+**Closed:** 2026-04-19T00:32:22.151275+00:00
+**Members:** Sage
+
+Chat 'Test Chat' between human and Sage with 0 messages (0 human, 0 agent).

@@ -61,7 +61,7 @@ def api_explore_list() -> list[dict[str, Any]]:
             elif images:
                 primary_url = f"/api/images/file/{images[0].id}"
         except Exception:
-            log.debug("core.routes.explore: non-critical error", exc_info=True)
+            log.debug("Failed to load location details for explore enrichment", exc_info=True)
         result.append({
             "id": loc.id,
             "name": loc.name,
@@ -240,7 +240,7 @@ async def api_explore_look_around(
             )
             template_id = tam.get_recommended_template("location")
         except Exception:
-            log.debug("core.routes.explore: non-critical error", exc_info=True)
+            log.debug("Failed to load entity details for gallery enrichment", exc_info=True)
     if not template_id:
         raise HTTPException(
             status_code=400,
@@ -294,8 +294,7 @@ async def api_explore_look_around(
             async for _progress in pipeline.run_job(jid):
                 pass  # progress is recorded inside _JobState
         except Exception:
-            import logging
-            logging.getLogger(__name__).exception(
+            log.exception(
                 "Background generation failed for %s", jid,
             )
 
@@ -500,7 +499,7 @@ def api_explore_chat_create(
         try:
             rec = hc.add_council_member(chat_id, cid)
         except Exception:
-            log.debug("core.routes.explore: non-critical error", exc_info=True)
+            log.debug("Failed to add council member %s to explore chat", cid, exc_info=True)
 
     # Add remaining characters beyond the first
     for chid in character_ids[1 if not first_member else 0:]:
@@ -509,7 +508,7 @@ def api_explore_chat_create(
         try:
             rec = hc.add_character(chat_id, chid)
         except Exception:
-            log.debug("core.routes.explore: non-critical error", exc_info=True)
+            log.debug("Failed to add character %s to explore chat", chid, exc_info=True)
 
     return rec.to_dict()
 

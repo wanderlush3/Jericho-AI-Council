@@ -88,3 +88,47 @@ def record_event(entity_id: str, body: RecordEventRequest) -> dict[str, Any]:
         "event": event.to_dict(),
         "score": mgr.get_score(entity_id).to_dict(),
     }
+
+
+@router.get("/{entity_id:path}/effects")
+def get_entity_effects(entity_id: str) -> dict[str, Any]:
+    """Return active gameplay effects for an entity based on reputation tier.
+
+    F-071: Shows vote weight modifier, store price modifier, permissions,
+    and fast-track eligibility.
+    """
+    from core.reputation_effects import (
+        get_vote_weight_modifier,
+        get_price_modifier,
+        can_author_proposals,
+        can_open_stores,
+        can_fast_track,
+    )
+    from config.settings import (
+        REPUTATION_VOTE_WEIGHT_ENABLED,
+        REPUTATION_STORE_PRICES_ENABLED,
+        REPUTATION_FAST_TRACK_ENABLED,
+        REPUTATION_RESTRICTIONS_ENABLED,
+    )
+
+    mgr = get_reputation_manager()
+    score = mgr.get_score(entity_id)
+    tier = score.tier
+
+    return {
+        "entity_id": entity_id,
+        "tier": tier,
+        "tier_emoji": score.tier_emoji,
+        "decayed_score": score.decayed_score,
+        "effects": {
+            "vote_weight_modifier": get_vote_weight_modifier(tier),
+            "vote_weight_enabled": REPUTATION_VOTE_WEIGHT_ENABLED,
+            "price_modifier": get_price_modifier(tier),
+            "store_prices_enabled": REPUTATION_STORE_PRICES_ENABLED,
+            "can_author_proposals": can_author_proposals(tier),
+            "can_open_stores": can_open_stores(tier),
+            "restrictions_enabled": REPUTATION_RESTRICTIONS_ENABLED,
+            "can_fast_track": can_fast_track(tier),
+            "fast_track_enabled": REPUTATION_FAST_TRACK_ENABLED,
+        },
+    }

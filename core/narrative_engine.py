@@ -230,7 +230,7 @@ class NarrativeEngine:
                         timestamp=ts, icon="📜",
                     ))
         except Exception:
-            log.debug("core.narrative_engine: non-critical error", exc_info=True)
+            log.debug("Failed to load character details for narrative context", exc_info=True)
         return bulletins
 
     # -- Vote Bulletins ----------------------------------------------------
@@ -259,7 +259,7 @@ class NarrativeEngine:
                     proposal = pmgr.get(rec.proposal_id)
                     title = proposal.title
                 except Exception:
-                    log.debug("core.narrative_engine: non-critical error", exc_info=True)
+                    log.debug("Failed to score and select relevant law for narrative", exc_info=True)
                 tally = engine._compute_tally(rec)
                 for_count = tally.votes_for
                 against_count = tally.votes_against
@@ -323,7 +323,7 @@ class NarrativeEngine:
                     timestamp=ts, icon=icon,
                 ))
         except Exception:
-            log.debug("core.narrative_engine: non-critical error", exc_info=True)
+            log.debug("Failed to build memory context for narrative agent", exc_info=True)
         return bulletins
 
     # -- Character Bulletins -----------------------------------------------
@@ -362,7 +362,7 @@ class NarrativeEngine:
                     timestamp=ts, icon="🎭",
                 ))
         except Exception:
-            log.debug("core.narrative_engine: non-critical error", exc_info=True)
+            log.debug("Failed to load active location for narrative context", exc_info=True)
         return bulletins
 
     # -- Item Bulletins ----------------------------------------------------
@@ -396,7 +396,7 @@ class NarrativeEngine:
                     timestamp=ts, icon="📦",
                 ))
         except Exception:
-            log.debug("core.narrative_engine: non-critical error", exc_info=True)
+            log.debug("Failed to load active item for narrative world context", exc_info=True)
         return bulletins
 
     # -- Location Bulletins ------------------------------------------------
@@ -430,7 +430,7 @@ class NarrativeEngine:
                     timestamp=ts, icon="🗺️",
                 ))
         except Exception:
-            log.debug("core.narrative_engine: non-critical error", exc_info=True)
+            log.debug("Failed to load active store for narrative world context", exc_info=True)
         return bulletins
 
     # -- Treasury Bulletins ------------------------------------------------
@@ -468,7 +468,7 @@ class NarrativeEngine:
                     timestamp=now, icon="🪙",
                 ))
         except Exception:
-            log.debug("core.narrative_engine: non-critical error", exc_info=True)
+            log.debug("Failed to load reputation tier for narrative context", exc_info=True)
         return bulletins
 
     # -- Helpers -----------------------------------------------------------

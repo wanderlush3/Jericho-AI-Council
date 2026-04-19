@@ -100,7 +100,7 @@ def _explore_primary_image(imgr: Any, entity_type: str, entity_id: str) -> str:
         elif images:
             return f"/api/images/file/{images[0].id}"
     except Exception:
-        log.debug("core.routes.generation: non-critical error", exc_info=True)
+        log.debug("Failed to enrich generation job with entity details", exc_info=True)
     return ""
 
 @router.post("/api/generate/prompts")
@@ -457,7 +457,7 @@ def api_participants_available() -> list[dict[str, Any]]:
                 "avatar_url": avatar_url,
             })
     except Exception:
-        log.debug("core.routes.generation: non-critical error", exc_info=True)
+        log.debug("Failed to parse custom workflow JSON", exc_info=True)
     try:
         cmgr = get_character_manager()
         # Single directory scan for avatar existence (Category 5)
@@ -477,5 +477,5 @@ def api_participants_available() -> list[dict[str, Any]]:
                 "avatar_url": avatar_url,
             })
     except Exception:
-        log.debug("core.routes.generation: non-critical error", exc_info=True)
+        log.debug("Failed to parse custom workflow JSON template", exc_info=True)
     return result

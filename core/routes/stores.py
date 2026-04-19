@@ -90,6 +90,16 @@ def api_store_create(body: dict[str, Any]) -> dict[str, Any]:
             detail="Fields 'name', 'description', and 'author' are required.",
         )
 
+    # F-071: Disgraced entities cannot open stores
+    from core.reputation_effects import can_open_stores, get_entity_tier
+    author_tier = get_entity_tier(f"member:{author}")
+    if not can_open_stores(author_tier):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Author '{author}' has a 'disgraced' reputation and cannot create stores. "
+                   f"Improve reputation through positive actions first.",
+        )
+
     mgr = StoreManager()
     try:
         store = mgr.create(
@@ -242,10 +252,12 @@ def api_store_purchase(
 ) -> dict[str, Any]:
     """Purchase an item from a store.
 
-    Body: {"item_id": "ITEM-0001", "buyer_account_id": "ACCT-user-human"}
+    Body: {"item_id": "ITEM-0001", "buyer_account_id": "ACCT-user-human",
+           "buyer_entity_id": "member:Human"}  // optional, for reputation price
 
     Debits the buyer's treasury account and credits the store owner.
     Decrements quantity if not unlimited.
+    F-071: Applies reputation-based price modifier to the buyer's cost.
     """
     from core.stores import (
         StoreManager, StoreNotFoundError, StorePurchaseError,
@@ -254,6 +266,7 @@ def api_store_purchase(
 
     item_id = (body.get("item_id") or "").strip()
     buyer_account_id = (body.get("buyer_account_id") or "").strip()
+    buyer_entity_id = (body.get("buyer_entity_id") or "").strip()
 
     if not item_id or not buyer_account_id:
         raise HTTPException(
@@ -261,10 +274,21 @@ def api_store_purchase(
             detail="'item_id' and 'buyer_account_id' are required.",
         )
 
+    # F-071: Look up buyer's reputation tier for price adjustment
+    price_modifier = 1.0
+    buyer_tier = "neutral"
+    if buyer_entity_id:
+        from core.reputation_effects import get_entity_tier, get_price_modifier
+        buyer_tier = get_entity_tier(buyer_entity_id)
+        price_modifier = get_price_modifier(buyer_tier)
+
     mgr = StoreManager()
     tmgr = TreasuryManager()
     try:
-        result = mgr.purchase(store_id, item_id, buyer_account_id, tmgr)
+        result = mgr.purchase(
+            store_id, item_id, buyer_account_id, tmgr,
+            price_modifier=price_modifier,
+        )
     except StoreNotFoundError:
         raise HTTPException(
             status_code=404,
@@ -272,6 +296,10 @@ def api_store_purchase(
         )
     except StorePurchaseError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+    # F-071: Include reputation price modifier info in response
+    result["reputation_price_modifier"] = round(price_modifier, 2)
+    result["buyer_reputation_tier"] = buyer_tier
     return result
 
 

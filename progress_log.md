@@ -4586,3 +4586,75 @@ with automated integration and gameplay effects deferred to F-070 and F-071.
    Format: `{member|character}_{name}.jsonl`. Loading all events = one file read.
 5. **Test baseline is now 3,533.** Any future changes must maintain this count.
 6. Run `python -m pytest tests/ -x -q` to validate — expect 3,533+ passing tests.
+
+---
+
+## Session: S-F070-REPUTATION-HOOKS
+**Timestamp:** 2026-04-18 03:28:00
+**Feature:** F-070 — Reputation Auto-Recording Integration
+**Status:** ✅ Completed
+**Baseline Before:** 3,533 tests passing, 12 skipped
+
+### Summary
+
+Wired automated reputation event recording into existing action flows. Reputation
+events are now generated automatically when votes are cast, proposals are
+authored/decided, gifts are given/received, discussion rounds complete, and
+council session rounds complete. The previous manual-admin-only workflow remains
+available but is no longer the only way to generate reputation data.
+
+### Key Design Decisions
+
+1. **Thin observer layer in `core/reputation_hooks.py`**: Six hook functions, each
+   wrapping `ReputationManager.record_event()` in try/except. A reputation failure
+   can never break primary workflows.
+2. **Hooks placed in route endpoints**, not core modules. Routes are the orchestration
+   layer where actions complete successfully; core business logic stays clean.
+3. **One event per participant per round** for discussions and sessions, not per
+   discussion/session. This gives credit for each round of engagement.
+4. **Gift events generate two records**: `gift_given` for the sender and
+   `gift_received` for the receiver. Entity prefixes map owner types correctly
+   (council_member/user → `member:`, character → `character:`).
+5. **`vote_aligned` deferred**: Requires post-vote analysis to determine which side won.
+   Better suited for F-071 or future analytics.
+
+### Files Created
+
+- `core/reputation_hooks.py` — 6 hook functions (~200 lines)
+- `tests/test_reputation_hooks.py` — 27 tests (unit + integration)
+
+### Files Modified
+
+- `core/routes/proposals.py` — 4 hook call sites:
+  - `on_proposal_authored` after `api_proposal_create`
+  - `on_vote_cast` after `engine.cast_vote` in `api_proposal_vote`
+  - `on_proposal_decided` after `close_voting`/`tally` in `api_proposal_vote`
+  - `on_discussion_participated` after discussion round saved
+- `core/routes/items.py` — 1 hook call site:
+  - `on_gift_given` after `gift_item()` in `api_item_gift`
+- `core/routes/sessions.py` — 1 hook call site:
+  - `on_session_participated` after session round saved
+- `tests/test_reputation.py` — Fixed pre-existing test isolation bug (monkeypatch
+  needed to patch both `core.manager_cache` and `core.routes.reputation`)
+- `features.json` — F-070 status → completed
+
+### Test Results
+
+- 3,560 passed, 12 skipped, 0 failed (+27 new tests)
+
+### Advice for Next Agent
+
+1. **F-071 (Reputation Gameplay Effects)** remains open but explicitly requires a
+   formal design discussion before implementation. Key concern is feedback loops.
+2. **Hook functions are in `core/reputation_hooks.py`** — import and call at the
+   appropriate point. Each function handles its own error isolation.
+3. **When mocking hooks in tests**, patch `core.reputation_hooks._get_mgr` to return
+   a mock or temp ReputationManager. Alternatively, patch the specific hook function
+   at the call site (e.g., `core.routes.proposals.on_vote_cast`).
+4. **Entity ID casing**: `ReputationManager` stores filenames lowercased. The entity_id
+   in events preserves original case, but leaderboard entity_ids come from filenames
+   (lowercase). Use case-insensitive comparison when matching.
+5. **`vote_aligned`** event type exists in the reputation system but has no automated
+   hook yet. It requires knowing which side won after vote close.
+6. **Test baseline is now 3,560.** Any future changes must maintain this count.
+7. Run `python -m pytest tests/ -x -q` to validate — expect 3,560+ passing tests.

@@ -13,6 +13,7 @@ Storage: one JSON file per store in ``data/stores/``, named ``STORE-XXXX.json``.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -21,6 +22,8 @@ from typing import Any
 
 from config.settings import STORE_INJECTION_MAX_LENGTH, STORES_DIR, STORE_STATUSES, STORE_TYPES
 from core.utils import atomic_write, make_id_lock
+
+log = logging.getLogger(__name__)
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -456,6 +459,8 @@ class StoreManager:
         item_id: str,
         buyer_account_id: str,
         treasury_manager: Any,
+        *,
+        price_modifier: float = 1.0,
     ) -> dict[str, Any]:
         """Execute a purchase: debit buyer, credit store owner, decrement stock.
 
@@ -464,9 +469,12 @@ class StoreManager:
             item_id: ID of the item to purchase.
             buyer_account_id: Treasury account ID of the buyer.
             treasury_manager: A TreasuryManager instance for fund transfers.
+            price_modifier: F-071 reputation price modifier (0.85–1.15).
+                Applied to the buyer's debit amount. Defaults to 1.0 (no change).
 
         Returns:
-            Dict with ``store``, ``item``, ``buyer_account``, ``seller_account`` keys.
+            Dict with ``store``, ``item``, ``buyer_account``, ``seller_account``,
+            and ``adjusted_price`` keys.
 
         Raises:
             StoreNotFoundError: If store does not exist.
@@ -496,6 +504,11 @@ class StoreManager:
                 f"Item '{item_id}' is out of stock in store '{store_id}'."
             )
 
+        # F-071: Apply price modifier to buyer's cost
+        adjusted_gold = max(0, int(listing.price_gold * price_modifier))
+        adjusted_silver = max(0, int(listing.price_silver * price_modifier))
+        adjusted_bronze = max(0, int(listing.price_bronze * price_modifier))
+
         # Determine seller account — use store owner or fall back to government
         from core.treasury import make_account_id
         if store.owner:
@@ -504,19 +517,20 @@ class StoreManager:
             try:
                 treasury_manager.get(seller_account_id)
             except Exception:
+                log.debug("Store purchase: seller account %s not found as character, trying council_member", store.owner, exc_info=True)
                 seller_account_id = make_account_id("council_member", store.owner)
         else:
             from config.settings import TAX_GOVERNMENT_ACCOUNT_ID
             seller_account_id = TAX_GOVERNMENT_ACCOUNT_ID
 
-        # Execute the transfer (debit buyer → credit seller)
+        # Execute the transfer (adjusted debit buyer → credit seller)
         try:
             buyer_acct, seller_acct = treasury_manager.transfer(
                 buyer_account_id,
                 seller_account_id,
-                gold=listing.price_gold,
-                silver=listing.price_silver,
-                bronze=listing.price_bronze,
+                gold=adjusted_gold,
+                silver=adjusted_silver,
+                bronze=adjusted_bronze,
             )
         except Exception as exc:
             raise StorePurchaseError(f"Payment failed: {exc}")
@@ -533,6 +547,11 @@ class StoreManager:
             "item": listing.to_dict(),
             "buyer_account": buyer_acct.to_dict(),
             "seller_account": seller_acct.to_dict(),
+            "adjusted_price": {
+                "gold": adjusted_gold,
+                "silver": adjusted_silver,
+                "bronze": adjusted_bronze,
+            },
         }
 
     # ── General Update ────────────────────────────────────────

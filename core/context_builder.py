@@ -117,7 +117,7 @@ def build_participant_context(
                 from core.memory_influence import MemoryInfluence
                 mi = MemoryInfluence(embedding_provider=None)
             except Exception:
-                log.debug("core.context_builder: non-critical error", exc_info=True)
+                log.debug("Failed to load character data for LLM context", exc_info=True)
         for cid in council_ids:
             member = members_map.get(cid.lower())
             if not member:
@@ -171,7 +171,7 @@ def build_participant_context(
                                 f"{sm.entry.content}"
                             )
                 except Exception:
-                    log.debug("core.context_builder: non-critical error", exc_info=True)
+                    log.debug("Failed to score and select relevant law for context", exc_info=True)
 
             # F-069: Inject reputation tier
             try:
@@ -291,7 +291,7 @@ def build_participant_context(
                         )
                     parts.append("")
         except Exception:
-            log.debug("core.context_builder: non-critical error", exc_info=True)
+            log.debug("Failed to load active location for world context", exc_info=True)
     try:
         active_locs = get_location_manager().list_locations(status="active")
         if active_locs:
@@ -310,7 +310,7 @@ def build_participant_context(
                     )
             parts.append("")
     except Exception:
-        log.debug("core.context_builder: non-critical error", exc_info=True)
+        log.debug("Failed to load active item for world context", exc_info=True)
     try:
         from core.items import is_injection_active
         active_items = get_item_manager().list_items(status="active")
@@ -330,7 +330,7 @@ def build_participant_context(
                     )
             parts.append("")
     except Exception:
-        log.debug("core.context_builder: non-critical error", exc_info=True)
+        log.debug("Failed to load active store for world context", exc_info=True)
     try:
         active_stores = get_store_manager().list_stores(status="active")
         if active_stores:
@@ -349,7 +349,7 @@ def build_participant_context(
                     )
             parts.append("")
     except Exception:
-        log.debug("core.context_builder: non-critical error", exc_info=True)
+        log.debug("Failed to load reputation tier for council context", exc_info=True)
     return "\n".join(parts)
 
 

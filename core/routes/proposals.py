@@ -62,6 +62,7 @@ def api_proposal_create(body: dict[str, Any]) -> dict[str, Any]:
 
     Body: {"author": "Sage", "title": "...", "description": "...",
            "category": "ethics", "body": "...",
+           "fast_track": false,
            "character_data": {...}}  // optional, for character proposals
     """
     from core.proposals import ProposalManager, ProposalValidationError
@@ -71,12 +72,28 @@ def api_proposal_create(body: dict[str, Any]) -> dict[str, Any]:
     description = body.get("description", "").strip()
     category = body.get("category", "").strip()
     proposal_body = body.get("body", "").strip()
+    fast_track = bool(body.get("fast_track", False))
 
     if not author or not title or not description or not category:
         raise HTTPException(
             status_code=400,
             detail="Fields 'author', 'title', 'description', and 'category' are required.",
         )
+
+    # F-071: Disgraced entities cannot author proposals
+    from core.reputation_effects import can_author_proposals, get_entity_tier, can_fast_track
+    author_entity_id = f"member:{author}"
+    author_tier = get_entity_tier(author_entity_id)
+    if not can_author_proposals(author_tier):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Author '{author}' has a 'disgraced' reputation and cannot create proposals. "
+                   f"Improve reputation through positive actions before authoring new proposals.",
+        )
+
+    # F-071: Validate fast-track eligibility
+    if fast_track and not can_fast_track(author_tier):
+        fast_track = False  # silently downgrade if ineligible
 
     # If this is a character proposal, stash character_data in metadata
     metadata = None
@@ -99,6 +116,11 @@ def api_proposal_create(body: dict[str, Any]) -> dict[str, Any]:
     if category == "law" and law_data and isinstance(law_data, dict):
         metadata = {"law_data": law_data}
 
+    # F-071: Stash fast_track flag in metadata
+    if fast_track:
+        metadata = metadata or {}
+        metadata["fast_track"] = True
+
     pmgr = get_proposal_manager()
     try:
         proposal = pmgr.create(
@@ -109,6 +131,21 @@ def api_proposal_create(body: dict[str, Any]) -> dict[str, Any]:
         proposal = pmgr.update_status(proposal.id, "open")
     except ProposalValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+    # F-070: Record reputation event for authoring a proposal
+    from core.reputation_hooks import on_proposal_authored
+    on_proposal_authored(author, proposal.id)
+
+    # F-071: Fast-tracked proposals skip discussion and go straight to open_to_review
+    if fast_track:
+        try:
+            proposal = pmgr.update_status(proposal.id, "open_to_review")
+        except Exception:
+            log.debug("Fast-track status transition failed", exc_info=True)
+        result = proposal.to_dict()
+        result["discussion"] = None
+        result["fast_tracked"] = True
+        return result
 
     # Create a discussion with all council members
     discussion_info = None
@@ -130,6 +167,7 @@ def api_proposal_create(body: dict[str, Any]) -> dict[str, Any]:
 
     result = proposal.to_dict()
     result["discussion"] = discussion_info
+    result["fast_tracked"] = False
     return result
 
 @router.post("/api/proposals/{proposal_id}/discuss-stream")
@@ -254,6 +292,10 @@ async def api_proposal_discuss_stream(proposal_id: str):
             )
             dmgr._save(updated_record)
 
+            # F-070: Record reputation events for discussion participation
+            from core.reputation_hooks import on_discussion_participated
+            on_discussion_participated(list(record.participants), proposal_id)
+
             # Send final state
             done_data = json_module.dumps({
                 "discussion": updated_record.to_dict(),
@@ -303,7 +345,7 @@ def api_proposal_discuss_pause(proposal_id: str) -> dict[str, Any]:
     try:
         pmgr.update_status(proposal_id, "under_review")
     except Exception:
-        log.debug("core.routes.proposals: non-critical error", exc_info=True)
+        log.debug("Failed to build context for proposal generation", exc_info=True)
 
     return record.to_dict()
 
@@ -538,16 +580,25 @@ async def api_proposal_vote(proposal_id: str) -> dict[str, Any]:
             # F-064: Use extracted response parser
             choice, reason = parse_vote_response(content)
 
+            # F-071: Apply reputation vote weight modifier
+            from core.reputation_effects import get_vote_weight_modifier, get_entity_tier
+            voter_tier = get_entity_tier(f"member:{member.name}")
+            rep_modifier = get_vote_weight_modifier(voter_tier)
+            adjusted_weight = round(member.vote_weight * rep_modifier, 4)
+
             vote = Vote.create(
                 voter=member.name,
                 choice=choice,
                 reason=reason,
-                weight=member.vote_weight,
+                weight=adjusted_weight,
             )
             try:
                 engine.cast_vote(proposal_id, vote)
+                # F-070: Record reputation event for voting
+                from core.reputation_hooks import on_vote_cast
+                on_vote_cast(member.name, proposal_id, choice)
             except Exception:
-                log.debug("core.routes.proposals: non-critical error", exc_info=True)
+                log.debug("Failed to record automated proposal chat message", exc_info=True)
 
             vote_results.append({
                 "voter": member.name,
@@ -565,13 +616,24 @@ async def api_proposal_vote(proposal_id: str) -> dict[str, Any]:
     try:
         engine.close_voting(proposal_id)
     except Exception:
-        log.debug("core.routes.proposals: non-critical error", exc_info=True)
+        log.debug("Failed to close proposal chat after completion", exc_info=True)
     try:
         pmgr.update_status(proposal_id, "decided")
     except Exception:
-        log.debug("core.routes.proposals: non-critical error", exc_info=True)
+        log.debug("Failed to close proposal chat after completion", exc_info=True)
     tally = engine.tally(proposal_id)
     record = engine.get(proposal_id)
+
+    # F-070: Record reputation event for proposal outcome
+    # F-071: Enhanced penalty for rejected fast-tracked proposals
+    from core.reputation_hooks import on_proposal_decided
+    decided_proposal_obj = pmgr.get(proposal_id)
+    decided_author = decided_proposal_obj.author
+    is_fast_tracked = (decided_proposal_obj.metadata or {}).get("fast_track", False)
+    on_proposal_decided(
+        proposal_id, tally, decided_author,
+        fast_tracked=is_fast_tracked,
+    )
 
     result = {
         "proposal": pmgr.get(proposal_id).to_dict(),

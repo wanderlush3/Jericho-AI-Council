@@ -49,7 +49,7 @@ def api_locations_list(
             elif images:
                 primary_url = f"/api/images/file/{images[0].id}"
         except Exception:
-            log.debug("core.routes.locations: non-critical error", exc_info=True)
+            log.debug("Failed to load location details for enrichment", exc_info=True)
         d["primary_image_url"] = primary_url
         result.append(d)
     return result

@@ -696,7 +696,7 @@ async def api_stories_illustrate_scene(
             )
             template_id = tam.get_recommended_template(entity_type)
         except Exception:
-            log.debug("core.routes.stories: non-critical error", exc_info=True)
+            log.debug("Failed to determine default template for scene illustration", exc_info=True)
     if not template_id:
         raise HTTPException(
             status_code=400,
@@ -765,16 +765,14 @@ async def api_stories_illustrate_scene(
                         image_id=last_progress.image_id,
                     )
                 except Exception:
-                    import logging
-                    logging.getLogger(__name__).warning(
+                    log.warning(
                         "Generated image %s but failed to link to "
                         "scene %s/%s/%s",
                         last_progress.image_id,
                         story_id, chapter_id, scene_id,
                     )
         except Exception:
-            import logging
-            logging.getLogger(__name__).exception(
+            log.exception(
                 "Background illustration failed for %s", jid,
             )
 
@@ -934,7 +932,7 @@ def api_story_chat_create(
         try:
             rec = hc.add_council_member(chat_id, cid)
         except Exception:
-            log.debug("core.routes.stories: non-critical error", exc_info=True)
+            log.debug("Failed to add council member to story chat", exc_info=True)
 
     # Add remaining characters beyond the first
     for chid in character_ids[1 if not first_member else 0:]:
@@ -943,7 +941,7 @@ def api_story_chat_create(
         try:
             rec = hc.add_character(chat_id, chid)
         except Exception:
-            log.debug("core.routes.stories: non-critical error", exc_info=True)
+            log.debug("Failed to add character to story chat", exc_info=True)
 
     result = rec.to_dict()
     result["round"] = 0
@@ -1031,7 +1029,7 @@ async def api_story_chat_inject_narration(
                     hc.close_chat(chat_id, summary="Story chat reached round limit.")
                     final_record = hc.get(chat_id)
                 except Exception:
-                    log.debug("core.routes.stories: non-critical error", exc_info=True)
+                    log.debug("Failed to auto-close story chat at round limit", exc_info=True)
             done_data = json_module.dumps({
                 "chat": final_record.to_dict(),
                 "round": new_round,
@@ -1127,7 +1125,7 @@ async def api_story_chat_send_stream(
                     hc.close_chat(chat_id, summary="Story chat reached round limit.")
                     final_record = hc.get(chat_id)
                 except Exception:
-                    log.debug("core.routes.stories: non-critical error", exc_info=True)
+                    log.debug("Failed to auto-close story chat at round limit", exc_info=True)
             done_data = json_module.dumps({
                 "chat": final_record.to_dict(),
                 "round": new_round,
@@ -1206,7 +1204,7 @@ async def api_story_chat_continue_stream(
                     hc.close_chat(chat_id, summary="Story chat reached round limit.")
                     final_record = hc.get(chat_id)
                 except Exception:
-                    log.debug("core.routes.stories: non-critical error", exc_info=True)
+                    log.debug("Failed to auto-close story chat at round limit", exc_info=True)
             done_data = json_module.dumps({
                 "chat": final_record.to_dict(),
                 "round": new_round,
@@ -1397,7 +1395,7 @@ async def api_story_chat_narrate_round(
             },
         )
     except Exception:
-        log.debug("core.routes.stories: non-critical error", exc_info=True)
+        log.debug("Failed to record story narrative via human chat", exc_info=True)
 
     rec = hc.get(chat_id)
     current_round = _get_story_round(rec)

@@ -41,7 +41,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 from config.settings import COMFYUI_MAX_QUEUE_SIZE
 
@@ -730,7 +730,7 @@ class GenerationPipeline:
                 await asyncio.sleep(poll_interval)
                 continue
 
-            logger.debug(
+            log.debug(
                 "ComfyUI history for %s — top-level keys: %s",
                 prompt_id, list(history.keys()),
             )
@@ -738,7 +738,7 @@ class GenerationPipeline:
             # Check for error
             status = history.get("status", {})
             status_str = status.get("status_str", "")
-            logger.debug(
+            log.debug(
                 "ComfyUI status for %s — status_str=%r, completed=%r",
                 prompt_id, status_str,
                 status.get("completed"),
@@ -754,7 +754,7 @@ class GenerationPipeline:
 
             completed = status.get("completed", False)
             if completed:
-                logger.debug(
+                log.debug(
                     "ComfyUI outputs for %s — keys: %s",
                     prompt_id,
                     list(history.get("outputs", {}).keys()),
@@ -798,7 +798,7 @@ class GenerationPipeline:
                 f"Raw outputs snippet: "
                 f"{_json.dumps(outputs_data, indent=2, default=str)[:1500]}"
             )
-            logger.error(
+            log.error(
                 "No output images extracted from history. %s", diag,
             )
             # Also print to console since logging may not be configured
@@ -807,7 +807,7 @@ class GenerationPipeline:
                 f"No output images found in ComfyUI history. {diag}"
             )
 
-        logger.debug(
+        log.debug(
             "Found %d output images, first: %s",
             len(output_images), output_images[0],
         )

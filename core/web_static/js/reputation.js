@@ -128,11 +128,12 @@ async function renderReputation() {
 async function renderReputationDetail(entityId) {
     showLoading();
 
-    let score, events;
+    let score, events, effects;
     try {
-        [score, events] = await Promise.all([
+        [score, events, effects] = await Promise.all([
             api(`/api/reputation/${entityId}`),
             api(`/api/reputation/${entityId}/events?limit=100`),
+            api(`/api/reputation/${entityId}/effects`).catch(() => null),
         ]);
     } catch (err) {
         showError('Failed to load reputation for ' + entityId + ': ' + err.message);
@@ -156,6 +157,55 @@ async function renderReputationDetail(entityId) {
                 <span class="reputation-event-time">${formatDate(e.timestamp)}</span>
             </div>`;
         }).join('');
+    }
+
+    // F-071: Gameplay Effects panel
+    let effectsHtml = '';
+    if (effects && effects.effects) {
+        const fx = effects.effects;
+        const voteModPct = ((fx.vote_weight_modifier - 1) * 100).toFixed(0);
+        const voteModLabel = fx.vote_weight_modifier === 1.0 ? 'No change'
+            : (voteModPct > 0 ? `+${voteModPct}%` : `${voteModPct}%`);
+        const voteModClass = fx.vote_weight_modifier > 1 ? 'positive'
+            : fx.vote_weight_modifier < 1 ? 'negative' : 'zero';
+
+        const priceModPct = ((fx.price_modifier - 1) * 100).toFixed(0);
+        const priceModLabel = fx.price_modifier === 1.0 ? 'Base price'
+            : (priceModPct > 0 ? `+${priceModPct}% surcharge` : `${Math.abs(priceModPct)}% discount`);
+        const priceModClass = fx.price_modifier < 1 ? 'positive'
+            : fx.price_modifier > 1 ? 'negative' : 'zero';
+
+        effectsHtml = `
+            <div class="card" style="margin-top:1.5rem">
+                <h3 style="margin:0 0 0.75rem">⚡ Active Gameplay Effects</h3>
+                <div class="gameplay-effects-grid">
+                    <div class="fx-item">
+                        <span class="fx-label">🗳️ Vote Weight</span>
+                        <span class="fx-value ${voteModClass}">${voteModLabel}</span>
+                        <span class="fx-status">${fx.vote_weight_enabled ? '✅ Active' : '⏸️ Disabled'}</span>
+                    </div>
+                    <div class="fx-item">
+                        <span class="fx-label">🏷️ Store Prices</span>
+                        <span class="fx-value ${priceModClass}">${priceModLabel}</span>
+                        <span class="fx-status">${fx.store_prices_enabled ? '✅ Active' : '⏸️ Disabled'}</span>
+                    </div>
+                    <div class="fx-item">
+                        <span class="fx-label">📝 Author Proposals</span>
+                        <span class="fx-value ${fx.can_author_proposals ? 'positive' : 'negative'}">${fx.can_author_proposals ? 'Allowed' : 'Blocked'}</span>
+                        <span class="fx-status">${fx.restrictions_enabled ? '✅ Active' : '⏸️ Disabled'}</span>
+                    </div>
+                    <div class="fx-item">
+                        <span class="fx-label">🏪 Open Stores</span>
+                        <span class="fx-value ${fx.can_open_stores ? 'positive' : 'negative'}">${fx.can_open_stores ? 'Allowed' : 'Blocked'}</span>
+                        <span class="fx-status">${fx.restrictions_enabled ? '✅ Active' : '⏸️ Disabled'}</span>
+                    </div>
+                    <div class="fx-item">
+                        <span class="fx-label">⚡ Fast-Track</span>
+                        <span class="fx-value ${fx.can_fast_track ? 'positive' : 'zero'}">${fx.can_fast_track ? 'Eligible' : 'Not eligible'}</span>
+                        <span class="fx-status">${fx.fast_track_enabled ? '✅ Active' : '⏸️ Disabled'}</span>
+                    </div>
+                </div>
+            </div>`;
     }
 
     $main().innerHTML = `
@@ -183,6 +233,8 @@ async function renderReputationDetail(entityId) {
                     ${score.tier_emoji} ${_capitalize(score.tier)}
                 </span>
             </div>
+
+            ${effectsHtml}
 
             <h3 style="margin:0 0 0.75rem">📜 Event History</h3>
             <div class="reputation-events">${eventsHtml}</div>

@@ -22,6 +22,7 @@ Storage: one JSON file per template in ``data/comfyui/templates/``.
 from __future__ import annotations
 
 import json
+import logging
 import re
 import time
 import uuid
@@ -37,6 +38,8 @@ from config.settings import (
     COMFYUI_MAX_QUEUE_SIZE,
 )
 from core.utils import atomic_write, make_id_lock
+
+log = logging.getLogger(__name__)
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -637,16 +640,12 @@ def ensure_preview_output(workflow_json: dict[str, Any]) -> dict[str, Any]:
     Returns:
         The workflow dict, potentially with an added ``PreviewImage`` node.
     """
-    import logging as _logging
-    _log = _logging.getLogger(__name__)
-
-    # Check if any standard output node already exists
     for node_id, node in workflow_json.items():
         if not isinstance(node, dict):
             continue
         class_type = node.get("class_type", "")
         if class_type in _STANDARD_OUTPUT_NODE_TYPES:
-            _log.debug(
+            log.debug(
                 "Workflow already has standard output node %s (%s)",
                 node_id, class_type,
             )
@@ -676,7 +675,7 @@ def ensure_preview_output(workflow_json: dict[str, Any]) -> dict[str, Any]:
         # No image-producing save node found anywhere — look for any
         # node that outputs IMAGE and has no downstream consumer.
         # As a last resort we can't do anything.
-        _log.warning(
+        log.warning(
             "Workflow has no standard output node and no custom save "
             "node with an 'images' input.  Image retrieval may fail.",
         )
@@ -703,7 +702,7 @@ def ensure_preview_output(workflow_json: dict[str, Any]) -> dict[str, Any]:
         "_meta": {"title": "Jericho Preview (auto-injected)"},
     }
 
-    _log.info(
+    log.info(
         "Injected PreviewImage node %s (source from %s node, "
         "images input=%s) for reliable history output retrieval.",
         preview_id, save_node_class, image_source,
@@ -936,13 +935,10 @@ class ComfyUIClient:
         Returns:
             List of dicts with ``filename``, ``subfolder``, and ``type`` keys.
         """
-        import logging as _logging
-        _log = _logging.getLogger(__name__)
-
         outputs = history.get("outputs", {})
         images: list[dict[str, str]] = []
 
-        _log.debug(
+        log.debug(
             "extract_output_images: %d output nodes, node IDs: %s",
             len(outputs), list(outputs.keys()),
         )
@@ -951,7 +947,7 @@ class ComfyUIClient:
         _IMAGE_OUTPUT_KEYS = ("images", "gifs", "videos")
 
         for node_id, node_output in outputs.items():
-            _log.debug(
+            log.debug(
                 "  node %s output keys: %s",
                 node_id, list(node_output.keys()),
             )

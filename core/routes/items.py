@@ -46,7 +46,7 @@ def api_items_list(
             elif images:
                 primary_url = f"/api/images/file/{images[0].id}"
         except Exception:
-            log.debug("core.routes.items: non-critical error", exc_info=True)
+            log.debug("Failed to load item details for enrichment", exc_info=True)
         d["primary_image_url"] = primary_url
         out.append(d)
     return out
@@ -239,6 +239,10 @@ def api_item_gift(item_id: str, body: dict[str, Any]) -> dict[str, Any]:
         )
     except ItemValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+    # F-070: Record reputation events for gift giver and receiver
+    from core.reputation_hooks import on_gift_given
+    on_gift_given(gift)
 
     # Create a closed chat record acknowledging the gift
     chat_record = _create_gift_chat(gift)

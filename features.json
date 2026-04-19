@@ -666,7 +666,7 @@
     "id": "F-064",
     "title": "Extract Business Logic From Route Files",
     "description": "Several route files contain substantial business logic that should live in core/ modules. Primary target: _build_participant_context() in routes/explore.py (350-line prompt assembly engine) should move to core/context_builder.py or core/prompt_builder.py. Secondary: examine routes/stories.py (46KB) and routes/proposals.py (39KB) for business logic that could be extracted. Routes should ideally be thin HTTP adapters — parse request, call business logic, return response. Update all imports and tests. No behavior changes.",
-    "status": "done",
+    "status": "completed",
     "dependencies": [
       "F-063"
     ]
@@ -717,7 +717,7 @@
     "id": "F-070",
     "title": "Reputation Auto-Recording Integration",
     "description": "Wire automated reputation event recording into existing systems. When a vote is cast, proposal authored/approved/rejected, gift given/received, discussion participated in, or council session attended, a reputation event is automatically recorded. Requires careful integration hooks in VotingEngine, ProposalManager, ItemManager.gift_item, DiscussionManager, and SessionManager. Should be minimally invasive — thin observer/hook layer.",
-    "status": "pending",
+    "status": "completed",
     "dependencies": [
       "F-069"
     ]
@@ -726,7 +726,7 @@
     "id": "F-071",
     "title": "Reputation Gameplay Effects",
     "description": "Reputation scores affect gameplay mechanics. IMPORTANT: Do not implement without a full discussion and approved implementation plan. Potential effects: vote weight modulation based on reputation tier, store price adjustments, proposal fast-track for high-reputation authors, restricted actions for disgraced entities. Requires careful balancing to avoid feedback loops.",
-    "status": "pending",
+    "status": "completed",
     "dependencies": [
       "F-069"
     ]

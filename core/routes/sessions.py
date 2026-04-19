@@ -215,6 +215,10 @@ async def api_council_session_discuss_stream(session_id: str):
             )
             mgr.save(updated_record)
 
+            # F-070: Record reputation events for session participation
+            from core.reputation_hooks import on_session_participated
+            on_session_participated(list(record.participants), session_id)
+
             done_data = json_module.dumps({
                 "session": updated_record.to_dict(),
                 "round_completed": round_number,

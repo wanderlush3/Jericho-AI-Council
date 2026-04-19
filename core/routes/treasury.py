@@ -4,6 +4,7 @@ Jericho — Treasury Routes
 
 from __future__ import annotations
 
+import logging
 
 from typing import Any
 
@@ -11,6 +12,8 @@ from fastapi import APIRouter, HTTPException, Query
 
 
 router = APIRouter()
+
+log = logging.getLogger(__name__)
 
 @router.get("/api/treasury")
 def api_treasury_list(
@@ -210,8 +213,7 @@ try:
     from core.salary import SalaryManager
     SalaryManager().check_and_pay()
 except Exception:
-    import logging
-    logging.getLogger(__name__).exception("Salary: startup payroll check failed")
+    log.exception("Salary: startup payroll check failed")
 
 # ── Entity Image Gallery (F-037e) ────────────────────────
 

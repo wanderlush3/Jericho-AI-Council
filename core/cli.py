@@ -465,7 +465,7 @@ def history_timeline(character_id: str) -> None:
             voting_engine=_VE(),
         )
     except Exception:
-        log.debug("core.cli: non-critical error", exc_info=True)
+        log.debug("Failed to display treasury balance summary", exc_info=True)
 
     hist = EvolutionHistory(character_manager=chars, evolution_manager=evo_mgr)
 
@@ -516,7 +516,7 @@ def history_list() -> None:
             voting_engine=_VE(),
         )
     except Exception:
-        log.debug("core.cli: non-critical error", exc_info=True)
+        log.debug("Failed to display feature status summary", exc_info=True)
     hist = EvolutionHistory(character_manager=chars, evolution_manager=evo_mgr)
 
     try:
@@ -612,7 +612,7 @@ def report_generate(title: str | None, sections: str | None, output_path: str | 
     try:
         registry = CouncilRegistry().load()
     except Exception:
-        log.debug("core.cli: non-critical error", exc_info=True)
+        log.debug("Failed to display system health check item", exc_info=True)
     pmgr = ProposalManager()
     engine = VotingEngine()
     cmgr = CharacterManager()

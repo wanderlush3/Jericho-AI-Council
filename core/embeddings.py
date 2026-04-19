@@ -17,7 +17,7 @@ from typing import Any
 
 from config.settings import EMBEDDING_MODEL_NAME
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 # ─── Singleton ────────────────────────────────────────────────
 
@@ -85,7 +85,7 @@ class EmbeddingProvider:
         try:
             return self._model.encode(text, convert_to_numpy=True)
         except Exception as exc:
-            logger.warning("Embedding encode failed: %s", exc)
+            log.warning("Embedding encode failed: %s", exc)
             return None
 
     def similarity(self, text_a: str, text_b: str) -> float:
@@ -102,7 +102,7 @@ class EmbeddingProvider:
             )
             return float(self._cosine_similarity(embeddings[0], embeddings[1]))
         except Exception as exc:
-            logger.warning("Embedding similarity failed: %s", exc)
+            log.warning("Embedding similarity failed: %s", exc)
             return 0.0
 
     def batch_similarity(
@@ -127,7 +127,7 @@ class EmbeddingProvider:
                 for i in range(len(candidates))
             ]
         except Exception as exc:
-            logger.warning("Embedding batch_similarity failed: %s", exc)
+            log.warning("Embedding batch_similarity failed: %s", exc)
             return [0.0] * len(candidates)
 
     # ── Internal ──────────────────────────────────────────────
@@ -138,18 +138,18 @@ class EmbeddingProvider:
             from sentence_transformers import SentenceTransformer
             self._model = SentenceTransformer(self._model_name)
             self._available = True
-            logger.info(
+            log.info(
                 "Loaded embedding model: %s", self._model_name,
             )
         except ImportError:
             self._available = False
-            logger.info(
+            log.info(
                 "sentence-transformers not installed — "
                 "falling back to Jaccard scoring",
             )
         except Exception as exc:
             self._available = False
-            logger.warning(
+            log.warning(
                 "Failed to load embedding model '%s': %s",
                 self._model_name, exc,
             )

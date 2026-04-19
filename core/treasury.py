@@ -28,6 +28,8 @@ from config.settings import (
 )
 from core.utils import atomic_write
 
+log = logging.getLogger(__name__)
+
 
 # ─── Exceptions ────────────────────────────────────────────────
 
@@ -396,7 +398,7 @@ class TreasuryManager:
                 # Reload accounts to reflect tax deduction
                 to_acct = self.get(to_id)
             except Exception:
-                logging.getLogger(__name__).warning(
+                log.warning(
                     "Tax collection failed for transfer %s -> %s",
                     from_id, to_id, exc_info=True,
                 )

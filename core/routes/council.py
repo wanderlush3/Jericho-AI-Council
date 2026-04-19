@@ -50,7 +50,7 @@ def api_council_list() -> list[dict[str, Any]]:
                     "name": overlay["name"],
                 }
     except Exception:
-        log.debug("core.routes.council: non-critical error", exc_info=True)
+        log.debug("Failed to load council member details for enrichment", exc_info=True)
 
     # Single directory scan for avatar existence (Category 5)
     existing_avatars = {
@@ -264,7 +264,7 @@ def api_council_detail(name: str) -> dict[str, Any]:
                 "name": overlay.name,
             }
     except Exception:
-        log.debug("core.routes.council: non-critical error", exc_info=True)
+        log.debug("Failed to build council member reputation context", exc_info=True)
     return d
 
 @router.put("/api/council/{name}")

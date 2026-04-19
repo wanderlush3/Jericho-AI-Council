@@ -30,7 +30,7 @@ from config.settings import (
 )
 from core.memory_influence import _jaccard, _tokenise
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 # ─── Data Models ───────────────────────────────────────────────

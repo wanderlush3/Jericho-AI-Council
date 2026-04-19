@@ -297,3 +297,51 @@
     font-weight: 600;
     color: var(--text-primary);
 }
+
+/* ── Gameplay Effects Grid (F-071) ───────────────────────────── */
+
+.gameplay-effects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+}
+
+.fx-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.85rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.fx-item:hover {
+    border-color: var(--border-glow);
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-1px);
+}
+
+.fx-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.fx-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.fx-value.positive { color: var(--accent-emerald); }
+.fx-value.negative { color: var(--accent-rose); }
+.fx-value.zero     { color: var(--text-muted); }
+
+.fx-status {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}

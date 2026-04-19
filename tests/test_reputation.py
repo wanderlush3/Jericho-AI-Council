@@ -583,6 +583,11 @@ class TestApiReputation:
             "core.manager_cache.get_reputation_manager",
             lambda: test_mgr,
         )
+        # Also patch the route module's imported reference
+        monkeypatch.setattr(
+            "core.routes.reputation.get_reputation_manager",
+            lambda: test_mgr,
+        )
         self.mgr = test_mgr
 
         from core.web_api import create_app

@@ -365,5 +365,37 @@ DEFAULT_REPUTATION_STANCES: dict[str, str] = {
     # Default for any entity not explicitly listed
 }
 
+# ─── Reputation Gameplay Effects (F-071) ─────────────────────
+REPUTATION_VOTE_WEIGHT_ENABLED = True      # Modulate vote weight by reputation tier
+REPUTATION_STORE_PRICES_ENABLED = True     # Adjust store prices by buyer's reputation tier
+REPUTATION_FAST_TRACK_ENABLED = True       # Allow high-rep authors to skip discussion phase
+REPUTATION_RESTRICTIONS_ENABLED = True     # Restrict disgraced entities from certain actions
+
+# Vote weight modifiers by tier (multiplied with base vote_weight)
+REPUTATION_VOTE_WEIGHT_MODIFIERS: dict[str, float] = {
+    "legendary": 1.10,
+    "distinguished": 1.05,
+    "respected": 1.00,
+    "neutral": 1.00,
+    "dubious": 0.95,
+    "disgraced": 0.90,
+}
+
+# Store price modifiers by tier (multiplied with listed price)
+REPUTATION_PRICE_MODIFIERS: dict[str, float] = {
+    "legendary": 0.85,
+    "distinguished": 0.90,
+    "respected": 0.95,
+    "neutral": 1.00,
+    "dubious": 1.05,
+    "disgraced": 1.10,
+}
+
+# Tiers that qualify for proposal fast-tracking
+REPUTATION_FAST_TRACK_TIERS = {"legendary", "distinguished"}
+
+# Reputation penalty for rejected fast-tracked proposals (overrides default -2)
+REPUTATION_FAST_TRACK_REJECTION_PENALTY = -4
+
 # ─── Injection Profile Settings (F-061) ──────────────────────
 DEFAULT_INJECTION_PROFILE = "chat_full"    # Default profile for _build_participant_context

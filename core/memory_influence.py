@@ -63,7 +63,7 @@ from config.settings import (
 )
 from core.memory import AgentMemory, CoreBelief, MemoryEntry
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -1024,7 +1024,7 @@ class MemoryInfluence:
                     provider, model, prompt,
                 )
             except Exception as exc:
-                logger.warning(
+                log.warning(
                     "Summarization LLM call failed for session %s: %s",
                     session_id, exc,
                 )
@@ -1118,7 +1118,7 @@ class MemoryInfluence:
                 provider, model, prompt,
             )
         except Exception as exc:
-            logger.warning(
+            log.warning(
                 "Contested memory LLM call failed: %s", exc,
             )
             return None
