@@ -39,7 +39,7 @@ Council member profiles are defined as YAML files in `council/members/`. Each pr
 
 ## Features
 
-Jericho ships with **47 implemented features** organized across nine domains, plus a narrative engine, semantic embeddings, image generation pipeline, and a comprehensive web dashboard:
+Jericho ships with **77 implemented features** organized across ten domains, plus a narrative engine, semantic embeddings, image generation pipeline, reputation system, and a comprehensive web dashboard:
 
 ### Core Infrastructure
 - **API Client** — Unified async client for OpenRouter, Mancer & LM Studio with retry, rate limiting, structured response parsing
@@ -48,15 +48,23 @@ Jericho ships with **47 implemented features** organized across nine domains, pl
 - **Manager Cache** — Centralized singleton cache for all manager instances, reducing redundant filesystem I/O across route modules
 - **Shared Utilities** — Atomic file writes, common helpers
 - **Embedding Provider** — Optional semantic text embeddings via `sentence-transformers` for advanced relevance scoring (falls back to keyword Jaccard similarity when unavailable)
+- **Thread-Safe ID Generation** — Atomic `threading.Lock`-protected sequential ID generation across all 14 manager classes, preventing collisions under concurrent access
 
 ### Governance
 - **Proposal System** — Create, review, and track proposals with lifecycle state machine (`draft → open → under_review → decided`)
-- **Voting Engine** — Cast votes, tally results, quorum/threshold checks, human veto power
+- **Voting Engine** — Cast votes, tally results, quorum/threshold checks, human veto power, robust last-match vote parsing
 - **Discussion Rounds** — Structured multi‑agent deliberation on proposals before voting
 - **Council Expansion** — Propose and vote on adding new council members via governance system
 - **Council Promotion** — Promote active characters to council membership directly from the web UI
 - **Law System** — Structured law lifecycle (`draft → active ↔ archived`) with bidirectional reinstatement, linked to the proposal system
 - **Council Sessions** — Open‑ended deliberation sessions with proposal handoff capability
+
+### Reputation System
+- **Reputation Infrastructure** — Event-sourced reputation tracker with immutable JSONL event records, on-demand score computation, and 120-day decay half-life
+- **Reputation Tiers** — Six tiers (Legendary, Distinguished, Respected, Neutral, Dubious, Disgraced) with configurable default stances per entity
+- **Automated Recording** — Hooks into voting, proposals, gifts, discussions, and sessions for automatic reputation event generation
+- **Gameplay Effects** — Reputation-based vote weight modulation, store price adjustments, proposal fast-tracking, and disgraced entity restrictions (all toggleable via feature flags)
+- **Reputation Dashboard** — Frontend leaderboard, entity detail views, event timelines, and tier badges
 
 ### Character System
 - **Character Templates** — Structured format for AI character definitions with traits, backstory, and prompts
@@ -67,8 +75,9 @@ Jericho ships with **47 implemented features** organized across nine domains, pl
 
 ### World Building
 - **World Locations** — Hierarchical location system with features, lore, coordinates, and parent/child relationships (`draft → active → archived`)
-- **World Items** — Item creation, lifecycle management, property system, and LLM context injection
+- **World Items** — Item creation, lifecycle management, property system, multi-owner tracking, and LLM context injection
 - **World Stores** — Commerce system with inventory CRUD, pricing in Obelisk currency, and treasury-integrated purchasing
+- **Gift Giving** — Transfer item ownership between users, characters, and council members with auto-generated chat records
 
 ### Economy (The Obelisk)
 - **Treasury System** — Three‑tier currency (Gold, Silver, Bronze at 100:1 conversion) with accounts for council members, characters, users, and government
@@ -77,8 +86,12 @@ Jericho ships with **47 implemented features** organized across nine domains, pl
 
 ### Intelligence
 - **Memory Influence** — Memories affect agent responses via context injection with relevance scoring (Jaccard keyword + optional semantic embeddings)
+- **Context Budget Manager** — Global token budget system that distributes context window allocation across competing injection sources
+- **Tiered Injection Profiles** — Priority-based context injection (persona → memories → world → extras) with configurable byte limits per tier
+- **Rolling Conversation Summary** — Automatic summarization of long conversation histories to fit within context windows
+- **Conditional Law Injection** — Laws injected into LLM context only when relevant to the current topic
 - **Narrative Engine** — Template-driven "Jericho Times" news bulletins generated from recent in-world events, displayed on the dashboard with auto-cycling ticker
-- **Session Analytics** — Participation rates, voting patterns, proposal success rates, member activity
+- **Session Analytics** — Participation rates, voting patterns, proposal success rates, member activity, and 20+ aggregate metrics
 
 ### Communication
 - **Agent‑to‑Agent Chat** — Orchestrator‑mediated conversations between council members
@@ -86,6 +99,7 @@ Jericho ships with **47 implemented features** organized across nine domains, pl
 - **Multi‑Party AI Chat** — Autonomous multi-member conversations with sequential turn-taking
 - **Presence Wrappers (SilentPassa)** — `[PRESENT]`/`[SILENCE]` display wrappers for chat messages with toggleable UI
 - **Chat Response Timers** — Per-message response time tracking with live pulsing timer during generation and permanent duration badges
+- **Absent Response Handling** — Graceful handling of chat participants who don't respond
 - **Task System** — Assign tasks to council members/characters with automated multi-round narrative execution via SSE streaming
 
 ### Image Generation (ComfyUI Integration)
@@ -176,13 +190,11 @@ Then open **http://127.0.0.1:8080** in your browser. The dashboard provides a da
 
 | Section | Views |
 |---------|-------|
-| **Overview** | Dashboard (stats, Jericho Times news ticker), Analytics |
-| **Governance** | Proposals (create, discuss, vote via AI), Votes, Laws |
-| **Characters** | Character templates, Evolutions (timeline, diff) |
-| **World** | Locations, Items, Stores, Treasury, Explore, Stories |
-| **Communication** | Chat (human-to-AI, AI-to-AI, multi-party), Tasks |
-| **Memory** | Memory explorer (per-member beliefs/events, shared decisions) |
-| **Image Generation** | Generation Queue (live-polling status cards) |
+| **Overview** | Dashboard (stats, Jericho Times news ticker), Analytics (20+ metrics) |
+| **Governance** | Proposals (create, discuss, vote via AI), Votes, Council Sessions, Laws, Reputation (leaderboard, tiers) |
+| **Characters** | Character templates, Memories (per-member beliefs/events), Evolution (timeline, diff), Tasks |
+| **World** | Chat (human-to-AI, AI-to-AI, multi-party), Explore, Stories, Locations, Items, Stores, Treasury, Taxation |
+| **AI Image** | Generation Queue (live-polling status cards) |
 | **Configuration** | Settings (API keys, models, user profile, appearance skins, ComfyUI config, workflow templates, style presets) |
 
 ### Key Capabilities
@@ -190,8 +202,10 @@ Then open **http://127.0.0.1:8080** in your browser. The dashboard provides a da
 - **SSE Streaming** — Real-time AI responses in chat, proposal discussions, and image generation progress
 - **Proposal Lifecycle** — Full governance flow: create → AI discussion rounds → AI voting → decision
 - **Avatar System** — Upload and frame custom avatars for council members with zoom/pan editor
+- **Reputation System** — Event-sourced leaderboards, tier badges, automated recording, gameplay effects
 - **Treasury Management** — View accounts, credit/debit, transfer funds, initialize defaults
 - **Store Commerce** — Create stores, manage inventory, purchase items with Obelisk currency
+- **Gift Giving** — Transfer item ownership between entities with auto-generated chat records
 - **Task Execution** — Assign and execute tasks with SSE-streamed narrative responses
 - **Image Generation** — Generate & manage images for any entity via ComfyUI (5 prompt modes, style presets, batch generation, queue monitoring)
 - **Exploration Mode** — Visual "Look Around" at locations with hero images, scene galleries, participant selection, and interactive chat
@@ -255,7 +269,7 @@ The council governs through a democratic process with built‑in safeguards:
 | **Approval Threshold**| 60% of votes   |
 | **Quorum**            | 5 of 9 members |
 | **Human Veto**        | Always available on any decision |
-| **Vote Weight**       | Configurable per member (default: 1) |
+| **Vote Weight**       | Configurable per member (default: 1), modulated by reputation tier |
 
 ### Proposal Lifecycle
 
@@ -280,6 +294,19 @@ draft → active ↔ archived
 ```
 
 Laws can be reactivated from archived status, allowing for temporary suspension and reinstatement.
+
+### Reputation Tiers
+
+| Tier | Score Range | Effects |
+|------|-------------|---------|
+| **Legendary** | ≥ 200 | +20% vote weight, −10% store prices, proposal fast-track |
+| **Distinguished** | 100–199 | +10% vote weight, −5% store prices |
+| **Respected** | 50–99 | +5% vote weight |
+| **Neutral** | 0–49 | No modifiers (default) |
+| **Dubious** | −25 to −1 | −10% vote weight |
+| **Disgraced** | ≤ −26 | Cannot author proposals, +15% store prices |
+
+Reputation is event-sourced with a 120-day decay half-life and a 10% score floor. All gameplay effects are independently toggleable via feature flags.
 
 ---
 
@@ -321,7 +348,7 @@ jericho/
 │   ├── .env.example           # API key template
 │   └── .env                   # Your API keys (git-ignored, encrypted at rest)
 │
-├── core/                      # All Python modules (43 files)
+├── core/                      # All Python modules (53 files)
 │   ├── api_client.py          # Async OpenRouter / Mancer / LM Studio client
 │   ├── api_keys.py            # Fernet-encrypted API key management
 │   ├── registry.py            # Council member loading, validation, editing
@@ -329,29 +356,39 @@ jericho/
 │   ├── memory_influence.py    # Relevance scoring & context injection
 │   ├── embeddings.py          # Semantic embedding provider (optional)
 │   ├── proposals.py           # Proposal lifecycle & management
-│   ├── voting.py              # Vote casting, tally, quorum, veto
+│   ├── voting.py              # Vote casting, tally, quorum, veto, prompt/parser
 │   ├── laws.py                # Law system (draft/active/archived)
+│   ├── law_filter.py          # Conditional law injection logic
 │   ├── session.py             # Council session orchestrator
 │   ├── council_session.py     # Open-ended deliberation sessions
 │   ├── discussion.py          # Multi-agent proposal discussions
 │   ├── agent_chat.py          # Agent-to-agent conversations
 │   ├── human_chat.py          # Human-to-agent conversations
+│   ├── chat_helpers.py        # Shared chat utility functions
+│   ├── chat_streaming.py      # SSE streaming for chat responses
 │   ├── characters.py          # Character template CRUD & lifecycle
 │   ├── character_design.py    # Collaborative multi-phase design
 │   ├── character_evolution.py # Governance-backed character modifications
 │   ├── evolution_history.py   # Version chain & diff engine
 │   ├── council_expansion.py   # Add new council members via governance
 │   ├── locations.py           # World location management
-│   ├── items.py               # World item management
+│   ├── items.py               # World item management (multi-owner, gifting)
 │   ├── stores.py              # World store & commerce system
 │   ├── treasury.py            # Obelisk monetary system
 │   ├── taxation.py            # Tax policy, collection, & ledger
 │   ├── salary.py              # Automatic payroll system
+│   ├── reputation.py          # Event-sourced reputation tracker
+│   ├── reputation_hooks.py    # Automated reputation event recording
+│   ├── reputation_effects.py  # Gameplay modifiers from reputation tiers
 │   ├── tasks.py               # Task assignment & execution
 │   ├── narrative_engine.py    # Template-driven news bulletins
-│   ├── analytics.py           # Read-only analytics engine
+│   ├── analytics.py           # Read-only analytics engine (20+ metrics)
 │   ├── reports.py             # Markdown report generator
 │   ├── png_embed.py           # TavernCard v2 PNG embedding
+│   ├── context_builder.py     # Participant context assembly engine
+│   ├── context_budget.py      # Global token budget manager
+│   ├── injection_profiles.py  # Tiered context injection profiles
+│   ├── conversation_summary.py # Rolling conversation summarization
 │   ├── comfyui_client.py      # ComfyUI HTTP client & workflow templates
 │   ├── image_manager.py       # Entity image storage & metadata
 │   ├── prompt_builder.py      # Multi-mode prompt generation & style presets
@@ -364,7 +401,7 @@ jericho/
 │   ├── dashboard.py           # Rich terminal renderer
 │   ├── web_api.py             # Thin FastAPI compositor (~145 lines)
 │   ├── utils.py               # Shared utilities (atomic writes)
-│   ├── routes/                # Backend route modules (20 files)
+│   ├── routes/                # Backend route modules (22 files + helpers)
 │   │   ├── _helpers.py        # Shared cross-module helpers
 │   │   ├── council.py         # /api/council endpoints
 │   │   ├── proposals.py       # /api/proposals endpoints
@@ -385,21 +422,23 @@ jericho/
 │   │   ├── laws.py            # /api/laws endpoints
 │   │   ├── images.py          # /api/images endpoints
 │   │   ├── tasks.py           # /api/tasks endpoints
+│   │   ├── reputation.py      # /api/reputation endpoints
 │   │   └── status.py          # /api/status endpoint
 │   └── web_static/            # SPA frontend
 │       ├── index.html         # HTML shell with accordion nav sidebar
-│       ├── css/               # 33 CSS modules (~9,400 lines)
+│       ├── css/               # 35 CSS modules (~10,000 lines)
 │       │   ├── tokens.css     # Design tokens (:root variables)
 │       │   ├── base.css       # Reset & base styles
 │       │   ├── layout.css     # Layout + sidebar
 │       │   ├── skins.css      # Theme skins (Frutiger Aero, Y2K, Vaporwave)
-│       │   └── [feature].css  # Per-feature styles (council, chat, explore, etc.)
-│       └── js/                # 26 JS modules (~13,500 lines)
+│       │   └── [feature].css  # Per-feature styles (council, chat, explore, reputation, etc.)
+│       └── js/                # 27 JS modules (~14,300 lines)
 │           ├── core.js        # api(), navigateTo(), renderView(), showToast()
 │           ├── dashboard.js   # renderDashboard(), narrative banner
 │           ├── council.js     # renderCouncil(), renderCouncilDetail()
 │           ├── explore.js     # renderExplore(), participant selection, chat
 │           ├── stories.js     # renderStories(), reader, scene chat
+│           ├── reputation.js  # renderReputation(), leaderboard, event timeline
 │           └── ...            # 21 additional feature modules
 │
 ├── council/
@@ -422,6 +461,7 @@ jericho/
 │   ├── stores/                # STORE-XXXX.json
 │   ├── tasks/                 # TK-XXXX.json
 │   ├── treasury/              # ACCT-*.json
+│   ├── reputation/            # {member|character}_name.jsonl event logs
 │   ├── memories/              # Per-agent & shared memory
 │   ├── reports/               # Generated Markdown reports
 │   ├── prompts/               # Character & system prompts
@@ -435,12 +475,12 @@ jericho/
 │   ├── exploration/           # Exploration scene metadata
 │   └── stories/               # ST-XXXX.json story files
 │
-├── tests/                     # 3,072 tests (pytest)
+├── tests/                     # 3,626 tests (pytest)
 │   ├── conftest.py            # Shared fixtures & manager cache invalidation
 │   ├── test_integration.py    # Cross-module integration tests
-│   └── test_*.py              # 52 per-module test suites
+│   └── test_*.py              # 66 per-module test suites
 │
-├── features.json              # Feature backlog tracker (47 features)
+├── features.json              # Feature backlog tracker (77 features)
 ├── progress_log.md            # Institutional memory (session history)
 ├── pyproject.toml             # Project config & dependencies
 ├── start.bat                  # One-click launcher (Windows)
@@ -462,7 +502,7 @@ python -m pytest tests/ -q
 python -m pytest tests/ --cov=core --cov-report=term-missing
 ```
 
-The full suite of **3,072 tests** should pass in approximately 90 seconds.
+The full suite of **3,626 tests** should pass in approximately 90–100 seconds.
 
 ---
 
@@ -491,6 +531,17 @@ All configuration is centralized in `config/settings.py`:
 | `SALARY_INTERVAL_DAYS`          | 7              | Days between payroll runs                |
 | `SALARY_COUNCIL_USER_AMOUNT`    | 200            | Gold per payroll for council/user        |
 | `SALARY_CHARACTER_AMOUNT`       | 100            | Gold per payroll for active characters   |
+
+### Reputation
+
+| Setting                         | Default        | Description                              |
+|---------------------------------|----------------|------------------------------------------|
+| `REPUTATION_DECAY_HALF_LIFE_DAYS` | 120          | Days for event score to decay by 50%     |
+| `REPUTATION_DECAY_FLOOR`       | 0.10           | Minimum decay multiplier (10%)           |
+| `REPUTATION_VOTE_WEIGHT_ENABLED` | `True`        | Enable vote weight modulation by tier    |
+| `REPUTATION_STORE_PRICES_ENABLED` | `True`       | Enable store price adjustments by tier   |
+| `REPUTATION_FAST_TRACK_ENABLED` | `True`         | Enable proposal fast-tracking by tier    |
+| `REPUTATION_RESTRICT_DISGRACED` | `True`         | Restrict actions for disgraced entities  |
 
 ### API & Server
 
@@ -558,7 +609,9 @@ API keys are managed from the web dashboard Settings page or via environment var
 4. **Manager pattern** — Each domain has a Manager class (e.g., `ProposalManager`, `CharacterManager`, `StoreManager`) with consistent CRUD + lifecycle methods.
 5. **Lifecycle state machines** — All entities follow validated state transitions via `_VALID_TRANSITIONS` dicts.
 6. **Constructor injection** — Managers accept dependencies via constructor for full testability with mocks.
-7. **Graceful degradation** — Optional features (embeddings, individual managers) degrade gracefully when unavailable.
+7. **Thread-safe IDs** — All managers use `threading.Lock` for atomic ID generation, preventing collisions under concurrent access.
+8. **Graceful degradation** — Optional features (embeddings, individual managers) degrade gracefully when unavailable. Reputation hooks never break primary workflows.
+9. **Feature flags** — Gameplay-affecting systems (reputation effects) are individually toggleable without code changes.
 
 ---
 
