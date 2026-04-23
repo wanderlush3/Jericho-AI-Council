@@ -89,11 +89,11 @@ async function renderExploreLocation(locationId) {
             </div>
         </div>`).join('');
 
-    // Scene strip
+    // Scene strip — show focus area label when available
     const scenesHtml = (data.scenes || []).map((s, idx) => `
         <div class="explore-scene-thumb" onclick="openExploreSceneLightbox(${idx})">
             <img src="${s.image_url}" alt="${escapeAttr(s.description || s.scene_id)}" loading="lazy" />
-            <div class="explore-scene-type">${s.scene_type}</div>
+            <div class="explore-scene-type">${s.focus_area || s.scene_type}</div>
             <button class="explore-scene-delete" onclick="event.stopPropagation(); deleteExploreScene('${locationId}', '${s.scene_id}')" title="Delete scene">🗑️</button>
         </div>`).join('');
 
@@ -181,6 +181,10 @@ async function renderExploreLocation(locationId) {
                 <div class="explore-gen-status" id="explore-gen-status">Generating scene…</div>
             </div>
 
+            <div id="explore-movement-panel">
+                ${_buildMovementPanel(data, locationId)}
+            </div>
+
             ${participantSectionHtml}
 
             ${data.lore ? `
@@ -232,6 +236,9 @@ async function renderExploreLocation(locationId) {
 
     // Store scenes data for lightbox
     window._exploreScenes = data.scenes || [];
+    // Store current exploration state
+    window._exploreState = data.exploration_state || null;
+    window._exploreFeatures = data.features || [];
     // F-042: Reset participant selections
     window._exploreParticipants = [];
     // Explore chat state
@@ -283,7 +290,106 @@ function _buildExploreNavPanel(nav) {
         </div>`;
 }
 
-/* ── F-042: Participant Selector Helpers ───────────────────── */
+/* ── F-079: Movement Panel Builder ────────────────────────── */
+
+function _buildMovementPanel(data, locationId) {
+    const state = data.exploration_state;
+    if (!state) {
+        // No exploration started yet — show nothing
+        return '';
+    }
+
+    const moves = state.available_moves || [];
+    const progress = state.progress || { explored: 0, total: 0, percentage: 0 };
+    const currentFocus = state.current_focus || 'initial';
+    const mode = state.mode || 'guided';
+
+    // Feature type → icon map
+    const typeIcons = {
+        'landmark': '🏛️', 'natural': '🌿', 'building': '🏠',
+        'district': '🏘️', 'infrastructure': '🔧', 'custom': '📍',
+        'exterior': '🌅', 'imaginative': '🔮',
+    };
+
+    // Build focus indicator
+    const focusLabel = currentFocus === 'initial' ? 'Not started'
+        : currentFocus === 'exterior' ? 'Exterior Overview'
+        : currentFocus === 'imaginative' ? 'Exploring Beyond…'
+        : currentFocus;
+
+    const modeLabel = mode === 'imaginative'
+        ? '<span class="explore-mode-badge explore-mode-imaginative">✨ Imaginative Mode</span>'
+        : '';
+
+    // Build movement cards
+    const moveCards = moves.map(m => {
+        // Look up feature type for icon
+        let icon = typeIcons[m.type] || '📍';
+        if (m.type === 'feature') {
+            const feature = (data.features || []).find(f => f.name === m.target);
+            if (feature) icon = typeIcons[feature.feature_type] || '📍';
+        }
+
+        const exploredClass = m.explored ? 'explore-move-card-explored' : '';
+        const activeClass = m.target === currentFocus ? 'explore-move-card-active' : '';
+        const imaginativeClass = m.type === 'imaginative' ? 'explore-move-card-imaginative' : '';
+
+        return `
+            <div class="explore-move-card ${exploredClass} ${activeClass} ${imaginativeClass}"
+                 onclick="exploreLookAround('${locationId}', '${escapeAttr(m.target)}')"
+                 title="${m.explored ? 'Revisit' : 'Explore'}: ${escapeAttr(m.label)}">
+                <div class="explore-move-icon">${icon}</div>
+                <div class="explore-move-label">${escapeHtml(m.label)}</div>
+                ${m.explored ? '<div class="explore-move-check">✅</div>' : ''}
+            </div>`;
+    }).join('');
+
+    // Progress bar
+    const progressHtml = progress.total > 0 ? `
+        <div class="explore-progress-section">
+            <div class="explore-progress-info">
+                <span>Progress: ${progress.explored} / ${progress.total} areas</span>
+                <span>${progress.percentage}%</span>
+            </div>
+            <div class="explore-progress-track">
+                <div class="explore-progress-fill" style="width: ${progress.percentage}%"></div>
+            </div>
+        </div>` : '';
+
+    return `
+        <div class="explore-section explore-movement-section">
+            <div class="explore-section-header">
+                <h4>📍 Exploration</h4>
+                <div class="explore-state-actions">
+                    ${modeLabel}
+                    <button class="btn btn-secondary btn-sm" onclick="resetExploration('${locationId}')" title="Reset exploration">
+                        🔄 Reset
+                    </button>
+                </div>
+            </div>
+            <div class="explore-state-indicator">
+                <span class="explore-focus-label">Currently viewing: <strong>${escapeHtml(focusLabel)}</strong></span>
+            </div>
+            ${progressHtml}
+            <div class="explore-movement-grid">${moveCards}</div>
+        </div>`;
+}
+
+async function resetExploration(locationId) {
+    if (!confirm('Reset exploration? This clears all movement history.')) return;
+    try {
+        const resp = await fetch(`/api/explore/${encodeURIComponent(locationId)}/state/reset`, { method: 'POST' });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Reset failed' }));
+            throw new Error(err.detail);
+        }
+        showToast('Exploration reset \u2714');
+        window._exploreState = null;
+        await renderExploreLocation(locationId);
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+    }
+}
 
 function toggleParticipantPanel() {
     const body = document.getElementById('explore-participants-body');
@@ -345,9 +451,12 @@ function getSelectedParticipants() {
 
 /* ── Look Around Generation ────────────────────────────────── */
 
-async function exploreLookAround(locationId) {
+async function exploreLookAround(locationId, target) {
     const btn = document.getElementById('explore-look-around-btn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating…'; }
+
+    // Disable movement cards during generation
+    document.querySelectorAll('.explore-move-card').forEach(c => c.classList.add('explore-move-card-disabled'));
 
     const progressEl = document.getElementById('explore-gen-progress');
     const fillEl = document.getElementById('explore-gen-fill');
@@ -359,11 +468,14 @@ async function exploreLookAround(locationId) {
     // Save for chat creation (poll callback runs after page re-render resets checkboxes)
     window._exploreSavedParticipants = participants;
 
+    const payload = { participants };
+    if (target) payload.target = target;
+
     try {
         const resp = await fetch(`/api/explore/${encodeURIComponent(locationId)}/look-around`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ participants }),
+            body: JSON.stringify(payload),
         });
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({ detail: 'Generation failed' }));
@@ -372,7 +484,13 @@ async function exploreLookAround(locationId) {
         const data = await resp.json();
         const pCount = participants.length;
         const pLabel = pCount > 0 ? ` with ${pCount} participant${pCount !== 1 ? 's' : ''}` : '';
-        showToast(`Scene generation started${pLabel} (${data.job_id}) 🎨`);
+        const targetLabel = data.target && data.target !== 'initial' ? ` — ${data.target}` : '';
+        showToast(`Scene generation started${pLabel}${targetLabel} (${data.job_id}) 🎨`);
+
+        // Update exploration state from response
+        if (data.exploration_state) {
+            window._exploreState = data.exploration_state;
+        }
 
         // Poll for job status
         _pollExploreGeneration(data.job_id, locationId, fillEl, statusEl);
@@ -380,6 +498,7 @@ async function exploreLookAround(locationId) {
         showToast(`Error: ${err.message}`, true);
         if (btn) { btn.disabled = false; btn.textContent = '👁️ Look Around'; }
         if (progressEl) progressEl.style.display = 'none';
+        document.querySelectorAll('.explore-move-card').forEach(c => c.classList.remove('explore-move-card-disabled'));
     }
 }
 
@@ -409,14 +528,18 @@ async function _pollExploreGeneration(jobId, locationId, fillEl, statusEl) {
                 let imageUrl = '';
                 if (data.image_id) {
                     imageUrl = `/api/images/file/${data.image_id}`;
+                    // Use focus_area from metadata if available
+                    const focusArea = (data.metadata && data.metadata.focus_area) || '';
+                    const sceneType = (data.metadata && data.metadata.scene_type) || 'overview';
                     try {
                         await fetch(`/api/explore/${encodeURIComponent(locationId)}/scenes`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 image_id: data.image_id,
-                                scene_type: 'overview',
-                                description: `Scene generated via Look Around`,
+                                scene_type: sceneType,
+                                description: focusArea ? `Scene: ${focusArea}` : 'Scene generated via Look Around',
+                                focus_area: focusArea,
                             }),
                         });
                     } catch { /* scene add failed, image still exists */ }

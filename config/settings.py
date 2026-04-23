@@ -218,6 +218,7 @@ MAX_EVOLUTION_HISTORY = 50              # Max rollback chain depth per target
 # ─── Task Settings ────────────────────────────────────────────
 TASKS_DIR = DATA_DIR / "tasks"
 TASK_STATUSES = ("draft", "active", "completed")
+TASK_TYPES = ("standard", "gift", "purchase")     # Task types: standard narration, gift delivery, or store purchase
 TASK_MAX_ROUNDS = 5                     # Max narration rounds per task execution
 
 # ─── Location Settings ────────────────────────────────────────
@@ -262,7 +263,7 @@ COMFYUI_TEMPLATES_DIR = DATA_DIR / "comfyui" / "templates"
 COMFYUI_IMAGES_DIR = DATA_DIR / "images"           # For F-037b
 COMFYUI_PRESETS_DIR = DATA_DIR / "comfyui" / "presets"  # Custom style presets (F-037g)
 COMFYUI_TEMPLATE_ASSIGNMENTS_FILE = DATA_DIR / "comfyui" / "template_assignments.json"  # F-039
-COMFYUI_ASSIGNABLE_ENTITY_TYPES = ("character", "location", "item", "store")  # F-039
+COMFYUI_ASSIGNABLE_ENTITY_TYPES = ("character", "location", "item", "store", "story", "explore")  # F-039
 COMFYUI_MAX_QUEUE_SIZE = 10                         # Max concurrent generation jobs
 COMFYUI_POLL_INTERVAL = 1.0                         # Seconds between status polls
 COMFYUI_POLL_TIMEOUT = 300                          # Max seconds to wait for generation
@@ -273,6 +274,19 @@ COMFYUI_DEFAULT_STYLE_ENV = "JERICHO_COMFYUI_DEFAULT_STYLE"
 # ─── Exploration Settings (F-040) ────────────────────────────
 EXPLORATION_DIR = DATA_DIR / "exploration"
 EXPLORATION_SCENES_FILE = EXPLORATION_DIR / "scenes.json"
+
+# ─── Exploration State Settings (F-079) ──────────────────────
+EXPLORATION_STATES_DIR = EXPLORATION_DIR / "states"
+IMAGINATIVE_MODE_ENABLED = True        # Allow LLM-driven imaginative exploration beyond known features
+STATIC_LOCATION_TAGS = frozenset({
+    "home", "house", "shop", "tavern", "chapel", "shrine", "cottage",
+    "hut", "inn", "temple", "tower", "castle", "manor", "cabin",
+})
+DYNAMIC_LOCATION_TAGS = frozenset({
+    "forest", "wilderness", "dungeon", "city", "district", "ruins",
+    "cave", "ocean", "swamp", "desert", "mountains", "plains",
+    "underworld", "labyrinth", "wasteland",
+})
 
 # ─── Story Illustration Settings (F-041) ─────────────────────
 STORIES_DIR = DATA_DIR / "stories"

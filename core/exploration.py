@@ -1,11 +1,15 @@
 """
-Jericho — Exploration Image Galleries (F-040)
+Jericho — Exploration Image Galleries (F-040 / F-079)
 
 Visual location exploration with generated scene images.
 
 Users can "look around" at a location to generate contextual scene images
 using the existing ComfyUI generation pipeline. Scenes are stored as
 metadata referencing existing EntityImage objects via their image IDs.
+
+F-079 adds feature-centric movement: scenes can focus on specific areas
+(features) of a location, with progressive exploration and imaginative
+discovery beyond the defined map.
 
 Navigation between connected locations (parent, children, siblings)
 enables an immersive exploration experience.
@@ -16,6 +20,7 @@ Storage: scenes metadata in ``data/exploration/scenes.json``
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -27,6 +32,8 @@ from config.settings import (
     EXPLORATION_SCENES_FILE,
 )
 from core.utils import atomic_write
+
+log = logging.getLogger(__name__)
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -73,6 +80,8 @@ class ExplorationScene:
         image_id: Reference to an existing EntityImage ID.
         scene_type: One of ``overview``, ``feature``, ``transition``.
         description: Human-readable description of this scene.
+        focus_area: Which area/feature this scene depicts (F-079).
+            Empty string for legacy scenes without focus tracking.
         generated_at: ISO timestamp of when the scene was generated.
         metadata: Arbitrary pass-through metadata.
     """
@@ -82,6 +91,7 @@ class ExplorationScene:
     image_id: str
     scene_type: str = "overview"
     description: str = ""
+    focus_area: str = ""
     generated_at: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -96,6 +106,7 @@ class ExplorationScene:
             image_id=data["image_id"],
             scene_type=data.get("scene_type", "overview"),
             description=data.get("description", ""),
+            focus_area=data.get("focus_area", ""),
             generated_at=data.get("generated_at", ""),
             metadata=data.get("metadata", {}),
         )
@@ -108,6 +119,7 @@ class ExplorationScene:
         image_id: str,
         scene_type: str = "overview",
         description: str = "",
+        focus_area: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> ExplorationScene:
         """Factory with validation and auto-generated ID."""
@@ -133,6 +145,7 @@ class ExplorationScene:
             image_id=image_id.strip(),
             scene_type=scene_type,
             description=description.strip() if description else "",
+            focus_area=focus_area.strip() if focus_area else "",
             generated_at=datetime.now(timezone.utc).isoformat(),
             metadata=metadata or {},
         )
@@ -178,6 +191,7 @@ class ExplorationManager:
         image_id: str,
         scene_type: str = "overview",
         description: str = "",
+        focus_area: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> ExplorationScene:
         """Create and persist a new exploration scene.
@@ -187,6 +201,7 @@ class ExplorationManager:
             image_id: ID of the existing EntityImage.
             scene_type: Type of scene (overview/feature/transition).
             description: Human-readable description.
+            focus_area: Which area/feature this scene depicts (F-079).
             metadata: Arbitrary metadata.
 
         Returns:
@@ -200,6 +215,7 @@ class ExplorationManager:
             image_id=image_id,
             scene_type=scene_type,
             description=description,
+            focus_area=focus_area,
             metadata=metadata,
         )
         self._scenes.append(scene)
@@ -353,6 +369,170 @@ class ExplorationManager:
             parts.append(f"Tags: {', '.join(location.tags)}")
 
         return "\n\n".join(parts)
+
+    # ── Focused Prompt Builder (F-079) ───────────────────────
+
+    @staticmethod
+    def build_focused_prompt(
+        location: Any,
+        state: Any,
+        previous_scenes: list[ExplorationScene] | None = None,
+    ) -> str:
+        """Build a context-aware prompt based on exploration state.
+
+        Three strategies depending on exploration depth and mode:
+
+        1. **Initial / Exterior** — Establishing shot of the location
+           from outside, showing approach, entrance, atmosphere.
+        2. **Guided** — Focused view of a specific feature/area
+           with continuity from previously explored areas.
+        3. **Imaginative** — LLM-driven discovery beyond the known
+           map, constrained by the location's dynamism.
+
+        Args:
+            location: A Location instance.
+            state: An ExplorationState instance.
+            previous_scenes: Already-generated scenes for continuity.
+
+        Returns:
+            A descriptive string for prompt generation.
+        """
+        from core.exploration_state import (
+            FOCUS_EXTERIOR,
+            FOCUS_IMAGINATIVE,
+            FOCUS_INITIAL,
+            infer_location_dynamism,
+        )
+
+        parts: list[str] = []
+        scenes = previous_scenes or []
+
+        # Determine scene setting keyword
+        setting = state.scene_setting or "outdoor"
+
+        # Strategy 1: Initial / exterior overview
+        if state.current_focus in (FOCUS_INITIAL, FOCUS_EXTERIOR):
+            parts.append(f"Location: {location.name}")
+            parts.append(f"Setting: {setting}")
+            if location.description:
+                parts.append(f"Description: {location.description}")
+            if location.lore:
+                parts.append(f"Atmosphere: {location.lore}")
+            parts.append(
+                "\nDirective: Generate an establishing exterior view "
+                "of this location. Show the approach, the entrance, "
+                "and the overall atmosphere as seen from outside."
+            )
+            if location.features:
+                names = [f.name for f in location.features]
+                parts.append(
+                    f"Notable features visible: {', '.join(names)}"
+                )
+            return "\n".join(parts)
+
+        # Strategy 2: Guided — focused on a specific feature
+        if state.mode == "guided":
+            focus_name = state.current_focus
+            target_feature = None
+            for f in (location.features or []):
+                if f.name == focus_name:
+                    target_feature = f
+                    break
+
+            parts.append(f"Location: {location.name}")
+
+            # Infer indoor setting when exploring building-like features
+            feature_type = ""
+            if target_feature:
+                feature_type = getattr(
+                    target_feature, "feature_type", "custom",
+                )
+                if feature_type in ("building", "infrastructure"):
+                    setting = "indoor"
+                parts.append(f"Setting: {setting}")
+                parts.append(
+                    f"\nFocus Area: {target_feature.name}"
+                )
+                parts.append(
+                    f"Description: {target_feature.description}"
+                )
+                if feature_type:
+                    parts.append(f"Area Type: {feature_type}")
+            else:
+                parts.append(f"Setting: {setting}")
+                parts.append(f"\nFocus Area: {focus_name}")
+
+            # Continuity — what was seen before
+            if state.explored_areas:
+                prior = [
+                    a for a in state.explored_areas
+                    if a != focus_name
+                ]
+                if prior:
+                    parts.append(
+                        f"\nPreviously explored: {', '.join(prior)}"
+                    )
+
+            parts.append(
+                "\nDirective: Generate a detailed view of this "
+                "specific area. Focus on the textures, objects, "
+                "lighting, and atmosphere unique to this space."
+            )
+            return "\n".join(parts)
+
+        # Strategy 3: Imaginative exploration
+        if state.mode == "imaginative":
+            dynamism = infer_location_dynamism(location)
+            parts.append(f"Location: {location.name}")
+            parts.append(f"Setting: {setting}")
+            if location.description:
+                parts.append(
+                    f"Known description: {location.description}"
+                )
+
+            # Summarize what's already been explored
+            if state.explored_areas:
+                parts.append(
+                    f"\nAlready explored: {', '.join(state.explored_areas)}"
+                )
+
+            # Prevent repetition with imaginative history
+            if state.imaginative_history:
+                parts.append(
+                    "\nPrevious discoveries (do NOT repeat these): "
+                    + "; ".join(state.imaginative_history[-5:])
+                )
+
+            if dynamism == "static":
+                parts.append(
+                    "\nDirective: You have explored all known areas "
+                    "of this location. Discover hidden details — a "
+                    "forgotten alcove, a worn inscription, a subtle "
+                    "atmospheric detail, or an overlooked corner. "
+                    "Stay grounded in the location's established "
+                    "character. Do not invent new buildings or major "
+                    "structures."
+                )
+            elif dynamism == "dynamic":
+                parts.append(
+                    "\nDirective: Beyond the known areas of this "
+                    "location, discover what lies further — a hidden "
+                    "path, an unexpected vista, a mysterious feature, "
+                    "or an undiscovered area that fits the location's "
+                    "atmosphere. Be creative but consistent with the "
+                    "established world."
+                )
+            else:  # moderate
+                parts.append(
+                    "\nDirective: Explore a previously overlooked "
+                    "area of this location. It could be a quiet "
+                    "corner, a view from a different angle, or a "
+                    "subtle detail that adds depth to this place."
+                )
+            return "\n".join(parts)
+
+        # Fallback: generic description
+        return ExplorationManager.build_look_around_description(location)
 
     # ── Internal ─────────────────────────────────────────────
 

@@ -144,6 +144,21 @@ def api_explore_detail(location_id: str) -> dict[str, Any]:
             "feature_type": getattr(f, "feature_type", "custom"),
         })
 
+    # Exploration state (F-079)
+    from core.exploration_state import ExplorationStateManager
+    state_mgr = ExplorationStateManager()
+    state = state_mgr.get(location_id)
+    feature_names = [f["name"] for f in features]
+    state_data = None
+    if state is not None:
+        state_data = state.to_dict()
+        state_data["available_moves"] = state.get_available_moves(
+            feature_names,
+        )
+        state_data["progress"] = state.get_exploration_progress(
+            len(feature_names),
+        )
+
     return {
         "id": loc.id,
         "name": loc.name,
@@ -157,6 +172,7 @@ def api_explore_detail(location_id: str) -> dict[str, Any]:
         "primary_image_url": primary_url,
         "scenes": scene_dicts,
         "navigation": nav_data,
+        "exploration_state": state_data,
     }
 
 @router.post("/api/explore/{location_id}/look-around")
@@ -170,7 +186,8 @@ async def api_explore_look_around(
     the location's description, lore, and features.
 
     Optional body: {
-        "scene_type": "overview",      // scene type to record
+        "target": "Great Hall",         // F-079: movement target
+        "scene_type": "overview",       // scene type to record
         "template_id": "TPL-XXXX",     // override template
         "style_preset_key": "",        // style preset
         "width": 512, "height": 512,
@@ -180,11 +197,23 @@ async def api_explore_look_around(
         ]
     }
 
+    When ``target`` is provided (F-079), the exploration state is
+    updated and the prompt focuses on the specified area.  Valid
+    targets: ``"exterior"``, a feature name, or ``"explore_further"``
+    (for imaginative mode).
+
     Returns: {"job_id": "GEN-XXXX", "status": "queued",
-              "location_id": "LOC-XXXX"}
+              "location_id": "LOC-XXXX", "target": "...",
+              "exploration_state": {...}}
     """
     from core.locations import LocationNotFoundError
     from core.exploration import ExplorationManager
+    from core.exploration_state import (
+        ExplorationStateManager,
+        InvalidMoveError,
+        FOCUS_EXTERIOR,
+        FOCUS_INITIAL,
+    )
     from core.generation_pipeline import (
         GenerationRequest, GenerationValidationError,
         GenerationQueueFullError,
@@ -216,8 +245,41 @@ async def api_explore_look_around(
             detail=f"Location '{location_id}' not found.",
         )
 
-    # Build look-around description for the prompt
-    context = ExplorationManager.build_look_around_description(loc)
+    # F-079: Exploration state — get or create, then apply movement
+    state_mgr = ExplorationStateManager()
+    state = state_mgr.get_or_create(location_id)
+    target = (body.get("target") or "").strip()
+
+    if target:
+        # Validate feature targets exist
+        feature_names = [f.name for f in (loc.features or [])]
+        if (
+            target not in (FOCUS_EXTERIOR, "explore_further")
+            and target not in feature_names
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown target '{target}'. Valid targets: "
+                       f"exterior, explore_further, or one of: "
+                       f"{', '.join(feature_names)}",
+            )
+        try:
+            state.move_to(target)
+        except InvalidMoveError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+    else:
+        # No target = first look-around (exterior overview)
+        if state.current_focus == FOCUS_INITIAL:
+            state.move_to(FOCUS_EXTERIOR)
+
+    # Persist updated state
+    state_mgr.save(state)
+
+    # F-079: Use focused prompt when state is active
+    previous_scenes = ExplorationManager().list_scenes(location_id)
+    context = ExplorationManager.build_focused_prompt(
+        loc, state, previous_scenes,
+    )
 
     # F-042: Enrich context with participant identities + world state
     # F-061: Use IMAGE_GEN profile for image generation (skip heavy layers)
@@ -228,8 +290,8 @@ async def api_explore_look_around(
         if participant_context:
             context = context + "\n\n" + participant_context
 
-    # Get template — prefer body override, then recommended,
-    # then fall back to error
+    # Get template — prefer body override, then "explore" assignment,
+    # then fall back to "location" assignment, then error
     template_id = (body.get("template_id") or "").strip()
     if not template_id:
         try:
@@ -238,9 +300,11 @@ async def api_explore_look_around(
             tam = TemplateAssignmentManager(
                 template_manager=WorkflowTemplateManager(),
             )
-            template_id = tam.get_recommended_template("location")
+            template_id = tam.get_recommended_template("explore")
+            if not template_id:
+                template_id = tam.get_recommended_template("location")
         except Exception:
-            log.debug("Failed to load entity details for gallery enrichment", exc_info=True)
+            log.debug("Failed to load template for explore generation", exc_info=True)
     if not template_id:
         raise HTTPException(
             status_code=400,
@@ -249,7 +313,16 @@ async def api_explore_look_around(
                    "ComfyUI → Template Assignments.",
         )
 
-    scene_type = body.get("scene_type", "overview")
+    # Auto-set scene_type based on exploration state
+    scene_type = body.get("scene_type", "")
+    if not scene_type:
+        if state.current_focus in (FOCUS_INITIAL, FOCUS_EXTERIOR):
+            scene_type = "overview"
+        elif state.mode == "imaginative":
+            scene_type = "feature"  # imaginative discoveries are features
+        else:
+            scene_type = "feature"
+
     width = body.get("width", 512)
     height = body.get("height", 512)
 
@@ -267,6 +340,9 @@ async def api_explore_look_around(
             metadata={
                 "exploration": True,
                 "scene_type": scene_type,
+                "focus_area": state.current_focus,
+                "exploration_depth": state.exploration_depth,
+                "exploration_mode": state.mode,
                 "participants": [
                     {"id": p.get("id"), "type": p.get("type")}
                     for p in participants
@@ -300,10 +376,93 @@ async def api_explore_look_around(
 
     asyncio.create_task(_run_in_background(job_id))
 
+    # Build state data for response
+    feature_names = [f.name for f in (loc.features or [])]
+    state_resp = state.to_dict()
+    state_resp["available_moves"] = state.get_available_moves(
+        feature_names,
+    )
+    state_resp["progress"] = state.get_exploration_progress(
+        len(feature_names),
+    )
+
     return {
         "job_id": job_id,
         "status": "queued",
         "location_id": location_id,
+        "target": state.current_focus,
+        "exploration_state": state_resp,
+    }
+
+
+@router.get("/api/explore/{location_id}/state")
+def api_explore_state(location_id: str) -> dict[str, Any]:
+    """Get the current exploration state for a location (F-079).
+
+    Returns the state data with available moves and progress, or
+    null state if exploration hasn't started.
+    """
+    from core.locations import LocationNotFoundError
+    from core.exploration_state import ExplorationStateManager
+
+    lmgr = get_location_manager()
+    try:
+        loc = lmgr.get(location_id)
+    except LocationNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Location '{location_id}' not found.",
+        )
+
+    state_mgr = ExplorationStateManager()
+    state = state_mgr.get(location_id)
+    feature_names = [f.name for f in (loc.features or [])]
+
+    if state is None:
+        return {
+            "location_id": location_id,
+            "started": False,
+            "state": None,
+        }
+
+    state_data = state.to_dict()
+    state_data["available_moves"] = state.get_available_moves(
+        feature_names,
+    )
+    state_data["progress"] = state.get_exploration_progress(
+        len(feature_names),
+    )
+    return {
+        "location_id": location_id,
+        "started": True,
+        "state": state_data,
+    }
+
+
+@router.post("/api/explore/{location_id}/state/reset")
+def api_explore_state_reset(location_id: str) -> dict[str, Any]:
+    """Reset exploration state for a location (F-079).
+
+    Clears all movement history and returns the fresh state.
+    """
+    from core.locations import LocationNotFoundError
+    from core.exploration_state import ExplorationStateManager
+
+    lmgr = get_location_manager()
+    try:
+        lmgr.get(location_id)
+    except LocationNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Location '{location_id}' not found.",
+        )
+
+    state_mgr = ExplorationStateManager()
+    state = state_mgr.reset(location_id)
+    return {
+        "location_id": location_id,
+        "state": state.to_dict(),
+        "message": "Exploration state reset successfully.",
     }
 
 @router.get("/api/explore/{location_id}/scenes")
@@ -356,7 +515,7 @@ def api_explore_add_scene(
     """Manually add a scene for a location.
 
     Body: {"image_id": "IMG-XXXX", "scene_type": "overview",
-           "description": "..."}
+           "description": "...", "focus_area": "..."}
     """
     from core.exploration import (
         ExplorationManager, ExplorationValidationError,
@@ -375,6 +534,7 @@ def api_explore_add_scene(
             image_id=image_id,
             scene_type=body.get("scene_type", "overview"),
             description=body.get("description", ""),
+            focus_area=body.get("focus_area", ""),
             metadata=body.get("metadata", {}),
         )
     except ExplorationValidationError as exc:

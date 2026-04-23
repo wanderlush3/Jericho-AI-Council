@@ -646,6 +646,163 @@
     padding: var(--space-sm) 0;
 }
 
+/* ── F-079: Movement Panel ───────────────────────────────────── */
+
+.explore-movement-section {
+    border-image: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(6, 182, 212, 0.2)) 1;
+}
+
+.explore-state-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+.explore-focus-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.explore-focus-label strong {
+    color: var(--accent-cyan);
+}
+
+.explore-state-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.explore-mode-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.explore-mode-imaginative {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(236, 72, 153, 0.12));
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    color: #c084fc;
+    animation: imaginativePulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes imaginativePulse {
+    from { box-shadow: 0 0 4px rgba(168, 85, 247, 0.2); }
+    to { box-shadow: 0 0 12px rgba(168, 85, 247, 0.4); }
+}
+
+.explore-progress-section {
+    margin-bottom: var(--space-md);
+}
+
+.explore-progress-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: var(--space-xs);
+}
+
+.explore-progress-track {
+    width: 100%;
+    height: 5px;
+    background: var(--bg-input);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+}
+
+.explore-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, hsl(270, 60%, 55%), var(--accent-cyan));
+    border-radius: var(--radius-pill);
+    transition: width 0.5s ease-out;
+}
+
+.explore-movement-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--space-sm);
+}
+
+.explore-move-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
+    padding: var(--space-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
+    position: relative;
+    user-select: none;
+}
+
+.explore-move-card:hover {
+    border-color: var(--accent-cyan);
+    background: rgba(6, 182, 212, 0.04);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(6, 182, 212, 0.12);
+}
+
+.explore-move-card-explored {
+    border-color: rgba(16, 185, 129, 0.25);
+    background: rgba(16, 185, 129, 0.03);
+}
+
+.explore-move-card-explored:hover {
+    border-color: var(--accent-emerald);
+}
+
+.explore-move-card-active {
+    border-color: var(--accent-cyan);
+    background: rgba(6, 182, 212, 0.06);
+    box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.15), 0 2px 8px rgba(6, 182, 212, 0.1);
+}
+
+.explore-move-card-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.explore-move-card-imaginative {
+    border-style: dashed;
+    border-color: rgba(168, 85, 247, 0.3);
+    background: linear-gradient(
+        135deg,
+        rgba(168, 85, 247, 0.04),
+        rgba(236, 72, 153, 0.03)
+    );
+}
+
+.explore-move-card-imaginative:hover {
+    border-color: #a855f7;
+    box-shadow: 0 4px 16px rgba(168, 85, 247, 0.15);
+}
+
+.explore-move-icon {
+    font-size: 1.4rem;
+    margin-bottom: var(--space-xs);
+}
+
+.explore-move-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+.explore-move-check {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-size: 0.65rem;
+}
+
 /* ── Responsive ──────────────────────────────────────────────── */
 
 @media (max-width: 768px) {

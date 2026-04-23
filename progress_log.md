@@ -4781,3 +4781,388 @@ project after 77 features have been completed.
 4. The `sw` CLI tool is **not available** on this system. Read `features.json`
    and `progress_log.md` directly.
 5. Run `python -m pytest tests/ -x -q` to validate — expect 3,626+ passing.
+
+---
+
+## Session: S-GIFTING-UI-01
+**Timestamp:** 2026-04-18 21:35:00
+**Feature:** F-072 — Gifting Section Web UI
+**Agent:** Antigravity (coding session)
+
+### Summary
+
+Added a dedicated **Gifting** section to the Jericho web dashboard under the World
+navigation group. Centralises all gift-giving functionality into one premium, animated
+view — previously gifting was only accessible from within the Item detail page.
+
+### Changes Made
+
+#### Backend — New Gift History Endpoint
+- **`core/routes/items.py`**: Added `GET /api/gifts/history` endpoint that scans
+  `CONVERSATIONS_DIR` for `H-GIFT-*.json` chat records and returns structured gift
+  history (item_id, item_name, from_owner, to_owner, message, timestamp, chat_id).
+
+#### Frontend — New Modules
+- **`js/gifts.js`** (~275 lines): Full-featured gifting module with:
+  - `renderGifts()` — main view with gift form and history timeline
+  - Item selector dropdown (filtered to active items with owners)
+  - Dynamic "From Owner" dropdown (populated from selected item's `owned_by`)
+  - Recipient autocomplete (seeded from council members + characters + freeform)
+  - Auto-infer recipient type from autocomplete selection
+  - Reputation preview badges (+5 giver, +1 receiver)
+  - Gift submission with confirmation dialog and toast notifications
+  - Animated gift history timeline with entity type badges and messages
+- **`css/gifts.css`** (~275 lines): Complete styling with:
+  - Animated gradient shimmer border on gift form card
+  - Staggered fade-in animation for history items
+  - Reputation gain chips (emerald giver, cyan receiver)
+  - Owner type badges (council/character/user) with distinct gradient colors
+  - Responsive layout for mobile viewports
+  - Item preview card with image or placeholder
+
+#### Frontend — Integration
+- **`index.html`**: Added 🎁 Gifting nav item (World section, after Items)
+  and `gifts.js` script tag
+- **`core.js`**: Added `gifts: 'world'` to `VIEW_TO_SECTION` map
+- **`dashboard.js`**: Added `case 'gifts'` to `renderView()` switch
+- **`style.css`**: Added `@import url("css/gifts.css")`
+
+#### Tests — 6 new test cases
+- `TestApiGiftHistory.test_empty_history` — empty list on fresh system
+- `TestApiGiftHistory.test_history_after_gift` — record appears after gift
+- `TestApiGiftHistory.test_history_multiple_gifts` — multiple gifts listed
+- `TestApiGiftHistory.test_history_includes_message` — message extraction
+- `TestApiGiftHistory.test_history_ignores_non_gift_chats` — filtering
+- `TestApiGiftHistory.test_history_conversations_dir_missing` — graceful fallback
+
+### Test Results
+
+- 3,632 passed, 12 skipped, 0 failed (+6 new tests)
+
+### Advice for Next Agent
+
+1. **Test baseline is now 3,632.** Any future changes must maintain this count.
+2. The gift form **auto-infers recipient type** from autocomplete selections. If a
+   user types a name that matches a council member, the type dropdown switches to
+   "Council Member" automatically.
+3. The item detail page **still has its own gift section** for quick gifting. The
+   dedicated Gifting view is an alternative entry point, not a replacement.
+4. The `GET /api/gifts/history` endpoint reads `H-GIFT-*.json` files created by
+   `_create_gift_chat()` in `routes/items.py`. No new data store was created.
+5. Run `python -m pytest tests/ -x -q` to validate — expect 3,632+ passing.
+
+---
+
+## Session: S-GIFT-TASK-00000001
+**Timestamp:** 2026-04-19 12:00:00
+**Feature:** `F-073` — Gift Task Integration
+**Status:** completed
+
+### Summary
+
+Connected the Task system to the Gifting system, allowing users to create tasks
+that trigger an automatic gift transfer upon completion. When a gift task finishes
+narration via "Do Tasks", ownership is transferred, a gift chat record is created,
+and reputation hooks fire — providing the same benefits as direct gifting.
+
+### Changes
+
+#### Backend — Data Model (`core/tasks.py`)
+- Added `task_type` field (`"standard"` or `"gift"`) with backward-compatible default
+- Added `gift_config` dict for item/giver/recipient/message
+- Added `gift_result` dict populated after successful gift execution
+- Added `TASK_TYPES` constant to `config/settings.py`
+- Validation in `TaskManager.create()`: rejects missing item_id, from_owner, to_owner
+
+#### Backend — Task Execution (`core/routes/tasks.py`)
+- `POST /api/tasks` accepts `task_type` and `gift_config`
+- `POST /api/tasks/do-tasks` — after narration completes for gift tasks:
+  1. Calls `ItemManager.gift_item()` for ownership transfer
+  2. Calls `_create_gift_chat()` for acknowledgment chat record
+  3. Calls `on_gift_given()` for reputation hooks
+  4. Emits `gift_complete` SSE event with celebration data
+  5. Stores `gift_result` on the task
+  6. Falls back gracefully with `gift_error` SSE event on failure
+
+#### Frontend — Task Form (`core/web_static/js/tasks.js`)
+- Task type toggle (📋 Standard / 🎁 Gift Task) with animated switching
+- Gift config panel: item selector, giver dropdown (from item owners), recipient
+  autocomplete with type auto-detection, optional message field, reputation preview
+- `createTask()` sends `task_type` and `gift_config` in POST body with validation
+- SSE feed handles `gift_complete` with animated celebration card (gradient border,
+  confetti particles, pulsing gift icon) and `gift_error` with error banner
+- `task_done` event shows "🎁 Gift Delivered" badge for gift tasks
+- Task table rows display a `gift-task-badge` for gift-type tasks
+- Task detail page shows Gift Delivered banner (completed) and Gift Configuration
+  info section (all gift tasks)
+
+#### Frontend — CSS (`core/web_static/css/task-gift.css`)
+- `.task-type-toggle` — segmented toggle button set
+- `.gift-task-config` — animated slide-in config panel
+- `.gift-complete-card` — celebration card with animated gradient shimmer border,
+  confetti pseudo-element particles, and gift pulse animation
+- `.gift-delivered-banner` — gold-to-rose gradient border banner on task detail
+- `.gift-info-section` — config display section with rows
+- `.gift-task-badge` — compact type indicator for table rows
+
+#### Tests — 12 new test cases
+- `test_create_gift_task` — valid creation with full gift_config
+- `test_create_gift_task_missing_item` — 400 for missing item_id
+- `test_create_gift_task_missing_from_owner` — 400 for missing from_owner
+- `test_create_gift_task_missing_to_owner` — 400 for missing to_owner
+- `test_create_gift_task_empty_config` — 400 for no config at all
+- `test_create_gift_task_invalid_type` — 400 for unknown task_type
+- `test_create_standard_task_default` — backward compat, no task_type field
+- `test_create_standard_task_explicit` — explicit task_type=standard
+- `test_gift_task_detail_shows_config` — GET returns gift_config
+- `test_gift_task_lifecycle` — draft → active preserves gift type
+- `test_gift_task_message_preserved` — gift message persists
+- `test_existing_tasks_backward_compat` — legacy JSON without task_type loads fine
+
+### Test Results
+
+- 3,644 passed, 12 skipped, 0 failed (+12 new tests)
+
+### Advice for Next Agent
+
+1. **Test baseline is now 3,644.** Any future changes must maintain this count.
+2. The `gift_complete` SSE event is separate from `task_done` — both fire for gift tasks.
+   Frontend handles them independently (celebration card, then done badge).
+3. Gift execution is **non-blocking** to task completion — if `gift_item()` fails, the
+   task still completes with a `gift_error` event. The gift_result will be empty.
+4. The `_create_gift_chat()` function is imported from `core.routes.items` — it creates
+   `H-GIFT-*.json` files that appear in the Gifting Section's history timeline.
+5. Legacy task JSON files without `task_type` automatically default to `"standard"`.
+6. Run `python -m pytest tests/ -x -q` to validate — expect 3,644+ passing.
+
+---
+
+## Session — F-074: Character Memory Auto-Creation
+
+**Date:** 2026-04-20
+**Feature:** F-074 — Character Memory Auto-Creation
+**Test baseline:** 3,675 → 3,681 (+6 new tests)
+
+### What Changed
+
+1. **`core/characters.py`** — `CharacterManager.create()` now auto-creates a memory
+   directory (via `AgentMemory(character_memory_name(name))`) after saving the character
+   file. This ensures every new character immediately has a memory store.
+
+2. **`core/routes/memories.py`** — Three endpoint updates:
+   - `GET /api/memories` — Now lists **both** council members and characters. Each entry
+     includes a `type` field (`"council_member"` or `"character"`). Character entries also
+     include `memory_key`, `character_id`, and `character_status`.
+   - `GET /api/memories/{member}` — Resolves both council member names and character
+     memory keys/names. Uses the new `_resolve_memory_owner()` helper.
+   - `DELETE /api/memories/{member}/beliefs` — Also supports character memory keys.
+
+3. **`core/web_static/js/memories.js`** — Frontend updated:
+   - Council members and characters displayed in separate sections
+   - Character cards have a `🎭 Character` type badge and status indicator
+   - Character cards navigate via `memory_key` for proper resolution
+   - Detail view shows type badge for character memories
+
+4. **`core/web_static/css/memories.css`** — New styles:
+   - `.memory-card-character` — Violet-rose gradient border
+   - `.memory-type-badge` / `.memory-type-character` — Type label styling
+   - `.memory-section-divider` / `.memory-section-title` — Section separator
+
+5. **`tests/test_web_api.py`** — 6 new tests in `TestApiCharacterMemories`:
+   - Character appears in memories list with correct fields
+   - Council members have type field
+   - Character memory detail by memory_key
+   - Character memory detail by name
+   - Character belief deletion
+   - Auto-creation of memory directory on character create
+
+### Architecture Notes
+
+- Uses the existing `character_memory_name()` convention from `core/chat_helpers.py`
+  (e.g., "Atlas" → "atlas_memory") for consistency with the chat system.
+- The `_resolve_memory_owner()` helper tries three resolution paths: council member →
+  character by memory_key → character by name. This provides flexibility for both
+  frontend navigation and direct URL access.
+- Character memory failure is non-blocking — wrapped in try/except to prevent character
+  listing issues from breaking the memories endpoint.
+- Test count: 3,681 passing, 12 skipped.
+
+---
+
+## Session: S-STORY-ENHANCE
+**Timestamp:** 2026-04-20 23:10:00
+**Feature:** `F-041+` — Story System Enhancements (Template Assignment, Illustration Prompts, Participant Persistence)
+**Status:** completed
+
+### Summary
+Three interconnected improvements to the story illustration and management system:
+
+1. **"Story" entity type for template assignments** — Added `"story"` as a 5th assignable
+   entity type in `COMFYUI_ASSIGNABLE_ENTITY_TYPES`, enabling users to set a default
+   ComfyUI workflow template specifically for story illustrations. Updated both the settings
+   UI (assignment grid + upload dropdown) and the illustration endpoint's template fallback
+   chain to try `"story"` first before `"location"`/`"character"`.
+
+2. **Rich illustration prompt pipeline** — Replaced the generic `_build_participant_context`
+   (which injected system prompts, backstories, traits — irrelevant for image gen) with a
+   purpose-built prompt that fetches:
+   - **Physical descriptions** of characters/council members from their respective managers
+   - **Location context** (name + description) from LocationManager
+   - **Mood** promoted to a primary prompt element
+   - **Narrative excerpt** retained as supporting context
+   New prompt structure: `Characters | Setting | Mood | Scene`
+
+3. **Participant selection persistence** — Fixed two bugs:
+   - **Counter bug**: "0/10" was hardcoded in HTML and `updateStoryParticipantCounter()` was
+     never called after `loadStoryParticipants()` completed.
+   - **Persistence bug**: Participant selections were stored only in volatile `window._storyParticipants`
+     and lost on page reload. Now saved to `story.metadata.participants` via a new
+     `PUT /api/stories/{story_id}/participants` endpoint with debounced auto-save (800ms).
+     Selections are restored from the story object when `renderStoryDetail` loads.
+
+### Files Modified
+
+1. **`config/settings.py`** — Added `"story"` to `COMFYUI_ASSIGNABLE_ENTITY_TYPES`
+
+2. **`core/web_static/js/settings_comfyui.js`** — Three changes:
+   - Default `templateAssignments` object now includes `story: ''`
+   - `_renderAssignmentCards` entityTypes array includes `{ key: 'story', label: 'Story', icon: '📖' }`
+   - Template upload entity select includes `<option value="story">Story</option>`
+
+3. **`core/routes/stories.py`** — Two changes:
+   - `api_stories_illustrate_scene`: Rewrote prompt builder (lines 654–770) to fetch physical
+     descriptions, location context, mood, and narrative. Template fallback now tries
+     `"story"` → `"location"`/`"character"`.
+   - Added `GET/PUT /api/stories/{story_id}/participants` endpoints for saving/restoring
+     participant selections in `story.metadata`.
+
+4. **`core/web_static/js/stories.js`** — Three changes:
+   - `renderStoryDetail`: Restores `window._storyParticipants` from `story.metadata.participants`
+   - `loadStoryParticipants`: Calls `updateStoryParticipantCounter()` after rendering
+   - `toggleStoryParticipant`: Added `_debounceSaveStoryParticipants()` for auto-save
+
+5. **`tests/test_template_assignments.py`** — Updated hardcoded entity counts (4→5),
+   repr expectations (0/4→0/5), and added `"story"` to concurrent entity type test.
+
+### Architecture Notes
+- Participant data is stored in `story.metadata.participants` rather than adding a new
+  top-level field to `StoryRecord`, keeping the data model backward-compatible.
+- The debounced save (800ms) prevents excessive API calls during rapid toggle sequences.
+- The illustration prompt now uses `\n`-joined lines instead of ` | `-joined, giving the
+  image gen system clearer semantic separation between prompt sections.
+- Test count: 3,681 passing, 12 skipped.
+
+---
+
+## Session — Add Explore Entity Type to Template Assignments
+
+**Goal:** Add "explore" as a 6th assignable entity type for ComfyUI default
+templates, allowing users to set a dedicated workflow for exploration scene
+generation separate from the generic "location" template.
+
+### Changes Made
+
+1. **`config/settings.py`** — Added `"explore"` to
+   `COMFYUI_ASSIGNABLE_ENTITY_TYPES` tuple (now 6 types).
+
+2. **`core/routes/explore.py`** — Updated `api_explore_look_around` template
+   fallback chain: now tries `tam.get_recommended_template("explore")` first,
+   then falls back to `"location"` if no explore-specific template is assigned.
+   Fixed log message to match actual context ("explore generation" not "gallery
+   enrichment").
+
+3. **`core/web_static/js/settings_comfyui.js`** — Three UI additions:
+   - Default `templateAssignments` object includes `explore: ''`
+   - Template upload entity dropdown includes `<option value="explore">Explore</option>`
+   - Assignment grid renders a 🧭 Explore card via `_renderAssignmentCards()`
+
+4. **`tests/test_template_assignments.py`** — Updated hardcoded entity counts
+   (5→6), repr expectations (0/5→0/6, 1/5→1/6), and added `"explore"` to
+   concurrent entity type test.
+
+5. **`tests/test_web_api_template_assignments.py`** — Added `"explore"` to
+   `test_returns_all_entity_types` assertion. Added new `TestExploreAssignment`
+   class with 3 tests: save, persist, and clear roundtrip.
+
+6. **`features.json`** — Added F-079 "Explore Section Refinement" backlog
+   entry for next session.
+
+### Architecture Notes
+- The explore route's template fallback is: body override → explore assignment
+  → location assignment → error. This ensures backward compatibility — if no
+  explore template is assigned, the existing location template still works.
+- Test count: 3,684 passing (+3), 12 skipped.
+
+---
+
+## Session: S-F079-00000001
+**Timestamp:** 2026-04-23 23:30:00
+**Feature:** F-079 — Explore Section Refinement (Feature-Centric Movement)
+**Status:** ✅ Complete
+
+### Summary
+Transformed the Explore section from a static "Look Around" tool into a
+stateful, progressive exploration experience using a feature-centric movement
+model. Users can now navigate between specific features of a location, with
+the system tracking explored areas and adapting prompts to each phase.
+
+### Changes
+
+1. **`config/settings.py`** — Added `EXPLORATION_STATES_DIR`,
+   `IMAGINATIVE_MODE_ENABLED`, `STATIC_LOCATION_TAGS`, and
+   `DYNAMIC_LOCATION_TAGS` settings.
+
+2. **`core/exploration_state.py`** [NEW] — New module implementing:
+   - `ExplorationState` dataclass — tracks current focus, explored areas,
+     mode (guided/imaginative), scene setting, and imaginative discovery history.
+   - `ExplorationStateManager` — filesystem-backed per-location state persistence.
+   - `infer_location_dynamism()` — classifies locations as static/dynamic/moderate
+     using tag and feature heuristics.
+   - `InvalidMoveError`, `ExplorationStateError` exception hierarchy.
+
+3. **`core/exploration.py`** — Updated:
+   - Added `focus_area` field to `ExplorationScene` (backward-compatible default).
+   - Added `build_focused_prompt()` static method with three-phase prompting:
+     (a) Initial/exterior establishing shot, (b) Guided feature-focused view,
+     (c) Imaginative discovery constrained by location dynamism.
+
+4. **`core/routes/explore.py`** — Updated:
+   - `api_explore_detail` now includes `exploration_state` in response.
+   - `api_explore_look_around` accepts `target` in body, applies state transitions,
+     uses `build_focused_prompt()`, auto-sets scene_type, and returns
+     exploration state in response.
+   - Added `GET /api/explore/{location_id}/state` endpoint.
+   - Added `POST /api/explore/{location_id}/state/reset` endpoint.
+   - Scene add endpoint now accepts `focus_area`.
+
+5. **`core/web_static/js/explore.js`** — Updated:
+   - Added `_buildMovementPanel()` — renders movement cards with explored/active
+     states, progress bar, mode badge, and reset button.
+   - Updated `exploreLookAround()` to accept optional `target` parameter.
+   - Scene strip labels now show `focus_area` instead of `scene_type`.
+   - Poll callback includes `focus_area` in scene registration.
+   - Added `resetExploration()` function.
+
+6. **`core/web_static/css/explore.css`** — Added 160+ lines of movement panel
+   styles: movement cards, state indicators, progress bar, imaginative mode
+   badge with pulse animation.
+
+7. **`tests/test_exploration_state.py`** [NEW] — 59 comprehensive tests covering
+   state dataclass, movement, progress, available moves, imaginative history,
+   state manager persistence, location dynamism, focused prompt builder,
+   scene focus_area, and exceptions.
+
+8. **`features.json`** — F-079 marked as done.
+
+### Architecture Notes
+- Exploration state is stored as one JSON file per location in
+  `data/exploration/states/`. This keeps the scene gallery (scenes.json)
+  separate from navigation state, enabling clean resets.
+- The three-phase prompt builder uses lazy import of `exploration_state` to
+  avoid circular dependencies.
+- Indoor/outdoor detection works via: (1) ComfyUI prompt keyword on the
+  location, (2) building/infrastructure feature types trigger "indoor", and
+  (3) default is "outdoor".
+- Imaginative mode is gated: only available after all known features are
+  explored. Discovery history prevents repetition.
+- Test count: 3,743 passing (+59), 12 skipped.

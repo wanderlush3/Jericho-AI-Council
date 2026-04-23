@@ -730,5 +730,86 @@
     "dependencies": [
       "F-069"
     ]
+  },
+  {
+    "id": "F-072",
+    "title": "Gifting Section Web UI",
+    "description": "Dedicated top-level Gifting view in the web dashboard. Centralises all gift-giving into one page with item selector, owner/recipient pickers (autocomplete from council members and characters), gift message field, reputation gain preview (+5 giver / +1 receiver), and a reverse-chronological gift history timeline. New GET /api/gifts/history endpoint reads H-GIFT-*.json chat records for the history view.",
+    "status": "completed",
+    "dependencies": [
+      "F-068",
+      "F-070"
+    ]
+  },
+  {
+    "id": "F-073",
+    "title": "Gift Task Integration",
+    "description": "Connects the Task system to the Gifting system. Users can create tasks with task_type='gift' and a gift_config specifying item, giver, recipient, and message. When DoTasks completes a gift task, it automatically executes the gift transfer (ItemManager.gift_item), creates a chat record (_create_gift_chat), and fires reputation hooks (on_gift_given). The SSE feed emits a gift_complete event with a celebration card (animated gradient border, confetti, pulsing gift icon). Task detail shows a Gift Delivered banner for completed gift tasks and a Gift Configuration info section. Task table rows display a gift badge for gift-type tasks.",
+    "status": "completed",
+    "dependencies": [
+      "F-068",
+      "F-070",
+      "F-072"
+    ]
+  },
+  {
+    "id": "F-074",
+    "title": "Character Memory Auto-Creation",
+    "description": "When a new character is created, automatically create a per-character memory directory (using character_memory_name convention) so the character appears in the Memories section. Character memories are shown alongside council member memories in the Memories view with distinct character badges. Memory detail view supports browsing character beliefs and events.",
+    "status": "completed",
+    "dependencies": [
+      "F-004",
+      "F-011",
+      "F-028"
+    ]
+  },
+  {
+    "id": "F-075",
+    "title": "Memory Decay, Summarization & Contested Memories",
+    "description": "Integrate the memory decay/summarization/contested-memory subsystems into the running application. EXISTING INFRASTRUCTURE: core/memory_influence.py already has _compute_decay_factor() (exponential half-life formula with configurable 30-day half-life, 0.1 floor), score_memories() applies decay to relevance scores and annotates reasons with freshness %. config/settings.py already defines MEMORY_DECAY_ENABLED/HALF_LIFE/MIN_FACTOR, MEMORY_SUMMARIZATION_ENABLED/KEEP_RECENT/SESSION_THRESHOLD, and CONTESTED_MEMORY_ENABLED/PROBABILITY. core/memory.py has get_unique_session_ids(), get_sessions_needing_summary(), write_summarized_entry(), read_summarized_log(), record_contested_memory(), read_contested_memories(), get_contested_for_event(). tests/test_memory_decay.py has 731 lines / ~45 tests covering all three subsystems. NEEDED: (1) Settings UI — expose decay half-life, min factor, summarization threshold, contested probability, and enable/disable toggles in the web Settings page so users can tune without editing settings.py. (2) API endpoints — GET/PUT /api/settings/memory-decay for current config + update, POST /api/memories/{member}/summarize to trigger LLM summarization on demand, GET /api/memories/{member}/contested for viewing contested memories. (3) Memory detail UI — show contested memory sub-bullets in the Memories detail view, show summarized entries with distinct styling, show decay freshness indicators on memory cards. (4) Automatic summarization trigger — optionally run summarize_sessions_llm as a background task when session count exceeds threshold. (5) Contested memory generation — wire maybe_generate_contested_memory into chat response paths (human_chat.py get_agent_response) so a small % of memories get contested variants.",
+    "status": "pending",
+    "dependencies": [
+      "F-004",
+      "F-018",
+      "F-028"
+    ]
+  },
+  {
+    "id": "F-076",
+    "title": "Narrative Engine Dashboard Integration",
+    "description": "Wire the existing NarrativeEngine into the web dashboard as a live news ticker / bulletin feed. EXISTING INFRASTRUCTURE: core/narrative_engine.py (502 lines) is fully implemented with NarrativeBulletin dataclass, 7 template banks (proposals created/decided, votes approved/rejected/vetoed, characters created/activated, items, locations, treasury), randomized selection, time-window filtering, and max-bulletin capping. GET /api/narrative-bulletins endpoint already exists in core/routes/status.py and is tested (tests/test_narrative_engine.py, 628 lines, ~35 tests). config/settings.py has NARRATIVE_MAX_BULLETINS=10 and NARRATIVE_MAX_AGE_DAYS=30. NEEDED: (1) Dashboard UI component — a scrolling/animated news ticker or bulletin feed panel on the main Dashboard view (js/dashboard.js) that fetches /api/narrative-bulletins and renders headline cards with emoji icons, source type badges, timestamps, and clickable links to the source entity detail page. (2) CSS module — css/narrative.css with ticker animation, bulletin card styling, source-type color coding, and responsive layout. (3) Auto-refresh — polling or visibility-based refresh (every 60s or on page focus). (4) Settings integration — expose NARRATIVE_MAX_BULLETINS and NARRATIVE_MAX_AGE_DAYS in the Settings UI. (5) Optional: bulletin history/archive view accessible from the dashboard.",
+    "status": "pending",
+    "dependencies": [
+      "F-021"
+    ]
+  },
+  {
+    "id": "F-077",
+    "title": "Embedding-Based Semantic Memory Retrieval",
+    "description": "Upgrade memory scoring from optional/fallback embeddings to a first-class semantic retrieval system with user-visible controls. EXISTING INFRASTRUCTURE: core/embeddings.py (176 lines) provides EmbeddingProvider with lazy-loading sentence-transformers (all-MiniLM-L6-v2 default), singleton pattern, similarity(), batch_similarity(), encode(), and graceful fallback when not installed. core/memory_influence.py already does hybrid scoring (EMBEDDING_SIMILARITY_WEIGHT * cosine + EMBEDDING_JACCARD_WEIGHT * jaccard) with automatic fallback to pure Jaccard when unavailable. config/settings.py has EMBEDDING_MODEL_NAME, EMBEDDING_SIMILARITY_WEIGHT, EMBEDDING_JACCARD_WEIGHT. tests/test_embeddings.py (221 lines, ~21 tests) covers init, availability, similarity, batch, encode, singleton, and cosine math. NEEDED: (1) Settings UI — display embedding model status (loaded/unavailable), model name, allow toggling between semantic+keyword hybrid vs keyword-only mode, adjust weights. (2) Installation helper — Settings page guidance or one-click install prompt for sentence-transformers+torch when not available. (3) Memory Explorer integration — show scoring mode indicator (semantic vs keyword) in Memory detail views, display similarity scores alongside keyword match reasons. (4) Performance monitoring — track and display embedding encode latency in analytics or settings, cache embeddings for frequently-accessed beliefs. (5) Model selection — allow choosing between embedding models (all-MiniLM-L6-v2, all-mpnet-base-v2, etc.) from settings with lazy reload.",
+    "status": "pending",
+    "dependencies": [
+      "F-018",
+      "F-028"
+    ]
+  },
+  {
+    "id": "F-078",
+    "title": "Dashboard Activity Feed & Summary Enhancements",
+    "description": "Enhance the main web Dashboard beyond its current static status-card layout into a dynamic activity hub. EXISTING INFRASTRUCTURE: core/dashboard.py (727 lines) provides the Rich terminal DashboardRenderer for CLI with status panels, analytics overview, member stats, evolution timelines, and version diffs. The web dashboard (js/dashboard.js) currently shows static count cards for members, proposals, votes, characters, etc. fetched from GET /api/status. The narrative engine (F-076) will add a bulletin feed, but the dashboard itself needs richer composition. NEEDED: (1) Activity timeline — a reverse-chronological feed of recent system events (new proposals, votes cast, characters created/evolved, gifts given, tasks completed) pulled from multiple data sources, displayed as a unified scrollable timeline with entity-type icons and clickable links. (2) Quick-action buttons — create proposal, start chat, run task, give gift directly from dashboard without navigating. (3) System health panel — embedding status, LLM provider connectivity, storage usage, memory cache hit rates. (4) At-a-glance world summary — styled cards showing world entity counts with sparkline trends or recent-change indicators instead of plain numbers. (5) Responsive layout — card grid that reflows elegantly on mobile/tablet. (6) Welcome state — an attractive empty-state when the system is fresh with guided onboarding steps.",
+    "status": "pending",
+    "dependencies": [
+      "F-021",
+      "F-076"
+    ]
+  },
+  {
+    "id": "F-079",
+    "title": "Explore Section Refinement — Feature-Centric Movement",
+    "description": "Transforms the Explore section from static look-around into a stateful, progressive exploration experience. IMPLEMENTED: (1) ExplorationState engine (core/exploration_state.py) — tracks current focus, explored areas, mode (guided/imaginative), and scene setting per location. (2) Smart prompt builder (ExplorationManager.build_focused_prompt) — three-phase prompting: initial exterior overview, guided feature-focused exploration, and imaginative discovery beyond the defined map. (3) Movement UI — frontend movement panel with clickable feature cards, progress bar, mode badge, and reset button. (4) Exploration state endpoints — GET /state, POST /state/reset, and target-aware POST /look-around. (5) Location dynamism inference — classifies locations as static/dynamic/moderate for imaginative mode directives. (6) Scene focus_area tracking — each generated scene records which area it depicts. (7) Indoor/outdoor inference from feature types and ComfyUI prompt keywords.",
+    "status": "done",
+    "dependencies": [
+      "F-040"
+    ]
   }
 ]
