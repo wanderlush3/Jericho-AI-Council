@@ -4,6 +4,7 @@ Jericho — Characters Routes
 
 from __future__ import annotations
 
+import logging
 
 from typing import Any
 
@@ -12,6 +13,9 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from core.manager_cache import get_character_manager
 
+
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -59,7 +63,8 @@ def api_character_create(body: dict[str, Any]) -> dict[str, Any]:
     """Create a new character.
 
     Body: {"name": "...", "description": "...", "author": "...",
-           "backstory": "...", "system_prompt": "...", "greeting": "...",
+           "backstory": "...", "physical_description": "...",
+           "system_prompt": "...", "greeting": "...",
            "example_messages": [...], "tags": [...],
            "traits": [{"trait_type": "...", "name": "...",
                         "description": "...", "intensity": 0.8}]}
@@ -72,6 +77,7 @@ def api_character_create(body: dict[str, Any]) -> dict[str, Any]:
     description = body.get("description", "").strip()
     author = body.get("author", "").strip()
     backstory = body.get("backstory", "").strip()
+    physical_description = body.get("physical_description", "").strip()
     system_prompt = body.get("system_prompt", "").strip()
     greeting = body.get("greeting", "").strip()
     example_messages = body.get("example_messages", [])
@@ -103,6 +109,7 @@ def api_character_create(body: dict[str, Any]) -> dict[str, Any]:
     try:
         char = mgr.create(
             name, description, author=author, backstory=backstory,
+            physical_description=physical_description,
             traits=traits or None, system_prompt=system_prompt,
             greeting=greeting, example_messages=example_messages or None,
             tags=tags or None,
@@ -196,6 +203,7 @@ def api_character_avatar_upload(
             image_data = image_data.split(",", 1)[1]
         raw_bytes = base64.b64decode(image_data)
     except Exception:
+        log.debug("characters: failed if "," in image_data:", exc_info=True)
         raise HTTPException(status_code=400, detail="Invalid base64 image data.")
 
     CHARACTER_AVATARS_DIR.mkdir(parents=True, exist_ok=True)
@@ -304,6 +312,7 @@ def api_character_export_png_upload(
             image_data = image_data.split(",", 1)[1]
         png_bytes = base64.b64decode(image_data)
     except Exception:
+        log.debug("characters: failed if "," in image_data:", exc_info=True)
         raise HTTPException(status_code=400, detail="Invalid base64 image data.")
 
     if png_bytes[:8] != b"\x89PNG\r\n\x1a\n":

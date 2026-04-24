@@ -35,6 +35,48 @@
     background: linear-gradient(135deg, rgba(6, 182, 212, 0.04), rgba(16, 185, 129, 0.04));
 }
 
+/* Character memory cards (F-074) */
+.memory-card-character {
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.04), rgba(244, 63, 94, 0.04));
+}
+
+.memory-card-character:hover {
+    border-color: rgba(139, 92, 246, 0.35);
+    box-shadow: 0 0 16px rgba(139, 92, 246, 0.1);
+}
+
+.memory-type-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-top: 2px;
+    display: inline-block;
+}
+
+.memory-type-character {
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--accent-violet);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+.memory-section-divider {
+    margin-top: var(--space-xl);
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.memory-section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.01em;
+}
+
+
 .memory-stats {
     display: flex;
     gap: var(--space-lg);
@@ -260,6 +302,218 @@
     border: 1px solid var(--border-subtle);
     max-height: 60vh;
     overflow-y: auto;
+}
+
+/* ─── F-075: Memory Decay, Contested, Summarized Styles ──── */
+
+/* Freshness indicators on event items */
+.freshness-indicator {
+    font-size: 0.62rem;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: rgba(148, 163, 184, 0.08);
+    white-space: nowrap;
+}
+
+.freshness-recent .freshness-indicator {
+    color: var(--accent-emerald);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.freshness-moderate .freshness-indicator {
+    color: var(--accent-amber);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.freshness-old {
+    opacity: 0.65;
+}
+
+.freshness-old .freshness-indicator {
+    color: var(--text-muted);
+    background: rgba(148, 163, 184, 0.12);
+}
+
+/* Contested memory panel */
+.contested-panel {
+    border-color: rgba(245, 158, 11, 0.25);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.03), rgba(244, 63, 94, 0.03));
+}
+
+.contested-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.contested-item {
+    padding: var(--space-md);
+    background: rgba(245, 158, 11, 0.04);
+    border: 1px solid rgba(245, 158, 11, 0.15);
+    border-radius: var(--radius-md);
+    transition: border-color var(--transition-fast);
+}
+
+.contested-item:hover {
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+.contested-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+}
+
+.contested-agent {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.contested-original,
+.contested-divergent {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-xs);
+}
+
+.contested-original {
+    background: rgba(100, 116, 139, 0.06);
+    border-left: 2px solid rgba(100, 116, 139, 0.3);
+}
+
+.contested-divergent {
+    background: rgba(245, 158, 11, 0.06);
+    border-left: 2px solid rgba(245, 158, 11, 0.4);
+}
+
+.badge-contested {
+    background: rgba(245, 158, 11, 0.15) !important;
+    color: var(--accent-amber) !important;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+/* Summarized memory panel */
+.summarized-panel {
+    border-color: rgba(99, 102, 241, 0.2);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.03), rgba(6, 182, 212, 0.03));
+}
+
+.summarized-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.summarized-item {
+    border-left: 3px solid rgba(99, 102, 241, 0.4);
+}
+
+.summarized-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--accent-indigo);
+}
+
+.badge-summary {
+    background: rgba(99, 102, 241, 0.15) !important;
+    color: var(--accent-indigo) !important;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+/* Summarize action button */
+.summarize-btn {
+    margin-top: var(--space-sm);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(6, 182, 212, 0.12));
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    color: var(--accent-indigo);
+    font-weight: 600;
+    transition: all var(--transition-fast);
+}
+
+.summarize-btn:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.2));
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
+}
+
+/* Memory & Decay settings card */
+.memory-decay-card {
+    margin-top: var(--space-xl);
+}
+
+.memory-decay-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-lg);
+}
+
+@media (max-width: 900px) {
+    .memory-decay-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.memory-decay-section {
+    padding: var(--space-md);
+    background: rgba(15, 23, 42, 0.3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+}
+
+.memory-decay-heading {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 var(--space-xs) 0;
+}
+
+.memory-decay-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin: 0 0 var(--space-sm) 0;
+}
+
+.memory-decay-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-xs);
+}
+
+.memory-decay-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.memory-decay-input {
+    width: 80px;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+}
+
+.loading-indicator {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    padding: var(--space-md);
 }
 
 /* ═══════════════════════════════════════════════════════════════

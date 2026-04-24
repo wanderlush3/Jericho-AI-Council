@@ -45,6 +45,11 @@ async function renderCharacters() {
                 <textarea id="char-backstory-input" class="settings-input proposal-textarea" rows="2"
                     placeholder="Character history and background…"></textarea>
             </div>
+            <div class="filter-group" style="margin-top:var(--space-sm)">
+                <label for="char-physical-desc-input">Physical Description</label>
+                <textarea id="char-physical-desc-input" class="settings-input proposal-textarea" rows="2"
+                    placeholder="Physical appearance — hair, build, clothing, distinguishing features…"></textarea>
+            </div>
             <div class="proposal-form-grid" style="margin-top:var(--space-sm)">
                 <div class="filter-group" style="flex:2">
                     <label for="char-greeting-input">Greeting</label>
@@ -244,6 +249,8 @@ async function renderCharacterDetail(id) {
 
                 ${data.backstory ? `<div class="detail-section"><h4>📖 Backstory</h4><p style="white-space:pre-line">${escapeHtml(data.backstory)}</p></div>` : ''}
 
+                ${data.physical_description ? `<div class="detail-section"><h4>🧍 Physical Description</h4><p style="white-space:pre-line">${escapeHtml(data.physical_description)}</p></div>` : ''}
+
                 ${traitsHtml ? `<div class="detail-section"><h4>🧬 Traits (${data.traits.length})</h4><div class="traits-list">${traitsHtml}</div>
                     <div style="margin-top:var(--space-md);padding:var(--space-sm);border:1px dashed var(--border-subtle);border-radius:var(--radius-md)">
                         <div class="proposal-form-grid" style="margin-top:var(--space-xs)">
@@ -321,6 +328,10 @@ async function renderCharacterDetail(id) {
                     <div class="filter-group" style="margin-top:var(--space-sm)">
                         <label for="char-edit-backstory">Backstory</label>
                         <textarea id="char-edit-backstory" class="settings-input proposal-textarea" rows="3">${escapeHtml(data.backstory || '')}</textarea>
+                    </div>
+                    <div class="filter-group" style="margin-top:var(--space-sm)">
+                        <label for="char-edit-physical-desc">Physical Description</label>
+                        <textarea id="char-edit-physical-desc" class="settings-input proposal-textarea" rows="3">${escapeHtml(data.physical_description || '')}</textarea>
                     </div>
                     <div class="filter-group" style="margin-top:var(--space-sm)">
                         <label for="char-edit-greeting">Greeting</label>
@@ -439,6 +450,7 @@ async function createCharacter() {
     const author = document.getElementById('char-author-input').value.trim();
     const description = document.getElementById('char-desc-input').value.trim();
     const backstory = document.getElementById('char-backstory-input').value.trim();
+    const physicalDesc = document.getElementById('char-physical-desc-input').value.trim();
     const greeting = document.getElementById('char-greeting-input').value.trim();
     const systemPrompt = document.getElementById('char-prompt-input').value.trim();
     const tagsRaw = document.getElementById('char-tags-input').value.trim();
@@ -485,6 +497,7 @@ async function createCharacter() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 name, description, author, backstory,
+                physical_description: physicalDesc,
                 system_prompt: systemPrompt, greeting,
                 example_messages: exampleMessages, tags, traits,
                 api_provider: apiProvider, model,
@@ -525,6 +538,7 @@ async function saveCharacterEdit(characterId) {
         name: document.getElementById('char-edit-name').value.trim(),
         description: document.getElementById('char-edit-desc').value.trim(),
         backstory: document.getElementById('char-edit-backstory').value.trim(),
+        physical_description: document.getElementById('char-edit-physical-desc').value.trim(),
         greeting: document.getElementById('char-edit-greeting').value.trim(),
         system_prompt: document.getElementById('char-edit-prompt').value.trim(),
         example_messages: exampleMessages,

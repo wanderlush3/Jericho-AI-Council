@@ -129,6 +129,7 @@ class CharacterTemplate:
     author: str
     status: str = "draft"
     backstory: str = ""
+    physical_description: str = ""
     traits: list[Trait] = field(default_factory=list)
     system_prompt: str = ""
     greeting: str = ""
@@ -154,6 +155,7 @@ class CharacterTemplate:
             author=data["author"],
             status=data.get("status", "draft"),
             backstory=data.get("backstory", ""),
+            physical_description=data.get("physical_description", ""),
             traits=traits,
             system_prompt=data.get("system_prompt", ""),
             greeting=data.get("greeting", ""),
@@ -176,6 +178,7 @@ class CharacterTemplate:
         description: str,
         author: str,
         backstory: str = "",
+        physical_description: str = "",
         traits: list[Trait] | None = None,
         system_prompt: str = "",
         greeting: str = "",
@@ -195,6 +198,7 @@ class CharacterTemplate:
             author=author,
             status="draft",
             backstory=backstory,
+            physical_description=physical_description,
             traits=traits or [],
             system_prompt=system_prompt,
             greeting=greeting,
@@ -254,6 +258,7 @@ class CharacterManager:
         *,
         author: str,
         backstory: str = "",
+        physical_description: str = "",
         traits: list[Trait] | None = None,
         system_prompt: str = "",
         greeting: str = "",
@@ -292,6 +297,7 @@ class CharacterManager:
                 description=description.strip(),
                 author=author.strip(),
                 backstory=backstory,
+                physical_description=physical_description,
                 traits=effective_traits,
                 system_prompt=system_prompt,
                 greeting=greeting,
@@ -302,6 +308,12 @@ class CharacterManager:
                 metadata=metadata,
             )
             self._save(character)
+
+        # Auto-create a memory directory for the new character (F-074)
+        from core.chat_helpers import character_memory_name
+        from core.memory import AgentMemory
+        AgentMemory(character_memory_name(character.name))
+
         return character
 
     # ── Read ──────────────────────────────────────────────────
@@ -360,7 +372,8 @@ class CharacterManager:
         character = self.get(character_id)
 
         MUTABLE = {
-            "name", "description", "backstory", "system_prompt",
+            "name", "description", "backstory", "physical_description",
+            "system_prompt",
             "greeting", "example_messages", "tags", "metadata",
             "api_provider", "model",
         }
@@ -379,7 +392,8 @@ class CharacterManager:
 
         now = datetime.now(timezone.utc).isoformat()
         overrides: dict[str, Any] = {"updated_at": now}
-        for key in ("name", "description", "backstory", "system_prompt",
+        for key in ("name", "description", "backstory", "physical_description",
+                    "system_prompt",
                     "greeting", "example_messages", "tags", "metadata",
                     "api_provider", "model"):
             if key in fields:
