@@ -4,6 +4,7 @@ Jericho — Chat Routes
 
 from __future__ import annotations
 
+import logging
 
 import json as json_module
 import time
@@ -19,6 +20,8 @@ from core.manager_cache import (
     get_proposal_manager,
     get_registry,
 )
+
+log = logging.getLogger(__name__)
 
 
 router = APIRouter()

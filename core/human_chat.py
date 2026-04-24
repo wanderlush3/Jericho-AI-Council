@@ -18,6 +18,7 @@ Extracted modules (F-063):
 
 from __future__ import annotations
 
+import logging
 import asyncio
 import dataclasses
 import json
@@ -40,6 +41,9 @@ from core.memory import AgentMemory, MemoryEntry, SharedMemory
 from core.memory_influence import MemoryInfluence
 from core.registry import CouncilMember, CouncilRegistry
 from core.utils import atomic_write
+
+
+log = logging.getLogger(__name__)
 
 # ─── Backward-compatible re-exports ───────────────────────────
 # Tests and other modules import ``_build_human_chat_prompt`` from here.
@@ -460,6 +464,7 @@ class HumanChat(ChatStreamingMixin):
                     chat_id, record.messages,
                 )
             except Exception:
+                log.debug("human_chat.get_agent_response: failed summary_result", exc_info=True)
                 summary_result = None  # graceful fallback
 
         for idx, (member, mem_name) in enumerate(respondents):
@@ -507,17 +512,45 @@ class HumanChat(ChatStreamingMixin):
 
                 # Record to agent/character memory
                 agent_mem = AgentMemory(mem_name)
-                agent_mem.append_session_event(
-                    MemoryEntry.create(
-                        session_id=chat_id,
-                        event_type="human_chat",
-                        content=f"Spoke with human operator about "
-                                f"'{effective_topic or record.title}': "
-                                f"{content_text[:200]}",
-                        source="human_chat",
-                    )
+                memory_event = MemoryEntry.create(
+                    session_id=chat_id,
+                    event_type="human_chat",
+                    content=f"Spoke with human operator about "
+                            f"'{effective_topic or record.title}': "
+                            f"{content_text[:200]}",
+                    source="human_chat",
                 )
+                agent_mem.append_session_event(memory_event)
+
+                # F-075: Probabilistically generate contested memory
+                try:
+                    from config.settings import (
+                        CONTESTED_MEMORY_ENABLED,
+                        CONTESTED_MEMORY_ENABLED_ENV,
+                        CONTESTED_MEMORY_PROBABILITY,
+                        CONTESTED_MEMORY_PROBABILITY_ENV,
+                    )
+                    import os as _os
+                    _cm_raw = _os.environ.get(CONTESTED_MEMORY_ENABLED_ENV, "").strip().lower()
+                    _cm_enabled = (
+                        _cm_raw in ("true", "1", "yes")
+                        if _cm_raw
+                        else CONTESTED_MEMORY_ENABLED
+                    )
+                    if _cm_enabled:
+                        _cm_prob_raw = _os.environ.get(CONTESTED_MEMORY_PROBABILITY_ENV, "").strip()
+                        _cm_prob = float(_cm_prob_raw) if _cm_prob_raw else CONTESTED_MEMORY_PROBABILITY
+                        await MemoryInfluence.maybe_generate_contested_memory(
+                            agent_mem, member.name, memory_event,
+                            probability=_cm_prob,
+                        )
+                except Exception:
+                    log.debug(
+                        "human_chat: contested memory generation failed (non-critical)",
+                        exc_info=True,
+                    )
             except Exception:
+                log.debug("human_chat.get_agent_response: non-critical error", exc_info=True)
                 # API call failed — record an absent message and continue
                 content_text = "[absent] Was unavailable to respond at this time. [/absent]"
                 msg = HumanChatMessage.create(
@@ -807,6 +840,7 @@ class HumanChat(ChatStreamingMixin):
                     chat_id, record.messages,
                 )
             except Exception:
+                log.debug("human_chat.continue_conversation: failed summary_result", exc_info=True)
                 summary_result = None  # graceful fallback
 
         for idx, (member, mem_name) in enumerate(respondents):
@@ -867,6 +901,7 @@ class HumanChat(ChatStreamingMixin):
                     )
                 )
             except Exception:
+                log.debug("human_chat.continue_conversation: non-critical error", exc_info=True)
                 # API call failed — record an absent message and continue
                 content_text = "[absent] Was unavailable to respond at this time. [/absent]"
                 msg = HumanChatMessage.create(
@@ -1145,6 +1180,7 @@ class HumanChat(ChatStreamingMixin):
             cmgr = CharacterManager()
             return cmgr.get(character_id)
         except Exception:
+            log.debug("human_chat._load_character: failed cmgr", exc_info=True)
             return None
 
     # ── Dunder ────────────────────────────────────────────────

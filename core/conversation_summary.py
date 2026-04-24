@@ -23,6 +23,7 @@ Usage::
 
 from __future__ import annotations
 
+import logging
 import hashlib
 import os
 from dataclasses import dataclass, field
@@ -42,6 +43,8 @@ from config.settings import (
 if TYPE_CHECKING:
     from core.api_client import APIClient
     from core.human_chat import HumanChatMessage
+
+log = logging.getLogger(__name__)
 
 
 # ─── Data Models ───────────────────────────────────────────────
@@ -178,6 +181,7 @@ class ConversationSummarizer:
         try:
             summary_text = await self._generate_summary(older_messages)
         except Exception:
+            log.debug("conversation_summary.get_summary: failed summary_text", exc_info=True)
             # LLM failure — graceful fallback to None (caller uses raw messages)
             return None
 

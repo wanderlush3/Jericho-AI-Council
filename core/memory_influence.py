@@ -42,7 +42,10 @@ from config.settings import (
     DEFAULT_SUMMARIZATION_MODEL,
     DEFAULT_SUMMARIZATION_PROVIDER,
     EMBEDDING_JACCARD_WEIGHT,
+    EMBEDDING_JACCARD_WEIGHT_ENV,
+    EMBEDDING_MODE_ENV,
     EMBEDDING_SIMILARITY_WEIGHT,
+    EMBEDDING_SIMILARITY_WEIGHT_ENV,
     ITEMS_DIR,
     LOCATIONS_DIR,
     MEMORIES_DIR,
@@ -208,6 +211,26 @@ def _jaccard(set_a: set[str], set_b: set[str]) -> float:
 
 # ─── Sentinel for default embedding provider ─────────────────
 _SENTINEL = object()
+
+
+def _effective_embedding_config() -> tuple[str, float, float]:
+    """Read runtime embedding mode and weights from env.
+
+    Returns ``(mode, emb_weight, jac_weight)``.
+    Called on every scoring pass so Settings UI changes take effect
+    immediately without server restart.
+    """
+    mode = os.environ.get(EMBEDDING_MODE_ENV, "").strip().lower() or "hybrid"
+    try:
+        emb_w = float(os.environ.get(EMBEDDING_SIMILARITY_WEIGHT_ENV, "").strip())
+    except (ValueError, AttributeError):
+        emb_w = EMBEDDING_SIMILARITY_WEIGHT
+    try:
+        jac_w = float(os.environ.get(EMBEDDING_JACCARD_WEIGHT_ENV, "").strip())
+    except (ValueError, AttributeError):
+        jac_w = EMBEDDING_JACCARD_WEIGHT
+    return mode, emb_w, jac_w
+
 
 # ─── Memory Influence Engine ──────────────────────────────────
 
@@ -394,16 +417,17 @@ class MemoryInfluence:
 
             score = jaccard_sim
         """
+        mode, emb_weight, jac_weight = _effective_embedding_config()
         jaccard_sim = _jaccard(context_tokens, candidate_tokens)
         overlap = context_tokens & candidate_tokens
 
-        if self.embeddings_available:
+        if mode != "keyword_only" and self.embeddings_available:
             emb_sim = self._embeddings.similarity(context_text, candidate_text)
             # Clamp to [0, 1]
             emb_sim = max(0.0, min(emb_sim, 1.0))
             score = (
-                EMBEDDING_SIMILARITY_WEIGHT * emb_sim
-                + EMBEDDING_JACCARD_WEIGHT * jaccard_sim
+                emb_weight * emb_sim
+                + jac_weight * jaccard_sim
             )
             reason_parts: list[str] = []
             if emb_sim >= 0.3:
@@ -483,9 +507,12 @@ class MemoryInfluence:
             for entry in entries
         ]
 
+        # Read runtime config for scoring mode and weights
+        mode, emb_weight, jac_weight = _effective_embedding_config()
+
         # Batch compute embedding similarities (one encode pass)
         emb_scores: list[float] | None = None
-        if self.embeddings_available:
+        if mode != "keyword_only" and self.embeddings_available:
             emb_scores = self._embeddings.batch_similarity(
                 context_text, entry_texts,
             )
@@ -499,8 +526,8 @@ class MemoryInfluence:
             if emb_scores is not None:
                 emb_sim = max(0.0, min(emb_scores[idx], 1.0))
                 raw_score = (
-                    EMBEDDING_SIMILARITY_WEIGHT * emb_sim
-                    + EMBEDDING_JACCARD_WEIGHT * jaccard_sim
+                    emb_weight * emb_sim
+                    + jac_weight * jaccard_sim
                 )
                 reason_parts: list[str] = []
                 if emb_sim >= 0.3:
@@ -569,9 +596,12 @@ class MemoryInfluence:
             f"{belief.topic} {belief.content}" for belief in beliefs
         ]
 
+        # Read runtime config for scoring mode and weights
+        mode, emb_weight, jac_weight = _effective_embedding_config()
+
         # Batch compute embedding similarities (one encode pass)
         emb_scores: list[float] | None = None
-        if self.embeddings_available:
+        if mode != "keyword_only" and self.embeddings_available:
             emb_scores = self._embeddings.batch_similarity(
                 context_text, belief_texts,
             )
@@ -585,8 +615,8 @@ class MemoryInfluence:
             if emb_scores is not None:
                 emb_sim = max(0.0, min(emb_scores[idx], 1.0))
                 raw_score = (
-                    EMBEDDING_SIMILARITY_WEIGHT * emb_sim
-                    + EMBEDDING_JACCARD_WEIGHT * jaccard_sim
+                    emb_weight * emb_sim
+                    + jac_weight * jaccard_sim
                 )
                 reason_parts: list[str] = []
                 if emb_sim >= 0.3:
@@ -936,6 +966,7 @@ class MemoryInfluence:
             mgr = LocationManager(locations_dir=locations_dir)
             return mgr.list_locations(status="active")
         except Exception:
+            log.debug("memory_influence._load_active_locations: failed from core.locations import LocationManag", exc_info=True)
             return []
 
     # ── Item Loading ────────────────────────────────────────────
@@ -954,6 +985,7 @@ class MemoryInfluence:
             mgr = ItemManager(items_dir=items_dir)
             return mgr.list_items(status="active")
         except Exception:
+            log.debug("memory_influence._load_active_items: failed from core.items import ItemManager", exc_info=True)
             return []
 
     # ── LLM-Based Summarization ────────────────────────────────

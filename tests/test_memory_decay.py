@@ -569,7 +569,7 @@ class TestNewProperties:
         assert mi.decay_min_factor == 0.1
         assert mi.summarization_enabled is True
         assert mi.contested_enabled is True
-        assert mi.contested_probability == 0.05
+        assert mi.contested_probability == 0.03
 
     def test_custom_properties(self):
         mi = MemoryInfluence(

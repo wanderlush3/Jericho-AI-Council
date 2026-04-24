@@ -11,6 +11,7 @@ callers see the streaming methods as ordinary instance methods.
 
 from __future__ import annotations
 
+import logging
 import asyncio
 from collections.abc import AsyncIterator
 
@@ -20,6 +21,9 @@ from core.chat_helpers import build_human_chat_prompt, character_memory_name, ch
 from core.memory import AgentMemory, MemoryEntry
 from core.memory_influence import MemoryInfluence
 
+
+
+log = logging.getLogger(__name__)
 
 class ChatStreamingMixin:
     """Mixin providing streaming response methods for ``HumanChat``.
@@ -103,6 +107,7 @@ class ChatStreamingMixin:
                     chat_id, record.messages,
                 )
             except Exception:
+                log.debug("chat_streaming.get_agent_response_streaming: failed summary_result", exc_info=True)
                 summary_result = None  # graceful fallback
 
         for idx, (member, mem_name) in enumerate(respondents):
@@ -153,6 +158,7 @@ class ChatStreamingMixin:
                     )
                 )
             except Exception:
+                log.debug("chat_streaming.get_agent_response_streaming: non-critical error", exc_info=True)
                 # API call failed — record an absent message and continue
                 content_text = "[absent] Was unavailable to respond at this time. [/absent]"
                 msg = HumanChatMessage.create(
@@ -250,6 +256,7 @@ class ChatStreamingMixin:
                     chat_id, record.messages,
                 )
             except Exception:
+                log.debug("chat_streaming.continue_conversation_streaming: failed summary_result", exc_info=True)
                 summary_result = None  # graceful fallback
 
         for idx, (member, mem_name) in enumerate(respondents):
@@ -303,6 +310,7 @@ class ChatStreamingMixin:
                     )
                 )
             except Exception:
+                log.debug("chat_streaming.continue_conversation_streaming: non-critical error", exc_info=True)
                 # API call failed — record an absent message and continue
                 content_text = "[absent] Was unavailable to respond at this time. [/absent]"
                 msg = HumanChatMessage.create(

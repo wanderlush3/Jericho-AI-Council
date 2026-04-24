@@ -816,3 +816,371 @@ def api_template_test(template_id: str) -> dict[str, Any]:
     except TemplateAssignmentValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
+
+# ── Memory Decay / Summarization / Contested Settings (F-075) ──
+
+def _bool_env(name: str, default: bool) -> bool:
+    """Read a boolean from env, falling back to *default*."""
+    import os
+    raw = os.environ.get(name, "").strip().lower()
+    if raw in ("true", "1", "yes"):
+        return True
+    if raw in ("false", "0", "no"):
+        return False
+    return default
+
+
+def _float_env(name: str, default: float) -> float:
+    """Read a float from env, falling back to *default*."""
+    import os
+    raw = os.environ.get(name, "").strip()
+    if raw:
+        try:
+            return float(raw)
+        except ValueError:
+            pass
+    return default
+
+
+def _int_env(name: str, default: int) -> int:
+    """Read an int from env, falling back to *default*."""
+    import os
+    raw = os.environ.get(name, "").strip()
+    if raw:
+        try:
+            return int(raw)
+        except ValueError:
+            pass
+    return default
+
+
+def _float_env(name: str, default: float) -> float:
+    """Read a float from env, falling back to *default*."""
+    import os
+    raw = os.environ.get(name, "").strip()
+    if raw:
+        try:
+            return float(raw)
+        except ValueError:
+            pass
+    return default
+
+
+@router.get("/api/settings/memory-decay")
+def api_memory_decay_config() -> dict[str, Any]:
+    """Return current memory decay, summarization, and contested config."""
+    from config.settings import (
+        CONTESTED_MEMORY_ENABLED,
+        CONTESTED_MEMORY_ENABLED_ENV,
+        CONTESTED_MEMORY_PROBABILITY,
+        CONTESTED_MEMORY_PROBABILITY_ENV,
+        MEMORY_DECAY_ENABLED,
+        MEMORY_DECAY_ENABLED_ENV,
+        MEMORY_DECAY_HALF_LIFE_DAYS,
+        MEMORY_DECAY_HALF_LIFE_ENV,
+        MEMORY_DECAY_MIN_FACTOR,
+        MEMORY_DECAY_MIN_FACTOR_ENV,
+        MEMORY_SUMMARIZATION_ENABLED,
+        MEMORY_SUMMARIZATION_ENABLED_ENV,
+        MEMORY_SUMMARIZATION_KEEP_RECENT,
+        MEMORY_SUMMARIZATION_SESSION_THRESHOLD,
+        MEMORY_SUMMARIZATION_THRESHOLD_ENV,
+    )
+    return {
+        "decay": {
+            "enabled": _bool_env(MEMORY_DECAY_ENABLED_ENV, MEMORY_DECAY_ENABLED),
+            "half_life_days": _float_env(MEMORY_DECAY_HALF_LIFE_ENV, MEMORY_DECAY_HALF_LIFE_DAYS),
+            "min_factor": _float_env(MEMORY_DECAY_MIN_FACTOR_ENV, MEMORY_DECAY_MIN_FACTOR),
+        },
+        "summarization": {
+            "enabled": _bool_env(MEMORY_SUMMARIZATION_ENABLED_ENV, MEMORY_SUMMARIZATION_ENABLED),
+            "session_threshold": _int_env(MEMORY_SUMMARIZATION_THRESHOLD_ENV, MEMORY_SUMMARIZATION_SESSION_THRESHOLD),
+            "keep_recent": MEMORY_SUMMARIZATION_KEEP_RECENT,
+        },
+        "contested": {
+            "enabled": _bool_env(CONTESTED_MEMORY_ENABLED_ENV, CONTESTED_MEMORY_ENABLED),
+            "probability": _float_env(CONTESTED_MEMORY_PROBABILITY_ENV, CONTESTED_MEMORY_PROBABILITY),
+        },
+    }
+
+
+@router.put("/api/settings/memory-decay")
+def api_memory_decay_save(body: dict[str, Any]) -> dict[str, Any]:
+    """Update memory decay, summarization, and/or contested settings.
+
+    Body (all fields optional)::
+
+        {
+            "decay": {"enabled": true, "half_life_days": 30, "min_factor": 0.1},
+            "summarization": {"enabled": true, "session_threshold": 6},
+            "contested": {"enabled": true, "probability": 0.03}
+        }
+    """
+    from core.api_keys import APIKeyManager
+    from config.settings import (
+        CONTESTED_MEMORY_ENABLED_ENV,
+        CONTESTED_MEMORY_PROBABILITY_ENV,
+        MEMORY_DECAY_ENABLED_ENV,
+        MEMORY_DECAY_HALF_LIFE_ENV,
+        MEMORY_DECAY_MIN_FACTOR_ENV,
+        MEMORY_SUMMARIZATION_ENABLED_ENV,
+        MEMORY_SUMMARIZATION_THRESHOLD_ENV,
+    )
+    import os
+
+    mgr = APIKeyManager()
+    saved: dict[str, Any] = {}
+
+    # ── Decay ─────────────────────────────────────────────
+    decay = body.get("decay")
+    if isinstance(decay, dict):
+        if "enabled" in decay:
+            val = "true" if decay["enabled"] else "false"
+            os.environ[MEMORY_DECAY_ENABLED_ENV] = val
+            mgr.save_env_value(MEMORY_DECAY_ENABLED_ENV, val)
+            saved["decay_enabled"] = decay["enabled"]
+
+        if "half_life_days" in decay:
+            hl = float(decay["half_life_days"])
+            if hl < 1 or hl > 365:
+                raise HTTPException(
+                    status_code=400,
+                    detail="half_life_days must be between 1 and 365.",
+                )
+            os.environ[MEMORY_DECAY_HALF_LIFE_ENV] = str(hl)
+            mgr.save_env_value(MEMORY_DECAY_HALF_LIFE_ENV, str(hl))
+            saved["decay_half_life_days"] = hl
+
+        if "min_factor" in decay:
+            mf = float(decay["min_factor"])
+            if mf < 0.01 or mf > 0.99:
+                raise HTTPException(
+                    status_code=400,
+                    detail="min_factor must be between 0.01 and 0.99.",
+                )
+            os.environ[MEMORY_DECAY_MIN_FACTOR_ENV] = str(mf)
+            mgr.save_env_value(MEMORY_DECAY_MIN_FACTOR_ENV, str(mf))
+            saved["decay_min_factor"] = mf
+
+    # ── Summarization ─────────────────────────────────────
+    summarization = body.get("summarization")
+    if isinstance(summarization, dict):
+        if "enabled" in summarization:
+            val = "true" if summarization["enabled"] else "false"
+            os.environ[MEMORY_SUMMARIZATION_ENABLED_ENV] = val
+            mgr.save_env_value(MEMORY_SUMMARIZATION_ENABLED_ENV, val)
+            saved["summarization_enabled"] = summarization["enabled"]
+
+        if "session_threshold" in summarization:
+            st = int(summarization["session_threshold"])
+            if st < 2 or st > 50:
+                raise HTTPException(
+                    status_code=400,
+                    detail="session_threshold must be between 2 and 50.",
+                )
+            os.environ[MEMORY_SUMMARIZATION_THRESHOLD_ENV] = str(st)
+            mgr.save_env_value(MEMORY_SUMMARIZATION_THRESHOLD_ENV, str(st))
+            saved["summarization_session_threshold"] = st
+
+    # ── Contested ─────────────────────────────────────────
+    contested = body.get("contested")
+    if isinstance(contested, dict):
+        if "enabled" in contested:
+            val = "true" if contested["enabled"] else "false"
+            os.environ[CONTESTED_MEMORY_ENABLED_ENV] = val
+            mgr.save_env_value(CONTESTED_MEMORY_ENABLED_ENV, val)
+            saved["contested_enabled"] = contested["enabled"]
+
+        if "probability" in contested:
+            p = float(contested["probability"])
+            if p < 0.0 or p > 0.10:
+                raise HTTPException(
+                    status_code=400,
+                    detail="probability must be between 0.00 and 0.10 (0–10%).",
+                )
+            os.environ[CONTESTED_MEMORY_PROBABILITY_ENV] = str(p)
+            mgr.save_env_value(CONTESTED_MEMORY_PROBABILITY_ENV, str(p))
+            saved["contested_probability"] = p
+
+    return {"saved": saved}
+
+
+# ── Narrative Engine Settings (F-076) ──────────────────────────
+
+@router.get("/api/settings/narrative")
+def api_narrative_config() -> dict[str, Any]:
+    """Return current narrative engine configuration."""
+    from config.settings import (
+        NARRATIVE_MAX_BULLETINS,
+        NARRATIVE_MAX_BULLETINS_ENV,
+        NARRATIVE_MAX_AGE_DAYS,
+        NARRATIVE_MAX_AGE_DAYS_ENV,
+    )
+    return {
+        "max_bulletins": _int_env(NARRATIVE_MAX_BULLETINS_ENV, NARRATIVE_MAX_BULLETINS),
+        "max_age_days": _int_env(NARRATIVE_MAX_AGE_DAYS_ENV, NARRATIVE_MAX_AGE_DAYS),
+    }
+
+
+@router.put("/api/settings/narrative")
+def api_narrative_save(body: dict[str, Any]) -> dict[str, Any]:
+    """Update narrative engine settings.
+
+    Body (all fields optional)::
+
+        {
+            "max_bulletins": 15,
+            "max_age_days": 60
+        }
+    """
+    from core.api_keys import APIKeyManager
+    from config.settings import (
+        NARRATIVE_MAX_BULLETINS_ENV,
+        NARRATIVE_MAX_AGE_DAYS_ENV,
+    )
+    import os
+
+    mgr = APIKeyManager()
+    saved: dict[str, Any] = {}
+
+    if "max_bulletins" in body:
+        n = int(body["max_bulletins"])
+        if n < 1 or n > 50:
+            raise HTTPException(
+                status_code=400,
+                detail="max_bulletins must be between 1 and 50.",
+            )
+        os.environ[NARRATIVE_MAX_BULLETINS_ENV] = str(n)
+        mgr.save_env_value(NARRATIVE_MAX_BULLETINS_ENV, str(n))
+        saved["max_bulletins"] = n
+
+    if "max_age_days" in body:
+        d = int(body["max_age_days"])
+        if d < 1 or d > 365:
+            raise HTTPException(
+                status_code=400,
+                detail="max_age_days must be between 1 and 365.",
+            )
+        os.environ[NARRATIVE_MAX_AGE_DAYS_ENV] = str(d)
+        mgr.save_env_value(NARRATIVE_MAX_AGE_DAYS_ENV, str(d))
+        saved["max_age_days"] = d
+
+    return {"saved": saved}
+
+
+# ── Embedding & Scoring Settings (F-077) ───────────────────────
+
+@router.get("/api/settings/embeddings")
+def api_embeddings_config() -> dict[str, Any]:
+    """Return current embedding/scoring configuration and status."""
+    from config.settings import (
+        EMBEDDING_MODEL_NAME,
+        EMBEDDING_MODEL_NAME_ENV,
+        EMBEDDING_MODEL_OPTIONS,
+        EMBEDDING_SIMILARITY_WEIGHT,
+        EMBEDDING_SIMILARITY_WEIGHT_ENV,
+        EMBEDDING_JACCARD_WEIGHT,
+        EMBEDDING_JACCARD_WEIGHT_ENV,
+        EMBEDDING_MODE_ENV,
+    )
+    from core.embeddings import get_embedding_provider
+    import os
+
+    provider = get_embedding_provider()
+    mode = os.environ.get(EMBEDDING_MODE_ENV, "").strip().lower() or "hybrid"
+
+    return {
+        "model_name": os.environ.get(
+            EMBEDDING_MODEL_NAME_ENV, "",
+        ).strip() or EMBEDDING_MODEL_NAME,
+        "model_options": list(EMBEDDING_MODEL_OPTIONS),
+        "mode": mode,
+        "similarity_weight": _float_env(
+            EMBEDDING_SIMILARITY_WEIGHT_ENV, EMBEDDING_SIMILARITY_WEIGHT,
+        ),
+        "jaccard_weight": _float_env(
+            EMBEDDING_JACCARD_WEIGHT_ENV, EMBEDDING_JACCARD_WEIGHT,
+        ),
+        "available": provider.is_available,
+        "install_hint": "pip install sentence-transformers",
+    }
+
+
+@router.put("/api/settings/embeddings")
+def api_embeddings_save(body: dict[str, Any]) -> dict[str, Any]:
+    """Update embedding/scoring settings.
+
+    Body (all fields optional)::
+
+        {
+            "mode": "hybrid",
+            "similarity_weight": 0.7,
+            "jaccard_weight": 0.3,
+            "model_name": "all-MiniLM-L6-v2"
+        }
+    """
+    from core.api_keys import APIKeyManager
+    from config.settings import (
+        EMBEDDING_MODEL_NAME_ENV,
+        EMBEDDING_MODEL_OPTIONS,
+        EMBEDDING_SIMILARITY_WEIGHT_ENV,
+        EMBEDDING_JACCARD_WEIGHT_ENV,
+        EMBEDDING_MODE_ENV,
+    )
+    import os
+
+    mgr = APIKeyManager()
+    saved: dict[str, Any] = {}
+
+    # ── Mode ──────────────────────────────────────────────
+    if "mode" in body:
+        mode = str(body["mode"]).strip().lower()
+        if mode not in ("hybrid", "keyword_only"):
+            raise HTTPException(
+                status_code=400,
+                detail="mode must be 'hybrid' or 'keyword_only'.",
+            )
+        os.environ[EMBEDDING_MODE_ENV] = mode
+        mgr.save_env_value(EMBEDDING_MODE_ENV, mode)
+        saved["mode"] = mode
+
+    # ── Weights ───────────────────────────────────────────
+    if "similarity_weight" in body:
+        sw = float(body["similarity_weight"])
+        if sw < 0.0 or sw > 1.0:
+            raise HTTPException(
+                status_code=400,
+                detail="similarity_weight must be between 0.0 and 1.0.",
+            )
+        os.environ[EMBEDDING_SIMILARITY_WEIGHT_ENV] = str(sw)
+        mgr.save_env_value(EMBEDDING_SIMILARITY_WEIGHT_ENV, str(sw))
+        saved["similarity_weight"] = sw
+
+    if "jaccard_weight" in body:
+        jw = float(body["jaccard_weight"])
+        if jw < 0.0 or jw > 1.0:
+            raise HTTPException(
+                status_code=400,
+                detail="jaccard_weight must be between 0.0 and 1.0.",
+            )
+        os.environ[EMBEDDING_JACCARD_WEIGHT_ENV] = str(jw)
+        mgr.save_env_value(EMBEDDING_JACCARD_WEIGHT_ENV, str(jw))
+        saved["jaccard_weight"] = jw
+
+    # ── Model name ────────────────────────────────────────
+    if "model_name" in body:
+        model = str(body["model_name"]).strip()
+        if model not in EMBEDDING_MODEL_OPTIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown model '{model}'. Must be one of: {', '.join(EMBEDDING_MODEL_OPTIONS)}.",
+            )
+        os.environ[EMBEDDING_MODEL_NAME_ENV] = model
+        mgr.save_env_value(EMBEDDING_MODEL_NAME_ENV, model)
+        saved["model_name"] = model
+
+        # Reset the singleton so the new model loads on next use
+        from core.embeddings import reset_embedding_provider
+        reset_embedding_provider()
+
+    return {"saved": saved}

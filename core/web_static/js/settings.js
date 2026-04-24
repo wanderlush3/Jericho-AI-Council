@@ -44,7 +44,7 @@ function renderModelField(selectId, provider, currentModel, includeDefault) {
 
 async function renderSettings() {
     showLoading();
-    const [keys, models, userDescData, userNameData, mancerModels, openrouterModels, lmstudioModels] = await Promise.all([
+    const [keys, models, userDescData, userNameData, mancerModels, openrouterModels, lmstudioModels, memDecayConfig, narrativeConfig, embeddingsConfig] = await Promise.all([
         api('/api/settings/keys'),
         api('/api/settings/models'),
         api('/api/settings/user-description'),
@@ -52,6 +52,9 @@ async function renderSettings() {
         api('/api/settings/mancer-models').catch(() => ['Default']),
         api('/api/settings/openrouter-models').catch(() => ['Default']),
         api('/api/settings/lmstudio-models').catch(() => ['Default']),
+        api('/api/settings/memory-decay').catch(() => ({ decay: {}, summarization: {}, contested: {} })),
+        api('/api/settings/narrative').catch(() => ({ max_bulletins: 10, max_age_days: 30 })),
+        api('/api/settings/embeddings').catch(() => ({ model_name: 'all-MiniLM-L6-v2', model_options: [], mode: 'hybrid', similarity_weight: 0.7, jaccard_weight: 0.3, available: false })),
     ]);
 
     // Cache model options for use in council member editing
@@ -209,6 +212,188 @@ async function renderSettings() {
             </div>
 
             <div class="settings-grid">${cards}</div>
+
+            <div class="card settings-card memory-decay-card" id="memory-decay-card">
+                <div class="settings-card-header">
+                    <div class="settings-provider-info">
+                        <span class="settings-provider-icon">🧠</span>
+                        <div>
+                            <div class="settings-provider-name">Memory & Decay</div>
+                            <span class="settings-provider-link" style="cursor:default">Configure time decay, summarization, and contested memory subsystems</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-form memory-decay-form" style="margin-top:var(--space-sm)">
+                    <div class="memory-decay-grid">
+                        <div class="memory-decay-section">
+                            <h4 class="memory-decay-heading">⏳ Time Decay</h4>
+                            <p class="memory-decay-hint">Older memories gradually lose influence. Half-life controls the rate.</p>
+                            <div class="memory-decay-row">
+                                <label class="memory-decay-label">
+                                    <input type="checkbox" id="decay-enabled" ${memDecayConfig.decay?.enabled !== false ? 'checked' : ''} />
+                                    Enabled
+                                </label>
+                            </div>
+                            <div class="memory-decay-row">
+                                <label class="memory-decay-label" for="decay-half-life">Half-life (days)</label>
+                                <input type="number" id="decay-half-life" class="settings-input memory-decay-input"
+                                       min="1" max="365" step="1"
+                                       value="${memDecayConfig.decay?.half_life_days ?? 30}" />
+                            </div>
+                            <div class="memory-decay-row">
+                                <label class="memory-decay-label" for="decay-min-factor">Min factor</label>
+                                <input type="number" id="decay-min-factor" class="settings-input memory-decay-input"
+                                       min="0.01" max="0.99" step="0.01"
+                                       value="${memDecayConfig.decay?.min_factor ?? 0.1}" />
+                            </div>
+                        </div>
+
+                        <div class="memory-decay-section">
+                            <h4 class="memory-decay-heading">📋 Summarization</h4>
+                            <p class="memory-decay-hint">Condense old sessions via LLM to keep context compact.</p>
+                            <div class="memory-decay-row">
+                                <label class="memory-decay-label">
+                                    <input type="checkbox" id="summarization-enabled" ${memDecayConfig.summarization?.enabled !== false ? 'checked' : ''} />
+                                    Enabled
+                                </label>
+                            </div>
+                            <div class="memory-decay-row">
+                                <label class="memory-decay-label" for="summarization-threshold">Session threshold</label>
+                                <input type="number" id="summarization-threshold" class="settings-input memory-decay-input"
+                                       min="2" max="50" step="1"
+                                       value="${memDecayConfig.summarization?.session_threshold ?? 6}" />
+                            </div>
+                            <div class="memory-decay-row">
+                                <span class="memory-decay-hint" style="font-size:0.78rem">Keep recent: ${memDecayConfig.summarization?.keep_recent ?? 3} sessions</span>
+                            </div>
+                        </div>
+
+                        <div class="memory-decay-section">
+                            <h4 class="memory-decay-heading">🔀 Contested Memories</h4>
+                            <p class="memory-decay-hint">Agents may record divergent recollections of events. Low probability preserves coherence.</p>
+                            <div class="memory-decay-row">
+                                <label class="memory-decay-label">
+                                    <input type="checkbox" id="contested-enabled" ${memDecayConfig.contested?.enabled !== false ? 'checked' : ''} />
+                                    Enabled
+                                </label>
+                            </div>
+                            <div class="memory-decay-row">
+                                <label class="memory-decay-label" for="contested-probability">Probability (%)</label>
+                                <input type="number" id="contested-probability" class="settings-input memory-decay-input"
+                                       min="0" max="10" step="0.5"
+                                       value="${((memDecayConfig.contested?.probability ?? 0.03) * 100).toFixed(1)}" />
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:var(--space-sm);margin-top:var(--space-md)">
+                        <button class="btn btn-primary" onclick="saveMemoryDecay()" id="memory-decay-save-btn">💾 Save Memory Settings</button>
+                        <span id="memory-decay-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card settings-card narrative-settings-card" id="narrative-settings-card">
+                <div class="settings-card-header">
+                    <div class="settings-provider-info">
+                        <span class="settings-provider-icon">📰</span>
+                        <div>
+                            <div class="settings-provider-name">Narrative Engine</div>
+                            <span class="settings-provider-link" style="cursor:default">Configure the Jericho Times news ticker on the Dashboard</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-form" style="margin-top:var(--space-sm)">
+                    <div class="memory-decay-grid" style="grid-template-columns:repeat(2, 1fr)">
+                        <div class="memory-decay-section">
+                            <h4 class="memory-decay-heading">📊 Max Bulletins</h4>
+                            <p class="memory-decay-hint">Maximum number of news bulletins shown per request.</p>
+                            <div class="memory-decay-row">
+                                <label class="memory-decay-label" for="narrative-max-bulletins">Count</label>
+                                <input type="number" id="narrative-max-bulletins" class="settings-input memory-decay-input"
+                                       min="1" max="50" step="1"
+                                       value="${narrativeConfig.max_bulletins ?? 10}" />
+                            </div>
+                        </div>
+                        <div class="memory-decay-section">
+                            <h4 class="memory-decay-heading">📅 Event Window</h4>
+                            <p class="memory-decay-hint">Only consider events within this many days.</p>
+                            <div class="memory-decay-row">
+                                <label class="memory-decay-label" for="narrative-max-age">Days</label>
+                                <input type="number" id="narrative-max-age" class="settings-input memory-decay-input"
+                                       min="1" max="365" step="1"
+                                       value="${narrativeConfig.max_age_days ?? 30}" />
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:var(--space-sm);margin-top:var(--space-md)">
+                        <button class="btn btn-primary" onclick="saveNarrativeSettings()" id="narrative-save-btn">💾 Save Narrative Settings</button>
+                        <span id="narrative-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card settings-card embeddings-settings-card" id="embeddings-settings-card">
+                <div class="settings-card-header">
+                    <div class="settings-provider-info">
+                        <span class="settings-provider-icon">🧠</span>
+                        <div>
+                            <div class="settings-provider-name">Embeddings & Scoring</div>
+                            <span class="settings-provider-link" style="cursor:default">Configure semantic memory scoring model, mode, and weights</span>
+                        </div>
+                    </div>
+                    <span class="badge badge-${embeddingsConfig.available ? 'active' : 'draft'}" style="font-size:0.72rem">${embeddingsConfig.available ? '✅ Model Loaded' : '⚠️ Unavailable'}</span>
+                </div>
+                <div class="settings-form" style="margin-top:var(--space-sm)">
+                    ${!embeddingsConfig.available ? `<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:var(--radius-md);padding:var(--space-md);margin-bottom:var(--space-md);font-size:0.82rem;color:var(--text-secondary)">⚠️ sentence-transformers not installed. Scoring uses keyword-only mode.<br><code style="background:var(--bg-surface);padding:2px 6px;border-radius:4px;font-size:0.78rem">${embeddingsConfig.install_hint || 'pip install sentence-transformers'}</code></div>` : ''}
+                    <div class="memory-decay-grid" style="grid-template-columns:repeat(2, 1fr)">
+                        <div class="memory-decay-section">
+                            <h4 class="memory-decay-heading">🔧 Model</h4>
+                            <p class="memory-decay-hint">Sentence-transformer model for semantic similarity.</p>
+                            <div class="memory-decay-row">
+                                <label class="memory-decay-label" for="emb-model-name">Model</label>
+                                <select id="emb-model-name" class="settings-input memory-decay-input">
+                                    ${(embeddingsConfig.model_options || []).map(m => `<option value="${m}" ${m === embeddingsConfig.model_name ? 'selected' : ''}>${m}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="memory-decay-section">
+                            <h4 class="memory-decay-heading">⚙️ Scoring Mode</h4>
+                            <p class="memory-decay-hint">Hybrid uses both semantic + keyword; Keyword Only skips embeddings.</p>
+                            <div class="memory-decay-row">
+                                <label class="memory-decay-label" for="emb-mode">Mode</label>
+                                <select id="emb-mode" class="settings-input memory-decay-input">
+                                    <option value="hybrid" ${embeddingsConfig.mode === 'hybrid' ? 'selected' : ''}>Hybrid (Semantic + Keyword)</option>
+                                    <option value="keyword_only" ${embeddingsConfig.mode === 'keyword_only' ? 'selected' : ''}>Keyword Only</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="memory-decay-section">
+                            <h4 class="memory-decay-heading">📊 Semantic Weight</h4>
+                            <p class="memory-decay-hint">Weight given to embedding cosine similarity (0.0–1.0).</p>
+                            <div class="memory-decay-row">
+                                <label class="memory-decay-label" for="emb-sim-weight">Weight</label>
+                                <input type="number" id="emb-sim-weight" class="settings-input memory-decay-input"
+                                       min="0" max="1" step="0.05"
+                                       value="${embeddingsConfig.similarity_weight ?? 0.7}" />
+                            </div>
+                        </div>
+                        <div class="memory-decay-section">
+                            <h4 class="memory-decay-heading">🔤 Keyword Weight</h4>
+                            <p class="memory-decay-hint">Weight given to Jaccard keyword overlap (0.0–1.0).</p>
+                            <div class="memory-decay-row">
+                                <label class="memory-decay-label" for="emb-jac-weight">Weight</label>
+                                <input type="number" id="emb-jac-weight" class="settings-input memory-decay-input"
+                                       min="0" max="1" step="0.05"
+                                       value="${embeddingsConfig.jaccard_weight ?? 0.3}" />
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:var(--space-sm);margin-top:var(--space-md)">
+                        <button class="btn btn-primary" onclick="saveEmbeddingSettings()" id="emb-save-btn">💾 Save Embedding Settings</button>
+                        <span id="emb-status" style="font-size:0.82rem;color:var(--text-muted)"></span>
+                    </div>
+                </div>
+            </div>
         </div>`;
 
     // Initialize character count display color
@@ -379,6 +564,136 @@ function showToast(msg, isError) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// Memory Decay Settings (F-075)
+// ═══════════════════════════════════════════════════════════════
+
+async function saveMemoryDecay() {
+    const btn = document.getElementById('memory-decay-save-btn');
+    const status = document.getElementById('memory-decay-status');
+    btn.disabled = true;
+    btn.textContent = '⏳ Saving…';
+    status.textContent = '';
+
+    const body = {
+        decay: {
+            enabled: document.getElementById('decay-enabled').checked,
+            half_life_days: parseFloat(document.getElementById('decay-half-life').value) || 30,
+            min_factor: parseFloat(document.getElementById('decay-min-factor').value) || 0.1,
+        },
+        summarization: {
+            enabled: document.getElementById('summarization-enabled').checked,
+            session_threshold: parseInt(document.getElementById('summarization-threshold').value, 10) || 6,
+        },
+        contested: {
+            enabled: document.getElementById('contested-enabled').checked,
+            probability: (parseFloat(document.getElementById('contested-probability').value) || 3) / 100,
+        },
+    };
+
+    try {
+        const resp = await fetch('/api/settings/memory-decay', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
+            throw new Error(err.detail);
+        }
+        showToast('Memory settings saved ✅');
+        status.textContent = '✅ Saved';
+        status.style.color = 'var(--accent-emerald)';
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        status.textContent = '❌ Failed';
+        status.style.color = 'var(--accent-rose)';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Save Memory Settings';
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Narrative Engine Settings (F-076)
+// ═══════════════════════════════════════════════════════════════
+
+async function saveNarrativeSettings() {
+    const btn = document.getElementById('narrative-save-btn');
+    const status = document.getElementById('narrative-status');
+    btn.disabled = true;
+    btn.textContent = '⏳ Saving…';
+    status.textContent = '';
+
+    const body = {
+        max_bulletins: parseInt(document.getElementById('narrative-max-bulletins').value, 10) || 10,
+        max_age_days: parseInt(document.getElementById('narrative-max-age').value, 10) || 30,
+    };
+
+    try {
+        const resp = await fetch('/api/settings/narrative', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
+            throw new Error(err.detail);
+        }
+        showToast('Narrative settings saved ✅');
+        status.textContent = '✅ Saved';
+        status.style.color = 'var(--accent-emerald)';
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        status.textContent = '❌ Failed';
+        status.style.color = 'var(--accent-rose)';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Save Narrative Settings';
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Memory Explorer Views (F-028)
 // ═══════════════════════════════════════════════════════════════
 
+
+// ═══════════════════════════════════════════════════════════════
+// Embedding & Scoring Settings (F-077)
+// ═══════════════════════════════════════════════════════════════
+
+async function saveEmbeddingSettings() {
+    const btn = document.getElementById('emb-save-btn');
+    const status = document.getElementById('emb-status');
+    btn.disabled = true;
+    btn.textContent = '⏳ Saving…';
+    status.textContent = '';
+
+    const body = {
+        model_name: document.getElementById('emb-model-name').value,
+        mode: document.getElementById('emb-mode').value,
+        similarity_weight: parseFloat(document.getElementById('emb-sim-weight').value) || 0.7,
+        jaccard_weight: parseFloat(document.getElementById('emb-jac-weight').value) || 0.3,
+    };
+
+    try {
+        const resp = await fetch('/api/settings/embeddings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Save failed' }));
+            throw new Error(err.detail);
+        }
+        showToast('Embedding settings saved ✅');
+        status.textContent = '✅ Saved';
+        status.style.color = 'var(--accent-emerald)';
+    } catch (err) {
+        showToast(`Error: ${err.message}`, true);
+        status.textContent = '❌ Failed';
+        status.style.color = 'var(--accent-rose)';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Save Embedding Settings';
+    }
+}
