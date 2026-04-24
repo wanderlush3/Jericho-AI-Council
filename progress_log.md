@@ -5166,3 +5166,202 @@ the system tracking explored areas and adapting prompts to each phase.
 - Imaginative mode is gated: only available after all known features are
   explored. Discovery history prevents repetition.
 - Test count: 3,743 passing (+59), 12 skipped.
+
+---
+
+## Session: S-076-00000001
+**Timestamp:** 2026-04-24 00:15:00
+**Feature:** `F-076` — Narrative Engine Dashboard Integration
+**Status:** completed
+
+### Summary
+Completed the integration of the Narrative Engine with the web dashboard.
+Most infrastructure was already in place from prior work, so this session
+focused on the **settings integration** — the one missing deliverable.
+
+### What Was Done
+
+1. **`config/settings.py`** — Added `NARRATIVE_MAX_BULLETINS_ENV` and
+   `NARRATIVE_MAX_AGE_DAYS_ENV` environment variable names for runtime
+   overrides via the Settings UI.
+
+2. **`core/routes/status.py`** — Updated the `/api/narrative-bulletins`
+   endpoint to read runtime env overrides so changes from the Settings page
+   take effect immediately without restart.
+
+3. **`core/routes/settings.py`** — Added `GET /api/settings/narrative`
+   and `PUT /api/settings/narrative` endpoints with validation:
+   - `max_bulletins`: 1–50 range
+   - `max_age_days`: 1–365 range
+   Follows the same env-persist pattern as memory-decay settings.
+
+4. **`core/web_static/js/settings.js`** — Added "Narrative Engine" settings
+   card to the Settings page with two number inputs (max bulletins, event
+   window days) and a save button. Fetches config in parallel with other
+   settings data.
+
+5. **`tests/test_web_api.py`** — Added `TestApiNarrativeSettings` with 9
+   tests: GET config, PUT with both fields, partial PUT, boundary validation
+   (too high/low for both fields), empty body, and round-trip GET-after-PUT.
+
+6. **`features.json`** — F-076 marked as completed.
+
+### Pre-existing F-076 Infrastructure (already implemented)
+- Dashboard UI: `📰 Jericho Times` ticker banner with headline cards,
+  emoji icons, prev/next cycling, 8s auto-advance
+- CSS: Full narrative banner module in `store.css` + theme overrides
+- API: `GET /api/narrative-bulletins` endpoint in `status.py`
+- Engine: `core/narrative_engine.py` (502 lines) with 7 template banks
+- Tests: `tests/test_narrative_engine.py` (~35 tests)
+
+### Test Baseline
+- Test count: 3,764 passing (+9), 12 skipped.
+
+---
+
+## Session: S-077-00000001
+**Timestamp:** 2026-04-24 00:25:00
+**Feature:** `F-077` — Embedding-Based Semantic Memory Retrieval
+**Status:** completed
+
+### Summary
+Upgraded the embedding subsystem from a silent fallback to a
+user-visible, configurable system with Settings UI controls, runtime
+mode/weight overrides, model selection, and Memory Explorer indicators.
+
+### What Was Done
+
+1. **`config/settings.py`** — Added env variable names:
+   `EMBEDDING_MODEL_NAME_ENV`, `EMBEDDING_SIMILARITY_WEIGHT_ENV`,
+   `EMBEDDING_JACCARD_WEIGHT_ENV`, `EMBEDDING_MODE_ENV`.
+   Added `EMBEDDING_MODEL_OPTIONS` tuple with 3 selectable models.
+
+2. **`core/routes/settings.py`** — Added:
+   - `_float_env()` helper for reading float env vars
+   - `GET /api/settings/embeddings` — returns model_name, model_options,
+     mode (hybrid/keyword_only), weights, availability, install_hint
+   - `PUT /api/settings/embeddings` — saves mode, weights, and model_name
+     with validation; resets embedding singleton on model change
+
+3. **`core/memory_influence.py`** — Added `_effective_embedding_config()`
+   helper that reads env overrides on every scoring pass. Updated
+   `_hybrid_score()`, `score_memories()`, and `score_beliefs()` to use
+   runtime mode/weight values instead of compile-time constants.
+   When mode is `keyword_only`, embedding calls are entirely skipped.
+
+4. **`core/routes/memories.py`** — Enriched memory detail response with
+   `scoring_mode`, `embeddings_available`, and `embedding_model` fields.
+
+5. **`core/web_static/js/settings.js`** — Added "Embeddings & Scoring"
+   settings card with: model status badge (✅/⚠️), model selector
+   dropdown, mode toggle (Hybrid/Keyword Only), weight inputs, install
+   hint when unavailable, and save button. Fetches config in parallel.
+
+6. **`core/web_static/js/memories.js`** — Added scoring mode badge to
+   memory detail stats line: 🧠 Semantic + Keyword or 🔤 Keyword Only.
+
+7. **`tests/test_web_api.py`** — Added `TestApiEmbeddingSettings` with
+   12 tests: GET schema, mode changes (hybrid/keyword_only), invalid mode,
+   weight validation (bounds), model_name (valid/invalid), empty body,
+   round-trip GET-after-PUT.
+
+8. **`features.json`** — F-077 marked as completed.
+
+### Architecture Notes
+- The `_effective_embedding_config()` helper reads env vars on every
+  scoring pass, so Settings UI changes take effect immediately without
+  server restart — consistent with the memory-decay and narrative patterns.
+- Model changes call `reset_embedding_provider()` which clears the
+  singleton; the new model loads lazily on next scoring request.
+- The install hint is static since auto-installation of ML libraries
+  is risky; users are shown the pip command instead.
+
+### Test Baseline
+- Test count: 3,776 passing (+12), 12 skipped.
+
+---
+
+## Session — F-078: Dashboard Activity Feed & Summary Enhancements
+**Date:** 2026-04-23
+
+### Objective
+Transform the static web dashboard into a dynamic activity hub with a unified
+activity timeline, quick-action buttons, system health panel, and responsive
+stat summary grid.
+
+### Changes Made
+
+#### Backend: `core/routes/status.py`
+- **`GET /api/activity-feed`** — Aggregates recent events from proposals,
+  characters, locations, items, evolutions, and vote records into a unified
+  reverse-chronological feed. Each event has type, icon, title, description,
+  entity_id, nav_target, and timestamp. Capped at 30 events.
+- **`GET /api/system-health`** — Returns LLM provider key status (via
+  `APIKeyManager.all_status()`), embedding model configuration and
+  availability, and entity counts across all data managers.
+
+#### Frontend CSS: `core/web_static/css/dashboard.css` [NEW]
+- `.dashboard-layout` — 2-column responsive grid (collapses at 900px)
+- `.quick-actions` / `.quick-action-btn` — Horizontal button bar with
+  icon+label, hover glow, glassmorphism backdrop
+- `.activity-timeline` / `.activity-event` — Scrollable event list with
+  type icon, title, description, relative timestamp, hover slide animation
+- `.system-health` / `.health-grid` / `.health-dot` — Health panel with
+  green/amber/red status indicators
+- `.stat-summary-grid` / `.stat-summary-card` — Compact 2×N grid of
+  clickable stat cards replacing the old full-width stat-card layout
+
+#### Frontend CSS: `core/web_static/style.css`
+- Added `@import url("css/dashboard.css")` to the module import list.
+
+#### Frontend JS: `core/web_static/js/dashboard.js`
+- `renderDashboard()` — Rewritten to fetch `/api/status`, `/api/activity-feed`,
+  and `/api/system-health` in parallel. Composes 4 sections: narrative banner,
+  quick-action bar, 2-column grid (activity timeline + health/stats).
+- `_buildQuickActions()` — 4 buttons: Start Chat, Create Proposal, Run Task,
+  Give Gift. Each calls `navigate()` to the target section.
+- `_buildActivityTimeline(events)` — Renders scrollable event list with
+  relative timestamps (e.g. "2h ago"). Empty state shows onboarding hint.
+- `_buildSystemHealth(health)` — Renders provider status dots, embedding
+  model info, and scoring mode.
+- `_buildStatSummary()` — Compact 2-column cards for all entity types with
+  badge chips for status breakdown. Each card navigates to its section.
+- `_formatRelativeTime(isoStr)` — Formats ISO timestamps into human-readable
+  relative time strings.
+
+#### Tests: `tests/test_web_api.py`
+- **`TestApiActivityFeed`** (13 tests): Returns 200, correct schema, includes
+  proposal/character/vote events, proper titles, valid nav_targets, 30-event
+  cap, reverse-chronological sort, empty-system handling, emoji icons.
+- **`TestApiSystemHealth`** (8 tests): Returns 200, has providers/embedding/
+  entity_counts, counts match /api/status, provider configured field,
+  embedding mode default, available is bool.
+
+### Architecture Notes
+- Activity feed uses `manager_cache` singletons for all data access —
+  consistent with all other API endpoints. Each data source is wrapped
+  in try/except so partial failures don't crash the whole feed.
+- System health avoids live-probing external services (ComfyUI, LLM APIs)
+  to keep the endpoint fast. It only checks key configuration status
+  and whether sentence_transformers is importable.
+- The `_formatRelativeTime()` JS helper avoids external dependencies
+  (no moment.js or date-fns). It handles edge cases gracefully.
+
+### Test Baseline
+- Test count: 3,797 passing (+21), 12 skipped.
+
+### Advice for Next Agent
+1. **All 79 features (F-001 through F-079) are now complete.** The full
+   backlog is exhausted — there are no pending or blocked features.
+2. **Test baseline**: 3,797 passing, 12 skipped (all sentence-transformers
+   conditional). Run full suite before any changes.
+3. **Next steps**: Define new features (new gameplay systems, UX polish,
+   performance), perform technical debt sweeps, or expand test coverage.
+4. **Known rough edges**:
+   - `routes/stories.py` (51 KB) and `routes/proposals.py` (42 KB) are
+     the largest route files — could benefit from further extraction.
+   - 12 tests are permanently skipped due to optional `sentence-transformers`
+     dependency — consider making them conditional fixtures instead.
+   - `scripts/` directory contains one-off analysis scripts that could be
+     cleaned up or moved to a `tools/` directory.
+5. **Version is 0.99** — project is feature-complete but not yet 1.0.

@@ -1,0 +1,42 @@
+{
+  "chat_id": "STC-0003",
+  "title": "Story Chat: Freedom Vol 1 - Ch.1 Sc.1",
+  "member_name": "araushnee",
+  "topic": "Discussing story: Freedom Vol 1",
+  "messages": [
+    {
+      "role": "human",
+      "speaker": "Human",
+      "content": "*",
+      "timestamp": "2026-04-21T03:21:48.431695+00:00",
+      "metadata": {}
+    },
+    {
+      "role": "agent",
+      "speaker": "Araushnee",
+      "content": "*Araushnee's eyes narrow as she regards you, considering your question. She takes a slow drag from her cigarette before responding.*\n\n\"Freedom in this city is a myth peddled to keep the masses complacent. But we both know the truth - true freedom is something that has to be seized, not given. It's a fight I'm more than willing to engage in.\"\n\n*She leans forward, voice dropping to a conspiratorial whisper.*\n\n\"So I'll ask you again, Stifle. What are you fighting for? What's your purpose in all this? Because if it's just for the thrill of it, well...\"\n\n*Araushnee shrugs, a wry smile playing at her lips.*\n\n\"I can think of easier ways to get your kicks. But if there's something more, some deeper reason driving you... then maybe there's hope for this city after all.\"",
+      "timestamp": "2026-04-21T03:21:55.300290+00:00",
+      "metadata": {
+        "model": "magnum-72b-v4",
+        "provider": "mancer"
+      }
+    }
+  ],
+  "summary": "",
+  "created_at": "2026-04-21T03:20:53.160175+00:00",
+  "closed_at": "",
+  "metadata": {
+    "story_chat": true,
+    "story_id": "ST-0002",
+    "story_title": "Freedom Vol 1",
+    "chapter_id": "CHP-0001",
+    "scene_id": "SCE-0001",
+    "story_round": 1,
+    "story_max_rounds": 5
+  },
+  "council_members": [
+    "araushnee"
+  ],
+  "characters": [],
+  "paused": false
+}

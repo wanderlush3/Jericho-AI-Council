@@ -15,6 +15,7 @@ core/chat_streaming.py
 core/cli.py
 core/comfyui_client.py
 core/context_budget.py
+core/context_builder.py
 core/conversation_summary.py
 core/council_expansion.py
 core/council_session.py
@@ -40,6 +41,9 @@ core/prompt_builder.py
 core/proposals.py
 core/registry.py
 core/reports.py
+core/reputation.py
+core/reputation_effects.py
+core/reputation_hooks.py
 core/salary.py
 core/session.py
 core/stores.py
@@ -65,6 +69,7 @@ core/routes/laws.py
 core/routes/locations.py
 core/routes/memories.py
 core/routes/proposals.py
+core/routes/reputation.py
 core/routes/sessions.py
 core/routes/settings.py
 core/routes/status.py
@@ -90,6 +95,7 @@ tests/test_characters.py
 tests/test_cli.py
 tests/test_comfyui_client.py
 tests/test_context_budget.py
+tests/test_context_builder.py
 tests/test_context_dedup.py
 tests/test_council_expansion.py
 tests/test_council_session.py
@@ -121,6 +127,9 @@ tests/test_prompt_builder.py
 tests/test_proposals.py
 tests/test_registry.py
 tests/test_reports.py
+tests/test_reputation.py
+tests/test_reputation_effects.py
+tests/test_reputation_hooks.py
 tests/test_rolling_summary.py
 tests/test_salary.py
 tests/test_self_persona_skip.py
@@ -130,6 +139,7 @@ tests/test_story.py
 tests/test_style_preset_manager.py
 tests/test_taxation.py
 tests/test_template_assignments.py
+tests/test_threadsafe_ids.py
 tests/test_treasury.py
 tests/test_utils.py
 tests/test_voting.py

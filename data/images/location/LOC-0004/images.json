@@ -20,5 +20,27 @@
       "seed": 1679446933,
       "member_name": ""
     }
+  },
+  {
+    "id": "IMG-0035",
+    "entity_type": "location",
+    "entity_id": "LOC-0004",
+    "filename": "img_0004.png",
+    "original_filename": "ComfyUI_temp_jnopx_00001_.png",
+    "prompt": "A stunning architectural photograph of a modern dark gray square-shaped house, the tallest building in the neighborhood, with a Black Jaguar 2021 F-Type and a black 2024 Harley-Davidson Breakout parked in the driveway, minimalist design with white and black accents, golden hour lighting casting long shadows, view of a nearby municipal building and the ocean in the distance, cinematic composition, hyper-detailed, photorealistic, 8K resolution",
+    "negative_prompt": "cartoon, anime, distorted perspective, cluttered, ugly, dilapidated, overexposed, flat lighting, blurry, low quality, jpeg artifacts, text, watermark, signature, people, cars other than specified, bright primary colors, traditional architecture",
+    "is_primary": false,
+    "file_size": 1817285,
+    "width": 512,
+    "height": 512,
+    "template_id": "TPL-0002",
+    "generation_job_id": "GEN-0001",
+    "created_at": "2026-04-23T00:56:12.916887+00:00",
+    "metadata": {
+      "prompt_mode": "system",
+      "style_preset": "",
+      "seed": 1453685722,
+      "member_name": ""
+    }
   }
 ]

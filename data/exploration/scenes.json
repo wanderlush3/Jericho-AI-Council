@@ -1,14 +1,5 @@
 [
   {
-    "scene_id": "SCN-3ea4e273",
-    "location_id": "LOC-0004",
-    "image_id": "IMG-0004",
-    "scene_type": "overview",
-    "description": "Scene generated via Look Around",
-    "generated_at": "2026-04-10T20:44:30.225194+00:00",
-    "metadata": {}
-  },
-  {
     "scene_id": "SCN-0d445c85",
     "location_id": "LOC-0003",
     "image_id": "IMG-0005",
@@ -51,6 +42,15 @@
     "scene_type": "overview",
     "description": "Scene generated via Look Around",
     "generated_at": "2026-04-12T13:09:44.348563+00:00",
+    "metadata": {}
+  },
+  {
+    "scene_id": "SCN-d0c49c71",
+    "location_id": "LOC-0004",
+    "image_id": "IMG-0035",
+    "scene_type": "overview",
+    "description": "Scene generated via Look Around",
+    "generated_at": "2026-04-23T00:56:14.399949+00:00",
     "metadata": {}
   }
 ]

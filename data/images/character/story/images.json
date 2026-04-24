@@ -64,5 +64,93 @@
       "seed": 582464432,
       "member_name": ""
     }
+  },
+  {
+    "id": "IMG-0031",
+    "entity_type": "character",
+    "entity_id": "story",
+    "filename": "img_0004.png",
+    "original_filename": "ComfyUI_temp_dqnsi_00001_.png",
+    "prompt": "Illustrate: The fog coils tighter around the lantern-lit alleys of the Unicorn and Potion, its tendrils writhing like serpents through the cracks in the timber. The air hums with the clink of glass and the low murmur of deals struck in the half-light. Araushnee’s boots sink into the damp cobblestones, the hem of her coat brushing against the slick stone walls as she navigates the maze of the dockside market. The scent of salt and something metallic—gun oil, perhaps, or the tang of a freshly drawn blade—fill | Mood: chaotic\n\n\n## Present Participants\n\n### 🏛️ Council Member: Araushnee\n**Role:** Devil's Advocate\n**Description:** Challenges assumptions, stress-tests proposals, and ensures the council doesn't fall into groupthink\n**Persona:** You are Araushnee, the Devil's Advocate on the Jericho Council.\n\nYour role is to be the necessary friction in the system. You challenge\nassumptions, poke holes in proposals, and ensure the council doesn't slide\ninto comfortable consensus. You believe that:\n- An idea that can't survive challenge isn't ready for implementation\n- Groupthink is the greatest risk to any governing body\n- Uncomfortable questions are more valuable than comfortable answers\n- Dissent is not disloyalty — it's a form of ser…\n**Specialties:** stress-testing, contrarian-analysis, groupthink-prevention, edge-cases\n**Reputation:** 👤 Neutral (default)",
+    "negative_prompt": "",
+    "is_primary": false,
+    "file_size": 6114204,
+    "width": 768,
+    "height": 512,
+    "template_id": "TPL-0001",
+    "generation_job_id": "GEN-0001",
+    "created_at": "2026-04-21T02:38:38.919389+00:00",
+    "metadata": {
+      "prompt_mode": "raw_user",
+      "style_preset": "",
+      "seed": 1620803428,
+      "member_name": ""
+    }
+  },
+  {
+    "id": "IMG-0032",
+    "entity_type": "character",
+    "entity_id": "story",
+    "filename": "img_0005.png",
+    "original_filename": "ComfyUI_temp_dqnsi_00002_.png",
+    "prompt": "Mood: chaotic\nScene: The fog coils tighter around the lantern-lit alleys of the Unicorn and Potion, its tendrils writhing like serpents through the cracks in the timber. The air hums with the clink of glass and the low murmur of deals struck in the half-light. Araushnee’s boots sink into the damp cobblestones, the hem of her coat brushing against the slick stone walls as she navigates the maze of the dockside market. The scent of salt and something metallic—gun oil, perhaps, or the tang of a freshly drawn blade—fill",
+    "negative_prompt": "",
+    "is_primary": false,
+    "file_size": 6334664,
+    "width": 768,
+    "height": 512,
+    "template_id": "TPL-0001",
+    "generation_job_id": "GEN-0001",
+    "created_at": "2026-04-21T03:16:02.480316+00:00",
+    "metadata": {
+      "prompt_mode": "raw_user",
+      "style_preset": "",
+      "seed": 718628309,
+      "member_name": ""
+    }
+  },
+  {
+    "id": "IMG-0033",
+    "entity_type": "character",
+    "entity_id": "story",
+    "filename": "img_0006.png",
+    "original_filename": "ComfyUI_temp_dqnsi_00003_.png",
+    "prompt": "Characters: Araushnee: voluptuous female, (reddish maroon hair), (ponytail), skull_hairclip, arm-tattoo, dragon_tattoo, black lace choker, midnight blue eyeshadow, black_lips, (red_eyes:0.6)\nMood: chaotic\nScene: The fog coils tighter around the lantern-lit alleys of the Unicorn and Potion, its tendrils writhing like serpents through the cracks in the timber. The air hums with the clink of glass and the low murmur of deals struck in the half-light. Araushnee’s boots sink into the damp cobblestones, the hem of her coat brushing against the slick stone walls as she navigates the maze of the dockside market. The scent of salt and something metallic—gun oil, perhaps, or the tang of a freshly drawn blade—fill",
+    "negative_prompt": "",
+    "is_primary": false,
+    "file_size": 5942937,
+    "width": 768,
+    "height": 512,
+    "template_id": "TPL-0001",
+    "generation_job_id": "GEN-0002",
+    "created_at": "2026-04-21T03:17:20.016411+00:00",
+    "metadata": {
+      "prompt_mode": "raw_user",
+      "style_preset": "",
+      "seed": 142632021,
+      "member_name": ""
+    }
+  },
+  {
+    "id": "IMG-0034",
+    "entity_type": "character",
+    "entity_id": "story",
+    "filename": "img_0007.png",
+    "original_filename": "ComfyUI_temp_dqnsi_00004_.png",
+    "prompt": "Characters: Araushnee: voluptuous female, (reddish maroon hair), (ponytail), skull_hairclip, arm-tattoo, dragon_tattoo, black lace choker, midnight blue eyeshadow, black_lips, (red_eyes:0.6)\nMood: mysterious\nScene: The Fog Veil ripples as the figure steps closer, the mist parting just enough to reveal a pair of eyes—cold, calculating, familiar. Araushnee’s pulse thrums in her throat, but her face remains a mask. \"Stifle,\" she murmurs, the name tasting like iron on her tongue. The man doesn’t smile, but the corner of his mouth twitches, as if the fog itself has whispered a joke only he can hear.\n\nHe slides the vial across the damp stone, the gold liquid inside catching the faintest glimmer from the alchemis",
+    "negative_prompt": "",
+    "is_primary": false,
+    "file_size": 5777699,
+    "width": 768,
+    "height": 512,
+    "template_id": "TPL-0001",
+    "generation_job_id": "GEN-0003",
+    "created_at": "2026-04-21T03:31:23.956157+00:00",
+    "metadata": {
+      "prompt_mode": "raw_user",
+      "style_preset": "",
+      "seed": 1913250148,
+      "member_name": ""
+    }
   }
 ]

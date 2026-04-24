@@ -1,0 +1,12 @@
+{
+  "location_id": "LOC-0001",
+  "current_focus": "exterior",
+  "explored_areas": [
+    "exterior"
+  ],
+  "exploration_depth": 1,
+  "mode": "guided",
+  "imaginative_history": [],
+  "scene_setting": "outdoor",
+  "metadata": {}
+}

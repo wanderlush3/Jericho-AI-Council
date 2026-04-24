@@ -1,0 +1,59 @@
+{
+  "story_id": "ST-0002",
+  "title": "Freedom Vol 1",
+  "synopsis": "I'm out in the lowlands, the fog wrapping around me like a shroud.",
+  "author": "Araushnee",
+  "status": "draft",
+  "chapters": [
+    {
+      "chapter_id": "CHP-0001",
+      "story_id": "ST-0002",
+      "chapter_number": 1,
+      "title": "Lowland Hustle",
+      "synopsis": "",
+      "scenes": [
+        {
+          "scene_id": "SCE-0001",
+          "chapter_id": "CHP-0001",
+          "scene_number": 1,
+          "narrative_text": "The fog coils tighter around the lantern-lit alleys of the Unicorn and Potion, its tendrils writhing like serpents through the cracks in the timber. The air hums with the clink of glass and the low murmur of deals struck in the half-light. Araushnee’s boots sink into the damp cobblestones, the hem of her coat brushing against the slick stone walls as she navigates the maze of the dockside market. The scent of salt and something metallic—gun oil, perhaps, or the tang of a freshly drawn blade—fills her nostrils. Above her, the flickering sign of the alchemist shop casts jagged shadows that dance and twist, as if the very building is alive with secrets.\n\nA figure materializes from the murk, their face obscured by a Fog Veil, the mist clinging to them like a second skin. Araushnee doesn’t flinch. She knows the game. \"You’re late,\" she says, her voice cutting through the damp air like a blade. The figure hesitates, then produces a vial of Liquid Luck, its gold shimmering faintly in the dim light. Araushnee’s fingers twitch, but she doesn’t reach for it. Not yet. The fog presses in, thick and suffocating, as if the lowlands themselves are holding their breath, waiting for the next move in this silent, deadly dance.",
+          "image_id": "IMG-0033",
+          "prompt_used": "",
+          "characters": [],
+          "location_id": "",
+          "mood": "chaotic",
+          "created_at": "2026-04-21T02:28:42.988157+00:00",
+          "metadata": {}
+        },
+        {
+          "scene_id": "SCE-0002",
+          "chapter_id": "CHP-0001",
+          "scene_number": 2,
+          "narrative_text": "The Fog Veil ripples as the figure steps closer, the mist parting just enough to reveal a pair of eyes—cold, calculating, familiar. Araushnee’s pulse thrums in her throat, but her face remains a mask. \"Stifle,\" she murmurs, the name tasting like iron on her tongue. The man doesn’t smile, but the corner of his mouth twitches, as if the fog itself has whispered a joke only he can hear.\n\nHe slides the vial across the damp stone, the gold liquid inside catching the faintest glimmer from the alchemist’s sign. The liquid sloshes, sluggish and thick, like molten desire. Araushnee’s fingers hover just above it, her shadow stretching long and distorted across the cobblestones. The fog coils tighter around Stifle’s shoulders, but his stance doesn’t waver. He knows she won’t take it—not yet. Not until she’s sure of the cost. The lowlands hold their breath, the lanterns guttering as if the very light is afraid to witness what comes next.",
+          "image_id": "IMG-0034",
+          "prompt_used": "",
+          "characters": [],
+          "location_id": "",
+          "mood": "mysterious",
+          "created_at": "2026-04-21T03:21:28.327263+00:00",
+          "metadata": {}
+        }
+      ],
+      "created_at": "2026-04-21T02:27:44.436387+00:00",
+      "metadata": {}
+    }
+  ],
+  "entity_refs": {},
+  "style_preset_key": "",
+  "template_id": "",
+  "created_at": "2026-04-21T02:27:06.710502+00:00",
+  "updated_at": "2026-04-21T03:31:23.958156+00:00",
+  "metadata": {
+    "participants": [
+      {
+        "id": "araushnee",
+        "type": "council"
+      }
+    ]
+  }
+}

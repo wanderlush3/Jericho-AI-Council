@@ -148,15 +148,37 @@ EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"          # Sentence-transformer model
 EMBEDDING_SIMILARITY_WEIGHT = 0.7                   # Weight for embedding score in hybrid mode
 EMBEDDING_JACCARD_WEIGHT = 0.3                      # Weight for Jaccard fallback in hybrid mode
 
+# Environment variable names for runtime Settings UI overrides
+EMBEDDING_MODEL_NAME_ENV = "JERICHO_EMBEDDING_MODEL_NAME"
+EMBEDDING_SIMILARITY_WEIGHT_ENV = "JERICHO_EMBEDDING_SIMILARITY_WEIGHT"
+EMBEDDING_JACCARD_WEIGHT_ENV = "JERICHO_EMBEDDING_JACCARD_WEIGHT"
+EMBEDDING_MODE_ENV = "JERICHO_EMBEDDING_MODE"       # "hybrid" or "keyword_only"
+
+# Selectable embedding models (shown in Settings dropdown)
+EMBEDDING_MODEL_OPTIONS = (
+    "all-MiniLM-L6-v2",          # Fast, 80MB, good general-purpose
+    "all-mpnet-base-v2",          # Best quality, 420MB, slower
+    "paraphrase-MiniLM-L6-v2",   # Good paraphrase detection
+)
+
 # ─── Memory Decay Settings ───────────────────────────────────
 MEMORY_DECAY_HALF_LIFE_DAYS = 30       # Days until memory freshness decays to 50%
 MEMORY_DECAY_MIN_FACTOR = 0.1          # Floor — memories never decay below 10% weight
 MEMORY_DECAY_ENABLED = True            # Global toggle for time decay
 
+# Environment variable names for runtime Settings UI overrides
+MEMORY_DECAY_ENABLED_ENV = "JERICHO_MEMORY_DECAY_ENABLED"
+MEMORY_DECAY_HALF_LIFE_ENV = "JERICHO_MEMORY_DECAY_HALF_LIFE"
+MEMORY_DECAY_MIN_FACTOR_ENV = "JERICHO_MEMORY_DECAY_MIN_FACTOR"
+
 # ─── Memory Summarization Settings ────────────────────────────
 MEMORY_SUMMARIZATION_SESSION_THRESHOLD = 6   # Summarize after this many unique sessions
 MEMORY_SUMMARIZATION_KEEP_RECENT = 3         # Always keep this many recent sessions intact
 MEMORY_SUMMARIZATION_ENABLED = True          # Global toggle
+
+# Environment variable names for runtime overrides
+MEMORY_SUMMARIZATION_ENABLED_ENV = "JERICHO_MEMORY_SUMMARIZATION_ENABLED"
+MEMORY_SUMMARIZATION_THRESHOLD_ENV = "JERICHO_MEMORY_SUMMARIZATION_THRESHOLD"
 
 # Summarization LLM: provider & model (user picks in Settings UI)
 # Environment variable names for summarization model selection
@@ -184,8 +206,16 @@ SUMMARIZATION_LMSTUDIO_MODELS = (
 )
 
 # ─── Contested Memory Settings ────────────────────────────────
+# Probability of 3%: with 9 council members × ~8 events/session ≈ 2
+# contested memories per session.  Low enough to preserve agent
+# cognitive integrity and keep prompt bloat minimal, while still
+# producing rare, meaningful narrative divergence.
 CONTESTED_MEMORY_ENABLED = True        # Allow agents to record divergent recollections
-CONTESTED_MEMORY_PROBABILITY = 0.05    # 5% chance — rare but possible
+CONTESTED_MEMORY_PROBABILITY = 0.03    # 3% chance — rare and meaningful
+
+# Environment variable names for runtime overrides
+CONTESTED_MEMORY_ENABLED_ENV = "JERICHO_CONTESTED_MEMORY_ENABLED"
+CONTESTED_MEMORY_PROBABILITY_ENV = "JERICHO_CONTESTED_MEMORY_PROBABILITY"
 
 # ─── Proposal Settings ─────────────────────────────────────────
 PROPOSAL_STATUSES = ("draft", "open", "open_to_review", "under_review", "decided", "withdrawn")
@@ -334,6 +364,10 @@ SALARY_CHARACTER_AMOUNT = 100          # Gold Obelisk per character
 # ─── Narrative Engine Settings ───────────────────────────────
 NARRATIVE_MAX_BULLETINS = 10               # Max bulletins returned per request
 NARRATIVE_MAX_AGE_DAYS = 30                # Only consider events within this window
+
+# Environment variable names for runtime Settings UI overrides
+NARRATIVE_MAX_BULLETINS_ENV = "JERICHO_NARRATIVE_MAX_BULLETINS"
+NARRATIVE_MAX_AGE_DAYS_ENV = "JERICHO_NARRATIVE_MAX_AGE_DAYS"
 
 # ─── Context Budget Settings (F-057) ─────────────────────────
 DEFAULT_CONTEXT_BUDGET_TOKENS = 32768      # Default target context window (tokens)
