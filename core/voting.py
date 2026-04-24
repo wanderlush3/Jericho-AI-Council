@@ -515,37 +515,55 @@ def build_vote_prompt(
     )
 
 
-def parse_vote_response(content: str) -> tuple[str, str]:
+def parse_vote_response(content: str) -> tuple[str, str, bool]:
     """Parse a structured vote response from an LLM.
 
-    Expects the response to contain ``VOTE: for|against|abstain``
-    followed by reasoning text.
+    Uses *last-match* semantics: if the LLM echoes the prompt options
+    and then states its actual vote, the final ``VOTE:`` tag wins.
 
     Args:
         content: Raw LLM response text.
 
     Returns:
-        Tuple of ``(choice, reason)`` where choice is one of
-        ``"for"``, ``"against"``, or ``"abstain"``.
+        Tuple of ``(choice, reason, confident)`` where:
+        - *choice* is one of ``"for"``, ``"against"``, or ``"abstain"``
+        - *reason* is the extracted reasoning text
+        - *confident* is ``True`` when a ``VOTE:`` tag was found,
+          ``False`` when defaulting to ``"abstain"``
     """
     import re
 
-    choice = "abstain"  # default
-    reason = content
-    content_lower = content.lower()
-
-    if "vote: for" in content_lower or "vote:for" in content_lower:
-        choice = "for"
-    elif "vote: against" in content_lower or "vote:against" in content_lower:
-        choice = "against"
-    elif "vote: abstain" in content_lower or "vote:abstain" in content_lower:
-        choice = "abstain"
-
-    # Extract reason (everything after the VOTE: line)
-    reason_match = re.split(
-        r"VOTE:\s*\w+\s*\n?", content, flags=re.IGNORECASE,
+    # Find ALL occurrences of "VOTE: <option>" (case-insensitive).
+    # This handles prompt echoes — the *last* occurrence is the LLM's
+    # actual decision because models typically reason first, then conclude.
+    _VOTE_TAG_RE = re.compile(
+        r"\bVOTE\s*:\s*(for|against|abstain)\b", re.IGNORECASE,
     )
-    if len(reason_match) > 1:
-        reason = reason_match[-1].strip()
+    matches = list(_VOTE_TAG_RE.finditer(content))
 
-    return choice, reason
+    if matches:
+        # Use the LAST match — that's the LLM's actual decision
+        last_match = matches[-1]
+        choice = last_match.group(1).lower()
+
+        # Gather reasoning from BOTH sides of the tag.
+        # "pre" = everything before the tag, "post" = everything after.
+        pre_text = content[:last_match.start()].strip()
+        post_text = content[last_match.end():].strip()
+
+        # Prefer whichever side has more substantial content.
+        # If both sides have text, join them; a common pattern is
+        # reasoning before + optional elaboration after.
+        if pre_text and post_text:
+            reason = f"{pre_text}\n\n{post_text}".strip()
+        elif post_text:
+            reason = post_text
+        elif pre_text:
+            reason = pre_text
+        else:
+            reason = ""
+
+        return choice, reason, True
+
+    # No VOTE: tag found — default to abstain with full content as reason
+    return "abstain", content.strip(), False

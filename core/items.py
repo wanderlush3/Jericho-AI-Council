@@ -11,6 +11,7 @@ Mirrors the structure and patterns of ``core.locations``.
 
 from __future__ import annotations
 
+import logging
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -27,6 +28,9 @@ from config.settings import (
     ITEM_TIERS,
 )
 from core.utils import atomic_write, make_id_lock
+
+
+log = logging.getLogger(__name__)
 
 # Valid owner types for owned_by entries
 OWNER_TYPES = ("user", "character", "council_member")
@@ -409,6 +413,7 @@ class ItemManager:
                 data = json.loads(path.read_text(encoding="utf-8"))
                 item = Item.from_dict(data)
             except Exception:
+                log.debug("items.list_items: failed data", exc_info=True)
                 continue  # skip corrupt files
 
             if status and item.status != status:

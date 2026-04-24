@@ -472,6 +472,7 @@ class ReputationManager:
                     except (json.JSONDecodeError, KeyError):
                         continue
             except Exception:
+                log.debug("reputation._next_id: failed data", exc_info=True)
                 continue
         return f"REP-{max_num + 1:06d}"
 

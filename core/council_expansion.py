@@ -94,6 +94,7 @@ class MemberSpec:
     vote_weight: float = 1.0
     specialties: list[str] = field(default_factory=list)
     system_prompt: str = ""
+    physical_description: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -110,6 +111,7 @@ class MemberSpec:
             vote_weight=float(data.get("vote_weight", 1.0)),
             specialties=list(data.get("specialties", [])),
             system_prompt=data.get("system_prompt", ""),
+            physical_description=data.get("physical_description", ""),
         )
 
     @classmethod
@@ -125,6 +127,7 @@ class MemberSpec:
         vote_weight: float = 1.0,
         specialties: list[str] | None = None,
         system_prompt: str = "",
+        physical_description: str = "",
     ) -> MemberSpec:
         """Factory with validation."""
         errors: list[str] = []
@@ -159,6 +162,7 @@ class MemberSpec:
             vote_weight=vote_weight,
             specialties=specialties or [],
             system_prompt=system_prompt.strip(),
+            physical_description=physical_description.strip(),
         )
 
     def to_yaml(self) -> str:
@@ -176,6 +180,8 @@ class MemberSpec:
         if self.specialties:
             data["specialties"] = list(self.specialties)
         data["system_prompt"] = self.system_prompt
+        if self.physical_description:
+            data["physical_description"] = self.physical_description
         header = f"# Council Member: {self.name} — {self.role}\n"
         return header + yaml.dump(
             data,

@@ -237,3 +237,34 @@ def on_session_participated(
                 )
     except Exception:
         log.debug("reputation_hooks.on_session_participated failed", exc_info=True)
+
+
+# ── Purchase Made ────────────────────────────────────────────
+
+
+def on_purchase(
+    buyer_entity_id: str,
+    item_name: str,
+    store_name: str,
+    price_gold: int = 0,
+) -> None:
+    """Record a reputation event when a store purchase is completed.
+
+    Args:
+        buyer_entity_id: Entity ID of the buyer (e.g. "member:Sage").
+        item_name: Name of the purchased item.
+        store_name: Name of the store.
+        price_gold: Gold amount paid (for description only).
+    """
+    if not buyer_entity_id:
+        return
+    try:
+        mgr = _get_mgr()
+        mgr.record_event(
+            buyer_entity_id,
+            "purchase_made",
+            reason=f"Purchased {item_name} from {store_name} for {price_gold}g",
+            source_id=store_name,
+        )
+    except Exception:
+        log.debug("reputation_hooks.on_purchase failed", exc_info=True)

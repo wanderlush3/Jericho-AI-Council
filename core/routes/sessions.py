@@ -4,6 +4,7 @@ Jericho — Sessions Routes
 
 from __future__ import annotations
 
+import logging
 
 import json as json_module
 from typing import Any
@@ -18,6 +19,9 @@ from core.manager_cache import (
 )
 
 from core.routes._helpers import _make_discussion_manager
+
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 

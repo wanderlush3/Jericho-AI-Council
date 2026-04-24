@@ -327,5 +327,48 @@ def _create_gift_chat(gift: "GiftRecord") -> dict[str, Any]:
     return record
 
 
+# ── Gift History (F-072) ──────────────────────────────────
+
+
+@router.get("/api/gifts/history")
+def api_gifts_history() -> list[dict[str, Any]]:
+    """Return a reverse-chronological list of all gift records.
+
+    Reads the ``H-GIFT-*.json`` chat records created by ``_create_gift_chat``
+    and extracts the gift metadata for the frontend gift history view.
+    """
+    import json as json_mod
+    from config.settings import CONVERSATIONS_DIR
+
+    if not CONVERSATIONS_DIR.exists():
+        return []
+
+    records: list[dict[str, Any]] = []
+    for path in sorted(CONVERSATIONS_DIR.glob("H-GIFT-*.json"), reverse=True):
+        try:
+            data = json_mod.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            log.debug("Failed to read gift chat %s", path, exc_info=True)
+            continue
+
+        meta = data.get("metadata", {})
+        if not meta.get("gift"):
+            continue
+
+        records.append({
+            "chat_id": data.get("chat_id", ""),
+            "item_id": meta.get("item_id", ""),
+            "item_name": data.get("topic", "").replace("Gift of ", "").split(" from ")[0],
+            "from_owner": meta.get("from_owner", {}),
+            "to_owner": meta.get("to_owner", {}),
+            "message": (data.get("messages", [{}])[0].get("content", "")
+                        if data.get("messages") else ""),
+            "timestamp": data.get("created_at", ""),
+            "summary": data.get("summary", ""),
+        })
+
+    return records
+
+
 # ── Stores ─────────────────────────────────────────────────
 

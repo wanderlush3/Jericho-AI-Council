@@ -11,6 +11,7 @@ is credited to the government treasury account.
 
 from __future__ import annotations
 
+import logging
 import json
 import math
 from dataclasses import asdict, dataclass, field
@@ -27,6 +28,9 @@ from config.settings import (
 )
 from core.utils import atomic_write
 
+
+
+log = logging.getLogger(__name__)
 
 # ─── Exceptions ────────────────────────────────────────────────
 
@@ -446,4 +450,5 @@ class TaxationManager:
                 f"enabled={policy.enabled})"
             )
         except Exception:
+            log.debug("taxation.__repr__: failed policy", exc_info=True)
             return "TaxationManager()"

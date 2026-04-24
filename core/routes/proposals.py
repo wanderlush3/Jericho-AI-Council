@@ -543,12 +543,31 @@ async def api_proposal_vote(proposal_id: str) -> dict[str, Any]:
     except DiscussionNotFoundError:
         pass
 
-    # Open voting
+    # Open voting — check for existing closed records
     try:
         engine.open_voting(proposal_id)
     except VotingStateError:
-        # Already exists - that's fine for re-votes
-        pass
+        # Already exists — check if it's closed (re-vote attempt)
+        existing_record = engine.get(proposal_id)
+        if existing_record.status == "closed":
+            # Return the existing results instead of silently failing
+            existing_tally = engine.tally(proposal_id)
+            return {
+                "proposal": proposal.to_dict(),
+                "vote_record": existing_record.to_dict(),
+                "tally": existing_tally.to_dict(),
+                "individual_votes": [
+                    {
+                        "voter": v.voter,
+                        "choice": v.choice,
+                        "reason": v.reason,
+                        "weight": v.weight,
+                    }
+                    for v in existing_record.votes
+                ],
+                "reused_existing": True,
+            }
+        # Otherwise it's open — proceed to cast votes
 
     # Have each council member vote
     members = registry.list_members()
@@ -573,18 +592,18 @@ async def api_proposal_vote(proposal_id: str) -> dict[str, Any]:
 
         messages = [ChatMessage(role="user", content=vote_prompt)]
 
+        # F-071: Apply reputation vote weight modifier
+        from core.reputation_effects import get_vote_weight_modifier, get_entity_tier
+        voter_tier = get_entity_tier(f"member:{member.name}")
+        rep_modifier = get_vote_weight_modifier(voter_tier)
+        adjusted_weight = round(member.vote_weight * rep_modifier, 4)
+
         try:
             response = await client.chat(member, messages)
             content = response.content or ""
 
-            # F-064: Use extracted response parser
-            choice, reason = parse_vote_response(content)
-
-            # F-071: Apply reputation vote weight modifier
-            from core.reputation_effects import get_vote_weight_modifier, get_entity_tier
-            voter_tier = get_entity_tier(f"member:{member.name}")
-            rep_modifier = get_vote_weight_modifier(voter_tier)
-            adjusted_weight = round(member.vote_weight * rep_modifier, 4)
+            # F-064/F-072: Use extracted response parser (3-tuple)
+            choice, reason, confident = parse_vote_response(content)
 
             vote = Vote.create(
                 voter=member.name,
@@ -598,18 +617,36 @@ async def api_proposal_vote(proposal_id: str) -> dict[str, Any]:
                 from core.reputation_hooks import on_vote_cast
                 on_vote_cast(member.name, proposal_id, choice)
             except Exception:
-                log.debug("Failed to record automated proposal chat message", exc_info=True)
+                log.debug("Failed to cast vote for %s", member.name, exc_info=True)
 
             vote_results.append({
                 "voter": member.name,
                 "choice": choice,
                 "reason": reason,
+                "weight": adjusted_weight,
+                "parse_confident": confident,
             })
         except Exception as exc:
+            # API error: cast as abstain so quorum/tally stay consistent
+            error_reason = f"Error: {str(exc)[:100]}"
+            try:
+                error_vote = Vote.create(
+                    voter=member.name,
+                    choice="abstain",
+                    reason=error_reason,
+                    weight=adjusted_weight,
+                )
+                engine.cast_vote(proposal_id, error_vote)
+            except Exception:
+                log.debug("Failed to cast error-abstain for %s", member.name, exc_info=True)
+
             vote_results.append({
                 "voter": member.name,
                 "choice": "abstain",
-                "reason": f"Error: {str(exc)[:100]}",
+                "reason": error_reason,
+                "weight": adjusted_weight,
+                "parse_confident": False,
+                "error": True,
             })
 
     # Close voting
@@ -770,6 +807,7 @@ def api_proposal_handoff_character(proposal_id: str) -> dict[str, Any]:
     char_desc = proposal.description  # description = character description
     char_author = proposal.author
     backstory = cd.get("backstory", "").strip()
+    physical_description = cd.get("physical_description", "").strip()
     system_prompt = cd.get("system_prompt", "").strip()
     greeting = cd.get("greeting", "").strip()
     tags = cd.get("tags", [])
@@ -799,7 +837,8 @@ def api_proposal_handoff_character(proposal_id: str) -> dict[str, Any]:
     try:
         character = cmgr.create(
             char_name, char_desc, author=char_author,
-            backstory=backstory, traits=traits,
+            backstory=backstory, physical_description=physical_description,
+            traits=traits,
             system_prompt=system_prompt, greeting=greeting,
             example_messages=example_messages or None,
             tags=tags or None,
