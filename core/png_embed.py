@@ -14,6 +14,7 @@ No external dependencies beyond the standard library.
 
 from __future__ import annotations
 
+import logging
 import base64
 import json
 import struct
@@ -22,6 +23,9 @@ from typing import Any
 
 from core.characters import CharacterTemplate
 
+
+
+log = logging.getLogger(__name__)
 
 # ─── PNG Constants ─────────────────────────────────────────────
 
@@ -208,6 +212,7 @@ def extract_character_from_png(png_bytes: bytes) -> dict[str, Any] | None:
                 raw = base64.b64decode(text)
                 return json.loads(raw.decode("utf-8"))
             except Exception:
+                log.debug("png_embed: failed raw", exc_info=True)
                 return None
 
     return None

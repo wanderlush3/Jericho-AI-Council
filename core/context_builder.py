@@ -105,6 +105,7 @@ def build_participant_context(
                 m.name.lower(): m for m in registry.list_members()
             }
         except Exception:
+            log.debug("context_builder: failed registry", exc_info=True)
             members_map = {}
 
         # Memory influence engine (may not be available)
@@ -201,6 +202,7 @@ def build_participant_context(
         try:
             cmgr = get_character_manager()
         except Exception:
+            log.debug("context_builder: failed cmgr", exc_info=True)
             cmgr = None
 
         for char_id in character_ids:
@@ -212,6 +214,7 @@ def build_participant_context(
             try:
                 char = cmgr.get(char_id)
             except Exception:
+                log.debug("context_builder: failed char", exc_info=True)
                 parts.append(f"### 🎭 Character: {char_id}")
                 parts.append("*(Character not found)*\n")
                 continue

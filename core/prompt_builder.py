@@ -678,6 +678,8 @@ def build_entity_context(
                 f"Entity: Character — {char.name}",
                 f"Description: {char.description}",
             ]
+            if char.physical_description:
+                lines.append(f"Physical Appearance: {char.physical_description}")
             if char.backstory:
                 lines.append(f"Backstory: {char.backstory}")
             if char.traits:
@@ -778,6 +780,8 @@ def build_entity_context(
                 f"Role: {member.role}",
                 f"Description: {member.description}",
             ]
+            if member.physical_description:
+                lines.append(f"Physical Appearance: {member.physical_description}")
             if member.specialties:
                 lines.append(f"Specialties: {', '.join(member.specialties)}")
             return "\n".join(lines)

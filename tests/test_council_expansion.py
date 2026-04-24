@@ -212,6 +212,38 @@ class TestMemberSpec:
                 model="m", system_prompt="p",
             )
 
+    def test_physical_description_field(self) -> None:
+        s = MemberSpec(
+            name="Nova",
+            role="Innovation",
+            description="New ideas",
+            api_provider="openrouter",
+            model="test-model",
+            system_prompt="You are Nova.",
+            physical_description="Tall with silver hair",
+        )
+        assert s.physical_description == "Tall with silver hair"
+
+    def test_physical_description_default_empty(self) -> None:
+        s = _make_spec()
+        assert s.physical_description == ""
+
+    def test_physical_description_roundtrip(self) -> None:
+        s = _make_spec(physical_description="  Bronze skin and green eyes  ")
+        restored = MemberSpec.from_dict(s.to_dict())
+        assert restored.physical_description == "Bronze skin and green eyes"
+
+    def test_physical_description_in_yaml(self) -> None:
+        s = _make_spec(physical_description="Short with fiery red hair")
+        yaml_str = s.to_yaml()
+        parsed = yaml.safe_load(yaml_str.split("\n", 1)[1])
+        assert parsed["physical_description"] == "Short with fiery red hair"
+
+    def test_physical_description_absent_from_yaml_when_empty(self) -> None:
+        s = _make_spec()
+        yaml_str = s.to_yaml()
+        assert "physical_description" not in yaml_str
+
 
 # ─── TestExpansionRecord ──────────────────────────────────────
 

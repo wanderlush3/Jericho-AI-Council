@@ -274,7 +274,7 @@ async function loadComfyUISettings() {
     let templates = [];
     let presets = [];
     let defaultStyle = '';
-    let templateAssignments = { character: '', location: '', item: '', store: '' };
+    let templateAssignments = { character: '', location: '', item: '', store: '', story: '', explore: '' };
 
     try {
         const [cfg, tpls, prsts, ds, assigns] = await Promise.all([
@@ -385,6 +385,8 @@ async function loadComfyUISettings() {
                         <option value="location">Location</option>
                         <option value="item">Item</option>
                         <option value="store">Store</option>
+                        <option value="story">Story</option>
+                        <option value="explore">Explore</option>
                         <option value="council_member">Council Member</option>
                     </select>
                 </div>
@@ -491,6 +493,8 @@ function _renderAssignmentCards(templates, assignments) {
         { key: 'location', label: 'Location', icon: '🏰' },
         { key: 'item', label: 'Item', icon: '⚔️' },
         { key: 'store', label: 'Store', icon: '🏪' },
+        { key: 'story', label: 'Story', icon: '📖' },
+        { key: 'explore', label: 'Explore', icon: '🧭' },
     ];
 
     return entityTypes.map(et => {

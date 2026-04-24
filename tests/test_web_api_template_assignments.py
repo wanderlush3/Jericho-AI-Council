@@ -120,6 +120,7 @@ class TestGetAssignments:
         assert "location" in data
         assert "item" in data
         assert "store" in data
+        assert "explore" in data
 
     def test_initially_empty(self, client):
         resp = client.get("/api/settings/comfyui/template-assignments")
@@ -297,3 +298,40 @@ class TestTemplateTest:
         data = resp.json()
         assert data["valid"] is False
         assert "not found" in data["error"]
+
+
+# ─── TestExploreAssignment ────────────────────────────────────
+
+
+class TestExploreAssignment:
+    """Tests for explore entity type in template assignments."""
+
+    def test_save_explore_assignment(self, client):
+        resp = client.post(
+            "/api/settings/comfyui/template-assignments",
+            json={"explore": "TPL-0001"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["saved"] is True
+        assert data["assignments"]["explore"] == "TPL-0001"
+
+    def test_explore_persists(self, client):
+        client.post(
+            "/api/settings/comfyui/template-assignments",
+            json={"explore": "TPL-0002"},
+        )
+        resp = client.get("/api/settings/comfyui/template-assignments")
+        assert resp.json()["explore"] == "TPL-0002"
+
+    def test_clear_explore(self, client):
+        client.post(
+            "/api/settings/comfyui/template-assignments",
+            json={"explore": "TPL-0001"},
+        )
+        resp = client.delete(
+            "/api/settings/comfyui/template-assignments/explore"
+        )
+        assert resp.status_code == 200
+        assert resp.json()["assignments"]["explore"] == ""
+

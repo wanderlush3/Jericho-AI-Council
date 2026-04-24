@@ -143,35 +143,126 @@ class TestParseVoteResponse:
 
     def test_parse_for_vote(self):
         from core.voting import parse_vote_response
-        choice, reason = parse_vote_response("VOTE: for\nI agree with this.")
+        choice, reason, confident = parse_vote_response("VOTE: for\nI agree with this.")
         assert choice == "for"
         assert "agree" in reason
+        assert confident is True
 
     def test_parse_against_vote(self):
         from core.voting import parse_vote_response
-        choice, reason = parse_vote_response("VOTE: against\nI disagree.")
+        choice, reason, confident = parse_vote_response("VOTE: against\nI disagree.")
         assert choice == "against"
         assert "disagree" in reason
+        assert confident is True
 
     def test_parse_abstain_vote(self):
         from core.voting import parse_vote_response
-        choice, reason = parse_vote_response("VOTE: abstain\nNot sure.")
+        choice, reason, confident = parse_vote_response("VOTE: abstain\nNot sure.")
         assert choice == "abstain"
+        assert confident is True
 
     def test_default_abstain_for_unparseable(self):
         from core.voting import parse_vote_response
-        choice, reason = parse_vote_response("I have no opinion on this matter")
+        choice, reason, confident = parse_vote_response("I have no opinion on this matter")
         assert choice == "abstain"
+        assert confident is False
 
     def test_case_insensitive(self):
         from core.voting import parse_vote_response
-        choice, _ = parse_vote_response("vote: FOR\nStrongly in favor!")
+        choice, _, confident = parse_vote_response("vote: FOR\nStrongly in favor!")
         assert choice == "for"
+        assert confident is True
 
     def test_no_space_after_colon(self):
         from core.voting import parse_vote_response
-        choice, _ = parse_vote_response("VOTE:for\nYes.")
+        choice, _, confident = parse_vote_response("VOTE:for\nYes.")
         assert choice == "for"
+        assert confident is True
+
+    # ── New edge case tests (F-072) ──────────────────────────
+
+    def test_last_match_wins_over_prompt_echo(self):
+        """When LLM echoes prompt options, the LAST VOTE tag is used."""
+        from core.voting import parse_vote_response
+        text = (
+            "The options are VOTE: for, VOTE: against, VOTE: abstain.\n"
+            "After careful consideration, I choose:\n"
+            "VOTE: against\n"
+            "Because the proposal lacks sufficient detail."
+        )
+        choice, reason, confident = parse_vote_response(text)
+        assert choice == "against"
+        assert confident is True
+        assert "lacks sufficient detail" in reason
+
+    def test_reasoning_before_tag_preserved(self):
+        """Reasoning written BEFORE the VOTE tag is captured."""
+        from core.voting import parse_vote_response
+        text = (
+            "This proposal addresses a critical gap in our governance.\n"
+            "I believe it will strengthen the council.\n"
+            "VOTE: for"
+        )
+        choice, reason, confident = parse_vote_response(text)
+        assert choice == "for"
+        assert "critical gap" in reason
+        assert confident is True
+
+    def test_reasoning_both_sides(self):
+        """Reasoning from both before and after the VOTE tag is merged."""
+        from core.voting import parse_vote_response
+        text = (
+            "I've reviewed the proposal carefully.\n"
+            "VOTE: for\n"
+            "The economic benefits outweigh the risks."
+        )
+        choice, reason, confident = parse_vote_response(text)
+        assert choice == "for"
+        assert "reviewed the proposal" in reason
+        assert "economic benefits" in reason
+        assert confident is True
+
+    def test_multiple_tags_last_wins(self):
+        """When multiple VOTE tags appear, the last one is the decision."""
+        from core.voting import parse_vote_response
+        text = (
+            "Initially I thought VOTE: for but on reflection...\n"
+            "VOTE: against\n"
+            "The risks are too high."
+        )
+        choice, reason, confident = parse_vote_response(text)
+        assert choice == "against"
+        assert confident is True
+
+    def test_no_tag_returns_full_content_as_reason(self):
+        """When no VOTE tag is found, full content becomes the reason."""
+        from core.voting import parse_vote_response
+        text = "I think we should approve this measure."
+        choice, reason, confident = parse_vote_response(text)
+        assert choice == "abstain"
+        assert reason == text
+        assert confident is False
+
+    def test_empty_input(self):
+        """Empty input returns default abstain."""
+        from core.voting import parse_vote_response
+        choice, reason, confident = parse_vote_response("")
+        assert choice == "abstain"
+        assert confident is False
+
+    def test_vote_tag_with_extra_whitespace(self):
+        """Handles extra whitespace around the colon."""
+        from core.voting import parse_vote_response
+        choice, _, confident = parse_vote_response("VOTE :  for\nGood idea.")
+        assert choice == "for"
+        assert confident is True
+
+    def test_vote_tag_mixed_case(self):
+        """Mixed-case VOTE tag is handled."""
+        from core.voting import parse_vote_response
+        choice, _, confident = parse_vote_response("Vote: Against\nBad idea.")
+        assert choice == "against"
+        assert confident is True
 
 
 # ─── Story Chat Helpers (F-064) ──────────────────────────────

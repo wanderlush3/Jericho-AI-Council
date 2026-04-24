@@ -252,6 +252,7 @@ class EvolutionHistory:
             try:
                 char = self._characters.get(current_id)
             except Exception:
+                log.debug("evolution_history.get_version_chain: failed char", exc_info=True)
                 break  # missing intermediate version
             prev = char.metadata.get("previous_version", "")
             current_id = prev

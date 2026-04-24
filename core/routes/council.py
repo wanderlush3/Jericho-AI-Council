@@ -69,6 +69,7 @@ def api_council_list() -> list[dict[str, Any]]:
             "vote_weight": m.vote_weight,
             "specialties": m.specialties,
             "system_prompt": m.system_prompt,
+            "physical_description": m.physical_description,
         }
         if m.name.lower() in existing_avatars:
             d["avatar_url"] = f"/api/council/{m.name}/avatar"
@@ -191,6 +192,9 @@ def api_council_promote(body: dict[str, Any]) -> dict[str, Any]:
         "vote_weight": 1.0,
         "system_prompt": character.system_prompt or f"You are {character.name}, the {role} on the Jericho Council.",
     }
+    # Propagate physical_description from character if it has one
+    if hasattr(character, 'physical_description') and character.physical_description:
+        member_data["physical_description"] = character.physical_description
 
     # Write YAML to council/members/
     # Import from core.web_api so test patches (mock.patch("core.web_api.COUNCIL_MEMBERS_DIR"))
@@ -222,6 +226,72 @@ def api_council_promote(body: dict[str, Any]) -> dict[str, Any]:
         "member_file": filename,
     }
 
+@router.post("/api/council/{name}/remove")
+def api_council_remove(name: str) -> dict[str, Any]:
+    """Remove a council member and convert them back to a character.
+
+    Deletes the member's YAML profile and creates a new active
+    CharacterTemplate from the member's data.
+
+    Returns the newly created character data.
+    """
+    from core.registry import MemberNotFoundError
+    from core.characters import CharacterManager, Trait
+
+    registry = get_registry()
+    try:
+        member = registry.get(name)
+    except MemberNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Council member '{name}' not found.",
+        )
+
+    # Build a trait from the member's personality or role
+    personality = member.personality or {}
+    traits_list = personality.get("traits", [])
+    if traits_list and isinstance(traits_list, list) and len(traits_list) > 0:
+        trait_name = str(traits_list[0])
+        trait = Trait.create("personality", trait_name, f"{trait_name} — from council personality", intensity=0.7)
+    else:
+        trait = Trait.create("personality", member.role, f"Derived from council role: {member.role}", intensity=0.7)
+
+    # Create the character from the member's data
+    cmgr = get_character_manager()
+    character = cmgr.create(
+        member.name,
+        member.description,
+        author="Council",
+        backstory=f"Former council member — {member.role}.",
+        physical_description=member.physical_description or "",
+        traits=[trait],
+        system_prompt=member.system_prompt,
+        api_provider=member.api_provider,
+        model=member.model,
+    )
+    # Activate the character immediately
+    cmgr.update_status(character.id, "active")
+
+    # Delete the member's YAML file
+    source = member.source_file
+    if source and source.exists():
+        source.unlink()
+
+    # Invalidate cached registry so the member disappears
+    invalidate_registry()
+
+    return {
+        "status": "ok",
+        "character_id": character.id,
+        "name": character.name,
+        "description": character.description,
+        "system_prompt": character.system_prompt,
+        "api_provider": character.api_provider,
+        "model": character.model,
+        "physical_description": character.physical_description,
+        "message": f"{member.name} removed from council and converted to character {character.id}.",
+    }
+
 @router.get("/api/council/{name}")
 def api_council_detail(name: str) -> dict[str, Any]:
     """Get a single council member by name."""
@@ -242,6 +312,7 @@ def api_council_detail(name: str) -> dict[str, Any]:
         "vote_weight": m.vote_weight,
         "specialties": m.specialties,
         "system_prompt": m.system_prompt,
+        "physical_description": m.physical_description,
     }
     avatar_file = COUNCIL_AVATARS_DIR / f"{m.name.lower()}.png"
     if avatar_file.exists():
@@ -293,6 +364,7 @@ def api_council_update(name: str, body: dict[str, Any]) -> dict[str, Any]:
         "vote_weight": updated.vote_weight,
         "specialties": updated.specialties,
         "system_prompt": updated.system_prompt,
+        "physical_description": updated.physical_description,
     }
 
 @router.post("/api/council/{name}/avatar")
@@ -351,6 +423,7 @@ def api_council_avatar_upload_json(name: str, body: dict[str, Any]) -> dict[str,
             image_data = image_data.split(",", 1)[1]
         raw_bytes = base64.b64decode(image_data)
     except Exception:
+        log.debug("council: failed if "," in image_data:", exc_info=True)
         raise HTTPException(status_code=400, detail="Invalid base64 image data.")
 
     # Ensure avatars directory exists

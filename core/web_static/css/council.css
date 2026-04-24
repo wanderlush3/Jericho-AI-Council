@@ -183,3 +183,37 @@
     color: var(--text-secondary);
 }
 
+/* ─── Council Save Bar ───────────────────────────────────────── */
+.council-save-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+}
+
+/* ─── Remove from Council (Danger Button) ────────────────────── */
+.btn-remove-member {
+    margin-left: auto;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    font-size: 0.82rem;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-weight: 500;
+}
+
+.btn-remove-member:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #f87171;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
+}
+
+.btn-remove-member:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+

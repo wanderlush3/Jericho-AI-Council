@@ -39,7 +39,7 @@ class RegistryValidationError(ValueError):
 
 REQUIRED_FIELDS = {"name", "role", "description", "api_provider", "model", "system_prompt"}
 VALID_API_PROVIDERS = {"openrouter", "mancer", "lmstudio"}
-EDITABLE_FIELDS = {"name", "api_provider", "model", "vote_weight", "system_prompt"}
+EDITABLE_FIELDS = {"name", "api_provider", "model", "vote_weight", "system_prompt", "physical_description"}
 EDITABLE_PERSONALITY_FIELDS = {"traits", "communication_style", "decision_approach"}
 READONLY_FIELDS = {"role", "description", "specialties"}
 
@@ -57,6 +57,7 @@ class CouncilMember:
     vote_weight: float = 1.0
     specialties: list[str] = field(default_factory=list)
     system_prompt: str = ""
+    physical_description: str = ""
     source_file: Path | None = None
 
     @property
@@ -285,6 +286,7 @@ class CouncilRegistry:
             vote_weight=float(data.get("vote_weight", 1.0)),
             specialties=list(data.get("specialties", [])),
             system_prompt=data["system_prompt"],
+            physical_description=data.get("physical_description", ""),
             source_file=filepath,
         )
 

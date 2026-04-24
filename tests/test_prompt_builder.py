@@ -595,6 +595,45 @@ class TestBuildEntityContext:
         assert "Philosopher" in ctx
         assert "ethics" in ctx
 
+    def test_council_member_context_with_physical_description(self):
+        from core.registry import CouncilMember
+
+        mock_registry = MagicMock()
+        mock_registry.get.return_value = CouncilMember(
+            name="Sage",
+            role="Philosopher",
+            description="Wise and measured",
+            specialties=["ethics"],
+            physical_description="Tall with flowing silver robes and a long white beard",
+            api_provider="openrouter",
+            model="Default",
+            system_prompt="You are Sage.",
+        )
+
+        ctx = build_entity_context(
+            "council_member", "Sage", registry=mock_registry,
+        )
+        assert "Physical Appearance: Tall with flowing silver robes" in ctx
+
+    def test_council_member_context_without_physical_description(self):
+        from core.registry import CouncilMember
+
+        mock_registry = MagicMock()
+        mock_registry.get.return_value = CouncilMember(
+            name="Logic",
+            role="Analyst",
+            description="A systems thinker",
+            specialties=["systems"],
+            api_provider="openrouter",
+            model="Default",
+            system_prompt="You are Logic.",
+        )
+
+        ctx = build_entity_context(
+            "council_member", "Logic", registry=mock_registry,
+        )
+        assert "Physical Appearance" not in ctx
+
     def test_unknown_entity_type(self):
         ctx = build_entity_context("unknown_type", "X-0001")
         assert ctx == ""

@@ -26,6 +26,7 @@ Usage::
 
 from __future__ import annotations
 
+import logging
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,6 +35,9 @@ from typing import Any
 from config.settings import REPORTS_DIR, REPORT_SECTIONS
 from core.utils import atomic_write
 
+
+
+log = logging.getLogger(__name__)
 
 # ─── Exceptions ────────────────────────────────────────────────
 
@@ -237,6 +241,7 @@ class ReportGenerator:
         try:
             members = self._registry.list_members()
         except Exception:
+            log.debug("reports.council_roster_section: failed members", exc_info=True)
             return None
 
         if not members:
@@ -276,6 +281,7 @@ class ReportGenerator:
         try:
             proposals = self._proposals.list_proposals(status=status)
         except Exception:
+            log.debug("reports.proposals_section: failed proposals", exc_info=True)
             return None
 
         if not proposals:
@@ -331,6 +337,7 @@ class ReportGenerator:
         try:
             records = self._voting.list_records()
         except Exception:
+            log.debug("reports.voting_section: failed records", exc_info=True)
             return None
 
         if not records:
@@ -361,6 +368,7 @@ class ReportGenerator:
                 approval = f"{round(tally.approval_rate * 100)}%"
                 quorum = "✅" if tally.quorum_met else "❌"
             except Exception:
+                log.debug("reports.voting_section: failed tally", exc_info=True)
                 v_for = v_against = v_abstain = 0
                 approval = "—"
                 quorum = "—"
@@ -390,6 +398,7 @@ class ReportGenerator:
         try:
             characters = self._characters.list_characters(status=status)
         except Exception:
+            log.debug("reports.characters_section: failed characters", exc_info=True)
             return None
 
         if not characters:
@@ -447,6 +456,7 @@ class ReportGenerator:
         try:
             report = self._analytics.full_report()
         except Exception:
+            log.debug("reports.analytics_section: failed report", exc_info=True)
             return None
 
         ps = report.proposal_stats

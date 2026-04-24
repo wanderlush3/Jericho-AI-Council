@@ -210,6 +210,74 @@ def api_stories_delete(story_id: str) -> dict[str, Any]:
         )
     return {"status": "ok", "deleted": story_id}
 
+# ── Stories: Participants Persistence ────────────────────
+
+@router.get("/api/stories/{story_id}/participants")
+def api_stories_get_participants(story_id: str) -> dict[str, Any]:
+    """Get saved participant selections for a story."""
+    from core.story import StoryNotFoundError
+
+    smgr = get_story_manager()
+    try:
+        story = smgr.get(story_id)
+    except StoryNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Story '{story_id}' not found.",
+        )
+    return {
+        "participants": story.metadata.get("participants", []),
+    }
+
+@router.put("/api/stories/{story_id}/participants")
+def api_stories_save_participants(
+    story_id: str,
+    body: dict[str, Any],
+) -> dict[str, Any]:
+    """Save participant selections for a story.
+
+    Body: {"participants": [{"id": "sage", "type": "council"}, ...]}
+
+    Persists selections in story.metadata so they survive page reloads.
+    """
+    from core.story import StoryNotFoundError
+
+    participants = body.get("participants", [])
+    if not isinstance(participants, list):
+        raise HTTPException(
+            status_code=400,
+            detail="'participants' must be a list.",
+        )
+    if len(participants) > _PARTICIPANT_MAX:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many participants ({len(participants)}). "
+                   f"Maximum is {_PARTICIPANT_MAX}.",
+        )
+    # Validate structure
+    clean = []
+    for p in participants:
+        pid = (p.get("id") or "").strip()
+        ptype = (p.get("type") or "").strip()
+        if pid and ptype in ("council", "character"):
+            clean.append({"id": pid, "type": ptype})
+
+    smgr = get_story_manager()
+    try:
+        story = smgr.get(story_id)
+    except StoryNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Story '{story_id}' not found.",
+        )
+
+    # Merge into existing metadata (don't clobber other keys)
+    merged_metadata = dict(story.metadata)
+    merged_metadata["participants"] = clean
+    smgr.update(story_id, metadata=merged_metadata)
+
+    return {"status": "ok", "participants": clean}
+
 # ── Stories: Chapters ────────────────────────────────────
 
 @router.post("/api/stories/{story_id}/chapters")
@@ -651,32 +719,105 @@ async def api_stories_illustrate_scene(
             detail=f"Scene '{scene_id}' not found.",
         )
 
-    # Build prompt from narrative + context
+    # Build prompt from physical descriptions, location, mood, and narrative
     prompt_parts = []
-    if scene.narrative_text:
+
+    # ── Character / Council physical descriptions ──
+    char_descriptions = []
+    # From scene.characters (character IDs)
+    if scene.characters:
+        try:
+            cmgr = get_character_manager()
+            for cid in scene.characters:
+                try:
+                    char = cmgr.get(cid)
+                    if char.physical_description:
+                        char_descriptions.append(
+                            f"{char.name}: {char.physical_description}"
+                        )
+                    elif char.description:
+                        char_descriptions.append(
+                            f"{char.name}: {char.description[:200]}"
+                        )
+                except Exception:
+                    log.debug("Failed to load character %s for illustration", cid)
+        except Exception:
+            log.debug("Failed to get character manager for illustration", exc_info=True)
+
+    # From participants (council members / additional characters)
+    if participants:
+        try:
+            registry = get_registry()
+            members_map = {
+                m.name.lower(): m for m in registry.list_members()
+            }
+        except Exception:
+            log.debug("Failed to load registry for illustration", exc_info=True)
+            members_map = {}
+        try:
+            cmgr_p = get_character_manager()
+        except Exception:
+            cmgr_p = None
+
+        for p in participants:
+            pid = p.get("id", "")
+            ptype = p.get("type", "")
+            if ptype == "council":
+                member = members_map.get(pid.lower())
+                if member and member.physical_description:
+                    # Avoid duplicating if already in scene.characters
+                    if not any(pid.lower() in d.lower() for d in char_descriptions):
+                        char_descriptions.append(
+                            f"{member.name}: {member.physical_description}"
+                        )
+            elif ptype == "character" and cmgr_p:
+                try:
+                    char = cmgr_p.get(pid)
+                    if char.physical_description:
+                        label = f"{char.name}: {char.physical_description}"
+                    elif char.description:
+                        label = f"{char.name}: {char.description[:200]}"
+                    else:
+                        label = None
+                    if label and not any(pid in d for d in char_descriptions):
+                        char_descriptions.append(label)
+                except Exception:
+                    log.debug("Failed to load participant char %s", pid)
+
+    if char_descriptions:
         prompt_parts.append(
-            f"Illustrate: {scene.narrative_text[:500]}"
+            "Characters: " + " | ".join(char_descriptions)
         )
+
+    # ── Location context ──
+    if scene.location_id:
+        try:
+            loc_mgr = get_location_manager()
+            loc = loc_mgr.get(scene.location_id)
+            prompt_parts.append(
+                f"Setting: {loc.name} — {loc.description[:300]}"
+            )
+        except Exception:
+            log.debug("Failed to load location %s for illustration", scene.location_id)
+
+    # ── Mood ──
     if scene.mood:
         prompt_parts.append(f"Mood: {scene.mood}")
+
+    # ── Narrative excerpt (supporting context) ──
+    if scene.narrative_text:
+        prompt_parts.append(
+            f"Scene: {scene.narrative_text[:500]}"
+        )
     if not prompt_parts:
         prompt_parts.append(
             f"Scene from story '{story.title}', "
             f"chapter '{chapter.title or 'Untitled'}'"
         )
 
-    user_prompt = " | ".join(prompt_parts)
+    user_prompt = "\n".join(prompt_parts)
 
-    # F-043: Enrich prompt with participant context
-    # F-061: Use IMAGE_GEN profile for story illustration
-    if participants:
-        participant_context = _build_participant_context(
-            participants, profile=InjectionProfile.IMAGE_GEN,
-        )
-        if participant_context:
-            user_prompt = user_prompt + "\n\n" + participant_context
-
-    # Determine template
+    # Determine template — try "story" first, then location/character
     template_id = (body.get("template_id") or "").strip()
     if not template_id and story.template_id:
         template_id = story.template_id
@@ -689,12 +830,11 @@ async def api_stories_illustrate_scene(
             tam = TemplateAssignmentManager(
                 template_manager=WorkflowTemplateManager(),
             )
-            # Use location template if scene has a location,
-            # otherwise fall back to character
-            entity_type = (
-                "location" if scene.location_id else "character"
-            )
-            template_id = tam.get_recommended_template(entity_type)
+            # Try story-specific first, then location/character fallback
+            for et in ("story", "location" if scene.location_id else "character"):
+                template_id = tam.get_recommended_template(et)
+                if template_id:
+                    break
         except Exception:
             log.debug("Failed to determine default template for scene illustration", exc_info=True)
     if not template_id:

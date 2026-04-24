@@ -124,6 +124,10 @@ async function renderStoryDetail(storyId) {
     let story;
     try { story = await api(`/api/stories/${storyId}`); } catch (e) { showError(e.message); return; }
 
+    // Restore saved participant selections from story metadata
+    const savedParticipants = (story.metadata && story.metadata.participants) || [];
+    window._storyParticipants = savedParticipants;
+
     const statusBadge = `<span class="badge badge-${STORY_STATUS_COLORS[story.status] || 'default'}">${story.status}</span>`;
 
     const chaptersHtml = story.chapters.length ? story.chapters.map(ch => {
@@ -1075,6 +1079,7 @@ async function loadStoryParticipants() {
         const participants = await api('/api/participants/available');
         window._storyAvailableParticipants = participants;
         renderStoryParticipantList(participants);
+        updateStoryParticipantCounter();
     } catch {
         const list = document.getElementById('story-part-list');
         if (list) list.innerHTML = '<div style="color:var(--text-muted);padding:0.5rem">Failed to load participants.</div>';
@@ -1157,6 +1162,29 @@ function toggleStoryParticipant(checkbox) {
         if (label) label.classList.remove('participant-item-selected');
     }
     updateStoryParticipantCounter();
+    _debounceSaveStoryParticipants();
+}
+
+// Debounced auto-save of participant selections to story metadata
+let _storyPartSaveTimer = null;
+function _debounceSaveStoryParticipants() {
+    if (_storyPartSaveTimer) clearTimeout(_storyPartSaveTimer);
+    _storyPartSaveTimer = setTimeout(() => {
+        _saveStoryParticipants();
+    }, 800);
+}
+
+function _saveStoryParticipants() {
+    // Extract current story ID from the URL hash
+    const hash = window.location.hash.slice(1) || '';
+    const parts = hash.split('/');
+    if (parts[0] !== 'stories' || !parts[1]) return;
+    const storyId = parts[1];
+    fetch(`/api/stories/${encodeURIComponent(storyId)}/participants`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ participants: window._storyParticipants }),
+    }).catch(() => { /* non-blocking save */ });
 }
 
 function updateStoryParticipantCounter() {

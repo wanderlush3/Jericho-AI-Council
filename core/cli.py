@@ -547,6 +547,7 @@ def status() -> None:
             providers[m.api_provider] = providers.get(m.api_provider, 0) + 1
         stats["providers"] = providers
     except Exception:
+        log.debug("cli: failed registry", exc_info=True)
         stats["members"] = None
 
     # Proposals
@@ -559,6 +560,7 @@ def status() -> None:
             statuses[p.status] = statuses.get(p.status, 0) + 1
         stats["proposal_statuses"] = statuses
     except Exception:
+        log.debug("cli: failed pmgr", exc_info=True)
         stats["proposals"] = None
 
     # Vote records
@@ -571,6 +573,7 @@ def status() -> None:
             vote_statuses[r.status] = vote_statuses.get(r.status, 0) + 1
         stats["vote_statuses"] = vote_statuses
     except Exception:
+        log.debug("cli: failed engine", exc_info=True)
         stats["votes"] = None
 
     # Characters
@@ -583,6 +586,7 @@ def status() -> None:
             char_statuses[c.status] = char_statuses.get(c.status, 0) + 1
         stats["character_statuses"] = char_statuses
     except Exception:
+        log.debug("cli: failed cmgr", exc_info=True)
         stats["characters"] = None
 
     _renderer.render_status_dashboard(stats)

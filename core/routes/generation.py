@@ -67,10 +67,12 @@ def _get_pipeline():
         try:
             registry = get_registry()
         except Exception:
+            log.debug("generation: failed registry", exc_info=True)
             registry = None
         try:
             api_client = get_api_client()
         except Exception:
+            log.debug("generation: failed api_client", exc_info=True)
             api_client = None
 
         _generation_pipeline = GenerationPipeline(

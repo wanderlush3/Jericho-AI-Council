@@ -4,12 +4,16 @@ Jericho — Images Routes
 
 from __future__ import annotations
 
+import logging
 
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
 
+
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -140,6 +144,7 @@ def api_images_upload(
             image_data_str = image_data_str.split(",", 1)[1]
         raw_bytes = base64.b64decode(image_data_str)
     except Exception:
+        log.debug("images: failed if "," in image_data_str:", exc_info=True)
         raise HTTPException(status_code=400, detail="Invalid base64 image data.")
 
     if not raw_bytes:

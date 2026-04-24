@@ -4,6 +4,7 @@ Jericho — Evolutions Routes
 
 from __future__ import annotations
 
+import logging
 
 from typing import Any
 
@@ -14,6 +15,8 @@ from core.manager_cache import (
     get_proposal_manager,
     get_voting_engine,
 )
+
+log = logging.getLogger(__name__)
 
 
 router = APIRouter()

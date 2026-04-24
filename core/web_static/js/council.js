@@ -273,6 +273,12 @@ async function renderCouncilDetail(name) {
                     </div>
 
                     <div class="council-field-group">
+                        <label for="cf-physical-desc">Physical Description</label>
+                        <textarea id="cf-physical-desc" class="settings-input council-textarea" rows="3" maxlength="700" placeholder="Describe physical appearance — used to guide image generation prompts…">${escapeHtml(data.physical_description || '')}</textarea>
+                        <span class="council-field-hint">Used to guide image generation prompts for this council member</span>
+                    </div>
+
+                    <div class="council-field-group">
                         <label for="cf-prompt">System Prompt</label>
                         <textarea id="cf-prompt" class="settings-input council-textarea" rows="8">${escapeHtml(data.system_prompt)}</textarea>
                     </div>
@@ -290,6 +296,10 @@ async function renderCouncilDetail(name) {
                             💾 Save Changes
                         </button>
                         <span class="council-save-hint" id="council-save-status"></span>
+                        <button type="button" class="btn btn-danger btn-remove-member" id="council-remove-btn"
+                                onclick="event.preventDefault(); removeFromCouncil('${data.name}')">
+                            🚫 Remove from Council
+                        </button>
                     </div>
                 </form>
             </div>
@@ -365,6 +375,7 @@ async function saveCouncilMember(originalName) {
         traits: traitsArr,
         communication_style: document.getElementById('cf-comm-style').value.trim(),
         decision_approach: document.getElementById('cf-decision').value.trim(),
+        physical_description: document.getElementById('cf-physical-desc').value.trim(),
         system_prompt: document.getElementById('cf-prompt').value,
     };
 
@@ -394,6 +405,34 @@ async function saveCouncilMember(originalName) {
     } finally {
         btn.disabled = false;
         btn.textContent = '💾 Save Changes';
+    }
+}
+
+// ── Council Member Removal ───────────────────────────────────
+
+async function removeFromCouncil(memberName) {
+    if (!confirm(`Are you sure you want to remove "${memberName}" from the Council?\n\nThey will be converted into a character.`)) {
+        return;
+    }
+
+    const btn = document.getElementById('council-remove-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Removing…'; }
+
+    try {
+        const resp = await fetch(`/api/council/${encodeURIComponent(memberName)}/remove`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ detail: 'Removal failed' }));
+            throw new Error(err.detail);
+        }
+        const result = await resp.json();
+        showToast(`${result.name} removed from Council and converted to character ${result.character_id} ✅`);
+        navigateTo('council'); // back to list
+    } catch (err) {
+        showToast('Removal failed: ' + err.message, true);
+        if (btn) { btn.disabled = false; btn.textContent = '🚫 Remove from Council'; }
     }
 }
 

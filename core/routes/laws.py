@@ -4,11 +4,15 @@ Jericho — Laws Routes
 
 from __future__ import annotations
 
+import logging
 
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 

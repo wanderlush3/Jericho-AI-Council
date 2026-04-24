@@ -20,6 +20,7 @@ named ``EV-XXXX.json``.
 
 from __future__ import annotations
 
+import logging
 import json
 import re
 from dataclasses import asdict, dataclass, field
@@ -41,6 +42,8 @@ from core.memory import SharedMemory
 from core.proposals import Proposal, ProposalManager
 from core.utils import atomic_write, make_id_lock
 from core.voting import VotingEngine, Vote, VoteTally
+
+log = logging.getLogger(__name__)
 
 
 # ─── Exceptions ────────────────────────────────────────────────
@@ -711,6 +714,7 @@ class CharacterEvolution:
             try:
                 template = self._characters.remove_trait(template.id, change.field_name)
             except Exception:
+                log.debug("character_evolution._apply_change: failed template", exc_info=True)
                 pass  # trait may not exist yet
             trait_data = change.new_value if isinstance(change.new_value, dict) else {}
             trait = Trait(
@@ -1023,6 +1027,7 @@ class CharacterEvolution:
 
         # Validate council member exists
         from core.registry import CouncilRegistry, MemberNotFoundError
+
         registry = CouncilRegistry().load()
         try:
             member = registry.get(member_name)
@@ -1075,6 +1080,7 @@ class CharacterEvolution:
         try:
             proposal = self._proposals.get(proposal_id)
         except Exception:
+            log.debug("character_evolution.create_from_proposal: failed proposal", exc_info=True)
             raise EvolutionValidationError(
                 [f"Proposal '{proposal_id}' not found"]
             )

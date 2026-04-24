@@ -110,7 +110,7 @@ class TestGetAllAssignments:
 
     def test_returns_all_entity_types(self, manager):
         result = manager.get_all_assignments()
-        assert len(result) == 4
+        assert len(result) == 6
 
     def test_preserves_set_values(self, manager):
         manager.set_assignment("character", "TPL-0001")
@@ -410,24 +410,28 @@ class TestEdgeCases:
     def test_repr(self, manager):
         r = repr(manager)
         assert "TemplateAssignmentManager" in r
-        assert "0/4" in r
+        assert "0/6" in r
 
     def test_repr_after_set(self, manager):
         manager.set_assignment("character", "TPL-0001")
         r = repr(manager)
-        assert "1/4" in r
+        assert "1/6" in r
 
     def test_concurrent_entity_types(self, manager):
-        """Set all four entity types."""
+        """Set all six entity types."""
         manager.set_assignment("character", "TPL-0001")
         manager.set_assignment("location", "TPL-0002")
         manager.set_assignment("item", "TPL-0003")
         manager.set_assignment("store", "TPL-0001")
+        manager.set_assignment("story", "TPL-0003")
+        manager.set_assignment("explore", "TPL-0002")
         result = manager.get_all_assignments()
         assert result["character"] == "TPL-0001"
         assert result["location"] == "TPL-0002"
         assert result["item"] == "TPL-0003"
         assert result["store"] == "TPL-0001"
+        assert result["story"] == "TPL-0003"
+        assert result["explore"] == "TPL-0002"
 
     def test_file_path_property(self, manager, assignments_file):
         assert manager.file_path == assignments_file

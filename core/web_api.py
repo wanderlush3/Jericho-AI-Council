@@ -19,7 +19,6 @@ from __future__ import annotations
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from config.settings import WEB_STATIC_DIR
 
@@ -58,7 +57,7 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title="Jericho AI Council",
         description="Web dashboard for the Jericho AI Council governance system.",
-        version="0.9.0",
+        version="0.99",
     )
 
     # Decrypt API keys at startup so APIClient reads the real keys
