@@ -251,6 +251,30 @@ class TestApiCouncil:
         assert resp.status_code == 404
         assert "not found" in resp.json()["detail"]
 
+    def test_physical_description_in_list(self, client, members_dir):
+        """physical_description appears in GET /api/council list."""
+        # Add physical_description to Sage's YAML
+        sage_data = yaml.safe_load((members_dir / "sage.yaml").read_text(encoding="utf-8"))
+        sage_data["physical_description"] = "Tall with silver hair and calm eyes"
+        (members_dir / "sage.yaml").write_text(yaml.dump(sage_data), encoding="utf-8")
+        resp = client.get("/api/council")
+        sage = next(m for m in resp.json() if m["name"] == "Sage")
+        assert sage["physical_description"] == "Tall with silver hair and calm eyes"
+
+    def test_physical_description_in_detail(self, client, members_dir):
+        """physical_description appears in GET /api/council/{name} detail."""
+        sage_data = yaml.safe_load((members_dir / "sage.yaml").read_text(encoding="utf-8"))
+        sage_data["physical_description"] = "Short and wiry with sharp features"
+        (members_dir / "sage.yaml").write_text(yaml.dump(sage_data), encoding="utf-8")
+        resp = client.get("/api/council/Sage")
+        assert resp.status_code == 200
+        assert resp.json()["physical_description"] == "Short and wiry with sharp features"
+
+    def test_physical_description_empty_by_default(self, client):
+        """Members without physical_description should return empty string."""
+        resp = client.get("/api/council/Sage")
+        assert resp.json()["physical_description"] == ""
+
 
 # ─── Proposals Endpoints ─────────────────────────────────────
 
@@ -1241,6 +1265,27 @@ class TestApiCouncilUpdate:
         assert resp.status_code == 200
         assert resp.json()["api_provider"] == "mancer"
 
+    def test_update_physical_description(self, client, members_dir):
+        """physical_description is editable and persists to YAML."""
+        desc = "Tall elf with silver hair and glowing blue eyes"
+        resp = client.put("/api/council/Sage", json={
+            "physical_description": desc,
+        })
+        assert resp.status_code == 200
+        assert resp.json()["physical_description"] == desc
+        # Verify it persisted to YAML
+        updated = yaml.safe_load((members_dir / "sage.yaml").read_text(encoding="utf-8"))
+        assert updated["physical_description"] == desc
+
+    def test_update_physical_description_empty(self, client, members_dir):
+        """physical_description can be set to empty."""
+        # Set it first
+        client.put("/api/council/Sage", json={"physical_description": "some desc"})
+        # Clear it
+        resp = client.put("/api/council/Sage", json={"physical_description": ""})
+        assert resp.status_code == 200
+        assert resp.json()["physical_description"] == ""
+
     def test_upload_avatar(self, client, tmp_path):
         """POST base64 image data saves avatar file."""
         import base64
@@ -1788,6 +1833,9 @@ def memory_client(members_dir, proposals_dir, votes_dir, characters_dir,
     avatars_dir = tmp_path / "council_avatars"
     avatars_dir.mkdir()
 
+    char_avatars_dir = tmp_path / "character_avatars"
+    char_avatars_dir.mkdir()
+
     with (
         patch("core.web_api.WEB_STATIC_DIR", static_dir),
         patch("core.web_api.COUNCIL_MEMBERS_DIR", members_dir),
@@ -1798,6 +1846,7 @@ def memory_client(members_dir, proposals_dir, votes_dir, characters_dir,
         patch("config.settings.MEMORIES_DIR", memories_dir),
         patch("core.memory.MEMORIES_DIR", memories_dir),
         patch("config.settings.COUNCIL_AVATARS_DIR", avatars_dir),
+        patch("config.settings.CHARACTER_AVATARS_DIR", char_avatars_dir),
     ):
         app = create_app()
         yield TestClient(app)
@@ -1809,17 +1858,20 @@ class TestApiMemories:
     # ── GET /api/memories — List ──────────────────────────────
 
     def test_list_members_empty_memories(self, memory_client):
-        """GET /api/memories returns member list with zero counts when no memory files."""
+        """GET /api/memories returns member + character list with zero counts when no memory files."""
         resp = memory_client.get("/api/memories")
         assert resp.status_code == 200
         data = resp.json()
-        assert len(data) == 2  # Sage + Logic
+        # Sage + Logic (council) + Atlas (character) = 3
+        assert len(data) == 3
         names = {m["name"] for m in data}
         assert "Sage" in names
         assert "Logic" in names
+        assert "Atlas" in names
         for m in data:
             assert m["belief_count"] == 0
             assert m["event_count"] == 0
+            assert "type" in m  # F-074: type field present
 
     def test_list_members_with_beliefs(self, memory_client, memories_dir):
         """Member list reflects belief count."""
@@ -2061,6 +2113,105 @@ class TestApiMemories:
         assert "memories" in data
         assert data["memories"]["total_beliefs"] >= 1
         assert "members_with_memories" in data["memories"]
+
+
+# ─── Character Memory Endpoints (F-074) ──────────────────────
+
+
+class TestApiCharacterMemories:
+    """Tests for character memory features (F-074)."""
+
+    def test_character_appears_in_memories_list(self, memory_client):
+        """Characters appear in the memories list with type='character'."""
+        resp = memory_client.get("/api/memories")
+        assert resp.status_code == 200
+        data = resp.json()
+        char_entries = [m for m in data if m["type"] == "character"]
+        assert len(char_entries) == 1
+        atlas = char_entries[0]
+        assert atlas["name"] == "Atlas"
+        assert atlas["character_id"] == "CH-0001"
+        assert atlas["memory_key"] == "atlas_memory"
+        assert atlas["character_status"] == "active"
+
+    def test_council_members_have_type_field(self, memory_client):
+        """Council members in the memories list have type='council_member'."""
+        resp = memory_client.get("/api/memories")
+        data = resp.json()
+        council_entries = [m for m in data if m["type"] == "council_member"]
+        assert len(council_entries) == 2  # Sage + Logic
+
+    def test_character_memory_detail_by_memory_key(self, memory_client, memories_dir):
+        """GET /api/memories/atlas_memory returns character memory detail."""
+        # Write a belief for Atlas' memory
+        atlas_dir = memories_dir / "atlas_memory"
+        atlas_dir.mkdir(parents=True)
+        beliefs = [
+            {"topic": "exploration", "content": "Explore everything",
+             "added_timestamp": "2026-01-01T00:00:00+00:00", "source": "chat"},
+        ]
+        (atlas_dir / "core_beliefs.json").write_text(
+            json.dumps(beliefs), encoding="utf-8",
+        )
+
+        resp = memory_client.get("/api/memories/atlas_memory")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["name"] == "Atlas"
+        assert data["type"] == "character"
+        assert data["belief_count"] == 1
+        assert data["beliefs"][0]["topic"] == "exploration"
+
+    def test_character_memory_detail_by_name(self, memory_client, memories_dir):
+        """GET /api/memories/Atlas resolves to character memory."""
+        atlas_dir = memories_dir / "atlas_memory"
+        atlas_dir.mkdir(parents=True)
+        (atlas_dir / "core_beliefs.json").write_text("[]", encoding="utf-8")
+
+        resp = memory_client.get("/api/memories/Atlas")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["name"] == "Atlas"
+        assert data["type"] == "character"
+
+    def test_character_memory_delete_belief(self, memory_client, memories_dir):
+        """DELETE /api/memories/atlas_memory/beliefs removes a character belief."""
+        atlas_dir = memories_dir / "atlas_memory"
+        atlas_dir.mkdir(parents=True)
+        beliefs = [
+            {"topic": "bravery", "content": "Be brave",
+             "added_timestamp": "", "source": ""},
+            {"topic": "curiosity", "content": "Stay curious",
+             "added_timestamp": "", "source": ""},
+        ]
+        (atlas_dir / "core_beliefs.json").write_text(
+            json.dumps(beliefs), encoding="utf-8",
+        )
+
+        resp = memory_client.delete("/api/memories/atlas_memory/beliefs?topic=bravery")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "deleted"
+        assert data["remaining_beliefs"] == 1
+
+    def test_character_memory_auto_creates_on_create(self, client, tmp_path):
+        """POST /api/characters auto-creates a memory directory for the new character."""
+        mem_dir = tmp_path / "auto_memories"
+        mem_dir.mkdir()
+        with (
+            patch("config.settings.MEMORIES_DIR", mem_dir),
+            patch("core.memory.MEMORIES_DIR", mem_dir),
+        ):
+            resp = client.post("/api/characters", json={
+                "name": "Nova Star",
+                "description": "A galactic traveler",
+                "author": "Test",
+                "traits": [{"trait_type": "personality", "name": "Bold",
+                            "description": "D", "intensity": 0.5}],
+            })
+            assert resp.status_code == 200
+            # Memory directory should exist with the normalized name
+            assert (mem_dir / "nova_star_memory").is_dir()
 
 
 # ─── Evolutions Endpoints ────────────────────────────────────
@@ -2806,6 +2957,107 @@ class TestApiCouncilPromotion:
         })
         assert resp.status_code == 400
         assert "already" in resp.json()["detail"].lower()
+
+    def test_promote_propagates_physical_description(self, client, members_dir, characters_dir):
+        """Promoting a character with physical_description copies it to the council YAML."""
+        # Update Atlas to have a physical_description
+        ch_path = characters_dir / "CH-0001.json"
+        ch_data = json.loads(ch_path.read_text(encoding="utf-8"))
+        ch_data["physical_description"] = "Muscular build with bronze skin and scars"
+        ch_path.write_text(json.dumps(ch_data, indent=2), encoding="utf-8")
+
+        resp = client.post("/api/council/promote", json={
+            "character_id": "CH-0001",
+            "role": "Explorer Lead",
+            "role_description": "Leads expeditions",
+        })
+        assert resp.status_code == 200
+        # Verify YAML has physical_description
+        yaml_data = yaml.safe_load((members_dir / "atlas.yaml").read_text(encoding="utf-8"))
+        assert yaml_data["physical_description"] == "Muscular build with bronze skin and scars"
+
+
+# ─── Council Removal Endpoints ───────────────────────────────
+
+
+class TestApiCouncilRemoval:
+    """Tests for POST /api/council/{name}/remove."""
+
+    def test_remove_success(self, client, members_dir, characters_dir):
+        """Remove Sage — should create a character and delete the YAML."""
+        resp = client.post("/api/council/Sage/remove")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "ok"
+        assert data["name"] == "Sage"
+        assert data["character_id"].startswith("CH-")
+        assert "converted to character" in data["message"]
+        # YAML should be gone
+        assert not (members_dir / "sage.yaml").exists()
+
+    def test_remove_creates_character_with_expected_fields(self, client, characters_dir):
+        """Removed member's character has correct name, description, system_prompt."""
+        resp = client.post("/api/council/Sage/remove")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["name"] == "Sage"
+        assert data["description"] == "Focuses on ethical concerns."
+        assert data["system_prompt"] == "You are Sage, the ethics advisor."
+        assert data["api_provider"] == "openrouter"
+        assert data["model"] == "anthropic/claude-3.5-sonnet"
+
+    def test_remove_not_found(self, client):
+        """404 for non-existent member."""
+        resp = client.post("/api/council/Nonexistent/remove")
+        assert resp.status_code == 404
+        assert "not found" in resp.json()["detail"].lower()
+
+    def test_remove_preserves_physical_description(self, client, members_dir, characters_dir):
+        """Physical description carries over from council member to character."""
+        # Add physical_description to Sage's YAML
+        sage_path = members_dir / "sage.yaml"
+        sage_data = yaml.safe_load(sage_path.read_text(encoding="utf-8"))
+        sage_data["physical_description"] = "Tall with silver hair and piercing blue eyes"
+        sage_path.write_text(yaml.dump(sage_data), encoding="utf-8")
+
+        # Force registry reload by re-creating the app
+        from core.manager_cache import invalidate_registry
+        invalidate_registry()
+
+        resp = client.post("/api/council/Sage/remove")
+        assert resp.status_code == 200
+        assert resp.json()["physical_description"] == "Tall with silver hair and piercing blue eyes"
+
+    def test_remove_character_has_trait(self, client, characters_dir):
+        """Created character has at least one trait (derived from personality or role)."""
+        resp = client.post("/api/council/Sage/remove")
+        assert resp.status_code == 200
+        char_id = resp.json()["character_id"]
+        # Read the character JSON to verify traits
+        ch_data = json.loads((characters_dir / f"{char_id}.json").read_text(encoding="utf-8"))
+        assert len(ch_data["traits"]) >= 1
+        assert ch_data["traits"][0]["trait_type"] == "personality"
+
+    def test_remove_member_yaml_deleted(self, client, members_dir):
+        """The council member's YAML file is removed from disk."""
+        assert (members_dir / "sage.yaml").exists()
+        client.post("/api/council/Sage/remove")
+        assert not (members_dir / "sage.yaml").exists()
+
+    def test_remove_invalidates_registry(self, client, members_dir):
+        """After removal, GET /api/council no longer lists the member."""
+        # Confirm Sage is in the list before
+        before = client.get("/api/council").json()
+        names_before = [m["name"] for m in before]
+        assert "Sage" in names_before
+
+        # Remove Sage
+        client.post("/api/council/Sage/remove")
+
+        # Confirm Sage is gone from the list
+        after = client.get("/api/council").json()
+        names_after = [m["name"] for m in after]
+        assert "Sage" not in names_after
 
 
 # ─── Council Session Endpoints ───────────────────────────────
@@ -3623,6 +3875,104 @@ class TestApiItemGift:
         assert "With great respect" in chat["messages"][0]["content"]
 
 
+class TestApiGiftHistory:
+    """Tests for GET /api/gifts/history — F-072."""
+
+    def _create_active_item(self, client, owners=None, name="Crown"):
+        """Create an active item with owners via API."""
+        if owners is None:
+            owners = [{"name": "Alice", "type": "user"}]
+        resp = client.post("/api/items", json={
+            "name": name, "description": "Royal crown",
+            "author": "Sage", "tier": "permanent",
+            "owned_by": owners,
+        })
+        assert resp.status_code == 200
+        item = resp.json()
+        resp2 = client.put(f"/api/items/{item['id']}/status", json={"status": "active"})
+        assert resp2.status_code == 200
+        return resp2.json()
+
+    def test_empty_history(self, gift_client):
+        """Returns empty list when no gifts have been made."""
+        resp = gift_client.get("/api/gifts/history")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_history_after_gift(self, gift_client, gift_env):
+        """Returns gift record after a gift is made."""
+        item = self._create_active_item(gift_client)
+        gift_client.post(f"/api/items/{item['id']}/gift", json={
+            "from_owner": {"name": "Alice", "type": "user"},
+            "to_owner": {"name": "Bob", "type": "character"},
+        })
+        resp = gift_client.get("/api/gifts/history")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["item_id"] == item["id"]
+        assert data[0]["from_owner"]["name"] == "Alice"
+        assert data[0]["to_owner"]["name"] == "Bob"
+        assert data[0]["chat_id"].startswith("GIFT-")
+
+    def test_history_multiple_gifts(self, gift_client, gift_env):
+        """Multiple gifts appear in history."""
+        item1 = self._create_active_item(gift_client, name="Sword")
+        gift_client.post(f"/api/items/{item1['id']}/gift", json={
+            "from_owner": {"name": "Alice", "type": "user"},
+            "to_owner": {"name": "Bob", "type": "character"},
+        })
+        item2 = self._create_active_item(
+            gift_client,
+            owners=[{"name": "Carol", "type": "council_member"}],
+            name="Shield",
+        )
+        gift_client.post(f"/api/items/{item2['id']}/gift", json={
+            "from_owner": {"name": "Carol", "type": "council_member"},
+            "to_owner": {"name": "Dave", "type": "user"},
+        })
+        resp = gift_client.get("/api/gifts/history")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 2
+
+    def test_history_includes_message(self, gift_client, gift_env):
+        """Gift message content is included in history records."""
+        item = self._create_active_item(gift_client)
+        gift_client.post(f"/api/items/{item['id']}/gift", json={
+            "from_owner": {"name": "Alice", "type": "user"},
+            "to_owner": {"name": "Bob", "type": "character"},
+            "message": "A token of gratitude",
+        })
+        resp = gift_client.get("/api/gifts/history")
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["message"]  # non-empty
+
+    def test_history_ignores_non_gift_chats(self, gift_client, gift_env):
+        """Non-gift chat files in conversations dir are excluded."""
+        import json as json_mod
+        non_gift = {
+            "chat_id": "CHAT-0001", "topic": "Casual talk",
+            "messages": [], "metadata": {},
+            "created_at": "2026-01-01T00:00:00+00:00",
+        }
+        (gift_env["conversations_dir"] / "H-CHAT-0001.json").write_text(
+            json_mod.dumps(non_gift, indent=2), encoding="utf-8",
+        )
+        resp = gift_client.get("/api/gifts/history")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_history_conversations_dir_missing(self, gift_client, gift_env):
+        """Gracefully returns empty list when conversations dir is gone."""
+        import shutil
+        shutil.rmtree(gift_env["conversations_dir"])
+        resp = gift_client.get("/api/gifts/history")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+
 # ─── Treasury Endpoints ─────────────────────────────────────
 
 
@@ -4259,3 +4609,1063 @@ class TestApiTasks:
         assert resp1.json()["id"] == "TK-0001"
         assert resp2.json()["id"] == "TK-0002"
 
+
+# ─── Gift Task Endpoints (F-073) ─────────────────────────────
+
+
+@pytest.fixture
+def gift_task_env(tmp_path):
+    """Environment with tasks_dir, items_dir, conversations_dir, and members."""
+    tasks_d = tmp_path / "tasks"
+    tasks_d.mkdir()
+    items_d = tmp_path / "items"
+    items_d.mkdir()
+    convos_d = tmp_path / "conversations"
+    convos_d.mkdir()
+    members_d = tmp_path / "members"
+    members_d.mkdir()
+    characters_d = tmp_path / "characters"
+    characters_d.mkdir()
+    proposals_d = tmp_path / "proposals"
+    proposals_d.mkdir()
+    votes_d = tmp_path / "votes"
+    votes_d.mkdir()
+    reputation_d = tmp_path / "reputation"
+    reputation_d.mkdir()
+
+    sage = {
+        "name": "Sage", "role": "Ethics Advisor",
+        "description": "Ethics.", "personality": {"tone": "calm"},
+        "api_provider": "openrouter", "model": "test",
+        "vote_weight": 1.0, "specialties": ["ethics"],
+        "system_prompt": "You are Sage.",
+    }
+    (members_d / "sage.yaml").write_text(yaml.dump(sage), encoding="utf-8")
+
+    return {
+        "tasks_dir": tasks_d,
+        "items_dir": items_d,
+        "conversations_dir": convos_d,
+        "members_dir": members_d,
+        "characters_dir": characters_d,
+        "proposals_dir": proposals_d,
+        "votes_dir": votes_d,
+        "reputation_dir": reputation_d,
+    }
+
+
+@pytest.fixture
+def gift_task_client(gift_task_env, tmp_path):
+    """TestClient configured for gift task tests."""
+    static_dir = tmp_path / "web_static"
+    static_dir.mkdir(exist_ok=True)
+    (static_dir / "index.html").write_text("<h1>Test</h1>", encoding="utf-8")
+    avatars_dir = tmp_path / "council_avatars"
+    avatars_dir.mkdir(exist_ok=True)
+
+    with (
+        patch("core.web_api.WEB_STATIC_DIR", static_dir),
+        patch("core.web_api.COUNCIL_MEMBERS_DIR", gift_task_env["members_dir"]),
+        patch("core.registry.COUNCIL_MEMBERS_DIR", gift_task_env["members_dir"]),
+        patch("core.proposals.PROPOSALS_DIR", gift_task_env["proposals_dir"]),
+        patch("core.voting.VOTES_DIR", gift_task_env["votes_dir"]),
+        patch("core.tasks.TASKS_DIR", gift_task_env["tasks_dir"]),
+        patch("core.items.ITEMS_DIR", gift_task_env["items_dir"]),
+        patch("core.characters.CHARACTERS_DIR", gift_task_env["characters_dir"]),
+        patch("config.settings.CONVERSATIONS_DIR", gift_task_env["conversations_dir"]),
+        patch("config.settings.COUNCIL_AVATARS_DIR", avatars_dir),
+        patch("core.reputation.REPUTATION_DIR", gift_task_env["reputation_dir"]),
+    ):
+        app = create_app()
+        yield TestClient(app)
+
+
+class TestApiGiftTasks:
+    """Tests for gift task creation and validation — F-073."""
+
+    def _create_active_item(self, client, owners=None, name="Crown"):
+        """Create an active item with owners via API."""
+        if owners is None:
+            owners = [{"name": "Alice", "type": "user"}]
+        resp = client.post("/api/items", json={
+            "name": name, "description": "Royal crown",
+            "author": "Sage", "tier": "permanent",
+            "owned_by": owners,
+        })
+        assert resp.status_code == 200
+        item = resp.json()
+        resp2 = client.put(f"/api/items/{item['id']}/status", json={"status": "active"})
+        assert resp2.status_code == 200
+        return resp2.json()
+
+    # ── Creation ──────────────────────────────────────────────
+
+    def test_create_gift_task(self, gift_task_client):
+        """Create a task with task_type=gift and valid gift_config."""
+        item = self._create_active_item(gift_task_client)
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Gift the Crown",
+            "description": "Give the crown to Bob.",
+            "reason": "Bob deserves it.",
+            "assignees": ["Sage"],
+            "task_type": "gift",
+            "gift_config": {
+                "item_id": item["id"],
+                "from_owner": {"name": "Alice", "type": "user"},
+                "to_owner": {"name": "Bob", "type": "character"},
+                "message": "Here you go!",
+            },
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["task_type"] == "gift"
+        assert data["gift_config"]["item_id"] == item["id"]
+        assert data["gift_config"]["from_owner"]["name"] == "Alice"
+        assert data["gift_config"]["to_owner"]["name"] == "Bob"
+        assert data["gift_config"]["message"] == "Here you go!"
+        assert data["gift_result"] == {}
+
+    def test_create_gift_task_missing_item(self, gift_task_client):
+        """Validation error when gift_config has no item_id."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Gift Task",
+            "description": "Give something.",
+            "reason": "Generosity.",
+            "assignees": ["Sage"],
+            "task_type": "gift",
+            "gift_config": {
+                "from_owner": {"name": "Alice", "type": "user"},
+                "to_owner": {"name": "Bob", "type": "character"},
+            },
+        })
+        assert resp.status_code == 400
+        assert "item_id" in resp.json()["detail"]
+
+    def test_create_gift_task_missing_from_owner(self, gift_task_client):
+        """Validation error when gift_config has no from_owner."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Gift Task",
+            "description": "Give something.",
+            "reason": "Generosity.",
+            "assignees": ["Sage"],
+            "task_type": "gift",
+            "gift_config": {
+                "item_id": "ITEM-0001",
+                "to_owner": {"name": "Bob", "type": "character"},
+            },
+        })
+        assert resp.status_code == 400
+        assert "from_owner" in resp.json()["detail"]
+
+    def test_create_gift_task_missing_to_owner(self, gift_task_client):
+        """Validation error when gift_config has no to_owner."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Gift Task",
+            "description": "Give something.",
+            "reason": "Generosity.",
+            "assignees": ["Sage"],
+            "task_type": "gift",
+            "gift_config": {
+                "item_id": "ITEM-0001",
+                "from_owner": {"name": "Alice", "type": "user"},
+            },
+        })
+        assert resp.status_code == 400
+        assert "to_owner" in resp.json()["detail"]
+
+    def test_create_gift_task_empty_config(self, gift_task_client):
+        """Validation error when gift task has no gift_config at all."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Gift Task",
+            "description": "Give something.",
+            "reason": "Generosity.",
+            "assignees": ["Sage"],
+            "task_type": "gift",
+        })
+        assert resp.status_code == 400
+        assert "item_id" in resp.json()["detail"]
+
+    def test_create_gift_task_invalid_type(self, gift_task_client):
+        """Reject unknown task_type."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Weird Task",
+            "description": "Unknown type.",
+            "reason": "Testing.",
+            "assignees": ["Sage"],
+            "task_type": "banana",
+        })
+        assert resp.status_code == 400
+        assert "task_type" in resp.json()["detail"].lower()
+
+    # ── Standard tasks backward compatibility ─────────────────
+
+    def test_create_standard_task_default(self, gift_task_client):
+        """Standard tasks still work without task_type field."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Patrol Gate",
+            "description": "Guard the gate.",
+            "reason": "Defense.",
+            "assignees": ["Sage"],
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["task_type"] == "standard"
+        assert data["gift_config"] == {}
+        assert data["gift_result"] == {}
+
+    def test_create_standard_task_explicit(self, gift_task_client):
+        """Explicitly passing task_type=standard works normally."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Patrol Gate",
+            "description": "Guard the gate.",
+            "reason": "Defense.",
+            "assignees": ["Sage"],
+            "task_type": "standard",
+        })
+        assert resp.status_code == 200
+        assert resp.json()["task_type"] == "standard"
+
+    # ── Detail view ───────────────────────────────────────────
+
+    def test_gift_task_detail_shows_config(self, gift_task_client):
+        """GET /api/tasks/{id} returns gift_config for gift tasks."""
+        item = self._create_active_item(gift_task_client)
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Gift Crown",
+            "description": "Give the crown.",
+            "reason": "Kindness.",
+            "assignees": ["Sage"],
+            "task_type": "gift",
+            "gift_config": {
+                "item_id": item["id"],
+                "from_owner": {"name": "Alice", "type": "user"},
+                "to_owner": {"name": "Bob", "type": "character"},
+            },
+        })
+        task_id = resp.json()["id"]
+        detail = gift_task_client.get(f"/api/tasks/{task_id}")
+        assert detail.status_code == 200
+        data = detail.json()
+        assert data["task_type"] == "gift"
+        assert data["gift_config"]["item_id"] == item["id"]
+
+    # ── Lifecycle with gift type ──────────────────────────────
+
+    def test_gift_task_lifecycle(self, gift_task_client):
+        """Gift tasks follow the same draft → active → completed lifecycle."""
+        item = self._create_active_item(gift_task_client)
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Gift Task",
+            "description": "Give item.",
+            "reason": "Sharing.",
+            "assignees": ["Sage"],
+            "task_type": "gift",
+            "gift_config": {
+                "item_id": item["id"],
+                "from_owner": {"name": "Alice", "type": "user"},
+                "to_owner": {"name": "Bob", "type": "character"},
+            },
+        })
+        task_id = resp.json()["id"]
+        assert resp.json()["status"] == "draft"
+
+        # Activate
+        resp2 = gift_task_client.put(
+            f"/api/tasks/{task_id}/status",
+            json={"status": "active"},
+        )
+        assert resp2.status_code == 200
+        assert resp2.json()["status"] == "active"
+        # Gift type preserved through status changes
+        assert resp2.json()["task_type"] == "gift"
+
+    def test_gift_task_message_preserved(self, gift_task_client):
+        """Gift message is preserved in task data."""
+        item = self._create_active_item(gift_task_client)
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Gift Crown",
+            "description": "Give the crown.",
+            "reason": "Kindness.",
+            "assignees": ["Sage"],
+            "task_type": "gift",
+            "gift_config": {
+                "item_id": item["id"],
+                "from_owner": {"name": "Alice", "type": "user"},
+                "to_owner": {"name": "Bob", "type": "character"},
+                "message": "With appreciation",
+            },
+        })
+        assert resp.status_code == 200
+        task_id = resp.json()["id"]
+        detail = gift_task_client.get(f"/api/tasks/{task_id}")
+        assert detail.json()["gift_config"]["message"] == "With appreciation"
+
+    def test_existing_tasks_backward_compat(self, gift_task_client, gift_task_env):
+        """Pre-existing task files without task_type field load as 'standard'."""
+        # Write a legacy task JSON directly (no task_type field)
+        legacy_task = {
+            "id": "TK-0099",
+            "name": "Legacy Task",
+            "description": "Old task.",
+            "reason": "History.",
+            "assignees": ["Sage"],
+            "status": "draft",
+            "current_round": 0,
+            "messages": [],
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+            "metadata": {},
+        }
+        (gift_task_env["tasks_dir"] / "TK-0099.json").write_text(
+            json.dumps(legacy_task, indent=2), encoding="utf-8",
+        )
+        resp = gift_task_client.get("/api/tasks/TK-0099")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["task_type"] == "standard"
+        assert data["gift_config"] == {}
+        assert data["gift_result"] == {}
+
+
+# ─── Purchase Task Endpoints (F-074) ─────────────────────────
+
+
+class TestApiPurchaseTasks:
+    """Tests for purchase task creation and validation — F-074."""
+
+    # ── Creation ──────────────────────────────────────────────
+
+    def test_create_purchase_task(self, gift_task_client):
+        """Create a task with task_type=purchase and valid purchase_config."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Buy Sword",
+            "description": "Purchase the enchanted sword from the armory.",
+            "reason": "Need better equipment.",
+            "assignees": ["Sage"],
+            "task_type": "purchase",
+            "purchase_config": {
+                "store_id": "STORE-0001",
+                "item_id": "ITEM-0001",
+                "buyer_account_id": "ACCT-001",
+                "buyer_entity_id": "member:Sage",
+                "buyer_name": "Sage",
+                "buyer_type": "council_member",
+            },
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["task_type"] == "purchase"
+        assert data["purchase_config"]["store_id"] == "STORE-0001"
+        assert data["purchase_config"]["item_id"] == "ITEM-0001"
+        assert data["purchase_config"]["buyer_account_id"] == "ACCT-001"
+        assert data["purchase_config"]["buyer_name"] == "Sage"
+        assert data["purchase_config"]["buyer_type"] == "council_member"
+        assert data["purchase_result"] == {}
+
+    def test_create_purchase_task_missing_store_id(self, gift_task_client):
+        """Validation error when purchase_config has no store_id."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Buy Thing",
+            "description": "Purchase something.",
+            "reason": "Need it.",
+            "assignees": ["Sage"],
+            "task_type": "purchase",
+            "purchase_config": {
+                "item_id": "ITEM-0001",
+                "buyer_account_id": "ACCT-001",
+            },
+        })
+        assert resp.status_code == 400
+        assert "store_id" in resp.json()["detail"]
+
+    def test_create_purchase_task_missing_item_id(self, gift_task_client):
+        """Validation error when purchase_config has no item_id."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Buy Thing",
+            "description": "Purchase something.",
+            "reason": "Need it.",
+            "assignees": ["Sage"],
+            "task_type": "purchase",
+            "purchase_config": {
+                "store_id": "STORE-0001",
+                "buyer_account_id": "ACCT-001",
+            },
+        })
+        assert resp.status_code == 400
+        assert "item_id" in resp.json()["detail"]
+
+    def test_create_purchase_task_missing_buyer_account(self, gift_task_client):
+        """Validation error when purchase_config has no buyer_account_id."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Buy Thing",
+            "description": "Purchase something.",
+            "reason": "Need it.",
+            "assignees": ["Sage"],
+            "task_type": "purchase",
+            "purchase_config": {
+                "store_id": "STORE-0001",
+                "item_id": "ITEM-0001",
+            },
+        })
+        assert resp.status_code == 400
+        assert "buyer_account_id" in resp.json()["detail"]
+
+    def test_create_purchase_task_empty_config(self, gift_task_client):
+        """Validation error when purchase task has no purchase_config at all."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Buy Thing",
+            "description": "Purchase something.",
+            "reason": "Need it.",
+            "assignees": ["Sage"],
+            "task_type": "purchase",
+        })
+        assert resp.status_code == 400
+        assert "store_id" in resp.json()["detail"]
+
+    # ── Standard tasks backward compatibility ─────────────────
+
+    def test_create_standard_task_still_works(self, gift_task_client):
+        """Standard tasks still work and have empty purchase fields."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Patrol Gate",
+            "description": "Guard the gate.",
+            "reason": "Defense.",
+            "assignees": ["Sage"],
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["task_type"] == "standard"
+        assert data["purchase_config"] == {}
+        assert data["purchase_result"] == {}
+        assert data["gift_config"] == {}
+        assert data["gift_result"] == {}
+
+    # ── Detail view ───────────────────────────────────────────
+
+    def test_purchase_task_detail_shows_config(self, gift_task_client):
+        """GET /api/tasks/{id} returns purchase_config for purchase tasks."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Buy Shield",
+            "description": "Purchase a shield.",
+            "reason": "Defense.",
+            "assignees": ["Sage"],
+            "task_type": "purchase",
+            "purchase_config": {
+                "store_id": "STORE-0002",
+                "item_id": "ITEM-0003",
+                "buyer_account_id": "ACCT-002",
+                "buyer_name": "Sage",
+            },
+        })
+        task_id = resp.json()["id"]
+        detail = gift_task_client.get(f"/api/tasks/{task_id}")
+        assert detail.status_code == 200
+        data = detail.json()
+        assert data["task_type"] == "purchase"
+        assert data["purchase_config"]["store_id"] == "STORE-0002"
+        assert data["purchase_config"]["item_id"] == "ITEM-0003"
+
+    # ── Lifecycle with purchase type ──────────────────────────
+
+    def test_purchase_task_lifecycle(self, gift_task_client):
+        """Purchase tasks follow the same draft → active lifecycle."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Buy Potion",
+            "description": "Purchase a healing potion.",
+            "reason": "Health.",
+            "assignees": ["Sage"],
+            "task_type": "purchase",
+            "purchase_config": {
+                "store_id": "STORE-0001",
+                "item_id": "ITEM-0001",
+                "buyer_account_id": "ACCT-001",
+            },
+        })
+        task_id = resp.json()["id"]
+        assert resp.json()["status"] == "draft"
+
+        # Activate
+        resp2 = gift_task_client.put(
+            f"/api/tasks/{task_id}/status",
+            json={"status": "active"},
+        )
+        assert resp2.status_code == 200
+        assert resp2.json()["status"] == "active"
+        # Purchase type preserved through status changes
+        assert resp2.json()["task_type"] == "purchase"
+
+    def test_purchase_task_buyer_preserved(self, gift_task_client):
+        """Buyer name and type are preserved in task data."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Buy Armor",
+            "description": "Purchase dragon armor.",
+            "reason": "Protection.",
+            "assignees": ["Sage"],
+            "task_type": "purchase",
+            "purchase_config": {
+                "store_id": "STORE-0001",
+                "item_id": "ITEM-0001",
+                "buyer_account_id": "ACCT-001",
+                "buyer_entity_id": "member:Sage",
+                "buyer_name": "Sage",
+                "buyer_type": "council_member",
+            },
+        })
+        assert resp.status_code == 200
+        task_id = resp.json()["id"]
+        detail = gift_task_client.get(f"/api/tasks/{task_id}")
+        pc = detail.json()["purchase_config"]
+        assert pc["buyer_name"] == "Sage"
+        assert pc["buyer_type"] == "council_member"
+        assert pc["buyer_entity_id"] == "member:Sage"
+
+    def test_existing_tasks_backward_compat_purchase(
+        self, gift_task_client, gift_task_env,
+    ):
+        """Pre-existing task files without purchase fields load cleanly."""
+        legacy_task = {
+            "id": "TK-0098",
+            "name": "Old Legacy Task",
+            "description": "Ancient task.",
+            "reason": "Archaeology.",
+            "assignees": ["Sage"],
+            "status": "draft",
+            "current_round": 0,
+            "messages": [],
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+            "metadata": {},
+        }
+        (gift_task_env["tasks_dir"] / "TK-0098.json").write_text(
+            json.dumps(legacy_task, indent=2), encoding="utf-8",
+        )
+        resp = gift_task_client.get("/api/tasks/TK-0098")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["task_type"] == "standard"
+        assert data["purchase_config"] == {}
+        assert data["purchase_result"] == {}
+        assert data["gift_config"] == {}
+        assert data["gift_result"] == {}
+
+    def test_create_purchase_task_with_buyer_name(self, gift_task_client):
+        """Buyer name and type are stored correctly in purchase_config."""
+        resp = gift_task_client.post("/api/tasks", json={
+            "name": "Buy Ring",
+            "description": "Purchase a ring of power.",
+            "reason": "Magic.",
+            "assignees": ["Sage"],
+            "task_type": "purchase",
+            "purchase_config": {
+                "store_id": "STORE-0001",
+                "item_id": "ITEM-0005",
+                "buyer_account_id": "ACCT-003",
+                "buyer_name": "Gandalf",
+                "buyer_type": "character",
+            },
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["purchase_config"]["buyer_name"] == "Gandalf"
+        assert data["purchase_config"]["buyer_type"] == "character"
+
+
+# ─── Memory Decay / Summarization / Contested Settings (F-075) ──
+
+
+class TestApiMemoryDecaySettings:
+    """Tests for GET/PUT /api/settings/memory-decay."""
+
+    def test_get_memory_decay_config(self, client):
+        """GET returns decay, summarization, and contested config."""
+        resp = client.get("/api/settings/memory-decay")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "decay" in data
+        assert "summarization" in data
+        assert "contested" in data
+        assert data["decay"]["enabled"] in (True, False)
+        assert isinstance(data["decay"]["half_life_days"], (int, float))
+        assert isinstance(data["contested"]["probability"], float)
+
+    def test_put_memory_decay_config(self, client):
+        """PUT saves partial config and returns saved keys."""
+        resp = client.put("/api/settings/memory-decay", json={
+            "decay": {"half_life_days": 14},
+            "contested": {"probability": 0.02},
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["saved"]["decay_half_life_days"] == 14.0
+        assert data["saved"]["contested_probability"] == 0.02
+
+    def test_put_contested_probability_max_10_percent(self, client):
+        """Contested probability above 10% is rejected."""
+        resp = client.put("/api/settings/memory-decay", json={
+            "contested": {"probability": 0.15},
+        })
+        assert resp.status_code == 400
+        assert "0.10" in resp.json()["detail"]
+
+    def test_put_half_life_out_of_range(self, client):
+        """Half-life outside 1-365 range is rejected."""
+        resp = client.put("/api/settings/memory-decay", json={
+            "decay": {"half_life_days": 0},
+        })
+        assert resp.status_code == 400
+        assert "365" in resp.json()["detail"]
+
+    def test_put_min_factor_out_of_range(self, client):
+        """Min factor outside 0.01-0.99 is rejected."""
+        resp = client.put("/api/settings/memory-decay", json={
+            "decay": {"min_factor": 1.5},
+        })
+        assert resp.status_code == 400
+        assert "0.99" in resp.json()["detail"]
+
+    def test_put_summarization_threshold_out_of_range(self, client):
+        """Session threshold outside 2-50 is rejected."""
+        resp = client.put("/api/settings/memory-decay", json={
+            "summarization": {"session_threshold": 1},
+        })
+        assert resp.status_code == 400
+        assert "50" in resp.json()["detail"]
+
+    def test_put_empty_body_returns_empty_saved(self, client):
+        """PUT with empty body returns empty saved dict."""
+        resp = client.put("/api/settings/memory-decay", json={})
+        assert resp.status_code == 200
+        assert resp.json()["saved"] == {}
+
+
+class TestApiMemoryDetailEnriched:
+    """Tests for enriched GET /api/memories/{member} detail (F-075)."""
+
+    def test_memory_detail_has_counts(self, client):
+        """Memory detail response includes contested_count, summarized_count, session_count."""
+        resp = client.get("/api/memories/Sage")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "contested_count" in data
+        assert "summarized_count" in data
+        assert "session_count" in data
+        assert data["contested_count"] >= 0
+        assert data["summarized_count"] >= 0
+
+
+class TestApiMemoryContestedList:
+    """Tests for GET /api/memories/{member}/contested (F-075)."""
+
+    def test_contested_empty(self, client):
+        """Contested list returns empty when no contested memories exist."""
+        resp = client.get("/api/memories/Sage/contested")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] == 0
+        assert data["contested"] == []
+
+    def test_contested_not_found(self, client):
+        """404 for unknown member."""
+        resp = client.get("/api/memories/UnknownAgent/contested")
+        assert resp.status_code == 404
+
+
+class TestApiMemorySummarizedList:
+    """Tests for GET /api/memories/{member}/summarized (F-075)."""
+
+    def test_summarized_empty(self, client):
+        """Summarized list returns empty when no summaries exist."""
+        resp = client.get("/api/memories/Sage/summarized")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] == 0
+        assert data["summarized"] == []
+
+    def test_summarized_not_found(self, client):
+        """404 for unknown member."""
+        resp = client.get("/api/memories/UnknownAgent/summarized")
+        assert resp.status_code == 404
+
+
+# ─── Narrative Engine Settings (F-076) ──────────────────────────
+
+
+class TestApiNarrativeSettings:
+    """Tests for GET/PUT /api/settings/narrative."""
+
+    def test_get_narrative_config(self, client):
+        """GET returns max_bulletins and max_age_days."""
+        resp = client.get("/api/settings/narrative")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "max_bulletins" in data
+        assert "max_age_days" in data
+        assert isinstance(data["max_bulletins"], int)
+        assert isinstance(data["max_age_days"], int)
+
+    def test_put_narrative_config(self, client):
+        """PUT saves both fields and returns saved keys."""
+        resp = client.put("/api/settings/narrative", json={
+            "max_bulletins": 20,
+            "max_age_days": 60,
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["saved"]["max_bulletins"] == 20
+        assert data["saved"]["max_age_days"] == 60
+
+    def test_put_narrative_partial(self, client):
+        """PUT with only max_bulletins saves just that field."""
+        resp = client.put("/api/settings/narrative", json={
+            "max_bulletins": 5,
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["saved"]["max_bulletins"] == 5
+        assert "max_age_days" not in data["saved"]
+
+    def test_put_narrative_max_bulletins_too_high(self, client):
+        """max_bulletins above 50 is rejected."""
+        resp = client.put("/api/settings/narrative", json={
+            "max_bulletins": 100,
+        })
+        assert resp.status_code == 400
+        assert "50" in resp.json()["detail"]
+
+    def test_put_narrative_max_bulletins_too_low(self, client):
+        """max_bulletins below 1 is rejected."""
+        resp = client.put("/api/settings/narrative", json={
+            "max_bulletins": 0,
+        })
+        assert resp.status_code == 400
+        assert "1" in resp.json()["detail"]
+
+    def test_put_narrative_max_age_too_high(self, client):
+        """max_age_days above 365 is rejected."""
+        resp = client.put("/api/settings/narrative", json={
+            "max_age_days": 400,
+        })
+        assert resp.status_code == 400
+        assert "365" in resp.json()["detail"]
+
+    def test_put_narrative_max_age_too_low(self, client):
+        """max_age_days below 1 is rejected."""
+        resp = client.put("/api/settings/narrative", json={
+            "max_age_days": 0,
+        })
+        assert resp.status_code == 400
+        assert "1" in resp.json()["detail"]
+
+    def test_put_empty_body_returns_empty_saved(self, client):
+        """PUT with empty body returns empty saved dict."""
+        resp = client.put("/api/settings/narrative", json={})
+        assert resp.status_code == 200
+        assert resp.json()["saved"] == {}
+
+    def test_get_reflects_put(self, client):
+        """GET reflects values saved by PUT."""
+        client.put("/api/settings/narrative", json={
+            "max_bulletins": 15,
+            "max_age_days": 45,
+        })
+        resp = client.get("/api/settings/narrative")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["max_bulletins"] == 15
+        assert data["max_age_days"] == 45
+
+
+# ─── Embedding Settings (F-077) ────────────────────────────────
+
+
+class TestApiEmbeddingSettings:
+    """Tests for GET/PUT /api/settings/embeddings."""
+
+    def test_get_embedding_config(self, client):
+        """GET returns expected fields."""
+        resp = client.get("/api/settings/embeddings")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "model_name" in data
+        assert "model_options" in data
+        assert "mode" in data
+        assert "similarity_weight" in data
+        assert "jaccard_weight" in data
+        assert "available" in data
+        assert "install_hint" in data
+        assert isinstance(data["model_options"], list)
+
+    def test_put_mode_hybrid(self, client):
+        """PUT mode=hybrid is accepted."""
+        resp = client.put("/api/settings/embeddings", json={"mode": "hybrid"})
+        assert resp.status_code == 200
+        assert resp.json()["saved"]["mode"] == "hybrid"
+
+    def test_put_mode_keyword_only(self, client):
+        """PUT mode=keyword_only is accepted."""
+        resp = client.put("/api/settings/embeddings", json={"mode": "keyword_only"})
+        assert resp.status_code == 200
+        assert resp.json()["saved"]["mode"] == "keyword_only"
+
+    def test_put_mode_invalid(self, client):
+        """Invalid mode is rejected."""
+        resp = client.put("/api/settings/embeddings", json={"mode": "turbo"})
+        assert resp.status_code == 400
+        assert "hybrid" in resp.json()["detail"]
+
+    def test_put_similarity_weight(self, client):
+        """PUT similarity_weight is accepted."""
+        resp = client.put("/api/settings/embeddings", json={"similarity_weight": 0.8})
+        assert resp.status_code == 200
+        assert resp.json()["saved"]["similarity_weight"] == 0.8
+
+    def test_put_similarity_weight_too_high(self, client):
+        """similarity_weight above 1.0 is rejected."""
+        resp = client.put("/api/settings/embeddings", json={"similarity_weight": 1.5})
+        assert resp.status_code == 400
+
+    def test_put_similarity_weight_negative(self, client):
+        """similarity_weight below 0.0 is rejected."""
+        resp = client.put("/api/settings/embeddings", json={"similarity_weight": -0.1})
+        assert resp.status_code == 400
+
+    def test_put_jaccard_weight(self, client):
+        """PUT jaccard_weight is accepted."""
+        resp = client.put("/api/settings/embeddings", json={"jaccard_weight": 0.5})
+        assert resp.status_code == 200
+        assert resp.json()["saved"]["jaccard_weight"] == 0.5
+
+    def test_put_model_name_valid(self, client):
+        """PUT model_name with a valid option is accepted."""
+        resp = client.put("/api/settings/embeddings", json={
+            "model_name": "all-MiniLM-L6-v2",
+        })
+        assert resp.status_code == 200
+        assert resp.json()["saved"]["model_name"] == "all-MiniLM-L6-v2"
+
+    def test_put_model_name_invalid(self, client):
+        """PUT model_name with unknown model is rejected."""
+        resp = client.put("/api/settings/embeddings", json={
+            "model_name": "nonexistent-model-v99",
+        })
+        assert resp.status_code == 400
+        assert "nonexistent-model" in resp.json()["detail"]
+
+    def test_put_empty_body(self, client):
+        """PUT with empty body returns empty saved dict."""
+        resp = client.put("/api/settings/embeddings", json={})
+        assert resp.status_code == 200
+        assert resp.json()["saved"] == {}
+
+    def test_get_reflects_put(self, client):
+        """GET reflects values saved by PUT."""
+        client.put("/api/settings/embeddings", json={
+            "mode": "keyword_only",
+            "similarity_weight": 0.6,
+            "jaccard_weight": 0.4,
+        })
+        resp = client.get("/api/settings/embeddings")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["mode"] == "keyword_only"
+        assert data["similarity_weight"] == 0.6
+        assert data["jaccard_weight"] == 0.4
+
+
+# ─── Activity Feed Endpoint ──────────────────────────────────
+
+
+class TestApiActivityFeed:
+    """Tests for GET /api/activity-feed."""
+
+    def test_returns_200(self, client):
+        resp = client.get("/api/activity-feed")
+        assert resp.status_code == 200
+
+    def test_returns_list(self, client):
+        resp = client.get("/api/activity-feed")
+        data = resp.json()
+        assert isinstance(data, list)
+
+    def test_events_have_required_fields(self, client):
+        resp = client.get("/api/activity-feed")
+        data = resp.json()
+        assert len(data) > 0, "Should have at least one event from fixture data"
+        required = {"type", "icon", "title", "description", "entity_id", "nav_target", "timestamp"}
+        for event in data:
+            missing = required - set(event.keys())
+            assert not missing, f"Event missing fields: {missing}"
+
+    def test_includes_proposal_events(self, client):
+        resp = client.get("/api/activity-feed")
+        data = resp.json()
+        types = {e["type"] for e in data}
+        assert "proposal" in types
+
+    def test_includes_character_events(self, client):
+        resp = client.get("/api/activity-feed")
+        data = resp.json()
+        types = {e["type"] for e in data}
+        assert "character" in types
+
+    def test_includes_vote_events(self, client):
+        resp = client.get("/api/activity-feed")
+        data = resp.json()
+        types = {e["type"] for e in data}
+        assert "vote" in types
+
+    def test_proposal_event_has_title(self, client):
+        resp = client.get("/api/activity-feed")
+        data = resp.json()
+        proposal_events = [e for e in data if e["type"] == "proposal"]
+        assert len(proposal_events) > 0
+        assert "Ethics Update" in proposal_events[0]["title"] or "New Character" in proposal_events[0]["title"]
+
+    def test_character_event_has_name(self, client):
+        resp = client.get("/api/activity-feed")
+        data = resp.json()
+        char_events = [e for e in data if e["type"] == "character"]
+        assert len(char_events) > 0
+        assert "Atlas" in char_events[0]["title"]
+
+    def test_nav_target_valid_views(self, client):
+        resp = client.get("/api/activity-feed")
+        data = resp.json()
+        valid_views = {"proposals", "characters", "votes", "locations", "items", "evolution"}
+        for event in data:
+            assert event["nav_target"] in valid_views, f"Unexpected nav_target: {event['nav_target']}"
+
+    def test_capped_at_30(self, client, proposals_dir):
+        """Even with many events, feed is capped at 30."""
+        # Add 40 proposals to exceed cap
+        for i in range(40):
+            pid = f"P-{1000 + i:04d}"
+            p = {
+                "id": pid, "title": f"Bulk Proposal {i}",
+                "description": "Bulk", "author": "Sage", "category": "general",
+                "status": "open", "created_at": f"2026-01-{(i % 28) + 1:02d}T00:00:00+00:00",
+                "updated_at": f"2026-01-{(i % 28) + 1:02d}T00:00:00+00:00",
+                "body": "", "reviews": [], "metadata": {},
+            }
+            (proposals_dir / f"{pid}.json").write_text(
+                json.dumps(p, indent=2), encoding="utf-8",
+            )
+        resp = client.get("/api/activity-feed")
+        data = resp.json()
+        assert len(data) <= 30
+
+    def test_sorted_reverse_chronological(self, client):
+        resp = client.get("/api/activity-feed")
+        data = resp.json()
+        timestamps = [e["timestamp"] for e in data if e["timestamp"]]
+        # Timestamps should be in descending order
+        assert timestamps == sorted(timestamps, reverse=True)
+
+    def test_empty_system_returns_empty_list(self, tmp_path):
+        """With no data at all, should return empty list."""
+        static_dir = tmp_path / "web_static"
+        static_dir.mkdir()
+        (static_dir / "index.html").write_text("<h1>Test</h1>", encoding="utf-8")
+        members_dir = tmp_path / "members"
+        members_dir.mkdir()
+        proposals_dir = tmp_path / "proposals"
+        proposals_dir.mkdir()
+        votes_dir = tmp_path / "votes"
+        votes_dir.mkdir()
+        characters_dir = tmp_path / "characters"
+        characters_dir.mkdir()
+        avatars_dir = tmp_path / "council_avatars"
+        avatars_dir.mkdir()
+        locations_dir = tmp_path / "locations"
+        locations_dir.mkdir()
+        items_dir = tmp_path / "items"
+        items_dir.mkdir()
+        evolutions_dir = tmp_path / "evolutions"
+        evolutions_dir.mkdir()
+
+        with (
+            patch("core.web_api.WEB_STATIC_DIR", static_dir),
+            patch("core.web_api.COUNCIL_MEMBERS_DIR", members_dir),
+            patch("core.registry.COUNCIL_MEMBERS_DIR", members_dir),
+            patch("core.proposals.PROPOSALS_DIR", proposals_dir),
+            patch("core.voting.VOTES_DIR", votes_dir),
+            patch("core.characters.CHARACTERS_DIR", characters_dir),
+            patch("config.settings.COUNCIL_AVATARS_DIR", avatars_dir),
+            patch("config.settings.LOCATIONS_DIR", locations_dir),
+            patch("core.locations.LOCATIONS_DIR", locations_dir),
+            patch("config.settings.ITEMS_DIR", items_dir),
+            patch("core.items.ITEMS_DIR", items_dir),
+            patch("config.settings.EVOLUTION_DIR", evolutions_dir),
+        ):
+            app = create_app()
+            tc = TestClient(app)
+            resp = tc.get("/api/activity-feed")
+            assert resp.status_code == 200
+            assert resp.json() == []
+
+    def test_event_icons_are_emoji(self, client):
+        resp = client.get("/api/activity-feed")
+        data = resp.json()
+        for event in data:
+            assert len(event["icon"]) > 0, "Icon should not be empty"
+
+
+# ─── System Health Endpoint ──────────────────────────────────
+
+
+class TestApiSystemHealth:
+    """Tests for GET /api/system-health."""
+
+    def test_returns_200(self, client):
+        resp = client.get("/api/system-health")
+        assert resp.status_code == 200
+
+    def test_has_providers(self, client):
+        resp = client.get("/api/system-health")
+        data = resp.json()
+        assert "providers" in data
+        assert isinstance(data["providers"], list)
+
+    def test_has_embedding(self, client):
+        resp = client.get("/api/system-health")
+        data = resp.json()
+        assert "embedding" in data
+        emb = data["embedding"]
+        assert "model" in emb
+        assert "mode" in emb
+        assert "available" in emb
+
+    def test_has_entity_counts(self, client):
+        resp = client.get("/api/system-health")
+        data = resp.json()
+        assert "entity_counts" in data
+        counts = data["entity_counts"]
+        assert "members" in counts
+        assert "proposals" in counts
+        assert "characters" in counts
+
+    def test_entity_counts_match_status(self, client):
+        """Entity counts should match the /api/status endpoint."""
+        health = client.get("/api/system-health").json()
+        status = client.get("/api/status").json()
+        assert health["entity_counts"]["members"] == status["members"]["count"]
+        assert health["entity_counts"]["proposals"] == status["proposals"]["count"]
+        assert health["entity_counts"]["characters"] == status["characters"]["count"]
+
+    def test_provider_has_configured_field(self, client):
+        resp = client.get("/api/system-health")
+        data = resp.json()
+        for prov in data["providers"]:
+            assert "configured" in prov
+            assert "provider" in prov
+
+    def test_embedding_mode_default(self, client):
+        """Default mode should be hybrid."""
+        resp = client.get("/api/system-health")
+        data = resp.json()
+        assert data["embedding"]["mode"] in ("hybrid", "keyword_only")
+
+    def test_embedding_available_is_bool(self, client):
+        resp = client.get("/api/system-health")
+        data = resp.json()
+        assert isinstance(data["embedding"]["available"], bool)

@@ -13,6 +13,7 @@ async function renderView(view, detail) {
             case 'locations': detail ? await renderLocationDetail(detail) : await renderLocations(); break;
             case 'laws': detail ? await renderLawDetail(detail) : await renderLaws(); break;
             case 'items': detail ? await renderItemDetail(detail) : await renderItems(); break;
+            case 'gifts': await renderGifts(); break;
             case 'stores': detail ? await renderStoreDetail(detail) : await renderStores(); break;
             case 'analytics': await renderAnalytics(); break;
             case 'chat': detail ? await renderChatDetail(detail) : await renderChat(); break;
@@ -36,7 +37,13 @@ async function renderView(view, detail) {
 
 async function renderDashboard() {
     showLoading();
-    const data = await api('/api/status');
+
+    // Parallel fetch: status, activity feed, system health
+    const [data, activityEvents, healthData] = await Promise.all([
+        api('/api/status'),
+        api('/api/activity-feed').catch(() => []),
+        api('/api/system-health').catch(() => ({})),
+    ]);
     state.statusData = data;
     updateNavCounts(data);
 
@@ -44,58 +51,9 @@ async function renderDashboard() {
     const p = data.proposals || {};
     const v = data.votes || {};
     const c = data.characters || {};
-
-    let providerChips = '';
-    if (m.providers) {
-        providerChips = Object.entries(m.providers)
-            .map(([k, cnt]) => `<span class="stat-chip badge badge-${k}">${k}: ${cnt}</span>`)
-            .join('');
-    }
-
-    let proposalChips = '';
-    if (p.by_status) {
-        proposalChips = Object.entries(p.by_status)
-            .map(([k, cnt]) => `<span class="stat-chip badge badge-${k}">${k}: ${cnt}</span>`)
-            .join('');
-    }
-
-    let voteChips = '';
-    if (v.by_status) {
-        voteChips = Object.entries(v.by_status)
-            .map(([k, cnt]) => `<span class="stat-chip badge badge-${k}">${k}: ${cnt}</span>`)
-            .join('');
-    }
-
-    let charChips = '';
-    if (c.by_status) {
-        charChips = Object.entries(c.by_status)
-            .map(([k, cnt]) => `<span class="stat-chip badge badge-${k}">${k}: ${cnt}</span>`)
-            .join('');
-    }
-
     const l = data.locations || {};
-    let locChips = '';
-    if (l.by_status) {
-        locChips = Object.entries(l.by_status)
-            .map(([k, cnt]) => `<span class="stat-chip badge badge-${k}">${k}: ${cnt}</span>`)
-            .join('');
-    }
-
     const ev = data.evolutions || {};
-    let evoChips = '';
-    if (ev.by_status) {
-        evoChips = Object.entries(ev.by_status)
-            .map(([k, cnt]) => `<span class="stat-chip badge badge-${k}">${k}: ${cnt}</span>`)
-            .join('');
-    }
-
     const it = data.items || {};
-    let itemChips = '';
-    if (it.by_status) {
-        itemChips = Object.entries(it.by_status)
-            .map(([k, cnt]) => `<span class="stat-chip badge badge-${k}">${k}: ${cnt}</span>`)
-            .join('');
-    }
 
     $main().innerHTML = `
         <div class="view-enter">
@@ -118,66 +76,183 @@ async function renderDashboard() {
                 </div>
             </div>
 
-            <div class="stats-grid">
-                <div class="stat-card blue">
-                    <div class="stat-icon">👥</div>
-                    <div class="stat-value">${m.count || 0}</div>
-                    <div class="stat-label">Council Members</div>
-                    ${providerChips ? `<div class="stat-breakdown">${providerChips}</div>` : ''}
+            ${_buildQuickActions()}
+
+            <div class="dashboard-layout">
+                <div class="dashboard-col-left">
+                    ${_buildActivityTimeline(activityEvents)}
                 </div>
-                <div class="stat-card emerald">
-                    <div class="stat-icon">📜</div>
-                    <div class="stat-value">${p.count || 0}</div>
-                    <div class="stat-label">Proposals</div>
-                    ${proposalChips ? `<div class="stat-breakdown">${proposalChips}</div>` : ''}
-                </div>
-                <div class="stat-card amber">
-                    <div class="stat-icon">🗳️</div>
-                    <div class="stat-value">${v.count || 0}</div>
-                    <div class="stat-label">Vote Records</div>
-                    ${voteChips ? `<div class="stat-breakdown">${voteChips}</div>` : ''}
-                </div>
-                <div class="stat-card violet">
-                    <div class="stat-icon">🎭</div>
-                    <div class="stat-value">${c.count || 0}</div>
-                    <div class="stat-label">Characters</div>
-                    ${charChips ? `<div class="stat-breakdown">${charChips}</div>` : ''}
-                </div>
-                <div class="stat-card rose">
-                    <div class="stat-icon">🗺️</div>
-                    <div class="stat-value">${l.count || 0}</div>
-                    <div class="stat-label">Locations</div>
-                    ${locChips ? `<div class="stat-breakdown">${locChips}</div>` : ''}
-                </div>
-                <div class="stat-card cyan">
-                    <div class="stat-icon">🧬</div>
-                    <div class="stat-value">${ev.count || 0}</div>
-                    <div class="stat-label">Evolutions</div>
-                    ${evoChips ? `<div class="stat-breakdown">${evoChips}</div>` : ''}
-                </div>
-                <div class="stat-card" style="border-image:linear-gradient(135deg, #FFD700, #C0C0C0, #CD7F32) 1">
-                    <div class="stat-icon">🪙</div>
-                    <div class="stat-value">${(data.treasury || {}).total_accounts || 0}</div>
-                    <div class="stat-label">Treasury Accounts</div>
-                    ${(data.treasury && data.treasury.government_balance) ? `<div class="stat-breakdown"><span class="stat-chip badge badge-government">Gov: ${data.treasury.government_balance.gold}G</span></div>` : ''}
-                </div>
-                <div class="stat-card" style="border-image:linear-gradient(135deg, hsl(30,70%,50%), hsl(40,80%,55%)) 1">
-                    <div class="stat-icon">📦</div>
-                    <div class="stat-value">${it.count || 0}</div>
-                    <div class="stat-label">Items</div>
-                    ${itemChips ? `<div class="stat-breakdown">${itemChips}</div>` : ''}
-                </div>
-                <div class="stat-card" style="border-image:linear-gradient(135deg, hsl(220,60%,50%), hsl(200,55%,45%)) 1">
-                    <div class="stat-icon">⚖️</div>
-                    <div class="stat-value">${(data.laws || {}).count || 0}</div>
-                    <div class="stat-label">Laws</div>
-                    ${(data.laws && data.laws.by_status) ? Object.entries(data.laws.by_status).map(([k, cnt]) => `<span class="stat-chip badge badge-${k}">${k}: ${cnt}</span>`).join('') : ''}
+                <div class="dashboard-col-right">
+                    ${_buildSystemHealth(healthData)}
+                    ${_buildStatSummary(m, p, v, c, l, ev, it, data)}
                 </div>
             </div>
         </div>`;
 
     // -- Narrative Banner: fetch and cycle bulletins --
     _initNarrativeBanner();
+}
+
+/** Build the quick-action button bar. */
+function _buildQuickActions() {
+    return `
+        <div class="quick-actions">
+            <button class="quick-action-btn" onclick="navigate('chat')" title="Start a conversation">
+                <span class="qa-icon">💬</span> Start Chat
+            </button>
+            <button class="quick-action-btn" onclick="navigate('proposals')" title="Create a new proposal">
+                <span class="qa-icon">📜</span> Create Proposal
+            </button>
+            <button class="quick-action-btn" onclick="navigate('tasks')" title="Run a task">
+                <span class="qa-icon">⚡</span> Run Task
+            </button>
+            <button class="quick-action-btn" onclick="navigate('gifts')" title="Send a gift">
+                <span class="qa-icon">🎁</span> Give Gift
+            </button>
+        </div>`;
+}
+
+/** Build the scrollable activity timeline from events. */
+function _buildActivityTimeline(events) {
+    if (!events || events.length === 0) {
+        return `
+            <div class="activity-timeline">
+                <div class="activity-timeline-header">
+                    <h3>⏱️ Activity Timeline</h3>
+                </div>
+                <div class="activity-empty">
+                    <span class="empty-icon">📭</span>
+                    No recent activity. Create a proposal or start a chat to get things moving!
+                </div>
+            </div>`;
+    }
+
+    const items = events.map(ev => {
+        const timeStr = _formatRelativeTime(ev.timestamp);
+        return `
+            <div class="activity-event" onclick="navigate('${_escHtml(ev.nav_target || '')}')">
+                <div class="activity-event-icon">${ev.icon || '📋'}</div>
+                <div class="activity-event-body">
+                    <div class="activity-event-title">${_escHtml(ev.title || '')}</div>
+                    <div class="activity-event-desc">${_escHtml(ev.description || '')}</div>
+                </div>
+                <div class="activity-event-time">${_escHtml(timeStr)}</div>
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="activity-timeline">
+            <div class="activity-timeline-header">
+                <h3>⏱️ Activity Timeline</h3>
+                <span class="event-count">${events.length} event${events.length !== 1 ? 's' : ''}</span>
+            </div>
+            ${items}
+        </div>`;
+}
+
+/** Build the system health panel. */
+function _buildSystemHealth(health) {
+    if (!health || Object.keys(health).length === 0) {
+        return '';
+    }
+
+    let rows = '';
+
+    // Provider status
+    const providers = health.providers || [];
+    for (const prov of providers) {
+        const dot = prov.configured ? 'green' : 'red';
+        const label = prov.provider.charAt(0).toUpperCase() + prov.provider.slice(1);
+        const val = prov.configured ? 'Configured' : 'Not set';
+        rows += `
+            <div class="health-item">
+                <span class="health-dot ${dot}"></span>
+                <span class="health-label">${_escHtml(label)}</span>
+                <span class="health-value">${_escHtml(val)}</span>
+            </div>`;
+    }
+
+    // Embedding status
+    const emb = health.embedding || {};
+    if (emb.model) {
+        const dot = emb.available ? 'green' : 'amber';
+        const val = emb.available ? emb.model : 'Not installed';
+        rows += `
+            <div class="health-item">
+                <span class="health-dot ${dot}"></span>
+                <span class="health-label">Embeddings</span>
+                <span class="health-value">${_escHtml(val)}</span>
+            </div>`;
+        rows += `
+            <div class="health-item">
+                <span class="health-dot green"></span>
+                <span class="health-label">Scoring Mode</span>
+                <span class="health-value">${_escHtml(emb.mode || 'hybrid')}</span>
+            </div>`;
+    }
+
+    return `
+        <div class="system-health">
+            <h3>🩺 System Health</h3>
+            <div class="health-grid">
+                ${rows}
+            </div>
+        </div>`;
+}
+
+/** Build the compact stat summary cards. */
+function _buildStatSummary(m, p, v, c, l, ev, it, data) {
+    function _chips(byStatus) {
+        if (!byStatus) return '';
+        return Object.entries(byStatus)
+            .map(([k, cnt]) => `<span class="stat-chip badge badge-${k}">${k}: ${cnt}</span>`)
+            .join('');
+    }
+
+    function _card(icon, value, label, nav, chips) {
+        return `
+            <div class="stat-summary-card" onclick="navigate('${nav}')">
+                <div class="stat-summary-icon">${icon}</div>
+                <div class="stat-summary-value">${value}</div>
+                <div class="stat-summary-label">${label}</div>
+                ${chips ? `<div class="stat-summary-chips">${chips}</div>` : ''}
+            </div>`;
+    }
+
+    return `
+        <div class="stat-summary-grid">
+            ${_card('👥', m.count || 0, 'Members', 'council', _chips(m.providers))}
+            ${_card('📜', p.count || 0, 'Proposals', 'proposals', _chips(p.by_status))}
+            ${_card('🗳️', v.count || 0, 'Votes', 'votes', _chips(v.by_status))}
+            ${_card('🎭', c.count || 0, 'Characters', 'characters', _chips(c.by_status))}
+            ${_card('🗺️', l.count || 0, 'Locations', 'locations', _chips(l.by_status))}
+            ${_card('🧬', ev.count || 0, 'Evolutions', 'evolution', _chips(ev.by_status))}
+            ${_card('📦', it.count || 0, 'Items', 'items', _chips(it.by_status))}
+            ${_card('🪙', (data.treasury || {}).total_accounts || 0, 'Treasury', 'treasury', '')}
+            ${_card('⚖️', (data.laws || {}).count || 0, 'Laws', 'laws', _chips((data.laws || {}).by_status))}
+        </div>`;
+}
+
+/** Format ISO timestamp as relative time (e.g. "2h ago", "3d ago"). */
+function _formatRelativeTime(isoStr) {
+    if (!isoStr) return '';
+    try {
+        const dt = new Date(isoStr);
+        const now = new Date();
+        const diffMs = now - dt;
+        const diffSec = Math.floor(diffMs / 1000);
+        if (diffSec < 60) return 'just now';
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return diffMin + 'm ago';
+        const diffHr = Math.floor(diffMin / 60);
+        if (diffHr < 24) return diffHr + 'h ago';
+        const diffDay = Math.floor(diffHr / 24);
+        if (diffDay < 30) return diffDay + 'd ago';
+        const diffMonth = Math.floor(diffDay / 30);
+        return diffMonth + 'mo ago';
+    } catch (_) {
+        return '';
+    }
 }
 
 /** Fetch bulletins and start the auto-cycling ticker. */

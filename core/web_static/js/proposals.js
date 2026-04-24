@@ -123,6 +123,11 @@ async function renderProposals() {
                             placeholder="Character history and background — the lion's share of the character's story…"></textarea>
                     </div>
                     <div class="filter-group" style="margin-top:var(--space-sm)">
+                        <label for="proposal-char-physical-desc">Physical Description</label>
+                        <textarea id="proposal-char-physical-desc" class="settings-input proposal-textarea" rows="2"
+                            placeholder="Physical appearance — hair, build, clothing, distinguishing features…"></textarea>
+                    </div>
+                    <div class="filter-group" style="margin-top:var(--space-sm)">
                         <label for="proposal-char-prompt">System Prompt</label>
                         <textarea id="proposal-char-prompt" class="settings-input proposal-textarea" rows="3"
                             placeholder="You are {{char}}, an adventurous AI who…"></textarea>
@@ -466,6 +471,7 @@ async function createNewProposal() {
     if (category === 'character') {
         const charName = (document.getElementById('proposal-char-name').value || '').trim();
         const backstory = (document.getElementById('proposal-char-backstory').value || '').trim();
+        const physicalDesc = (document.getElementById('proposal-char-physical-desc').value || '').trim();
         const systemPrompt = (document.getElementById('proposal-char-prompt').value || '').trim();
         const greeting = (document.getElementById('proposal-char-greeting').value || '').trim();
         const tagsRaw = (document.getElementById('proposal-char-tags').value || '').trim();
@@ -499,6 +505,7 @@ async function createNewProposal() {
         character_data = {
             name: charName,
             backstory,
+            physical_description: physicalDesc,
             system_prompt: systemPrompt,
             greeting,
             tags: tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
@@ -772,12 +779,27 @@ async function renderProposalDetail(id) {
     let voteResultsHtml = '';
     if (hasVote) {
         const t = voteData.tally || {};
-        const votesHtml = (voteData.votes || []).map(v => `
+        const votesHtml = (voteData.votes || []).map(v => {
+            const weight = v.weight != null ? v.weight : 1;
+            const weightBadge = weight !== 1
+                ? `<span class="vote-weight" title="Vote weight (reputation-adjusted)">w:${weight}</span>`
+                : '';
+            const uncertainBadge = v.parse_confident === false
+                ? `<span class="badge badge-abstain" title="Vote tag not found — defaulted to abstain" style="font-size:0.7rem;opacity:0.7">⚠ parse</span>`
+                : '';
+            const errorBadge = v.error
+                ? `<span class="badge badge-against" title="API error — recorded as abstain" style="font-size:0.7rem;opacity:0.7">⚠ error</span>`
+                : '';
+            return `
             <div class="vote-item">
                 <span class="vote-voter">${v.voter}</span>
                 ${badge(v.choice)}
+                ${weightBadge}
+                ${uncertainBadge}
+                ${errorBadge}
                 <span class="vote-reason">${renderMarkdown(v.reason) || '—'}</span>
-            </div>`).join('');
+            </div>`;
+        }).join('');
 
         voteResultsHtml = `
             <div class="detail-section vote-results-panel">
