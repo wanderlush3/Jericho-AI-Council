@@ -8,6 +8,7 @@ import logging
 
 
 import json as json_module
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
@@ -49,7 +50,9 @@ def api_task_detail(task_id: str) -> dict[str, Any]:
 def api_tasks_create(body: dict[str, Any]) -> dict[str, Any]:
     """Create a new task.
 
-    Body: {name, description, reason, assignees: [...]}
+    Body: {name, description, reason, assignees: [...],
+           task_type: "standard"|"gift"|"purchase",
+           gift_config: {...}, purchase_config: {...}}
     """
     from core.tasks import TaskManager, TaskValidationError
 
@@ -57,6 +60,9 @@ def api_tasks_create(body: dict[str, Any]) -> dict[str, Any]:
     description = (body.get("description", "") or "").strip()
     reason = (body.get("reason", "") or "").strip()
     assignees = body.get("assignees", [])
+    task_type = (body.get("task_type", "standard") or "standard").strip()
+    gift_config = body.get("gift_config") or None
+    purchase_config = body.get("purchase_config") or None
 
     mgr = TaskManager()
     try:
@@ -65,6 +71,9 @@ def api_tasks_create(body: dict[str, Any]) -> dict[str, Any]:
             description=description,
             reason=reason,
             assignees=assignees,
+            task_type=task_type,
+            gift_config=gift_config,
+            purchase_config=purchase_config,
         )
     except TaskValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -343,12 +352,194 @@ async def api_tasks_do_tasks() -> StreamingResponse:
                 updated = TaskModel.from_dict(d)
                 tmgr._save(updated)
 
+                # ── Gift execution for gift tasks ─────────────────
+                gift_result_data = {}
+                if task.task_type == "gift" and task.gift_config:
+                    try:
+                        gc = task.gift_config
+                        from core.items import ItemManager
+                        imgr = ItemManager()
+                        gift_record = imgr.gift_item(
+                            gc["item_id"],
+                            from_owner=gc["from_owner"],
+                            to_owner=gc["to_owner"],
+                            message=gc.get("message", ""),
+                        )
+
+                        # Create gift chat record
+                        from core.routes.items import _create_gift_chat
+                        chat_record = _create_gift_chat(gift_record)
+
+                        # Fire reputation hooks
+                        from core.reputation_hooks import on_gift_given
+                        on_gift_given(gift_record)
+
+                        gift_result_data = {
+                            "item_id": gift_record.item_id,
+                            "item_name": gift_record.item_name,
+                            "from_name": gift_record.from_owner.get("name", ""),
+                            "to_name": gift_record.to_owner.get("name", ""),
+                            "chat_id": chat_record.get("chat_id", ""),
+                            "timestamp": gift_record.timestamp,
+                        }
+
+                        # Persist gift_result on the task
+                        d2 = updated.to_dict()
+                        d2["gift_result"] = gift_result_data
+                        updated2 = TaskModel.from_dict(d2)
+                        tmgr._save(updated2)
+
+                        # Emit gift_complete SSE event
+                        gift_evt = json_module.dumps({
+                            "type": "gift_complete",
+                            "task_id": task.id,
+                            "task_name": task.name,
+                            **gift_result_data,
+                        })
+                        yield f"event: gift_complete\ndata: {gift_evt}\n\n"
+
+                    except Exception as gift_exc:
+                        log.warning(
+                            "Gift execution failed for task %s: %s",
+                            task.id, gift_exc,
+                        )
+                        gift_err = json_module.dumps({
+                            "type": "gift_error",
+                            "task_id": task.id,
+                            "detail": str(gift_exc)[:200],
+                        })
+                        yield f"event: gift_error\ndata: {gift_err}\n\n"
+
+                # ── Purchase execution for purchase tasks ─────────
+                purchase_result_data = {}
+                if task.task_type == "purchase" and task.purchase_config:
+                    try:
+                        pc = task.purchase_config
+                        store_id = pc["store_id"]
+                        item_id = pc["item_id"]
+                        buyer_account_id = pc["buyer_account_id"]
+                        buyer_entity_id = pc.get("buyer_entity_id", "")
+                        buyer_name = pc.get("buyer_name", "")
+                        buyer_type = pc.get("buyer_type", "user")
+
+                        # Look up buyer's reputation tier for price modifier
+                        price_modifier = 1.0
+                        buyer_tier = "neutral"
+                        if buyer_entity_id:
+                            try:
+                                from core.reputation_effects import (
+                                    get_entity_tier, get_price_modifier,
+                                )
+                                buyer_tier = get_entity_tier(buyer_entity_id)
+                                price_modifier = get_price_modifier(buyer_tier)
+                            except Exception:
+                                log.debug(
+                                    "Tasks: reputation lookup failed for %s",
+                                    buyer_entity_id, exc_info=True,
+                                )
+
+                        # Execute the purchase
+                        from core.stores import StoreManager
+                        from core.treasury import TreasuryManager
+                        smgr = StoreManager()
+                        treasury = TreasuryManager()
+                        purchase_result = smgr.purchase(
+                            store_id, item_id, buyer_account_id, treasury,
+                            price_modifier=price_modifier,
+                        )
+
+                        # Add item ownership to the buyer
+                        from core.items import ItemManager
+                        item_mgr = ItemManager()
+                        try:
+                            bought_item = item_mgr.get(item_id)
+                            current_owners = list(bought_item.owned_by)
+                            buyer_owner = {"name": buyer_name or buyer_account_id, "type": buyer_type}
+                            # Only add if not already an owner
+                            existing_keys = {
+                                (o.get("name", "").lower(), o.get("type", ""))
+                                for o in current_owners
+                            }
+                            buyer_key = (buyer_owner["name"].lower(), buyer_owner["type"])
+                            if buyer_key not in existing_keys:
+                                current_owners.append(buyer_owner)
+                                item_mgr.update(item_id, owned_by=current_owners)
+                        except Exception:
+                            log.debug(
+                                "Tasks: failed to add ownership for %s on %s",
+                                buyer_name, item_id, exc_info=True,
+                            )
+
+                        # Fire reputation hooks
+                        try:
+                            from core.reputation_hooks import on_purchase
+                            store_data = purchase_result.get("store", {})
+                            item_data = purchase_result.get("item", {})
+                            adjusted = purchase_result.get("adjusted_price", {})
+                            on_purchase(
+                                buyer_entity_id=buyer_entity_id,
+                                item_name=bought_item.name if bought_item else item_id,
+                                store_name=store_data.get("name", store_id),
+                                price_gold=adjusted.get("gold", 0),
+                            )
+                        except Exception:
+                            log.debug(
+                                "Tasks: purchase reputation hook failed for %s",
+                                task.id, exc_info=True,
+                            )
+
+                        adjusted_price = purchase_result.get("adjusted_price", {})
+                        store_data = purchase_result.get("store", {})
+                        item_data = purchase_result.get("item", {})
+
+                        purchase_result_data = {
+                            "store_id": store_id,
+                            "store_name": store_data.get("name", ""),
+                            "item_id": item_id,
+                            "item_name": bought_item.name if bought_item else "",
+                            "buyer_name": buyer_name,
+                            "buyer_tier": buyer_tier,
+                            "price_modifier": round(price_modifier, 2),
+                            "adjusted_price": adjusted_price,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        }
+
+                        # Persist purchase_result on the task
+                        d3 = updated.to_dict()
+                        d3["purchase_result"] = purchase_result_data
+                        updated3 = TaskModel.from_dict(d3)
+                        tmgr._save(updated3)
+
+                        # Emit purchase_complete SSE event
+                        purchase_evt = json_module.dumps({
+                            "type": "purchase_complete",
+                            "task_id": task.id,
+                            "task_name": task.name,
+                            **purchase_result_data,
+                        })
+                        yield f"event: purchase_complete\ndata: {purchase_evt}\n\n"
+
+                    except Exception as purchase_exc:
+                        log.warning(
+                            "Purchase execution failed for task %s: %s",
+                            task.id, purchase_exc,
+                        )
+                        purchase_err = json_module.dumps({
+                            "type": "purchase_error",
+                            "task_id": task.id,
+                            "detail": str(purchase_exc)[:200],
+                        })
+                        yield f"event: purchase_error\ndata: {purchase_err}\n\n"
+
                 task_done = json_module.dumps({
                     "type": "task_done",
                     "task_id": task.id,
                     "task_name": task.name,
                     "status": "completed",
                     "total_messages": len(new_messages),
+                    "task_type": task.task_type,
+                    "gift_result": gift_result_data if gift_result_data else None,
+                    "purchase_result": purchase_result_data if purchase_result_data else None,
                 })
                 yield f"event: task_done\ndata: {task_done}\n\n"
 

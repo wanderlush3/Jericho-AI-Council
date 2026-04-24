@@ -1,0 +1,680 @@
+/* ═══════════════════════════════════════════════════════════════
+   task-gift.css — Gift Task Styles (F-073)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Task Type Toggle ──────────────────────────────────────── */
+
+.task-type-toggle {
+    display: flex;
+    gap: var(--space-xs, 4px);
+    background: var(--bg-input, rgba(15, 23, 42, 0.6));
+    border-radius: 10px;
+    padding: 3px;
+    width: fit-content;
+    border: 1px solid var(--border-subtle);
+}
+
+.task-type-btn {
+    padding: 6px 16px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+}
+
+.task-type-btn:hover {
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.task-type-btn.active {
+    background: linear-gradient(135deg, hsl(330, 55%, 50%), hsl(350, 50%, 45%));
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(236, 72, 153, 0.25);
+}
+
+.task-type-btn.active.standard {
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+
+/* ── Gift Config Panel ─────────────────────────────────────── */
+
+.gift-task-config {
+    margin-top: var(--space-sm);
+    padding: var(--space-md);
+    border-radius: 12px;
+    border: 1px solid rgba(236, 72, 153, 0.2);
+    background: linear-gradient(135deg,
+        rgba(236, 72, 153, 0.04),
+        rgba(244, 63, 94, 0.04));
+    animation: giftConfigSlideIn 0.35s ease;
+}
+
+@keyframes giftConfigSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        max-height: 600px;
+    }
+}
+
+.gift-task-config .filter-group {
+    margin-bottom: var(--space-sm);
+}
+
+.gift-task-config label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.gift-config-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: hsl(330, 55%, 60%);
+}
+
+.gift-config-header .icon {
+    font-size: 1.2rem;
+}
+
+/* ── Gift Task Badge (on table rows) ──────────────────────── */
+
+.gift-task-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: linear-gradient(135deg,
+        rgba(236, 72, 153, 0.12),
+        rgba(244, 63, 94, 0.12));
+    color: hsl(330, 60%, 62%);
+    border: 1px solid rgba(236, 72, 153, 0.2);
+}
+
+/* ── Gift Complete Celebration Card (SSE feed) ────────────── */
+
+.gift-complete-card {
+    position: relative;
+    overflow: hidden;
+    padding: var(--space-md);
+    border-radius: 14px;
+    border: 2px solid transparent;
+    background:
+        linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+        linear-gradient(135deg,
+            hsl(45, 90%, 55%),
+            hsl(330, 55%, 50%),
+            hsl(280, 60%, 55%),
+            hsl(45, 90%, 55%)) border-box;
+    background-size: 100%, 300% 300%;
+    animation: giftBorderShimmer 3s ease-in-out infinite,
+               giftCardEnter 0.6s ease;
+    margin: var(--space-sm) 0;
+}
+
+@keyframes giftBorderShimmer {
+    0%, 100% { background-position: 0, 0% 0%; }
+    50% { background-position: 0, 100% 100%; }
+}
+
+@keyframes giftCardEnter {
+    from {
+        opacity: 0;
+        transform: scale(0.92) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.gift-complete-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+}
+
+.gift-complete-icon {
+    font-size: 2rem;
+    animation: giftPulse 1.5s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.4));
+}
+
+@keyframes giftPulse {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.15) rotate(-5deg); }
+    50% { transform: scale(1.05) rotate(0deg); }
+    75% { transform: scale(1.12) rotate(5deg); }
+}
+
+.gift-complete-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, hsl(45, 90%, 60%), hsl(330, 55%, 55%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.gift-complete-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+}
+
+.gift-complete-body .arrow {
+    color: hsl(330, 55%, 55%);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.gift-complete-item {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.gift-complete-rep {
+    display: flex;
+    gap: var(--space-xs);
+    margin-top: var(--space-xs);
+}
+
+.gift-complete-rep .gift-rep-chip {
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+/* Confetti particles */
+.gift-complete-card::before,
+.gift-complete-card::after {
+    content: '';
+    position: absolute;
+    top: -10px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    animation: confettiFall 2s ease-in forwards;
+    pointer-events: none;
+}
+
+.gift-complete-card::before {
+    left: 20%;
+    background: hsl(45, 90%, 55%);
+    animation-delay: 0.1s;
+}
+
+.gift-complete-card::after {
+    left: 70%;
+    background: hsl(330, 55%, 55%);
+    animation-delay: 0.3s;
+}
+
+@keyframes confettiFall {
+    0% {
+        opacity: 1;
+        transform: translateY(0) rotate(0deg) scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: translateY(30px) rotate(180deg) scale(1.2);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(80px) rotate(360deg) scale(0.5);
+    }
+}
+
+/* ── Gift Delivered Banner (task detail) ──────────────────── */
+
+.gift-delivered-banner {
+    position: relative;
+    overflow: hidden;
+    padding: var(--space-md) var(--space-lg);
+    border-radius: 14px;
+    margin-bottom: var(--space-md);
+    border: 2px solid transparent;
+    background:
+        linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+        linear-gradient(135deg,
+            hsl(45, 90%, 55%),
+            hsl(330, 55%, 50%)) border-box;
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.gift-delivered-icon {
+    font-size: 2.2rem;
+    animation: giftPulse 2s ease-in-out infinite;
+}
+
+.gift-delivered-content {
+    flex: 1;
+}
+
+.gift-delivered-title {
+    font-size: 1rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, hsl(45, 90%, 60%), hsl(330, 55%, 55%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+}
+
+.gift-delivered-detail {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.gift-delivered-detail .arrow {
+    color: hsl(330, 55%, 55%);
+    font-weight: 700;
+}
+
+.gift-delivered-rep {
+    display: flex;
+    gap: var(--space-sm);
+    margin-top: 6px;
+}
+
+/* ── Gift Config Section (task detail) ────────────────────── */
+
+.gift-info-section {
+    padding: var(--space-md);
+    border-radius: 12px;
+    border: 1px solid rgba(236, 72, 153, 0.15);
+    background: linear-gradient(135deg,
+        rgba(236, 72, 153, 0.03),
+        rgba(244, 63, 94, 0.03));
+    margin-bottom: var(--space-md);
+}
+
+.gift-info-section h4 {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: hsl(330, 55%, 60%);
+    margin-bottom: var(--space-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.gift-info-row {
+    display: flex;
+    gap: var(--space-md);
+    margin-bottom: 6px;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+
+.gift-info-label {
+    min-width: 80px;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.gift-info-value {
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Purchase Task Styles (F-074)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Purchase Type Toggle Button ──────────────────────────── */
+
+.task-type-btn.active.purchase {
+    background: linear-gradient(135deg, hsl(160, 55%, 42%), hsl(180, 50%, 38%));
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+/* ── Purchase Config Panel ────────────────────────────────── */
+
+.purchase-task-config {
+    margin-top: var(--space-sm);
+    padding: var(--space-md);
+    border-radius: 12px;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    background: linear-gradient(135deg,
+        rgba(16, 185, 129, 0.04),
+        rgba(6, 182, 212, 0.04));
+    animation: purchaseConfigSlideIn 0.35s ease;
+}
+
+@keyframes purchaseConfigSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        max-height: 600px;
+    }
+}
+
+.purchase-task-config .filter-group {
+    margin-bottom: var(--space-sm);
+}
+
+.purchase-task-config label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.purchase-config-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: hsl(160, 55%, 50%);
+}
+
+.purchase-config-header .icon {
+    font-size: 1.2rem;
+}
+
+/* ── Purchase Task Badge (on table rows) ──────────────────── */
+
+.purchase-task-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: linear-gradient(135deg,
+        rgba(16, 185, 129, 0.12),
+        rgba(6, 182, 212, 0.12));
+    color: hsl(160, 55%, 52%);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* ── Purchase Complete Celebration Card (SSE feed) ────────── */
+
+.purchase-complete-card {
+    position: relative;
+    overflow: hidden;
+    padding: var(--space-md);
+    border-radius: 14px;
+    border: 2px solid transparent;
+    background:
+        linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+        linear-gradient(135deg,
+            hsl(160, 55%, 50%),
+            hsl(45, 90%, 55%),
+            hsl(180, 50%, 45%),
+            hsl(160, 55%, 50%)) border-box;
+    background-size: 100%, 300% 300%;
+    animation: purchaseBorderShimmer 3s ease-in-out infinite,
+               purchaseCardEnter 0.6s ease;
+    margin: var(--space-sm) 0;
+}
+
+@keyframes purchaseBorderShimmer {
+    0%, 100% { background-position: 0, 0% 0%; }
+    50% { background-position: 0, 100% 100%; }
+}
+
+@keyframes purchaseCardEnter {
+    from {
+        opacity: 0;
+        transform: scale(0.92) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.purchase-complete-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+}
+
+.purchase-complete-icon {
+    font-size: 2rem;
+    animation: purchasePulse 1.5s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.4));
+}
+
+@keyframes purchasePulse {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.12) rotate(-3deg); }
+    50% { transform: scale(1.05) rotate(0deg); }
+    75% { transform: scale(1.10) rotate(3deg); }
+}
+
+.purchase-complete-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, hsl(160, 55%, 55%), hsl(45, 90%, 60%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.purchase-complete-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+}
+
+.purchase-complete-body .arrow {
+    color: hsl(160, 55%, 50%);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.purchase-complete-item {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.purchase-complete-price {
+    display: flex;
+    gap: var(--space-xs);
+    margin-top: var(--space-xs);
+}
+
+.purchase-price-chip {
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.purchase-price-chip.gold {
+    background: rgba(245, 158, 11, 0.12);
+    color: hsl(38, 90%, 55%);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.purchase-price-chip.silver {
+    background: rgba(148, 163, 184, 0.12);
+    color: hsl(215, 15%, 65%);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.purchase-price-chip.bronze {
+    background: rgba(180, 83, 9, 0.12);
+    color: hsl(26, 60%, 50%);
+    border: 1px solid rgba(180, 83, 9, 0.25);
+}
+
+.purchase-price-chip.rep-modifier {
+    background: rgba(16, 185, 129, 0.12);
+    color: hsl(160, 55%, 52%);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+/* Coins confetti particles */
+.purchase-complete-card::before,
+.purchase-complete-card::after {
+    content: '';
+    position: absolute;
+    top: -10px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    animation: confettiFall 2s ease-in forwards;
+    pointer-events: none;
+}
+
+.purchase-complete-card::before {
+    left: 25%;
+    background: hsl(45, 90%, 55%);
+    animation-delay: 0.1s;
+}
+
+.purchase-complete-card::after {
+    left: 65%;
+    background: hsl(160, 55%, 50%);
+    animation-delay: 0.3s;
+}
+
+/* ── Purchase Delivered Banner (task detail) ──────────────── */
+
+.purchase-delivered-banner {
+    position: relative;
+    overflow: hidden;
+    padding: var(--space-md) var(--space-lg);
+    border-radius: 14px;
+    margin-bottom: var(--space-md);
+    border: 2px solid transparent;
+    background:
+        linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+        linear-gradient(135deg,
+            hsl(160, 55%, 50%),
+            hsl(45, 90%, 55%)) border-box;
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.purchase-delivered-icon {
+    font-size: 2.2rem;
+    animation: purchasePulse 2s ease-in-out infinite;
+}
+
+.purchase-delivered-content {
+    flex: 1;
+}
+
+.purchase-delivered-title {
+    font-size: 1rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, hsl(160, 55%, 55%), hsl(45, 90%, 60%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+}
+
+.purchase-delivered-detail {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.purchase-delivered-detail .arrow {
+    color: hsl(160, 55%, 50%);
+    font-weight: 700;
+}
+
+.purchase-delivered-price {
+    display: flex;
+    gap: var(--space-sm);
+    margin-top: 6px;
+}
+
+/* ── Purchase Config Section (task detail) ────────────────── */
+
+.purchase-info-section {
+    padding: var(--space-md);
+    border-radius: 12px;
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    background: linear-gradient(135deg,
+        rgba(16, 185, 129, 0.03),
+        rgba(6, 182, 212, 0.03));
+    margin-bottom: var(--space-md);
+}
+
+.purchase-info-section h4 {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: hsl(160, 55%, 50%);
+    margin-bottom: var(--space-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+/* ── Price Preview (config panel) ─────────────────────────── */
+
+.purchase-price-preview {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: 10px;
+    background: rgba(16, 185, 129, 0.04);
+    border: 1px solid rgba(16, 185, 129, 0.1);
+    margin-top: var(--space-sm);
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+
+.purchase-price-preview .price-tag {
+    font-weight: 600;
+    color: hsl(45, 90%, 60%);
+}

@@ -178,7 +178,7 @@ const VIEW_TO_SECTION = {
     sessions: 'governance', laws: 'governance', reputation: 'governance',
     characters: 'characters', memories: 'characters', evolution: 'characters',
     tasks: 'characters',
-    chat: 'world', explore: 'world', stories: 'world', locations: 'world', items: 'world', stores: 'world',
+    chat: 'world', explore: 'world', stories: 'world', locations: 'world', items: 'world', gifts: 'world', stores: 'world',
     treasury: 'world', taxation: 'world',
     settings: 'config',
 };

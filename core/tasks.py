@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from config.settings import TASKS_DIR, TASK_STATUSES, TASK_MAX_ROUNDS
+from config.settings import TASKS_DIR, TASK_STATUSES, TASK_TYPES, TASK_MAX_ROUNDS
 from core.utils import make_id_lock
 
 
@@ -124,8 +124,13 @@ class Task:
     reason: str
     assignees: list[str]
     status: str = "draft"
+    task_type: str = "standard"
     current_round: int = 0
     messages: list[TaskMessage] = field(default_factory=list)
+    gift_config: dict[str, Any] = field(default_factory=dict)
+    gift_result: dict[str, Any] = field(default_factory=dict)
+    purchase_config: dict[str, Any] = field(default_factory=dict)
+    purchase_result: dict[str, Any] = field(default_factory=dict)
     created_at: str = ""
     updated_at: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -148,8 +153,13 @@ class Task:
             reason=data.get("reason", ""),
             assignees=data.get("assignees", []),
             status=data.get("status", "draft"),
+            task_type=data.get("task_type", "standard"),
             current_round=data.get("current_round", 0),
             messages=messages,
+            gift_config=data.get("gift_config", {}),
+            gift_result=data.get("gift_result", {}),
+            purchase_config=data.get("purchase_config", {}),
+            purchase_result=data.get("purchase_result", {}),
             created_at=data.get("created_at", ""),
             updated_at=data.get("updated_at", ""),
             metadata=data.get("metadata", {}),
@@ -163,6 +173,9 @@ class Task:
         description: str,
         reason: str,
         assignees: list[str],
+        task_type: str = "standard",
+        gift_config: dict[str, Any] | None = None,
+        purchase_config: dict[str, Any] | None = None,
         **metadata: Any,
     ) -> Task:
         now = datetime.now(timezone.utc).isoformat()
@@ -173,8 +186,13 @@ class Task:
             reason=reason.strip(),
             assignees=list(assignees),
             status="draft",
+            task_type=task_type,
             current_round=0,
             messages=[],
+            gift_config=gift_config or {},
+            gift_result={},
+            purchase_config=purchase_config or {},
+            purchase_result={},
             created_at=now,
             updated_at=now,
             metadata=metadata,
@@ -206,6 +224,9 @@ class TaskManager:
         description: str,
         reason: str,
         assignees: list[str],
+        task_type: str = "standard",
+        gift_config: dict[str, Any] | None = None,
+        purchase_config: dict[str, Any] | None = None,
         **metadata: Any,
     ) -> Task:
         """Create a new task in draft status."""
@@ -218,12 +239,46 @@ class TaskManager:
             errors.append("Task reason is required.")
         if not assignees:
             errors.append("At least one assignee is required.")
+
+        # Validate task_type
+        if task_type not in TASK_TYPES:
+            errors.append(
+                f"Invalid task_type '{task_type}'. "
+                f"Must be one of: {', '.join(TASK_TYPES)}"
+            )
+
+        # Validate gift_config for gift tasks
+        if task_type == "gift":
+            gc = gift_config or {}
+            if not gc.get("item_id"):
+                errors.append("Gift task requires 'item_id' in gift_config.")
+            if not gc.get("from_owner") or not isinstance(gc.get("from_owner"), dict):
+                errors.append("Gift task requires 'from_owner' dict in gift_config.")
+            if not gc.get("to_owner") or not isinstance(gc.get("to_owner"), dict):
+                errors.append("Gift task requires 'to_owner' dict in gift_config.")
+
+        # Validate purchase_config for purchase tasks
+        if task_type == "purchase":
+            pc = purchase_config or {}
+            if not pc.get("store_id"):
+                errors.append("Purchase task requires 'store_id' in purchase_config.")
+            if not pc.get("item_id"):
+                errors.append("Purchase task requires 'item_id' in purchase_config.")
+            if not pc.get("buyer_account_id"):
+                errors.append("Purchase task requires 'buyer_account_id' in purchase_config.")
+
         if errors:
             raise TaskValidationError(errors)
 
         with self._id_lock:
             task_id = self._next_id()
-            task = Task.create(task_id, name, description, reason, assignees, **metadata)
+            task = Task.create(
+                task_id, name, description, reason, assignees,
+                task_type=task_type,
+                gift_config=gift_config,
+                purchase_config=purchase_config,
+                **metadata,
+            )
             self._save(task)
         return task
 
