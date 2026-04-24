@@ -5365,3 +5365,62 @@ stat summary grid.
    - `scripts/` directory contains one-off analysis scripts that could be
      cleaned up or moved to a `tools/` directory.
 5. **Version is 0.99** — project is feature-complete but not yet 1.0.
+
+---
+
+## Session: S-DEBT-00000001
+**Timestamp:** 2026-04-23 20:50:00
+**Feature:** Technical Debt Sweep
+**Status:** completed
+
+### Summary
+Comprehensive technical debt sweep after completing all 79 features (F-001
+through F-079). No behavioral changes — all 3,797 tests remain green.
+
+### What Was Done
+
+1. **Legacy data cleanup**
+   - Deleted 9 stale `core_beliefs.md` markdown stubs from council member
+     memory directories. The memory system (F-004) switched to JSON
+     (`core_beliefs.json`) — these were dead files from the original scaffold.
+   - Deleted `data/votes/vote_database.json` — a jericho01 migration
+     artifact. The VotingEngine only reads `V-*.json` files.
+
+2. **Unused import removal**
+   - Removed `from starlette.middleware.base import BaseHTTPMiddleware`
+     from `core/web_api.py`. The middleware is defined inline via
+     `@application.middleware("http")` — this import was dead.
+
+3. **Version bump: 0.9.0 → 0.99**
+   - Updated `pyproject.toml` (line 7) and `core/web_api.py` FastAPI app
+     constructor. Project is feature-complete but not yet 1.0 maturity.
+
+4. **Progress log formalization**
+   - Added missing "Advice for Next Agent" section to the F-078 entry.
+
+5. **Per-feature-group git commits**
+   - Committed 133 previously uncommitted changes across 8 structured
+     commits covering F-070 through F-078 plus cross-cutting data changes.
+   - Git working tree is now clean (`git status` shows no changes).
+
+### Technical Debt (Remaining)
+- `routes/stories.py` (51 KB) and `routes/proposals.py` (42 KB) remain
+  the largest route files — good extraction candidates for a future session.
+- 12 tests permanently skipped (sentence-transformers not installed).
+- `scripts/` directory has one-off analysis scripts (css_analysis.txt,
+  js_analysis.txt) that could be cleaned up.
+- `.gitignore` does not exclude `data/` — user data is version-controlled.
+  Deferred to a future policy decision.
+
+### Test Baseline
+- Test count: 3,797 passing, 12 skipped (unchanged).
+
+### Advice for Next Agent
+1. **All 79 features are complete.** The backlog is empty. New features
+   must be defined before the next coding session.
+2. **Git is clean** — no uncommitted changes for the first time in ~10
+   sessions. Keep it that way with structured commits per feature.
+3. **Version is 0.99.** Reserve 1.0 for when `.gitignore` policy, docs,
+   and remaining debt are fully addressed.
+4. **Test baseline: 3,797 passing, 12 skipped.** Run full suite before
+   and after every change.
