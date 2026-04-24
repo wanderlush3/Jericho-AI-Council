@@ -215,12 +215,228 @@ def api_status() -> dict[str, Any]:
 @router.get("/api/narrative-bulletins")
 def api_narrative_bulletins() -> list[dict[str, Any]]:
     """Generate emergent narrative bulletins from recent events."""
+    import os
     from core.narrative_engine import NarrativeEngine
-    from config.settings import NARRATIVE_MAX_BULLETINS, NARRATIVE_MAX_AGE_DAYS
+    from config.settings import (
+        NARRATIVE_MAX_BULLETINS, NARRATIVE_MAX_BULLETINS_ENV,
+        NARRATIVE_MAX_AGE_DAYS, NARRATIVE_MAX_AGE_DAYS_ENV,
+    )
+
+    # Support runtime overrides from Settings UI
+    raw_bulletins = os.environ.get(NARRATIVE_MAX_BULLETINS_ENV, "").strip()
+    raw_age = os.environ.get(NARRATIVE_MAX_AGE_DAYS_ENV, "").strip()
+    max_bulletins = int(raw_bulletins) if raw_bulletins else NARRATIVE_MAX_BULLETINS
+    max_age_days = int(raw_age) if raw_age else NARRATIVE_MAX_AGE_DAYS
 
     engine = NarrativeEngine(
-        max_bulletins=NARRATIVE_MAX_BULLETINS,
-        max_age_days=NARRATIVE_MAX_AGE_DAYS,
+        max_bulletins=max_bulletins,
+        max_age_days=max_age_days,
     )
     bulletins = engine.generate_bulletins()
     return [b.to_dict() for b in bulletins]
+
+
+# ── Activity Feed ─────────────────────────────────────────────
+
+_ACTIVITY_FEED_MAX = 30
+
+
+@router.get("/api/activity-feed")
+def api_activity_feed() -> list[dict[str, Any]]:
+    """Unified reverse-chronological feed of recent system events."""
+    events: list[dict[str, Any]] = []
+
+    # -- Proposals --
+    try:
+        pmgr = get_proposal_manager()
+        for p in pmgr.list_proposals():
+            ts = getattr(p, "created_at", "") or getattr(p, "updated_at", "") or ""
+            events.append({
+                "type": "proposal",
+                "icon": "📜",
+                "title": f"Proposal: {p.title}",
+                "description": f"{p.author} · {p.category} · {p.status}",
+                "entity_id": p.id,
+                "nav_target": "proposals",
+                "timestamp": ts,
+            })
+    except Exception:
+        log.debug("Activity feed: failed to load proposals", exc_info=True)
+
+    # -- Characters --
+    try:
+        cmgr = get_character_manager()
+        for c in cmgr.list_characters():
+            ts = getattr(c, "created_at", "") or ""
+            events.append({
+                "type": "character",
+                "icon": "🎭",
+                "title": f"Character: {c.name}",
+                "description": f"by {c.author} · {c.status}",
+                "entity_id": c.id,
+                "nav_target": "characters",
+                "timestamp": ts,
+            })
+    except Exception:
+        log.debug("Activity feed: failed to load characters", exc_info=True)
+
+    # -- Locations --
+    try:
+        lmgr = get_location_manager()
+        for loc in lmgr.list_locations():
+            ts = getattr(loc, "created_at", "") or ""
+            events.append({
+                "type": "location",
+                "icon": "🗺️",
+                "title": f"Location: {loc.name}",
+                "description": loc.status,
+                "entity_id": loc.id,
+                "nav_target": "locations",
+                "timestamp": ts,
+            })
+    except Exception:
+        log.debug("Activity feed: failed to load locations", exc_info=True)
+
+    # -- Items --
+    try:
+        imgr = get_item_manager()
+        for it in imgr.list_items():
+            ts = getattr(it, "created_at", "") or ""
+            events.append({
+                "type": "item",
+                "icon": "📦",
+                "title": f"Item: {it.name}",
+                "description": it.status,
+                "entity_id": it.id,
+                "nav_target": "items",
+                "timestamp": ts,
+            })
+    except Exception:
+        log.debug("Activity feed: failed to load items", exc_info=True)
+
+    # -- Evolutions --
+    try:
+        from core.character_evolution import CharacterEvolution
+        evo_mgr = CharacterEvolution(
+            character_manager=get_character_manager(),
+            proposal_manager=get_proposal_manager(),
+            voting_engine=get_voting_engine(),
+        )
+        for ev in evo_mgr.list_evolutions():
+            ts = getattr(ev, "created_at", "") or ""
+            target_name = getattr(ev, "character_id", "unknown")
+            events.append({
+                "type": "evolution",
+                "icon": "🧬",
+                "title": f"Evolution: {target_name}",
+                "description": f"by {ev.author} · {ev.status}",
+                "entity_id": ev.id,
+                "nav_target": "evolution",
+                "timestamp": ts,
+            })
+    except Exception:
+        log.debug("Activity feed: failed to load evolutions", exc_info=True)
+
+    # -- Vote Records --
+    try:
+        engine = get_voting_engine()
+        for rec in engine.list_records():
+            ts = getattr(rec, "opened_at", "") or ""
+            events.append({
+                "type": "vote",
+                "icon": "🗳️",
+                "title": f"Vote: {rec.proposal_id}",
+                "description": f"{rec.status} · {len(rec.votes)} votes cast",
+                "entity_id": rec.proposal_id,
+                "nav_target": "votes",
+                "timestamp": ts,
+            })
+    except Exception:
+        log.debug("Activity feed: failed to load votes", exc_info=True)
+
+    # Sort newest-first; entries without timestamps sort last
+    def _sort_key(e: dict[str, Any]) -> str:
+        return e.get("timestamp") or ""
+
+    events.sort(key=_sort_key, reverse=True)
+    return events[:_ACTIVITY_FEED_MAX]
+
+
+# ── System Health ─────────────────────────────────────────────
+
+
+@router.get("/api/system-health")
+def api_system_health() -> dict[str, Any]:
+    """System health summary: LLM providers, embedding, entity counts."""
+    health: dict[str, Any] = {}
+
+    # -- LLM Provider Keys --
+    try:
+        from core.api_keys import APIKeyManager
+        mgr = APIKeyManager()
+        health["providers"] = mgr.all_status()
+    except Exception:
+        log.debug("System health: failed to load provider status", exc_info=True)
+        health["providers"] = []
+
+    # -- Embedding Status --
+    try:
+        import os
+        from config.settings import (
+            EMBEDDING_MODEL_NAME, EMBEDDING_MODEL_NAME_ENV,
+            EMBEDDING_MODE_ENV,
+        )
+        model_name = os.environ.get(EMBEDDING_MODEL_NAME_ENV, "").strip() or EMBEDDING_MODEL_NAME
+        mode = os.environ.get(EMBEDDING_MODE_ENV, "").strip() or "hybrid"
+
+        # Check if sentence_transformers is importable
+        embedding_available = False
+        try:
+            import sentence_transformers  # noqa: F401
+            embedding_available = True
+        except ImportError:
+            pass
+
+        health["embedding"] = {
+            "model": model_name,
+            "mode": mode,
+            "available": embedding_available,
+        }
+    except Exception:
+        log.debug("System health: failed to check embedding status", exc_info=True)
+        health["embedding"] = {"model": "unknown", "mode": "unknown", "available": False}
+
+    # -- Entity Counts --
+    try:
+        counts: dict[str, int] = {}
+        try:
+            counts["members"] = len(get_registry().list_members())
+        except Exception:
+            counts["members"] = 0
+        try:
+            counts["proposals"] = len(get_proposal_manager().list_proposals())
+        except Exception:
+            counts["proposals"] = 0
+        try:
+            counts["characters"] = len(get_character_manager().list_characters())
+        except Exception:
+            counts["characters"] = 0
+        try:
+            counts["locations"] = len(get_location_manager().list_locations())
+        except Exception:
+            counts["locations"] = 0
+        try:
+            counts["items"] = len(get_item_manager().list_items())
+        except Exception:
+            counts["items"] = 0
+        try:
+            counts["votes"] = len(get_voting_engine().list_records())
+        except Exception:
+            counts["votes"] = 0
+        health["entity_counts"] = counts
+    except Exception:
+        log.debug("System health: failed to compute entity counts", exc_info=True)
+        health["entity_counts"] = {}
+
+    return health
+
