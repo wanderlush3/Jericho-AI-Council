@@ -1,0 +1,9 @@
+{"id": "REP-000561", "entity_id": "member:Ankha", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T02:14:36.677278+00:00"}
+{"id": "REP-000570", "entity_id": "member:Ankha", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T02:34:41.985298+00:00"}
+{"id": "REP-000579", "entity_id": "member:Ankha", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T23:41:29.718743+00:00"}
+{"id": "REP-000588", "entity_id": "member:Ankha", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T23:49:19.509963+00:00"}
+{"id": "REP-000597", "entity_id": "member:Ankha", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-27T16:20:38.216937+00:00"}
+{"id": "REP-000606", "entity_id": "member:Ankha", "event_type": "proposal_authored", "points": 10, "reason": "Authored proposal P-0001", "source_id": "P-0001", "timestamp": "2026-04-27T19:25:57.574228+00:00"}
+{"id": "REP-000607", "entity_id": "member:Ankha", "event_type": "proposal_authored", "points": 10, "reason": "Authored proposal P-0002", "source_id": "P-0002", "timestamp": "2026-04-27T19:27:45.789589+00:00"}
+{"id": "REP-000608", "entity_id": "member:Ankha", "event_type": "vote_cast", "points": 2, "reason": "Voted 'for' on P-0002", "source_id": "P-0002", "timestamp": "2026-04-27T19:28:28.396860+00:00"}
+{"id": "REP-000617", "entity_id": "member:Ankha", "event_type": "proposal_rejected", "points": -2, "reason": "Proposal P-0002 rejected", "source_id": "P-0002", "timestamp": "2026-04-27T19:31:15.793279+00:00"}

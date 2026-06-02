@@ -1,0 +1,6 @@
+{"id": "REP-000565", "entity_id": "member:Emily", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T02:14:36.696793+00:00"}
+{"id": "REP-000574", "entity_id": "member:Emily", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T02:34:42.009408+00:00"}
+{"id": "REP-000583", "entity_id": "member:Emily", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T23:41:29.739679+00:00"}
+{"id": "REP-000592", "entity_id": "member:Emily", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T23:49:19.530703+00:00"}
+{"id": "REP-000601", "entity_id": "member:Emily", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-27T16:20:38.239696+00:00"}
+{"id": "REP-000612", "entity_id": "member:Emily", "event_type": "vote_cast", "points": 2, "reason": "Voted 'against' on P-0002", "source_id": "P-0002", "timestamp": "2026-04-27T19:29:13.718628+00:00"}

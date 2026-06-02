@@ -1,42 +1,129 @@
-# Byte-compiled / optimized / DLL files
+# ─── Python ───────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Virtual environments
+# ─── Virtual Environments ─────────────────────────────────────
 venv/
 .venv/
 env/
 
-# API keys — NEVER commit
+# ─── API Keys — NEVER commit ─────────────────────────────────
 config/.env
 
-# IDE
+# ─── IDE ──────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Build artifacts
+# ─── Build Artifacts ─────────────────────────────────────────
 *.egg-info/
 dist/
 build/
 
-# OS
+# ─── OS ──────────────────────────────────────────────────────
 Thumbs.db
 .DS_Store
 
-# Test artifacts
+# ─── Test Artifacts ──────────────────────────────────────────
+.pytest_cache/
+htmlcov/
+.coverage
 test*.txt
 *_output*.txt
 *_fails.json
 test_failures.json
-.pytest_cache/
-htmlcov/
-.coverage
 
-# Logs
+# ─── Logs ────────────────────────────────────────────────────
 logs/*.log
-
-# Session state
 logs/session_state.json
+
+# ─── Development Tooling ─────────────────────────────────────
+.agents/
+scripts/*.txt
+progress_log.md
+
+# ══════════════════════════════════════════════════════════════
+# Runtime User Data
+# ──────────────────────────────────────────────────────────────
+# Files below are generated at runtime by the application.
+# Shipped example files are whitelisted with ! negation patterns.
+# ══════════════════════════════════════════════════════════════
+
+# ─── Conversations — all personal chat logs ──────────────────
+data/conversations/*
+!data/conversations/.gitkeep
+
+# ─── Council Sessions — all session transcripts ──────────────
+data/council_sessions/*
+!data/council_sessions/.gitkeep
+
+# ─── Memory Logs — per-agent and shared memories ─────────────
+data/memories/*
+!data/memories/shared/
+!data/memories/law_shared/
+data/memories/shared/*
+!data/memories/shared/.gitkeep
+data/memories/law_shared/*
+!data/memories/law_shared/.gitkeep
+
+# ─── Tasks — runtime task data ───────────────────────────────
+data/tasks/*
+!data/tasks/.gitkeep
+
+# ─── Salary — runtime payroll state ──────────────────────────
+data/salary_ledger.json
+
+# ─── Image ID Counter — runtime state ────────────────────────
+data/images/.next_id
+
+# ─── Locations — keep Gilded Cage and Unicorn & Potion ───────
+data/locations/*
+!data/locations/.gitkeep
+!data/locations/LOC-0001.json
+!data/locations/LOC-0003.json
+
+# ─── Stories — keep Fall of Ironhaven ────────────────────────
+data/stories/*
+!data/stories/.gitkeep
+!data/stories/ST-0001.json
+
+# ─── Proposals — keep Gilded Cage proposal ───────────────────
+data/proposals/*
+!data/proposals/.gitkeep
+!data/proposals/P-0001.json
+
+# ─── Votes — keep Gilded Cage and Sima's shop votes ─────────
+data/votes/*
+!data/votes/.gitkeep
+!data/votes/V-P-0001.json
+!data/votes/V-P-0010.json
+
+# ─── Discussions — keep Gilded Cage discussion ───────────────
+data/discussions/*
+!data/discussions/.gitkeep
+!data/discussions/D-P-0001.json
+
+# ─── Reputation — ignore test fixtures ───────────────────────
+data/reputation/character_bob.jsonl
+data/reputation/member_alice.jsonl
+data/reputation/member_carol.jsonl
+data/reputation/member_dave.jsonl
+
+# ─── Exploration States — keep Gilded Cage ───────────────────
+data/exploration/states/*
+!data/exploration/states/.gitkeep
+!data/exploration/states/LOC-0001.json
+
+# ─── Images — ignore personal/draft locations ───────────────
+data/images/location/LOC-0002/
+data/images/location/LOC-0004/
+
+# ─── ComfyUI Templates — user-specific workflows ────────────
+data/comfyui/templates/*
+!data/comfyui/templates/.gitkeep
+
+# ─── ComfyUI Presets — user-specific styles ──────────────────
+data/comfyui/presets/*
+!data/comfyui/presets/.gitkeep

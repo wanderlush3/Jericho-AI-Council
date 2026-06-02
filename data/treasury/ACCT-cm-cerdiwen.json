@@ -3,11 +3,11 @@
   "account_type": "council_member",
   "owner_name": "Cerdiwen",
   "balance": {
-    "gold": 1000,
+    "gold": 1200,
     "silver": 0,
     "bronze": 0
   },
   "created_at": "2026-03-22T14:39:09.901982+00:00",
-  "updated_at": "2026-04-19T00:14:31.550239+00:00",
+  "updated_at": "2026-04-27T14:17:55.639483+00:00",
   "metadata": {}
 }

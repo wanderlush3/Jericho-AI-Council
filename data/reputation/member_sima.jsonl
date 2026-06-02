@@ -1,0 +1,6 @@
+{"id": "REP-000569", "entity_id": "member:Sima", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T02:14:36.715669+00:00"}
+{"id": "REP-000578", "entity_id": "member:Sima", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T02:34:42.029711+00:00"}
+{"id": "REP-000587", "entity_id": "member:Sima", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T23:41:29.759736+00:00"}
+{"id": "REP-000596", "entity_id": "member:Sima", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T23:49:19.551254+00:00"}
+{"id": "REP-000605", "entity_id": "member:Sima", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-27T16:20:38.261396+00:00"}
+{"id": "REP-000616", "entity_id": "member:Sima", "event_type": "vote_cast", "points": 2, "reason": "Voted 'for' on P-0002", "source_id": "P-0002", "timestamp": "2026-04-27T19:31:15.774251+00:00"}

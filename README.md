@@ -39,7 +39,7 @@ Council member profiles are defined as YAML files in `council/members/`. Each pr
 
 ## Features
 
-Jericho ships with **77 implemented features** organized across ten domains, plus a narrative engine, semantic embeddings, image generation pipeline, reputation system, and a comprehensive web dashboard:
+Jericho ships with **79 implemented features** organized across ten domains, plus a narrative engine, semantic embeddings, image generation pipeline, reputation system, and a comprehensive web dashboard:
 
 ### Core Infrastructure
 - **API Client** — Unified async client for OpenRouter, Mancer & LM Studio with retry, rate limiting, structured response parsing
@@ -475,13 +475,14 @@ jericho/
 │   ├── exploration/           # Exploration scene metadata
 │   └── stories/               # ST-XXXX.json story files
 │
-├── tests/                     # 3,626 tests (pytest)
+├── tests/                     # 3,797 tests (pytest)
 │   ├── conftest.py            # Shared fixtures & manager cache invalidation
 │   ├── test_integration.py    # Cross-module integration tests
 │   └── test_*.py              # 66 per-module test suites
 │
-├── features.json              # Feature backlog tracker (77 features)
-├── progress_log.md            # Institutional memory (session history)
+├── features.json              # Feature backlog tracker (79 features)
+├── claude.md                  # AI assistant coding guidelines
+├── LICENSE                    # MIT license
 ├── pyproject.toml             # Project config & dependencies
 ├── start.bat                  # One-click launcher (Windows)
 └── README.md                  # This file
@@ -502,7 +503,7 @@ python -m pytest tests/ -q
 python -m pytest tests/ --cov=core --cov-report=term-missing
 ```
 
-The full suite of **3,626 tests** should pass in approximately 90–100 seconds.
+The full suite of **3,797 tests** should pass in approximately 90–100 seconds.
 
 ---
 
@@ -593,7 +594,6 @@ API keys are managed from the web dashboard Settings page or via environment var
 | `cryptography`     | Fernet AES encryption for API keys   |
 | `fastapi`          | Web dashboard backend                |
 | `uvicorn`          | ASGI server for FastAPI              |
-| `sse-starlette`    | Server-Sent Events for streaming     |
 
 **Optional:** `sentence-transformers` (install via `pip install -e ".[embeddings]"`) for semantic embedding-based memory relevance scoring.
 

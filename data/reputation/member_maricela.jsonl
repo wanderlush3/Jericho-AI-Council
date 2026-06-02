@@ -1,0 +1,6 @@
+{"id": "REP-000566", "entity_id": "member:Maricela", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T02:14:36.702418+00:00"}
+{"id": "REP-000575", "entity_id": "member:Maricela", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T02:34:42.014471+00:00"}
+{"id": "REP-000584", "entity_id": "member:Maricela", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T23:41:29.744714+00:00"}
+{"id": "REP-000593", "entity_id": "member:Maricela", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T23:49:19.536721+00:00"}
+{"id": "REP-000602", "entity_id": "member:Maricela", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-27T16:20:38.244808+00:00"}
+{"id": "REP-000613", "entity_id": "member:Maricela", "event_type": "vote_cast", "points": 2, "reason": "Voted 'against' on P-0002", "source_id": "P-0002", "timestamp": "2026-04-27T19:29:21.658468+00:00"}

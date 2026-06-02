@@ -1,0 +1,6 @@
+{"id": "REP-000567", "entity_id": "member:Salome", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T02:14:36.706492+00:00"}
+{"id": "REP-000576", "entity_id": "member:Salome", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T02:34:42.020005+00:00"}
+{"id": "REP-000585", "entity_id": "member:Salome", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T23:41:29.749719+00:00"}
+{"id": "REP-000594", "entity_id": "member:Salome", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-24T23:49:19.540724+00:00"}
+{"id": "REP-000603", "entity_id": "member:Salome", "event_type": "session_participated", "points": 3, "reason": "Participated in council session CS-0005", "source_id": "CS-0005", "timestamp": "2026-04-27T16:20:38.251348+00:00"}
+{"id": "REP-000614", "entity_id": "member:Salome", "event_type": "vote_cast", "points": 2, "reason": "Voted 'for' on P-0002", "source_id": "P-0002", "timestamp": "2026-04-27T19:29:24.536446+00:00"}
