@@ -83,7 +83,7 @@ OPENROUTER_MODEL_OPTIONS = (
     "Default",
     "mistralai/mistral-small-creative",
     "deepseek/deepseek-v3.2-exp",
-    "arcee-ai/trinity-large-preview:free",
+    "arcee-ai/trinity-large-preview",
     "anthropic/claude-sonnet-4.6",
     "z-ai/glm-4.6",
     "openrouter/healer-alpha",
@@ -192,7 +192,7 @@ SUMMARIZATION_OPENROUTER_MODELS = (
     "mistralai/mistral-small-2603",
     "mistralai/mistral-small-creative",
     "deepseek/deepseek-v3.2-exp",
-    "arcee-ai/trinity-large-preview:free",
+    "arcee-ai/trinity-large-preview",
     "anthropic/claude-sonnet-4.6",
 )
 SUMMARIZATION_MANCER_MODELS = (

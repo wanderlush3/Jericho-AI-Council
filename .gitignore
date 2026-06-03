@@ -41,8 +41,12 @@ logs/session_state.json
 
 # ─── Development Tooling ─────────────────────────────────────
 .agents/
-scripts/*.txt
+scripts/*
+!scripts/.gitkeep
 progress_log.md
+claude.md
+features.json
+core/web_static/style_original.css
 
 # ══════════════════════════════════════════════════════════════
 # Runtime User Data
@@ -68,9 +72,10 @@ data/memories/shared/*
 data/memories/law_shared/*
 !data/memories/law_shared/.gitkeep
 
-# ─── Tasks — runtime task data ───────────────────────────────
+# ─── Tasks — keep demo task ──────────────────────────────────
 data/tasks/*
 !data/tasks/.gitkeep
+!data/tasks/TK-0001.json
 
 # ─── Salary — runtime payroll state ──────────────────────────
 data/salary_ledger.json

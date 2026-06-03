@@ -5669,3 +5669,107 @@ class TestApiSystemHealth:
         resp = client.get("/api/system-health")
         data = resp.json()
         assert isinstance(data["embedding"]["available"], bool)
+
+
+# ─── ComfyUI Connection Settings Persistence ─────────────────
+
+
+class TestApiComfyUISettings:
+    """Tests for GET/POST /api/settings/comfyui — connection persistence."""
+
+    def test_get_comfyui_config_returns_defaults(self, client):
+        """GET returns host and port fields."""
+        resp = client.get("/api/settings/comfyui")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "host" in data
+        assert "port" in data
+        assert isinstance(data["host"], str)
+        assert isinstance(data["port"], int)
+
+    def test_post_comfyui_config_saves(self, client):
+        """POST saves custom host and port and returns saved=True."""
+        resp = client.post("/api/settings/comfyui", json={
+            "host": "192.168.1.50",
+            "port": 8007,
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["host"] == "192.168.1.50"
+        assert data["port"] == 8007
+        assert data["saved"] is True
+
+    def test_get_reflects_post(self, client):
+        """GET reflects values saved by POST — round-trip persistence."""
+        client.post("/api/settings/comfyui", json={
+            "host": "10.0.0.5",
+            "port": 9999,
+        })
+        resp = client.get("/api/settings/comfyui")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["host"] == "10.0.0.5"
+        assert data["port"] == 9999
+
+    def test_post_missing_host_rejected(self, client):
+        """POST without host returns 400."""
+        resp = client.post("/api/settings/comfyui", json={
+            "host": "",
+            "port": 8188,
+        })
+        assert resp.status_code == 400
+        assert "host" in resp.json()["detail"].lower()
+
+    def test_post_invalid_port_rejected(self, client):
+        """POST with non-integer port returns 400."""
+        resp = client.post("/api/settings/comfyui", json={
+            "host": "127.0.0.1",
+            "port": "abc",
+        })
+        assert resp.status_code == 400
+        assert "port" in resp.json()["detail"].lower()
+
+    def test_post_port_too_low_rejected(self, client):
+        """POST with port < 1 returns 400."""
+        resp = client.post("/api/settings/comfyui", json={
+            "host": "127.0.0.1",
+            "port": 0,
+        })
+        assert resp.status_code == 400
+
+    def test_post_port_too_high_rejected(self, client):
+        """POST with port > 65535 returns 400."""
+        resp = client.post("/api/settings/comfyui", json={
+            "host": "127.0.0.1",
+            "port": 70000,
+        })
+        assert resp.status_code == 400
+
+    def test_post_port_boundary_valid(self, client):
+        """Ports 1 and 65535 are accepted."""
+        resp1 = client.post("/api/settings/comfyui", json={
+            "host": "127.0.0.1",
+            "port": 1,
+        })
+        assert resp1.status_code == 200
+
+        resp2 = client.post("/api/settings/comfyui", json={
+            "host": "127.0.0.1",
+            "port": 65535,
+        })
+        assert resp2.status_code == 200
+
+    def test_multiple_saves_latest_wins(self, client):
+        """Multiple POSTs — only the latest values are returned by GET."""
+        client.post("/api/settings/comfyui", json={
+            "host": "192.168.1.1",
+            "port": 8001,
+        })
+        client.post("/api/settings/comfyui", json={
+            "host": "10.0.0.1",
+            "port": 8007,
+        })
+        resp = client.get("/api/settings/comfyui")
+        data = resp.json()
+        assert data["host"] == "10.0.0.1"
+        assert data["port"] == 8007

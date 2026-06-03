@@ -5,6 +5,7 @@
     "image_id": "IMG-0005",
     "scene_type": "overview",
     "description": "Scene generated via Look Around",
+    "focus_area": "",
     "generated_at": "2026-04-10T20:47:30.857880+00:00",
     "metadata": {}
   },
@@ -14,6 +15,7 @@
     "image_id": "IMG-0007",
     "scene_type": "overview",
     "description": "Scene generated via Look Around",
+    "focus_area": "",
     "generated_at": "2026-04-11T02:50:39.491614+00:00",
     "metadata": {}
   },
@@ -23,6 +25,7 @@
     "image_id": "IMG-0008",
     "scene_type": "overview",
     "description": "Scene generated via Look Around",
+    "focus_area": "",
     "generated_at": "2026-04-11T02:55:20.126200+00:00",
     "metadata": {}
   },
@@ -32,6 +35,7 @@
     "image_id": "IMG-0013",
     "scene_type": "overview",
     "description": "Scene generated via Look Around",
+    "focus_area": "",
     "generated_at": "2026-04-12T12:59:27.059223+00:00",
     "metadata": {}
   },
@@ -41,6 +45,7 @@
     "image_id": "IMG-0014",
     "scene_type": "overview",
     "description": "Scene generated via Look Around",
+    "focus_area": "",
     "generated_at": "2026-04-12T13:09:44.348563+00:00",
     "metadata": {}
   },
@@ -50,7 +55,28 @@
     "image_id": "IMG-0035",
     "scene_type": "overview",
     "description": "Scene generated via Look Around",
+    "focus_area": "",
     "generated_at": "2026-04-23T00:56:14.399949+00:00",
+    "metadata": {}
+  },
+  {
+    "scene_id": "SCN-575af9f2",
+    "location_id": "LOC-0004",
+    "image_id": "IMG-0036",
+    "scene_type": "overview",
+    "description": "Scene generated via Look Around",
+    "focus_area": "",
+    "generated_at": "2026-04-24T01:00:42.803139+00:00",
+    "metadata": {}
+  },
+  {
+    "scene_id": "SCN-bf46d839",
+    "location_id": "LOC-0004",
+    "image_id": "IMG-0038",
+    "scene_type": "overview",
+    "description": "Scene generated via Look Around",
+    "focus_area": "",
+    "generated_at": "2026-04-24T01:24:29.700732+00:00",
     "metadata": {}
   }
 ]

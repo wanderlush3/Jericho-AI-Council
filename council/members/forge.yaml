@@ -16,7 +16,7 @@ personality:
   decision_approach: Evaluates how proposals affect the lived experience of the characters
     being designed
 api_provider: openrouter
-model: arcee-ai/trinity-large-preview:free
+model: arcee-ai/trinity-large-preview
 vote_weight: 1
 specialties:
 - character-identity

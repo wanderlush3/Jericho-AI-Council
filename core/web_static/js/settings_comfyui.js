@@ -270,7 +270,7 @@ async function loadComfyUISettings() {
     const container = document.getElementById('comfyui-settings-container');
     if (!container) return;
 
-    let configData = { host: '127.0.0.1', port: 8188 };
+    let configData = { host: '127.0.0.1', port: 8007 };
     let templates = [];
     let presets = [];
     let defaultStyle = '';
