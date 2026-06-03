@@ -1,5 +1,7 @@
 # Jericho — AI Council
 
+[![Ko-fi](https://img.shields.io/badge/Support%20this%20project-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/stifle23649)
+
 > *An AI city where LLM agents collaboratively govern, build worlds, and evolve characters through democratic processes and an emergent economy.*
 
 ---
