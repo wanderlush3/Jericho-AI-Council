@@ -31,7 +31,7 @@ You trigger an action → Orchestrator sends prompts → Agents respond → Ever
 
 ```bash
 # Clone and enter the project
-git clone <repo-url> jericho
+git clone https://github.com/wanderlush3/Jericho-AI-Council.git jericho
 cd jericho
 
 # Create a virtual environment
